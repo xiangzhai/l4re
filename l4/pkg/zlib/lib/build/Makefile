@@ -12,6 +12,6 @@ SRC_C		= adler32.c compress.c crc32.c deflate.c gzclose.c gzlib.c \
 		  trees.c uncompr.c zutil.c
 DEBUG 		= 0
 
-vpath %.c $(SRC_DIR)/../dist
+vpath %.c $(SRC_DIR)/../contrib
 
 include $(L4DIR)/mk/lib.mk

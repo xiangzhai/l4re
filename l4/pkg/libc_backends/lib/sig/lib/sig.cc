@@ -478,7 +478,7 @@ unsigned int alarm(unsigned int seconds) L4_NOTHROW
 {
   //printf("unimplemented: alarm(%u)\n", seconds);
 
-  _sig_handling.alarm_timeout = l4re_kip()->clock + seconds * 1000000;
+  _sig_handling.alarm_timeout = l4_kip_clock(l4re_kip()) + seconds * 1000000;
 
   _sig_handling.ping_exc_handler();
   return 0;

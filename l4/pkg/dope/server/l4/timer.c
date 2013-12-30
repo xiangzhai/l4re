@@ -31,7 +31,7 @@ int init_timer(struct dope_services *d);
 
 /*** RETURN CURRENT SYSTEM TIME COUNTER IN MICROSECONDS ***/
 static u32 get_time(void) {
-	return (u32)l4re_kip()->clock;
+	return (u32)l4_kip_clock_lw(l4re_kip());
 }
 
 

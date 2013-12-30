@@ -141,11 +141,11 @@ int timer_create (clockid_t __clock_id,
 clock_t times(struct tms *buf)
 {
   // some arbitrary values
-  buf->tms_utime = (clock_t)l4re_kip()->clock;
+  buf->tms_utime = (clock_t)l4_kip_clock(l4re_kip());
   buf->tms_stime = 10;
   buf->tms_cutime = 0;
   buf->tms_cstime = 0;
-  return (clock_t)l4re_kip()->clock;
+  return (clock_t)l4_kip_clock(l4re_kip());
 }
 
 

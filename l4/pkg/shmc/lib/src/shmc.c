@@ -202,6 +202,7 @@ l4shmc_add_chunk(l4shmc_area_t *shmarea,
   l4_addr_t offs = 0;
   long ret;
 
+  chunk_capacity = (chunk_capacity + sizeof(l4_addr_t) - 1) & ~(sizeof(l4_addr_t) - 1);
   if (chunk_capacity >> (sizeof(chunk_capacity) * 8 - 1))
     return -L4_ENOMEM;
 
@@ -331,7 +332,7 @@ l4shmc_get_chunk_to(l4shmc_area_t *shmarea,
                     l4_umword_t timeout_ms,
                     l4shmc_chunk_t *chunk)
 {
-  l4_kernel_clock_t try_until = l4re_kip()->clock + (timeout_ms * 1000);
+  l4_kernel_clock_t try_until = l4_kip_clock(l4re_kip()) + (timeout_ms * 1000);
   long ret;
 
   do
@@ -362,7 +363,7 @@ l4shmc_get_chunk_to(l4shmc_area_t *shmarea,
 
       l4_sleep(100);
     }
-  while (l4re_kip()->clock < try_until);
+  while (l4_kip_clock(l4re_kip()) < try_until);
 
   return -L4_ENOENT;
 }
@@ -414,7 +415,7 @@ l4shmc_get_signal_to(l4shmc_area_t *shmarea,
   snprintf(b, sizeof(b) - 1, "sig-%s", signal_name);
   b[sizeof(b) - 1] = 0;
 
-  timeout = l4re_kip()->clock + timeout_ms * 1000;
+  timeout = l4_kip_clock(l4re_kip()) + timeout_ms * 1000;
   while (1)
     {
       int e = l4re_ns_query_to_srv(ns, b, signal->_sigcap, timeout_ms);
@@ -424,7 +425,7 @@ l4shmc_get_signal_to(l4shmc_area_t *shmarea,
             l4re_util_cap_free(signal->_sigcap);
           return e;
         }
-      if (l4re_kip()->clock < timeout)
+      if (l4_kip_clock(l4re_kip()) < timeout)
         l4_sleep(100);
       else
         break;

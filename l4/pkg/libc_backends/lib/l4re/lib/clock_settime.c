@@ -23,7 +23,7 @@ static int rt_clock_settime(const struct timespec *tp)
   uint64_t clock;
 
   clock = tp->tv_sec * 1000000 + tp->tv_nsec / 1000;
-  __libc_l4_rt_clock_offset = clock - l4re_kip()->clock;
+  __libc_l4_rt_clock_offset = clock - l4_kip_clock(l4re_kip());
   return 0;
 }
 

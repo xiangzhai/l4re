@@ -112,7 +112,6 @@ $(OBJ_DIR)/% $(OBJ_DIR)/%/html:$(SRC_DIR)/%.cfg
 	            $(ECHO) HAVE_DOT=YES; \
 	            $(ECHO) GENERATE_LATEX=YES; \
 		    $(ECHO) SHOW_FILES=NO; \
-		    $(ECHO) SHOW_DIRECTORIES=NO; \
 	            $(ECHO) INTERNAL_DOCS=NO; \
 	            $(ECHO) GENERATE_TODOLIST=NO; \
 	            $(ECHO) GENERATE_TESTLIST=NO; \

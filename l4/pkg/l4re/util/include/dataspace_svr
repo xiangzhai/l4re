@@ -61,7 +61,7 @@ public:
 
   Dataspace_svr() throw()
   : _ds_start(0), _ds_size(0), _map_flags(Snd_fpage::Map),
-  _cache_flags(Snd_fpage::Cached)
+    _cache_flags(Snd_fpage::Cached)
   {}
 
   virtual ~Dataspace_svr() throw() {}
@@ -111,7 +111,7 @@ public:
    * \return Zero on success, else failure
    */
   virtual int phys(l4_addr_t offset, l4_addr_t &phys_addr, l4_size_t &phys_size) throw();
-  
+
   /**
    * \brief Take a reference to this dataspace
    *
@@ -140,10 +140,10 @@ public:
    *
    * \return Number of bytes copied
    */
-  virtual unsigned long copy(unsigned long dst_offs, l4_umword_t src_id,
-                             unsigned long src_offs, unsigned long size) throw()
-    { (void)dst_offs; (void)src_id; (void)src_offs; (void)size; return 0; }
-  
+  virtual unsigned long copy(l4_addr_t dst_offs, l4_umword_t src_id,
+                             l4_addr_t src_offs, unsigned long size) throw()
+  { (void)dst_offs; (void)src_id; (void)src_offs; (void)size; return -L4_ENODEV; }
+
   /**
    * \brief Clear a region in the dataspace
    *
@@ -151,7 +151,19 @@ public:
    * \param size Size of the region
    */
   virtual long clear(unsigned long offs, unsigned long size) const throw();
-  
+
+  /**
+   * \brief Allocate a region within a dataspace
+   *
+   * \param offset  Offset in the dataspace, in bytes.
+   * \param size    Size of the range, in bytes.
+   * \param size    Size of the range, in bytes.
+   *
+   * \return 0 on success, <0 on error
+   */
+  virtual long allocate(l4_addr_t offset, l4_size_t size, unsigned rights) throw()
+  { (void)offset; (void)size; (void)rights; return -L4_ENODEV; }
+
   /**
    * \brief Define the size of the flexpage to map
    *
@@ -160,9 +172,17 @@ public:
   virtual unsigned long page_shift() const throw()
   { return L4_LOG2_PAGESIZE; }
 
+  /**
+   * \brief Return whether the dataspace is static
+   *
+   * \return True if dataspace is static
+   */
   virtual bool is_static() const throw()
   { return true; }
 
+  /**
+   * \brief Dispatch function
+   */
   int dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios);
 
 protected:

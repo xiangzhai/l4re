@@ -49,7 +49,7 @@
  *   { L4RE_ELF_AUX_T_VMA, sizeof(l4re_elf_aux_vma_t), 0x2000, 0x4000 };
  * \endcode
  */
-#define L4RE_ELF_AUX_ELEM const __attribute__((used, section(".rol4re_elf_aux")))
+#define L4RE_ELF_AUX_ELEM const __attribute__((used, section(".rol4re_elf_aux"), aligned(sizeof(l4_umword_t))))
 
 /**
  * \brief Define an auxiliary vector element.
@@ -65,8 +65,7 @@
  * \endcode
  */
 #define L4RE_ELF_AUX_ELEM_T(type, id, tag, val...) \
-  static const __attribute__((used, section(".rol4re_elf_aux"))) \
-  type id = {tag, sizeof(type), val}
+  static L4RE_ELF_AUX_ELEM type id = {tag, sizeof(type), val}
 
 enum
 {

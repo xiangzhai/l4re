@@ -1,3 +1,6 @@
+
+/* Also look into example.c of libpng */
+
 #include <l4/libpng/l4png_wrap.h>
 #include <l4/sys/l4int.h>
 #include <stdlib.h>
@@ -17,41 +20,41 @@ enum { _DEBUG = 0 };
 
 #define u16 unsigned short
 
-#define PNG_BYTES_TO_CHECK 4 
-#define PNG_ROW_MEM_SIZE 8
-
+enum
+{
+  PNG_BYTES_TO_CHECK = 4,
+  PNG_ROW_MEM_SIZE   = 8,
+};
 
 static int check_if_png(char *png_data)
 {
   int i;
   char buf[PNG_BYTES_TO_CHECK];
 
-  for (i=0; i<PNG_BYTES_TO_CHECK; i++)
+  for (i = 0; i < PNG_BYTES_TO_CHECK; i++)
     buf[i] = png_data[i];
 
   /* Compare the first PNG_BYTES_TO_CHECK bytes of the signature.
      Return nonzero (true) if they match */
 
-  return png_sig_cmp((unsigned char *)buf, (png_size_t)0, PNG_BYTES_TO_CHECK);
+  return png_sig_cmp((unsigned char *)buf, (png_size_t)0,
+                     PNG_BYTES_TO_CHECK);
 }
 
-
-struct l4png_wrap_read_func_struct {
+struct l4png_wrap_read_func_struct
+{
   char *mem;
   l4_size_t offset;
   l4_size_t size;
 };
 
-void
-l4png_wrap_read_func_from_memory(png_structp png_ptr, png_bytep data,
-                                 png_size_t length);
-
-void
+static void
 l4png_wrap_read_func_from_memory(png_structp png_ptr, png_bytep data,
                                  png_size_t length)
 {
   struct l4png_wrap_read_func_struct *a
     = (struct l4png_wrap_read_func_struct *)png_ptr->io_ptr;
+
   if (!png_ptr)
     return;
 
@@ -64,6 +67,65 @@ l4png_wrap_read_func_from_memory(png_structp png_ptr, png_bytep data,
 
 enum mode_t { M_MEMORY, M_FILE };
 
+static int internal_init(enum mode_t mode,
+                         void *png_data, int png_data_size,
+                         FILE *fp,
+                         struct l4png_wrap_read_func_struct *memio,
+                         png_structp *png_ptr,
+                         png_infop *info_ptr)
+{
+  /* check if png_data really contains a png image */
+  if (mode == M_MEMORY && check_if_png(png_data))
+    return LIBPNG_ENOPNG;
+
+  /* create png read struct */
+  *png_ptr = png_create_read_struct_2(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL,
+                                      NULL, NULL, NULL);
+
+  if (!*png_ptr)
+    {
+      printf("error during creation of png read struct");
+      return -1;
+    }
+
+  if (mode == M_MEMORY)
+    {
+      memio->mem = png_data;
+      memio->size = png_data_size;
+      memio->offset = 0;
+      png_set_read_fn(*png_ptr, memio, l4png_wrap_read_func_from_memory);
+    }
+
+  /* create png info struct */
+  *info_ptr = png_create_info_struct(*png_ptr);
+
+  if (!*info_ptr)
+    {
+      png_destroy_read_struct(png_ptr, NULL, NULL);
+      printf("error during creation of png info struct");
+      return -1;
+    }
+
+  if (setjmp(png_jmpbuf(*png_ptr)))
+    {
+      /* Free all of the memory associated with the png_ptr and info_ptr */
+      png_destroy_read_struct(png_ptr, info_ptr, NULL);
+
+      /* If we get here, we had a problem reading the file */
+      return LIBPNG_EDAMAGEDPNG;
+    }
+
+  if (mode == M_MEMORY)
+    png_init_io(*png_ptr,(png_FILE_p) memio);
+  else
+    png_init_io(*png_ptr,(png_FILE_p) fp);
+
+  /* read info struct */
+  png_read_info(*png_ptr, *info_ptr);
+
+  return 0;
+}
+
 static int __internal_png_get_size(enum mode_t mode,
                                    void *png_data, int png_data_size,
                                    FILE *fp,
@@ -73,52 +135,10 @@ static int __internal_png_get_size(enum mode_t mode,
   png_infop info_ptr;
   struct l4png_wrap_read_func_struct memio;
 
-  /* check if png_data really contains a png image */
-  if (mode == M_MEMORY)
-    {
-      if (check_if_png(png_data))
-        return LIBPNG_ENOPNG;
-    }
-
-  /* create png read struct */
-  png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING,NULL,NULL,NULL);
-
-  if (!png_ptr)
-    return -1;
-
-  if (mode == M_MEMORY)
-    {
-      memio.mem = png_data;
-      memio.size = png_data_size;
-      memio.offset = 0;
-      png_set_read_fn(png_ptr, &memio, l4png_wrap_read_func_from_memory);
-    }
-
-  /* create png info struct */
-  info_ptr = png_create_info_struct(png_ptr);
-
-  if (info_ptr==NULL)
-    {
-      png_destroy_read_struct(&png_ptr, NULL, NULL);
-      return -1;
-    }
-
-  if (setjmp(png_jmpbuf(png_ptr)))
-    {
-      /* Free all of the memory associated with the png_ptr and info_ptr */
-      png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
-
-      /* If we get here, we had a problem reading the file */
-      return LIBPNG_EDAMAGEDPNG;
-    }
-
-  if (mode == M_MEMORY)
-    png_init_io(png_ptr,(png_FILE_p) &memio);
-  else
-    png_init_io(png_ptr,(png_FILE_p) fp);
-
-  /* read info struct */
-  png_read_info(png_ptr, info_ptr);
+  int r = internal_init(mode, png_data, png_data_size, fp,
+                        &memio, &png_ptr, &info_ptr);
+  if (r)
+    return r;
 
   *width = png_get_image_width(png_ptr,info_ptr);
   *height = png_get_image_height(png_ptr,info_ptr);
@@ -240,59 +260,18 @@ internal_render(enum mode_t mode, void *png_data, char * const dst,
 {
   png_structp png_ptr;
   png_infop info_ptr;
+  struct l4png_wrap_read_func_struct memio;
+
+  int r = internal_init(mode, png_data, png_data_size, fp,
+                        &memio, &png_ptr, &info_ptr);
+  if (r)
+    return r;
+
+  // ----------
   png_uint_32 width, height;
   unsigned char *row_ptr;
   unsigned row;
   int bit_depth, color_type, interlace_type;
-  struct l4png_wrap_read_func_struct memio;
-
-  /* check if png_data really contains a png image */
-  if (mode == M_MEMORY && check_if_png((char *)png_data))
-    return LIBPNG_ENOPNG;
-
-  /* create png read struct */
-  png_ptr = png_create_read_struct_2(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL,
-                                     NULL, NULL, NULL);
-  if (!png_ptr)
-    {
-      printf("error during creation of png read struct");
-      return -1;
-    }
-
-  if (mode == M_MEMORY)
-    {
-      memio.mem = png_data;
-      memio.size = png_data_size;
-      memio.offset = 0;
-      png_set_read_fn(png_ptr, &memio, l4png_wrap_read_func_from_memory);
-    }
-
-  /* create png info struct */
-  info_ptr = png_create_info_struct(png_ptr);
-
-  if (!info_ptr)
-    {
-      png_destroy_read_struct(&png_ptr, NULL, NULL);
-      printf("error during creation of png info struct");
-      return -1;
-    }
-
-  if (setjmp(png_jmpbuf(png_ptr)))
-    {
-      /* Free all of the memory associated with the png_ptr and info_ptr */
-      png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
-
-      /* If we are here, we had a problem reading the image */
-      return LIBPNG_EDAMAGEDPNG;
-    }
-
-  if (mode == M_MEMORY)
-    png_init_io(png_ptr,(png_FILE_p)&memio);
-  else
-    png_init_io(png_ptr,(png_FILE_p)fp);
-
-  /* read info struct */
-  png_read_info(png_ptr, info_ptr);
 
   /* get image data chunk */
   png_get_IHDR(png_ptr, info_ptr, &width, &height, &bit_depth, &color_type,

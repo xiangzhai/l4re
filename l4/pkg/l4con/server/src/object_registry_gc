@@ -49,7 +49,7 @@ public:
 
   void gc_run(unsigned int min_delta_in_ms)
   {
-    l4_cpu_time_t now = l4re_kip()->clock;
+    l4_cpu_time_t now = l4_kip_clock(l4re_kip());
 
     if (last_gc_run + (min_delta_in_ms * 1000) > now)
       return;

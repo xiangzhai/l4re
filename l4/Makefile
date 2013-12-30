@@ -434,8 +434,11 @@ uimage: check_and_adjust_ram_base
 rawimage: check_and_adjust_ram_base
 	$(call genimage,BOOTSTRAP_DO_UIMAGE= BOOTSTRAP_DO_RAW_IMAGE=y)
 
-fastboot: rawimage
+fastboot fastboot_rawimage: rawimage
 	$(VERBOSE)$(FASTBOOT_BOOT_CMD) $(IMAGES_DIR)/bootstrap.raw
+
+fastboot_uimage: uimage
+	$(VERBOSE)$(FASTBOOT_BOOT_CMD) $(IMAGES_DIR)/bootstrap.uimage
 
 ifneq ($(filter $(ARCH),x86 amd64),)
 qemu:
@@ -525,15 +528,34 @@ help::
 	@echo "  exportpack - Export binaries with launch support." 
 	@echo "  vbox       - Use VirtualBox to run 'name'." 
 	@echo "  fastboot   - Call fastboot with the created rawimage."
+	@echo "  fastboot_rawimage - Call fastboot with the created rawimage."
+	@echo "  fastboot_uimage   - Call fastboot with the created uimage."
 	@echo "  ux         - Run 'name' under Fiasco/UX. [x86]" 
 	@echo "  kexec      - Issue a kexec call to start the entry." 
 	@echo " Add 'E=name' to directly select the entry without using the menu."
 	@echo " Modules are defined in conf/modules.list."
 
+listplatforms:
+	$(VERBOSE)for p in $(wildcard $(L4DIR)/conf/platforms/*.conf    \
+	                              $(L4DIR)/mk/platforms/*.conf); do \
+	  $(call extract_var,a,$$p,PLATFORM_ARCH);                      \
+	  for ar in $$a; do                                             \
+	    [ "$$ar" = "$(BUILD_ARCH)" ] && arch_hit=1;                 \
+	  done;                                                         \
+	  if [ -n "$$arch_hit" ]; then                                  \
+	    $(call extract_var,n,$$p,PLATFORM_NAME);                    \
+	    pn=$${p##*/};                                               \
+	    pn=$${pn%.conf};                                            \
+	    printf "%20s -- %s\n" $$pn "$$n";                           \
+	  fi;                                                           \
+	  unset arch_hit;                                               \
+	done
+
 
 .PHONY: elfimage rawimage uimage qemu vbox ux switch_ram_base \
         grub1iso grub2iso listentries shellcodeentry exportpack \
-        fastboot check_and_adjust_ram_base
+        fastboot fastboot_rawimage fastboot_uimage \
+	check_and_adjust_ram_base listplatforms
 
 switch_ram_base:
 	$(VERBOSE)$(call switch_ram_base_func,$(RAM_BASE))
@@ -689,3 +711,4 @@ help::
 	@echo "  cleanfast        - Delete all directories created during build." 
 	@echo "  report           - Print out host configuration information." 
 	@echo "  help             - Print this help text." 
+	@echo "  listplatforms    - List available platforms."

@@ -123,7 +123,7 @@ static void evdev_event(struct input_handle *handle,
 	wake_up_interruptible(&evdev->wait);
 #else // DDE_LINUX
 	struct l4input ev;
-	ev.time = l4re_kip()->clock;
+	ev.time = l4_kip_clock(l4re_kip());
 	if (filter_event(handle, type, code, value))
 	  return;
 

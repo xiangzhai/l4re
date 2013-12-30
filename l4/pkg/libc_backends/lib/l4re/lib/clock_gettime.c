@@ -24,7 +24,7 @@ libc_backend_rt_clock_gettime(struct timespec *tp)
 {
   uint64_t clock;
 
-  clock = l4re_kip()->clock;
+  clock = l4_kip_clock(l4re_kip());
   clock += __libc_l4_rt_clock_offset;
 
   tp->tv_sec  = clock / 1000000;
@@ -36,7 +36,7 @@ libc_backend_rt_clock_gettime(struct timespec *tp)
 static int mono_clock_gettime(struct timespec *tp)
 {
   uint64_t clock;
-  clock = l4re_kip()->clock;
+  clock = l4_kip_clock(l4re_kip());
   tp->tv_sec = clock / 1000000;
   tp->tv_nsec = (clock % 1000000) * 1000;
 

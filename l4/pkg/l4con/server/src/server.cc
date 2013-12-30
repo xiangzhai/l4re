@@ -364,7 +364,7 @@ public:
   { return old + REQUEST_TIMEOUT_DELTA; }
 
   static l4_cpu_time_t current_time()
-  { return l4re_kip()->clock; }
+  { return l4_kip_clock(l4re_kip()); }
 
   static void work()
   {

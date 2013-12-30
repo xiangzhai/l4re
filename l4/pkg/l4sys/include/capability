@@ -257,8 +257,8 @@ public:
     if (!is_valid() || !src.is_valid())
       return *this;
 
-    l4_task_map(L4_BASE_TASK_CAP, L4_BASE_TASK_CAP, src.fpage(L4_FPAGE_RWX),
-                snd_base(L4_MAP_ITEM_GRANT));
+    l4_task_map(L4_BASE_TASK_CAP, L4_BASE_TASK_CAP, src.fpage(L4_CAP_FPAGE_RWSD),
+                snd_base(L4_MAP_ITEM_GRANT) | 0xf0);
 
     return *this;
   }
@@ -311,8 +311,8 @@ public:
     if (!is_valid() || !src.is_valid())
       return *this;
 
-    l4_task_map(L4_BASE_TASK_CAP, L4_BASE_TASK_CAP, src.fpage(L4_FPAGE_RWX),
-                snd_base(L4_MAP_ITEM_GRANT));
+    l4_task_map(L4_BASE_TASK_CAP, L4_BASE_TASK_CAP, src.fpage(L4_CAP_FPAGE_RWSD),
+                snd_base(L4_MAP_ITEM_GRANT) | 0xf0);
 
     return *this;
   }

@@ -1,6 +1,8 @@
 PKGDIR  ?= ../..
 L4DIR   ?= $(PKGDIR)/../..
 
+SYSTEMS     = $(filter-out arm-l4f,$(SYSTEMS_ABI))
+
 # no .so as amd64.S doesn't seem to like it
 TARGET      = libocaml_asmrun.a
 PC_FILENAME = libocaml_asmrun

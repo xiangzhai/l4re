@@ -233,7 +233,7 @@ static int tick_handle_repeat(void *arg) {
 	if (curr_keystate != USERSTATE_KEY_REPEAT || curr_keycode != keycode)
 		return 0;
 
-	key_repeat_event.time = l4re_kip()->clock;
+	key_repeat_event.time = l4_kip_clock(l4re_kip());
 	key_repeat_event.type = EV_KEY;
 	key_repeat_event.code = curr_keycode;
 	key_repeat_event.value = 2; // repeat
@@ -275,7 +275,7 @@ static void update_mfocus(void) {
 		curr_mfocus->gen->set_mfocus(curr_mfocus, 0);
 		if (curr_mfocus->wd->flags & WID_FLAGS_HIGHLIGHT)
 			curr_mfocus->gen->update(curr_mfocus);
-		event.time = l4re_kip()->clock;
+		event.time = l4_kip_clock(l4re_kip());
 		event.type = EV_WINDOW;
 		event.value = 0;
 		curr_mfocus->gen->handle_event(curr_mfocus, &event, NULL);
@@ -285,7 +285,7 @@ static void update_mfocus(void) {
 		new_mfocus->gen->set_mfocus(new_mfocus, 1);
 		if (new_mfocus->wd->flags & WID_FLAGS_HIGHLIGHT)
 			new_mfocus->gen->update(new_mfocus);
-		event.time = l4re_kip()->clock;
+		event.time = l4_kip_clock(l4re_kip());
 		event.type = EV_WINDOW;
 		event.value = 1;
 		new_mfocus->gen->handle_event(new_mfocus, &event, NULL);

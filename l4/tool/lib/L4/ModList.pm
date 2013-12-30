@@ -69,6 +69,103 @@ sub handle_line_first($)
   return (handle_line(shift))[0];
 }
 
+sub readin_config($)
+{
+  my ($mod_file) = @_;
+
+  my @fs_fds;
+  my @fs_filenames;
+  my @mod_files_for_include;
+  my $fd;
+  my @contents;
+  my %file_to_id;
+  my %id_to_file;
+  my $file_id_cur = 0;
+
+  push @mod_files_for_include, $mod_file;
+
+  while (1)
+    {
+      if (@mod_files_for_include)
+        {
+          my $f = shift @mod_files_for_include;
+
+          if (grep { /^$f$/ } @fs_filenames)
+            {
+              print STDERR "$mod_file:$.: Warning: $f already included, skipping.\n";
+              next;
+            }
+
+          push @fs_filenames, $mod_file;
+          push @fs_fds, $fd;
+
+          undef $fd;
+          $mod_file = $f;
+          open($fd, $f) || error "Cannot open '$f': $!\n";
+
+          $id_to_file{$file_id_cur} = $f;
+          $file_to_id{$f} = $file_id_cur++;
+        }
+
+      while (<$fd>)
+        {
+          chomp;
+          s/#.*$//;
+          s/^\s*//;
+          next if /^$/;
+
+          my ($cmd, $remaining) = split /\s+/, $_, 2;
+          $cmd = lc($cmd);
+
+          if ($cmd eq 'include')
+            {
+              my @f = handle_line($remaining);
+              foreach my $f (@f)
+                {
+                  my $abs;
+                  if ($f =~ /^\//)
+                    {
+                      $abs = $f;
+                    }
+                  else
+                    {
+                      my @tmp = split /\/+/, $mod_file;
+                      $tmp[@tmp - 1] = $f;
+                      $abs = join('/', @tmp);
+                    }
+                  unshift @mod_files_for_include, glob $abs;
+                }
+
+              last;
+            }
+
+          push @contents, [ $file_to_id{$mod_file}, $., $_ ];
+        }
+
+      unless (defined $_)
+        {
+          close $fd;
+
+          $fd       = pop @fs_fds;
+          $mod_file = pop @fs_filenames;
+
+          last unless defined $fd;
+        }
+    }
+
+
+  if (0)
+    {
+      print "$id_to_file{$$_[0]}($$_[0]):$$_[1]: $$_[2]\n" foreach (@contents);
+    }
+
+  return (
+           contents => [ @contents ],
+           file_to_id => { %file_to_id },
+           id_to_file => { %id_to_file },
+         );
+}
+
 # extract an entry with modules from a modules.list file
 sub get_module_entry($$)
 {
@@ -107,34 +204,12 @@ sub get_module_entry($$)
   my $linux_initrd;
   my $is_mode_linux;
 
-  my @fs_fds;
-  my @fs_filenames;
-  my @mod_files_for_include;
-  my $fd;
+  my %mod_file_db = readin_config($mod_file);
 
-  push @mod_files_for_include, $mod_file;
+  foreach my $fileentry (@{$mod_file_db{contents}})
+    {
+      $_ = $$fileentry[2];
 
-  while (1) {
-
-    if (@mod_files_for_include) {
-
-      my $f = shift @mod_files_for_include;
-
-      if (grep(/^$f$/, @fs_filenames))
-        {
-          print STDERR "$mod_file:$.: Warning: $f already included, skipping.\n";
-          next;
-        }
-
-      push @fs_filenames, $mod_file;
-      push @fs_fds, $fd;
-
-      undef $fd;
-      $mod_file = $f;
-      open($fd, $mod_file) || error "Cannot open '$mod_file': $!\n";
-    }
-
-    while (<$fd>) {
       chomp;
       s/#.*$//;
       s/^\s*//;
@@ -190,25 +265,6 @@ sub get_module_entry($$)
         $mods[2]{command}  = $file;
         $mods[2]{cmdline}  = $full;
         next;
-      } elsif ($type eq 'include') {
-        my @f = handle_line($remaining);
-        foreach my $f (@f)
-          {
-            my $abs;
-            if ($f =~ /^\//)
-              {
-                $abs = $f;
-              }
-            else
-              {
-                my @tmp = split /\/+/, $mod_file;
-                $tmp[@tmp - 1] = $f;
-                $abs = join('/', @tmp);
-              }
-            unshift @mod_files_for_include, glob $abs;
-          }
-
-        last;
       }
 
       next unless $process_mode;
@@ -218,8 +274,9 @@ sub get_module_entry($$)
       my @valid_types = ( 'bin', 'data', 'bin-nostrip', 'data-nostrip',
                           'bootstrap', 'roottask', 'kernel', 'sigma0',
                           'module-group', 'moe', 'initrd', 'set');
-      error "$mod_file:$.: Invalid type \"$type\"\n"
+      error "$mod_file_db{id_to_file}{$$fileentry[0]}:$$fileentry[1]: Invalid type \"$type\"\n"
         unless grep(/^$type$/, @valid_types);
+
 
       if ($type eq 'set') {
         my ($varname, $value) = split /\s+/, $params[0], 2;
@@ -229,7 +286,7 @@ sub get_module_entry($$)
       if ($type eq 'module-group') {
         my @m = ();
         foreach (split /\s+/, join(' ', @params)) {
-          error "$mod_file:$.: Unknown group '$_'\n" unless defined $groups{$_};
+          error "$mod_file_db{id_to_file}{$$fileentry[0]}:$$fileentry[1]: Unknown group '$_'\n" unless defined $groups{$_};
           push @m, @{$groups{$_}};
         }
         @params = @m;
@@ -274,19 +331,9 @@ sub get_module_entry($$)
       } elsif ($process_mode eq 'group') {
         push @{$groups{$current_group_name}}, @params;
       } else {
-        error "$mod_file:$.: Invalid mode '$process_mode'\n";
+        error "$mod_file_db{id_to_file}{$$fileentry[0]}:$$fileentry[1]: Invalid mode '$process_mode'\n";
       }
     }
-
-    unless (defined $_) {
-      close $fd;
-
-      $fd       = pop @fs_fds;
-      $mod_file = pop @fs_filenames;
-
-      last unless defined $fd;
-    }
-  }
 
   error "$mod_file: Unknown entry \"$entry_to_pick\"!\n" unless $found_entry;
   error "$mod_file: 'modaddr' not set\n" unless $modaddr_title || $modaddr_global;
@@ -354,17 +401,12 @@ sub get_entries($)
   my ($mod_file) = @_;
   my @entry_list;
 
-  open(M, $mod_file) || error "Cannot open $mod_file!: $!\n";
+  my %mod_file_db = readin_config($mod_file);
 
-  while (<M>) {
-    chomp;
-    s/#.*$//;
-    s/^\s*//;
-    next if /^$/;
-    push @entry_list, $2 if /^(entry|title)\s+(.+)/;
-  }
-
-  close M;
+  foreach my $fileentry (@{$mod_file_db{contents}})
+    {
+      push @entry_list, $2 if $$fileentry[2] =~ /^(entry|title)\s+(.+)/;
+    }
 
   return @entry_list;
 }

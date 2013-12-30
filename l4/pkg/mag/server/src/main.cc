@@ -120,7 +120,7 @@ public:
   l4_kernel_clock_t to;
   Loop_hooks()
   {
-    to = l4re_kip()->clock + 40000;
+    to = l4_kip_clock(l4re_kip()) + 40000;
   }
 
   l4_timeout_t timeout()
@@ -128,14 +128,14 @@ public:
 
   void setup_wait(L4::Ipc::Istream &istr, L4::Ipc_svr::Reply_mode reply_mode)
   {
-    if (to <= l4re_kip()->clock
+    if (to <= l4_kip_clock(l4re_kip())
 	&& reply_mode == L4::Ipc_svr::Reply_separate)
     {
       poll_input(_core_api);
       _core_api->user_state()->vstack()->flush();
       _core_api->tick();
       to += 40000;
-      while (to - 10000 < l4re_kip()->clock)
+      while (to - 10000 < l4_kip_clock(l4re_kip()))
 	to += 20000;
     }
 
@@ -147,7 +147,7 @@ public:
 
   L4::Ipc_svr::Reply_mode before_reply(long, L4::Ipc::Iostream &)
   {
-    if (to <= l4re_kip()->clock)
+    if (to <= l4_kip_clock(l4re_kip()))
       return L4::Ipc_svr::Reply_separate;
     return L4::Ipc_svr::Reply_compound;
   }

@@ -12,7 +12,7 @@ extern l4_kernel_info_t *_current_kip;
 #define CLOCK_TYPE l4_cpu_time_t
 #define CLOCKS_PER_SEC 1000000
 #define MS_TIME_DIFF(a,b) ((long)((a)-(b)))
-#define GET_TIME(x) x = _current_kip->clock
+#define GET_TIME(x) x = l4_kip_clock(_current_kip)
 
 #define OS_TYPE "L4"
 #define MARK_BIT_PER_GRANULE

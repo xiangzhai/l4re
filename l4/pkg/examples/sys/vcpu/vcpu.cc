@@ -296,7 +296,7 @@ static int run(void)
 
   // Create and start vCPU thread
   L4::Thread::Attr attr;
-  attr.pager(L4::cap_reinterpret_cast<L4::Thread>(L4Re::Env::env()->rm()));
+  attr.pager(L4Re::Env::env()->rm());
   attr.exc_handler(L4Re::Env::env()->main_thread());
   attr.bind(vcpu_utcb, L4Re::This_task);
   chksys(vcpu_cap->control(attr), "control");

@@ -309,7 +309,7 @@ typedef char * ptr_t;   /* A generic pointer to which we can add        */
 #     define CLOCK_TYPE l4_cpu_time_t
 #     define CLOCKS_PER_SEC 1000000
 #     define MS_TIME_DIFF(a,b) ((long)((a)-(b)))
-#     define GET_TIME(x) x = l4re_kip()->clock
+#     define GET_TIME(x) x = l4_kip_clock(l4re_kip())
 #   endif
 # else /* !MSWIN32, !MSWINCE, !BSD_TIME */
 #   include <time.h>

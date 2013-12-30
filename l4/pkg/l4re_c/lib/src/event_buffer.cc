@@ -39,6 +39,14 @@ l4re_event_buffer_attach(l4re_event_buffer_consumer_t *evbuf,
   return cast(evbuf)->attach(d, r);
 }
 
+L4_CV long
+l4re_event_buffer_detach(l4re_event_buffer_consumer_t *evbuf,
+                         l4_cap_idx_t rm) L4_NOTHROW
+{
+  L4::Cap<L4Re::Rm>        r(rm);
+  return cast(evbuf)->detach(r);
+}
+
 L4_CV void
 l4re_event_free(l4re_event_t *e) L4_NOTHROW
 {

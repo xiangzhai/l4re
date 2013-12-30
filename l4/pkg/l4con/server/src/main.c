@@ -164,7 +164,7 @@ redraw_vc(int vcnum)
    if (vcnum >= MAX_NR_L4CONS)
      return;
 
-   ev_struct.time = l4re_kip()->clock;
+   ev_struct.time = l4_kip_clock(l4re_kip());
    ev_struct.type = EV_CON;
    ev_struct.code = EV_CON_REDRAW;
    ev_struct.value = 0;
@@ -182,7 +182,7 @@ background_vc(int vcnum)
    if (vcnum >= MAX_NR_L4CONS || vcnum < 0)
      return;
 
-   ev_struct.time = l4re_kip()->clock;
+   ev_struct.time = l4_kip_clock(l4re_kip());
    ev_struct.type = EV_CON;
    ev_struct.code = EV_CON_BACKGROUND;
    ev_struct.value = 0;
@@ -702,7 +702,7 @@ periodic_work(void)
 {
   static l4_kernel_clock_t last_active_fast;
   static l4_kernel_clock_t last_active_slow;
-  l4_kernel_clock_t clock = l4re_kip()->clock;
+  l4_kernel_clock_t clock = l4_kip_clock(l4re_kip());
 
   if (clock - last_active_fast >= 25000)
     {

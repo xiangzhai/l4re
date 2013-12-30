@@ -25,7 +25,6 @@
 L4::Uart *uart();
 void set_stdio_uart(L4::Uart *uart);
 
-void platform_init();
 unsigned long scan_ram_size(unsigned long base_addr, unsigned long max_scan_size_mb);
 
 

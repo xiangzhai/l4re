@@ -318,7 +318,7 @@ static void l4evdev_event_cb(struct input_handle *handle, unsigned int type,
 	/* event filter */
 	if (filter_event(handle, type, code, value)) return;
 
-	ev.time = l4re_kip()->clock;
+	ev.time = l4_kip_clock(l4re_kip());
 	ev.type = type;
 	ev.code = code;
 	ev.value = value;
@@ -341,7 +341,7 @@ static void l4evdev_event(struct input_handle *handle, unsigned int type,
 	static unsigned long count = 0;
 #endif
 	struct l4evdev *evdev = handle->private;
-	l4_kernel_clock_t clk = l4re_kip()->clock;
+	l4_kernel_clock_t clk = l4_kip_clock(l4re_kip());
 
 	/* handle touchpads */
         if (0)

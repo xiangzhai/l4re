@@ -731,7 +731,8 @@ DEPEND_FLAG = -MD
 
 .PHONY: FORCE
 endif # CONFIG_HAVE_LDSO empty
-DEPFLAGS = -MD -MF $(@D)/.$(@F).d
+DEPFLAGS   = -MD -MF $(@D)/.$(@F).d
+DEPFLAGS_F = -cpp
 
 include $(L4DIR)/mk/rules.inc
 

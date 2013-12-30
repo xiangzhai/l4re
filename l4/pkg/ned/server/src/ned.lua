@@ -165,10 +165,12 @@ function App_env.new(proto)
   f.mem = f.mem or f.loader.mem;
 
   if type(f.log) == "table" then
-    f.log_tag, f.log_color = unpack(f.log);
+    f.log_args = f.log;
     f.log = nil;
   elseif type(f.log) == "function" then
     f.log = f.log()
+  else
+    f.log_args = {}
   end
 
   setmetatable(f, App_env);
@@ -183,9 +185,9 @@ end
 function App_env:log()
   Class.check(self, App_env);
   if self.loader.log_fab == nil or self.loader.log_fab.create == nil then
-    error ("Starting a application without valid log factory", 4);
+    error ("Starting an application without valid log factory", 4);
   end
-  return self.loader.log_fab:create(Proto.Log, self.log_tag, self.log_color);
+  return self.loader.log_fab:create(Proto.Log, unpack(self.log_args));
 end
 
 function App_env:start(...)
@@ -194,10 +196,10 @@ function App_env:start(...)
   local function fa(a)
     return string.gsub(a, ".*/", "");
   end
-  local old_log_tag = self.log_tag;
-  self.log_tag = self.log_tag or fa(...);
+  local old_log_tag = self.log_args[1];
+  self.log_args[1] = self.log_args[1] or fa(...);
   local res = exec(self, ...);
-  self.log_tag = old_log_tag;
+  self.log_args[1] = old_log_tag;
   return res;
 end
 

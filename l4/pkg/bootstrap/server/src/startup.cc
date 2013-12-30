@@ -1,5 +1,5 @@
 /**
- * \file	bootstrap/server/src/startup.c
+ * \file	bootstrap/server/src/startup.cc
  * \brief	Main functions
  *
  * \date	09/2004
@@ -45,7 +45,6 @@
 #include "init_kip.h"
 #include "patch.h"
 #include "loader_mbi.h"
-#include "startup.h"
 #include "koptions.h"
 
 #if defined (ARCH_ppc32)
@@ -251,7 +250,7 @@ check_arg(l4util_mb_info_t *mbi, const char *arg)
 /**
  * Calculate the maximum memory limit in MB.
  *
- * The limit is the highes physical address where conventional RAM is allowed.
+ * The limit is the highest physical address where conventional RAM is allowed.
  * The memory is limited to 3 GB IA32 and unlimited on other systems.
  */
 static
@@ -707,7 +706,7 @@ load_elf_module(l4util_mb_mod_t *mb_mod)
 /**
  * Simple linear memory allocator.
  *
- * Allocate size bytes startting from *ptr and set *ptr to *ptr + size.
+ * Allocate size bytes starting from *ptr and set *ptr to *ptr + size.
  */
 static inline void*
 lin_alloc(l4_size_t size, char **ptr)
@@ -721,12 +720,12 @@ lin_alloc(l4_size_t size, char **ptr)
 /**
  * Duplicate the given command line.
  *
- * This function is use for relocating the multi-boot info.
- * The new location is *ptr and *ptr is incemented by the size of the
+ * This function is used for relocating the multi-boot info.
+ * The new location is *ptr and *ptr is incremented by the size of the
  * string (basically like lin_alloc() does).
  *
  * This function also implements the mechanism to replace the command line
- * of a module from the bootstrap comand line.
+ * of a module from the bootstrap command line.
  */
 static
 char *dup_cmdline(l4util_mb_info_t *mbi, unsigned mod_nr, char **ptr,
@@ -801,8 +800,8 @@ print_e820_map(l4util_mb_info_t *mbi)
  * During relocation of command lines they may be substituted according
  * to '-arg=' options from the bootstrap command line.
  *
- * The memory map is discared and not relocated, because everything after 
- * bootstrap has to use the KIP memory desriptors.
+ * The memory map is discarded and not relocated, because everything after
+ * bootstrap has to use the KIP memory descriptors.
  */
 static
 l4util_mb_info_t *
@@ -1036,7 +1035,7 @@ construct_mbi(l4util_mb_info_t *mbi)
 #endif /* IMAGE_MODE */
 
 
-/* Occupied RAM at the point we are scannig it */
+/* Occupied RAM at the point we are scanning it */
 static int
 is_precious_ram(unsigned long addr)
 {
@@ -1114,11 +1113,9 @@ startup(l4util_mb_info_t *mbi, l4_umword_t flag,
         ;
     }
 
-#ifdef IMAGE_MODE
-    {
-      loader_mbi_add_cmdline(_mbi_cmdline);
-      mbi = loader_mbi();
-    }
+#ifdef LOADER_MBI
+  loader_mbi_add_cmdline(_mbi_cmdline);
+  mbi = loader_mbi();
 #endif
 
   if (check_arg(mbi, "-wait"))

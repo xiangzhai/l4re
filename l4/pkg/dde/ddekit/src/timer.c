@@ -299,7 +299,7 @@ static void jiffies_thread_fn(void *arg __attribute__((unused)))
 
 	for (;;)
 	{
-		pint = kinfo->clock;
+		pint = l4_kip_clock(kinfo);
 		pint += clock_inc;
 
 		l4_rcv_timeout(l4_timeout_abs(pint, L4_TIMEOUT_ABS_V64_ms), &to);

@@ -34,6 +34,10 @@ L4_CV long
 l4re_event_buffer_attach(l4re_event_buffer_consumer_t *evbuf,
                          l4re_ds_t ds, l4_cap_idx_t rm) L4_NOTHROW;
 
+L4_CV long
+l4re_event_buffer_detach(l4re_event_buffer_consumer_t *evbuf,
+                         l4_cap_idx_t rm) L4_NOTHROW;
+
 L4_CV l4re_event_t *
 l4re_event_buffer_next(l4re_event_buffer_consumer_t *evbuf) L4_NOTHROW;
 

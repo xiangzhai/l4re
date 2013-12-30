@@ -197,6 +197,8 @@ public:
     _rm_fab = L4::Cap<L4::Factory>(fab.raw);
   }
 
+  L4::Cap<L4::Factory> rm_fab() const { return _rm_fab; }
+
   void set_task(App_task *t) { _task = t; }
 
   void push_argv_strings()
@@ -386,11 +388,9 @@ static int exec(lua_State *l)
 
   Am am(l);
   am.parse_cfg();
-  L4::Cap<L4Re::Mem_alloc> mem_alloc(am.prog_info()->mem_alloc.raw);
 
   typedef cxx::Ref_ptr<App_task> App_ptr;
-
-  App_ptr app_task(new App_task(Ned::server->registry(), L4::cap_dynamic_cast<L4::Factory>(mem_alloc)));
+  App_ptr app_task(new App_task(Ned::server->registry(), am.rm_fab()));
 
   if (!app_task)
     {

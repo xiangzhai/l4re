@@ -70,14 +70,15 @@ public:
    * \brief Detach event buffer from address space.
    *
    * \param rm   Region manager to detach buffer from.
-   * \param buf  Buffer pointer.
    *
    * \return 0 on success, negative error code otherwise.
    */
-  long detach(L4::Cap<L4Re::Rm> rm, void *buf) throw()
+  long detach(L4::Cap<L4Re::Rm> rm) throw()
   {
     L4::Cap<L4Re::Dataspace> ds;
-    return rm->detach(buf, &ds);
+    if (_buf)
+      return rm->detach(_buf, &ds);
+    return 0;
   }
 
 };

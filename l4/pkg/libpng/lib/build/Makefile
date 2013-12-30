@@ -11,6 +11,6 @@ SRC_C           = pngerror.c pngget.c pngpread.c pngrio.c pngrutil.c \
 
 PRIVATE_INCDIR  = $(SRC_DIR)
 
-vpath %.c $(SRC_DIR)/../dist
+vpath %.c $(SRC_DIR)/../contrib
 
 include $(L4DIR)/mk/lib.mk

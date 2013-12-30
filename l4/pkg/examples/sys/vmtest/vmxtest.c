@@ -30,7 +30,7 @@
 
 #include "vmcs.h"
 
-#define STACKSIZE (8<<10)
+enum { STACKSIZE = 8 << 10 };
 
 static char stack[STACKSIZE];
 static char hdl_stack[STACKSIZE];
@@ -38,20 +38,42 @@ static char hdl_stack[STACKSIZE];
 static unsigned long idt[32 * 2] __attribute__((aligned(4096)));
 static unsigned long gdt[32 * 2] __attribute__((aligned(4096)));
 static l4_umword_t old_rip;
-
-void test_func(void) __attribute__((aligned(4096)));
-
-void vm_resume(void);
-void handle_vmexit(void);
-l4_vcpu_state_t *vcpu;
-l4_addr_t *vmcs_s;
-
+static l4_vcpu_state_t *vcpu;
+static l4_addr_t *vmcs_s;
 static l4_umword_t test_end;
 static l4_cap_idx_t vm_task;
 
 L4_INLINE
 void vmwrite(void *vmcs, unsigned field, unsigned long long val)
 { l4_vm_vmx_write(vmcs, field, val); }
+
+__attribute__((aligned(4096))) static void test_func(void)
+{
+  unsigned long dummy;
+  asm volatile("2:  nop               \n"
+               "    nop \n"
+               "    addl %%edx,%%eax  \n"
+               "    ud2               \n"
+               "    addl %%edx,%%eax  \n"
+               "    int3              \n"
+               "3:  nop               \n"
+               "    nop               \n"
+               "    addl %%edx,%%eax  \n"
+               "    int3              \n"
+               "    nop               \n"
+               "    nop               \n"
+               "    movl %%eax, %%ecx \n"
+               "    addl %%edx, %%ecx \n"
+               "4:                    \n"
+               "    addl %%edx,%%eax  \n"
+               "    ud2               \n"
+               : "=r" (dummy)
+               );
+
+  asm volatile("1:  int3        \n"
+               "    ud2         \n"
+               "    jmp 1b      \n");
+}
 
 static void init_vmcs(void *vmcs)
 {
@@ -102,7 +124,6 @@ static void init_vmcs(void *vmcs)
   vmwrite(vmcs, VMX_GUEST_TR_BASE, 0);
 
   vmwrite(vmcs_s, VMX_GUEST_CR0, 0x0001003b);
-
 }
 
 static int check_vmx(void)
@@ -114,7 +135,7 @@ static int check_vmx(void)
 
   l4util_cpu_cpuid(0x1, &ax, &bx, &cx, &dx);
 
-  if (!(cx & (1<<5)))
+  if (!(cx & (1 << 5)))
     {
       printf("CPU does not support VMX.\n");
       return 1;
@@ -123,26 +144,21 @@ static int check_vmx(void)
   return 0;
 }
 
-static void handler(void)
+static void handle_vmexit(void)
 {
-  printf("Received interrupt %d\n", (int)vcpu->i.label);
-  vm_resume();
-}
+  static unsigned int exitcnt;
 
-void handle_vmexit(void)
-{
-  static unsigned int i = 0;
-  ++i;
+  ++exitcnt;
 
   l4_msgtag_t tag;
   l4_uint32_t interrupt_info;
 
   printf("iteration=%d, rip=0x%lx -> 0x%lx\n",
-         i, old_rip,
+         exitcnt, old_rip,
          l4_vm_vmx_read_nat(vmcs_s, VMX_GUEST_RIP));
 
   l4_uint32_t exit_reason = l4_vm_vmx_read_32(vmcs_s, VMX_EXIT_REASON);
-  if ((exit_reason & (1<<31)))
+  if ((exit_reason & (1 << 31)))
     printf("VM entry failure, reason %d\n", (exit_reason & 0xffff));
   else
     {
@@ -153,7 +169,7 @@ void handle_vmexit(void)
                  l4_vm_vmx_read_nat(vmcs_s, VMX_GUEST_RIP));
           interrupt_info = l4_vm_vmx_read_32(vmcs_s, VMX_EXIT_INTERRUPT_INFO);
           // check valid bit
-          if (!(interrupt_info & (1<<31)))
+          if (!(interrupt_info & (1 << 31)))
             printf("Interrupt info not valid\n");
 
           printf("interrupt vector=%d, type=%d, error code valid=%d\n",
@@ -165,15 +181,18 @@ void handle_vmexit(void)
                    l4_vm_vmx_read_32(vmcs_s, VMX_EXIT_INTERRUPT_ERROR));
 
           printf("cr0=%lx\n", l4_vm_vmx_read_nat(vmcs_s, VMX_GUEST_CR0));
-          printf("eax: %lx ebx: %lx esi: %lx\n", vcpu->r.ax, vcpu->r.bx, vcpu->r.si);
+          printf("eax: %lx ebx: %lx esi: %lx\n",
+                 vcpu->r.ax, vcpu->r.bx, vcpu->r.si);
 
-          if (((interrupt_info & 0x700)>>8) == 3 &&
+          if (((interrupt_info & 0x700) >> 8) == 3 &&
               (interrupt_info & 0xff) == 14)
             {
-              l4_umword_t fault_addr = l4_vm_vmx_read_nat(vmcs_s, VMX_EXIT_QUALIFICATION);
+              l4_umword_t fault_addr
+                = l4_vm_vmx_read_nat(vmcs_s, VMX_EXIT_QUALIFICATION);
               printf("detected pagefault @ %lx\n", fault_addr);
               tag = l4_task_map(vm_task, L4RE_THIS_TASK_CAP,
-                                l4_fpage(fault_addr & L4_PAGEMASK, L4_PAGESHIFT, L4_FPAGE_RW),
+                                l4_fpage(fault_addr & L4_PAGEMASK, L4_PAGESHIFT,
+                                         L4_FPAGE_RW),
                                 l4_map_control(fault_addr, 0, L4_MAP_ITEM_MAP));
               if (l4_error(tag))
                 printf("Error mapping page\n");
@@ -181,10 +200,11 @@ void handle_vmexit(void)
             }
 
           // increment rip to continue
-          l4_umword_t l = l4_vm_vmx_read_32(vmcs_s, VMX_EXIT_INSTRUCTION_LENGTH);
+          l4_umword_t l = l4_vm_vmx_read_32(vmcs_s,
+                                            VMX_EXIT_INSTRUCTION_LENGTH);
           l4_umword_t ip = l4_vm_vmx_read_nat(vmcs_s, VMX_GUEST_RIP);
           printf("insn length: %lx new rip=%lx\n", l, ip);
-          vmwrite(vmcs_s, VMX_GUEST_RIP, ip+l);
+          vmwrite(vmcs_s, VMX_GUEST_RIP, ip + l);
           break;
         case 1:
           printf("External interrupt\n");
@@ -193,14 +213,17 @@ void handle_vmexit(void)
           printf("EPT violation\n");
           l4_umword_t q = l4_vm_vmx_read_nat(vmcs_s, VMX_EXIT_QUALIFICATION);
           printf("  exit qualifiction: %lx\n", q);
-          printf("  guest phys = %llx,  guest linear: %lx\n", l4_vm_vmx_read_64(vmcs_s, 0x2400), l4_vm_vmx_read_nat(vmcs_s, 0x640a));
-          printf("  guest cr0 = %lx\n", l4_vm_vmx_read_nat(vmcs_s, VMX_GUEST_CR0));
+          printf("  guest phys = %llx,  guest linear: %lx\n",
+                 l4_vm_vmx_read_64(vmcs_s, 0x2400), l4_vm_vmx_read_nat(vmcs_s, 0x640a));
+          printf("  guest cr0 = %lx\n",
+                 l4_vm_vmx_read_nat(vmcs_s, VMX_GUEST_CR0));
 
             {
               l4_umword_t fault_addr = l4_vm_vmx_read_64(vmcs_s, 0x2400);
               printf("detected pagefault @ %lx\n", fault_addr);
               tag = l4_task_map(vm_task, L4RE_THIS_TASK_CAP,
-                                l4_fpage(fault_addr & L4_PAGEMASK, L4_PAGESHIFT, L4_FPAGE_RWX),
+                                l4_fpage(fault_addr & L4_PAGEMASK,
+                                         L4_PAGESHIFT, L4_FPAGE_RWX),
                                 l4_map_control(fault_addr, 0, L4_MAP_ITEM_MAP));
               if (l4_error(tag))
                 printf("Error mapping page\n");
@@ -213,12 +236,13 @@ void handle_vmexit(void)
     }
 }
 
-void vm_resume(void)
+static void vm_resume(void)
 {
   int r;
   l4_msgtag_t tag;
 
-  tag = l4_thread_vcpu_resume_commit(L4_INVALID_CAP, l4_thread_vcpu_resume_start());
+  tag = l4_thread_vcpu_resume_commit(L4_INVALID_CAP,
+                                     l4_thread_vcpu_resume_start());
   r = l4_error(tag);
   if (r)
     printf("vm_resume failed: %s (%d)\n", l4sys_errtostr(r), r);
@@ -228,6 +252,12 @@ void vm_resume(void)
 
   if (old_rip <= test_end)
     vm_resume();
+}
+
+static void handler(void)
+{
+  printf("Received interrupt %d\n", (int)vcpu->i.label);
+  vm_resume();
 }
 
 
@@ -361,6 +391,8 @@ static void run_test(int ept_available)
      test_func();
   }
 #endif
+  if (0)
+    test_func();
 
   printf("ip=%lx\n", ip);
 
@@ -463,32 +495,4 @@ __attribute__((aligned(4096))) int main(void)
   l4_sleep_forever();
 
   return 0;
-}
-
-__attribute__((aligned(4096))) void test_func(void)
-{
-  unsigned long dummy;
-  asm volatile("2:  nop               \n"
-               "    nop \n"
-               "    addl %%edx,%%eax  \n"
-               "    ud2               \n"
-               "    addl %%edx,%%eax  \n"
-               "    int3              \n"
-               "3:  nop               \n"
-               "    nop               \n"
-               "    addl %%edx,%%eax  \n"
-               "    int3              \n"
-               "    nop               \n"
-               "    nop               \n"
-               "    movl %%eax, %%ecx \n"
-               "    addl %%edx, %%ecx \n"
-               "4:                    \n"
-               "    addl %%edx,%%eax  \n"
-               "    ud2               \n"
-               : "=r" (dummy)
-               );
-
-  asm volatile("1:  int3        \n"
-               "    ud2         \n"
-               "    jmp 1b      \n");
 }

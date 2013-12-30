@@ -168,7 +168,7 @@ static void vscr_update(VSCREEN *vs)
       if (!(vs->vd->update_flags & VSCR_UPDATE_MOUSE_Y))
 	vs_my = userstate->get_my();
 
-      event.time  = l4re_kip()->clock;
+      event.time  = l4_kip_clock(l4re_kip());
       event.type  = L4RE_EV_ABS;
       event.code  = L4RE_ABS_X;
       event.value = vs_mx - vs->gen->get_abs_x(vs);

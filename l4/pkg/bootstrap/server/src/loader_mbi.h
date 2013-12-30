@@ -13,7 +13,9 @@
 #include <l4/util/mb_info.h>
 
 l4util_mb_info_t *loader_mbi();
-l4util_mb_info_t *init_loader_mbi_x86_realmode(void *);
 void loader_mbi_add_cmdline(const char *cmdline);
+#ifdef REALMODE_LOADING
+l4util_mb_info_t *init_loader_mbi_x86_realmode(void *);
+#endif
 
 #endif /* ! __BOOTSTRAP__LOADER_MBI_H__ */

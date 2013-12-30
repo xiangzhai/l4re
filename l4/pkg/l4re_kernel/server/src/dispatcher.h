@@ -13,7 +13,7 @@
 
 #include "region.h"
 
-class Dispatcher : public L4::Server_object
+class Dispatcher
 {
 public:
   int dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios);

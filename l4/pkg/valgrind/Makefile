@@ -9,7 +9,7 @@ L4DIR	?= $(PKGDIR)/../..
 SYSTEMS = x86-l4f
 
 all::
-	PWD=$(PWD)/build make -C build
+	if [ ! -e $(PKGDIR)/broken ]; then PWD=$(PWD)/build make -C build; fi
 
 clean::
 	PWD=$(PWD)/build make -C build $@

@@ -200,7 +200,7 @@ int main()
   L4::Cap<L4::Irq> irq = server.registry()->register_irq_obj(&observer);
 
   // now the initial server object shared with the client via our parent.
-  // it provides the data-space and the IRQ capabilies to a client.
+  // it provides the data-space and the IRQ capabilities to a client.
   My_server_obj server_obj(ds, irq);
 
   // Registering the server object to the capability 'shm' in our the L4Re::Env.

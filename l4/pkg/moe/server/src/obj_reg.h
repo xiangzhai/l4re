@@ -100,7 +100,13 @@ public:
     if (!cap.is_valid())
       return false;
 
-    _non_gc.free(cap, L4_BASE_TASK_CAP);
+    if ((cap.cap() >> L4_CAP_SHIFT) >= Gc_cap_0)
+      _gc.free(cap);
+    else if ((cap.cap() >> L4_CAP_SHIFT) >= Non_gc_cap_0)
+      _non_gc.free(cap, L4_BASE_TASK_CAP);
+    else
+        return false;
+
     return true;
   }
 

@@ -28,6 +28,7 @@
 #include <l4/sys/ipc.h>
 #include <l4/sys/capability>
 #include <l4/cxx/type_traits>
+#include <l4/cxx/minmax>
 
 #define L4_CXX_IPC_BACKWARD_COMPAT 1
 
@@ -66,7 +67,7 @@ public:
    * \param v The pointer to the array with size elements of type T.
    * \param size the number of elements in the array.
    */
-  Buf_cp_out(T *v, unsigned long size) : _v(v), _s(size) {}
+  Buf_cp_out(T const *v, unsigned long size) : _v(v), _s(size) {}
 
   /**
    * \brief Get the number of elements in the array.
@@ -78,11 +79,11 @@ public:
    * \brief Get the pointer to the array.
    * \note This function is usually used by the Ipc::Ostream itself.
    */
-  T *buf() const { return _v; }
+  T const *buf() const { return _v; }
 
 private:
   friend class Ostream;
-  T *_v;
+  T const *_v;
   unsigned long _s;
 };
 
@@ -97,8 +98,8 @@ private:
  * \param size Number of elements in the array.
  */
 template< typename T >
-Buf_cp_out<T> buf_cp_out(T *v, unsigned long size)
-{ return Buf_cp_out<T>(v,size); }
+Buf_cp_out<T> buf_cp_out(T const *v, unsigned long size)
+{ return Buf_cp_out<T>(v, size); }
 
 
 /**
@@ -149,7 +150,7 @@ private:
  */
 template< typename T >
 Buf_cp_in<T> buf_cp_in(T *v, unsigned long &size)
-{ return Buf_cp_in<T>(v,size); }
+{ return Buf_cp_in<T>(v, size); }
 
 
 /**
@@ -396,7 +397,7 @@ template <typename T, typename B>
 class Gen_string : public T
 {
 public:
-  Gen_string() : T(0,0) {}
+  Gen_string() : T(0, 0) {}
   Gen_string(B buf, unsigned long size)
   : T(size << 10, l4_umword_t(buf))
   {}
@@ -1255,7 +1256,7 @@ inline L4::Ipc::Istream &operator >> (L4::Ipc::Istream &s, L4::Ipc::Snd_item &v)
 {
   l4_umword_t b, d;
   s >> b >> d;
-  v = L4::Ipc::Snd_item(b,d);
+  v = L4::Ipc::Snd_item(b, d);
   return s;
 }
 inline L4::Ipc::Istream &operator >> (L4::Ipc::Istream &s, L4::Ipc::Varg &v)
@@ -1343,7 +1344,7 @@ L4::Ipc::Istream &operator >> (L4::Ipc::Istream &s,
 {
   unsigned long sz;
   s.get(sz);
-  v.size() = s.get(v.buf(), sz);
+  v.size() = s.get(v.buf(), cxx::min(v.size(), sz));
   return s;
 }
 
@@ -1452,7 +1453,7 @@ Ipc::Buf_cp_out<T> ipc_buf_cp_out(T *v, unsigned long size)
 
 template< typename T >
 Ipc::Buf_cp_out<T> ipc_buf_cp_out(T *v, unsigned long size)
-{ return Ipc::Buf_cp_out<T>(v,size); }
+{ return Ipc::Buf_cp_out<T>(v, size); }
 
 
 template< typename T >
@@ -1461,7 +1462,7 @@ Ipc::Buf_cp_in<T> ipc_buf_cp_in(T *v, unsigned long &size)
 
 template< typename T >
 Ipc::Buf_cp_in<T> ipc_buf_cp_in(T *v, unsigned long &size)
-{ return Ipc::Buf_cp_in<T>(v,size); }
+{ return Ipc::Buf_cp_in<T>(v, size); }
 
 
 template< typename T >

@@ -34,6 +34,7 @@ public:
   unsigned long get(unsigned long offset,
                     unsigned long bufsize, void *dstbuf);
 
+  unsigned long size(unsigned long offset);
   unsigned long size() const { return _size; }
 
   ~File_data() throw() { free(_buf); }
@@ -47,10 +48,7 @@ unsigned long
 File_data::put(unsigned long offset, unsigned long bufsize, void *srcbuf)
 {
   if (offset + bufsize > _size)
-    {
-      _size = offset + bufsize;
-      _buf = realloc(_buf, _size);
-    }
+    size(offset + bufsize);
 
   if (!_buf)
     return 0;
@@ -72,6 +70,20 @@ File_data::get(unsigned long offset, unsigned long bufsize, void *dstbuf)
 
   memcpy(dstbuf, (char *)_buf + offset, s);
   return s;
+}
+
+unsigned long
+File_data::size(unsigned long offset)
+{
+  if (offset != _size)
+    {
+      _size = offset;
+      _buf = realloc(_buf, _size);
+    }
+
+  if (_buf)
+    return 0;
+  return -ENOSPC;
 }
 
 
@@ -191,6 +203,7 @@ public:
 
   off64_t size() const throw();
   int fstat64(struct stat64 *buf) const throw();
+  int ftruncate64(off64_t p) throw();
   int ioctl(unsigned long, va_list) throw();
   int utime(const struct utimbuf *) throw();
   int fchmod(mode_t) throw();
@@ -234,6 +247,17 @@ int Tmpfs_file::fstat64(struct stat64 *buf) const throw()
   _file->info()->st_size = _file->data().size();
   memcpy(buf, _file->info(), sizeof(*buf));
   return 0;
+}
+
+int Tmpfs_file::ftruncate64(off64_t p) throw()
+{
+  if (p < 0)
+      return -EINVAL;
+
+  if (_file->data().size(p) == 0)
+      return 0;
+
+  return -EIO; // most likely ENOSPC, but can't report that
 }
 
 off64_t Tmpfs_file::size() const throw()

@@ -94,7 +94,7 @@ Dataspace_svr::map(l4_addr_t offs, l4_addr_t hot_spot, unsigned long flags,
   //l4_addr_t map_offs = adr & ~(~0UL << order);
 
   l4_fpage_t fpage = l4_fpage(map_base, order, flags && is_writable() ?  L4_FPAGE_RWX : L4_FPAGE_RX);
-  
+
   memory = L4::Ipc::Snd_fpage(fpage, hot_spot, _map_flags, _cache_flags);
 
   return L4_EOK;
@@ -245,6 +245,15 @@ Dataspace_svr::dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios)
       //L4::cout << "Dataspace_svr: R[" << this << "]: refs=" << ref_cnt() << '\n';
 
       return 1;
+
+    case L4Re::Dataspace_::Allocate:
+        {
+          l4_addr_t offset;
+          l4_size_t size;
+          ios >> offset >> size;
+          return allocate(offset, size, obj & 3);
+        }
+      break;
     default:
       return -L4_ENOSYS;
     }

@@ -28,6 +28,7 @@ void loader_mbi_add_cmdline(const char *cmdline)
   my_loader_mbi.flags |= L4UTIL_MB_CMDLINE;
 }
 
+#ifdef REALMODE_LOADING
 l4util_mb_info_t *init_loader_mbi_x86_realmode(void *realmode_pointer)
 {
   my_loader_mbi.flags     |= L4UTIL_MB_MEMORY;
@@ -47,3 +48,4 @@ l4util_mb_info_t *init_loader_mbi_x86_realmode(void *realmode_pointer)
 
   return &my_loader_mbi;
 }
+#endif
