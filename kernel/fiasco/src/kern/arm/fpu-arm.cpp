@@ -257,8 +257,9 @@ Fpu::init(Cpu_number cpu, bool resume)
 {
   copro_enable();
 
-  fpu.cpu(cpu)._fpsid = Fpsid(fpsid_read());
-  if (cpu == Cpu_number::boot_cpu())
+  Fpu &f = fpu.cpu(cpu);
+  f._fpsid = Fpsid(fpsid_read());
+  if (cpu == Cpu_number::boot_cpu() && f._fpsid.arch_version() > 1)
     save_32r = (mvfr0() & 0xf) == 2;
 
   if (!resume)
@@ -266,7 +267,7 @@ Fpu::init(Cpu_number cpu, bool resume)
 
   disable();
 
-  fpu.cpu(cpu).set_owner(0);
+  f.set_owner(0);
 }
 
 IMPLEMENT inline NEEDS ["fpu_state.h", "mem.h", "static_assert.h"]
@@ -285,7 +286,7 @@ Fpu::save_fpu_regs(Fpu_regs *r)
 {
   Mword tmp;
   asm volatile("stc p11, cr0, [%0], #128     \n"
-               "cmp    %1, #0                \n"
+               "cmp    %2, #0                \n"
                "stcnel p11, cr0, [%0], #128  \n"
                : "=r" (tmp) : "0" (r->state), "r" (save_32r));
 }
@@ -296,7 +297,7 @@ Fpu::restore_fpu_regs(Fpu_regs *r)
 {
   Mword tmp;
   asm volatile("ldc    p11, cr0, [%0], #128 \n"
-               "cmp    %1, #0               \n"
+               "cmp    %2, #0               \n"
                "ldcnel p11, cr0, [%0], #128 \n"
                : "=r" (tmp) : "0" (r->state), "r" (save_32r));
 }

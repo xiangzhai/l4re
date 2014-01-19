@@ -35,16 +35,27 @@ INTERFACE [arm && armv5]:
 namespace Bootstrap {
 inline void set_asid()
 {}
+
+inline void set_ttbcr()
+{}
 }
 
 //---------------------------------------------------------------------------
 INTERFACE [arm && (armv6 || armv7)]:
+
+#include "kmem_space.h"
 
 namespace Bootstrap {
 inline void
 set_asid()
 {
   asm volatile ("mcr p15, 0, %0, c13, c0, 1" : : "r" (0)); // ASID 0
+}
+
+inline void set_ttbcr()
+{
+  asm volatile("mcr p15, 0, %[ttbcr], c2, c0, 2" // TTBCR
+               : : [ttbcr] "r" (Page::Ttbcr_bits));
 }
 }
 
@@ -260,8 +271,7 @@ extern "C" void bootstrap_main()
   Bootstrap::do_arm_1176_cache_alias_workaround();
   Bootstrap::set_asid();
 
-  asm volatile("mcr p15, 0, %[ttbcr], c2, c0, 2" // TTBCR
-               : : [ttbcr] "r" (Page::Ttbcr_bits));
+  Bootstrap::set_ttbcr();
   Mem::dsb();
   asm volatile("mcr p15, 0, %[null], c8, c7, 0" // TLBIALL
                : : [null]  "r" (0));
