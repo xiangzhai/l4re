@@ -448,7 +448,7 @@ Acpi_res_discover::discover_crs(Hw::Device *host)
 	  break;
 
 	default:
-	  d_printf(DBG_WARN, "WARNING: ignoring ACPI recource (unkown type: %d)\n", r->Type);
+	  d_printf(DBG_WARN, "WARNING: ignoring ACPI resource (unkown type: %d)\n", r->Type);
 	  break;
 
 

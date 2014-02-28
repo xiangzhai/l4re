@@ -33,7 +33,7 @@ class Mount_tree;
  * \brief Boiler plate class for implementing an open file for L4Re::Vfs.
  *
  * This class may be used as a base class for everything that a POSIX
- * file descriptor may point to.  This are things such as regular files,
+ * file descriptor may point to. This are things such as regular files,
  * directories, special device files, streams, pipes, and so on.
  */
 class Be_file : public File

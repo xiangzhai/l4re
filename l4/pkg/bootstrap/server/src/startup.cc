@@ -325,6 +325,33 @@ parse_mem_layout(const char *s, unsigned long *sz, unsigned long *offset)
   return 0;
 }
 
+static
+void
+print_e820_map(l4util_mb_info_t *mbi)
+{
+#ifndef ARCH_arm
+  printf("  Bootloader MMAP%s\n", mbi->flags & L4UTIL_MB_MEM_MAP
+                                   ? ":" : " not available.");
+#endif
+
+  if (mbi->flags & L4UTIL_MB_MEM_MAP)
+    {
+      l4util_mb_addr_range_t *mmap;
+      l4util_mb_for_each_mmap_entry(mmap, mbi)
+	{
+	  const char *types[] = { "unknown", "RAM", "reserved", "ACPI",
+                                  "ACPI NVS", "unusable" };
+	  const char *type_str = (mmap->type < (sizeof(types) / sizeof(types[0])))
+                                 ? types[mmap->type] : types[0];
+
+	  printf("    [%9llx, %9llx) %s (%d)\n",
+                 (unsigned long long) mmap->addr,
+                 (unsigned long long) mmap->addr + (unsigned long long) mmap->size,
+                 type_str, (unsigned) mmap->type);
+	}
+    }
+}
+
 static void
 dump_ram_map(bool show_total = false)
 {
@@ -432,7 +459,7 @@ move_module(l4util_mb_info_t *mbi, int i, Region *from, Region *to,
              i, start, from->end(), c, to->begin(), to->end(), size);
 
       for (int a = 0; a < 0x100; a += 4)
-        printf("%08lx%s", *(unsigned long *)(start + a), (a % 32 == 28) ? "\n" : " ");
+        printf("%08x%s", *(unsigned *)(start + a), (a % 32 == 28) ? "\n" : " ");
       printf("\n");
     }
   else
@@ -546,11 +573,37 @@ move_modules(l4util_mb_info_t *mbi, unsigned long modaddr)
   // now everything is behind modaddr -> pull close to modaddr now
   // this is optional but avoids holes and gives more consecutive memory
 
-  if (0)
+  if (Verbose_load)
     printf("  Compactifying\n");
 
   regions.sort();
   unsigned long lastend = modaddr;
+
+  // Now check whether modaddr is ok or if some non-modules are still above
+  // modaddr, so that we need to have lastend higher
+    {
+      unsigned long end_last_pre_module = 0;
+      bool seen_modules = false;
+
+      for (Region *i = regions.begin(); i < regions.end(); ++i)
+        {
+          if (strcmp(i->name(), ".Module"))
+            {
+              unsigned long mod_end = l4_round_page(i->end());
+              if (!seen_modules && end_last_pre_module < mod_end)
+                end_last_pre_module = mod_end;
+            }
+          else
+            seen_modules = true;
+        }
+
+      if (end_last_pre_module > lastend)
+        lastend = end_last_pre_module;
+    }
+
+  if (Verbose_load)
+    printf("  Moving modules down to %lx\n", lastend);
+
   for (Region *i = regions.begin(); i < regions.end(); ++i)
     {
       if (i->begin() < modaddr)
@@ -592,6 +645,35 @@ init_regions()
               ".bootstrap", Region::Boot));
 }
 
+/**
+ * Add memory used by MBI to the allocated memory regions.
+ */
+static void
+reserve_mbi_memory(l4util_mb_info_t *mbi)
+{
+  regions.add(Region::n((unsigned long)mbi,
+                        (unsigned long)mbi + sizeof(*mbi),
+                        ".mbi", Region::Boot));
+
+  if (mbi->flags & L4UTIL_MB_CMDLINE)
+    regions.add(Region::n((unsigned long)mbi->cmdline,
+                          (unsigned long)mbi->cmdline
+                          + strlen(L4_CONST_CHAR_PTR(mbi->cmdline)),
+                          ".mbi", Region::Boot));
+
+  l4util_mb_mod_t *mb_mod = (l4util_mb_mod_t*)(unsigned long)mbi->mods_addr;
+  regions.add(Region::n((unsigned long)mb_mod,
+                        (unsigned long)&mb_mod[mbi->mods_count],
+                        ".mbi", Region::Boot));
+
+  for (unsigned i = 0; i < mbi->mods_count; ++i)
+    regions.add(Region::n(mb_mod[i].cmdline,
+                          (unsigned long)mb_mod[i].cmdline
+                          + strlen(L4_CONST_CHAR_PTR(mb_mod[i].cmdline)),
+                          ".mbi", Region::Boot));
+
+  regions.optimize();
+}
 
 /**
  * Add the memory containing the boot modules to the allocated regions.
@@ -603,7 +685,6 @@ add_boot_modules_region(l4util_mb_info_t *mbi)
     regions.add(Region(mbi_mod_start(mbi, i), mbi_mod_end(mbi, i) - 1,
                        ".Module", Region::Root));
 }
-
 
 /**
  * Add all sections of the given ELF binary to the allocated regions.
@@ -639,9 +720,7 @@ add_elf_regions(l4util_mb_info_t *mbi, l4_umword_t module,
         {
           printf("\n%p: ", exec_task.mod_start);
           for (int i = 0; i < 4; ++i)
-            {
-              printf("%08lx ", *((unsigned long *)exec_task.mod_start + i));
-            }
+            printf("%08x ", *((unsigned *)exec_task.mod_start + i));
           printf("  ");
           for (int i = 0; i < 16; ++i)
             {
@@ -764,35 +843,8 @@ char *dup_cmdline(l4util_mb_info_t *mbi, unsigned mod_nr, char **ptr,
 }
 
 
-static
-void
-print_e820_map(l4util_mb_info_t *mbi)
-{
-#ifndef ARCH_arm
-  printf("  Bootloader MMAP%s\n", mbi->flags & L4UTIL_MB_MEM_MAP
-                                   ? ":" : " not available.");
-#endif
-
-  if (mbi->flags & L4UTIL_MB_MEM_MAP)
-    {
-      l4util_mb_addr_range_t *mmap;
-      l4util_mb_for_each_mmap_entry(mmap, mbi)
-	{
-	  const char *types[] = { "unknown", "RAM", "reserved", "ACPI",
-                                  "ACPI NVS", "unusable" };
-	  const char *type_str = (mmap->type < (sizeof(types) / sizeof(types[0])))
-                                 ? types[mmap->type] : types[0];
-
-	  printf("    [%9llx, %9llx) %s (%d)\n",
-                 (unsigned long long) mmap->addr,
-                 (unsigned long long) mmap->addr + (unsigned long long) mmap->size,
-                 type_str, (unsigned) mmap->type);
-	}
-    }
-}
-
 /**
- * Relocate and compact the multi-boot infomation (MBI).
+ * Relocate and compact the multi-boot information (MBI).
  *
  * This function relocates the MBI into the first 4MB of physical memory.
  * Substructures such as module information, the VESA information, and
@@ -1222,6 +1274,8 @@ startup(l4util_mb_info_t *mbi, l4_umword_t flag,
   construct_mbi(mbi);
 #endif
 
+  reserve_mbi_memory(mbi);
+
   /* move vbe and ctrl structures to a known location, it might be in the
    * way when moving modules around */
 #if defined(ARCH_x86) || defined(ARCH_amd64)
@@ -1262,7 +1316,6 @@ startup(l4util_mb_info_t *mbi, l4_umword_t flag,
 	patch_module(&s, mbi);
     }
 
-
   add_elf_regions(mbi, kernel_module, Region::Kernel);
 
   if (sigma0)
@@ -1270,7 +1323,6 @@ startup(l4util_mb_info_t *mbi, l4_umword_t flag,
 
   if (roottask)
     add_elf_regions(mbi, roottask_module, Region::Root);
-
 
   /* copy Multiboot data structures, we still need to a safe place
    * before playing with memory we don't own and starting L4 */

@@ -22,7 +22,7 @@ enum {
 __BEGIN_DECLS
 
 /**
- * \brief Find a device by the HID APCI conforming or L4Io static name.
+ * \brief Find a device by the HID ACPI conforming or L4Io static name.
  *
  * \param  vbus         Capability of the system bus
  * \param  parent       Handle to the parent to start the search
@@ -61,7 +61,7 @@ l4vbus_get_next_device(l4_cap_idx_t vbus, l4vbus_device_handle_t parent,
  * \param  vbus         Capability of the system bus
  * \param  dev          Handle of the device
  * \retval res_idx      Index of the resource, the number of resources is
- *                      availabnle in the devinfo from get device functions.
+ *                      available in the devinfo from get device functions.
  * \retval res          Descriptor of the resource
  *
  * \return 0 on succes, else failure

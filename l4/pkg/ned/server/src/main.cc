@@ -32,7 +32,7 @@ static
 int
 run(int argc, char const *const *argv)
 {
-  Dbg::level = Dbg::Warn;
+  Dbg::set_level(Dbg::Warn);
   info.printf("Hello from Ned\n");
 
   boot_info.printf("cmdline: ");

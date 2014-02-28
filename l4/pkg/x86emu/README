@@ -1,6 +1,6 @@
 This is an emulator for 16-bit x86 code. The project x86emu was written by
 SciTech (http://www.scitechsoft.com) and is under a BSD style license, 
-comaptible with the XFree86 and X licenses used by XFree86 (see license
+compatible with the XFree86 and X licenses used by XFree86 (see license
 at lib/src/LICENSE). This library is used by XFree86 4.xx to emulate x86
 BIOS calls on operating systems which do not support the vm86 mode.
 

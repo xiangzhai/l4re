@@ -47,7 +47,7 @@ typedef enum l4vcpu_irq_state_t
   L4VCPU_IRQ_STATE_ENABLED  = L4_VCPU_F_IRQ, ///< IRQ/Event delivery enabled
 } l4vcpu_irq_state_t;
 
-typedef l4_umword_t l4vcpu_state_t;
+typedef l4_uint16_t l4vcpu_state_t;
 typedef void (*l4vcpu_event_hndl_t)(l4_vcpu_state_t *vcpu);
 typedef void (*l4vcpu_setup_ipc_t)(l4_utcb_t *utcb);
 

@@ -124,7 +124,7 @@ The main elements of the initial object table are:
        allocates data spaces for the process.  This defaults to Ned's
        memory allocator object (see L4Re::Mem_alloc).
 \li \c rm_fab The generic factory object used to allocate the region-map
-       obejct for the process. (defaults to Ned's memory allocator).
+       object for the process. (defaults to Ned's memory allocator).
 \li \c log_fab The generic factory to create the L4Re::Log object for the
        application's output (defaults to Ned's memory allocator).
        The \c create method of the \c log_fab object is called with

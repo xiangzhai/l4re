@@ -127,7 +127,7 @@ static void insert_regions()
 
 int main(int argc, char const *argv[])
 {
-  Dbg::level = Dbg::Info | Dbg::Warn;
+  Dbg::set_level(Dbg::Info | Dbg::Warn);
 
   Dbg boot(Dbg::Boot);
   try
@@ -187,7 +187,7 @@ int main(int argc, char const *argv[])
       l4_debugger_set_object_name(L4_BASE_TASK_CAP, s + 1);
     }
 
-  Dbg::level = Global::l4re_aux->dbg_lvl;
+  Dbg::set_level(Global::l4re_aux->dbg_lvl);
 
   env->first_free_cap(env->first_free_cap() + Global::Max_local_rm_caps);
   boot.printf("first free cap for application: 0x%lx\n", env->first_free_cap());

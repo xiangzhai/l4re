@@ -77,7 +77,7 @@ public:
 
   /**
    * \brief Construct an instance of a capability allocator.
-   * \param ca  Capaiblity allocator
+   * \param ca  Capability allocator
    * \return Instance of a capability allocator.
    */
   template< typename CAP_ALLOC >

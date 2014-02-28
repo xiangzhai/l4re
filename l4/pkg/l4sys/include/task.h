@@ -187,7 +187,7 @@ l4_task_release_cap_u(l4_cap_idx_t task, l4_cap_idx_t cap,
  * \param task         Capability selector of the destination task to do the
  *                     lookup in
  * \param cap          Capability selector to look up in the destination task
- * \return label contains 1 if valid, 0 if invalid
+ * \return label contains >0 if valid, 0 if invalid
  */
 L4_INLINE l4_msgtag_t
 l4_task_cap_valid(l4_cap_idx_t task, l4_cap_idx_t cap) L4_NOTHROW;

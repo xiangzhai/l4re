@@ -215,10 +215,10 @@ l4_addr_t res_map_iomem(l4_addr_t phys, l4_addr_t size)
 	  int res = map_iomem_range(iomem->phys + min, iomem->virt + min,
 	      max - min);
 
-	  d_printf(DBG_DEBUG2, "map mem: p=%lx v=%lx s=%lx: %s\n",
+	  d_printf(DBG_DEBUG2, "map mem: p=%lx v=%lx s=%lx: %s(%d)\n",
 	           iomem->phys + min,
                    iomem->virt + min, max - min,
-                   res < 0 ? "failed" : "done");
+                   res < 0 ? "failed" : "done", res);
 
 	  if (res >= 0)
 	    {

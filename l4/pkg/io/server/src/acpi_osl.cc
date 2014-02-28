@@ -38,7 +38,7 @@ AcpiOsReadPort (
   if (address == 0x80)
     return AE_OK;
 
-  switch(width)
+  switch (width)
     {
     case 8:
       if (res_get_ioport(address, 0) < 0)
@@ -69,13 +69,13 @@ AcpiOsWritePort (
 	UINT32                          value,
 	UINT32                          width)
 {
-  if(DEBUG_OSL_PORT_IO)
+  if (DEBUG_OSL_PORT_IO)
     d_printf(DBG_ALL, "\tport(0x%x)<=0x%x\n",address,value);
 
   if (address == 0x80)
     return AE_OK;
 
-  switch(width)
+  switch (width)
     {
     case 8:
       if (res_get_ioport(address, 0) < 0)

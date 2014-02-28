@@ -55,7 +55,7 @@ class File;
  * \brief The common interface for an open POSIX file.
  *
  * This interface is common to all kinds of open files, independent of
- * the the file type (e.g., directory, regular file etc.).  However, in
+ * the file type (e.g., directory, regular file etc.).  However, in
  * the L4Re::Vfs the interface File is used for every real object.
  *
  * \see L4Re::Vfs::File for mor information.
@@ -148,7 +148,7 @@ public:
    *
    * Backend function for POSIX access and faccessat functions.
    *
-   * \param path The path reltive to this directory.
+   * \param path The path relative to this directory.
    *             Note: \a path is relative to this directory and
    *             may contain subdirectories.
    * \param mode The access mode to check.
@@ -780,7 +780,7 @@ File::openat(const char *path, int flags, mode_t mode,
  *       of L4Re::Vfs::Ops.
  *
  * An implementation for this interface is in l4/l4re_vfs/impl/vfs_impl.h
- * and used by the l4re_vfs library or by the VFS implementation in lsdo.
+ * and used by the l4re_vfs library or by the VFS implementation in ldso.
  */
 class Mman
 {
@@ -920,7 +920,7 @@ public:
   /**
    * \brief Mount a given file object at the given global path in the VFS.
    * \param path The global path to mount \a dir at.
-   * \param dir A pointer to the file/directory object that shall be mountet
+   * \param dir A pointer to the file/directory object that shall be mounted
    *            at \a path.
    * \return 0 on success, or <0 on error.
    */

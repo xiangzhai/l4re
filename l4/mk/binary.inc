@@ -64,6 +64,13 @@ ifneq ($(strip $(SRC_F)$(foreach t,$(TARGET),$(SRC_F_$(t)))),)
   endif
 endif
 
+ifneq ($(SRC_CC_IS_CXX11),)
+  ifeq ($(filter 4.7 4.8 4.9,$(GCCVERSION)),)
+    $(info $(shell echo -e "\033[32mGCC too old to compile C++11 sources in directory '$(SRC_DIR)'. At least version 4.7 required.\033[0m"))
+    SYSTEMS =
+  endif
+endif
+
 ifneq ($(BID_MISSING_PCS),)
   # clear SYSTEMS to prevent building anything
   SYSTEMS =
@@ -231,12 +238,12 @@ endif
 # FFLAGS	- options for the fortran compiler
 # ASFLAGS	- options for the assembler
 #
-# Addtitionally, the following varibales are supported:
+# Additionally, the following varibales are supported:
 # SRC_C, SRC_CC, SRC_F, SRC_S - .c, .cc, .f90, .S source files
 # CRT0, CRTN	- startup and finish code
 # LIBS		- additional libs to link (with -l), including paths (-L)
 # IDL		- interface definition files
-# TARGET	- targets to ge built
+# TARGET	- targets to be built
 #
 # These variables will be used for all operations with the corresponding
 # file types. More specific description is possible by using variables with
@@ -345,7 +352,7 @@ endif
 
 # -----------------------
 
-# May 2007: force somewhat old hash-style as some(!, independant of the
+# May 2007: force somewhat old hash-style as some(!, independent of the
 #           actual version) ld now use an other format, no uclibc upstream fix
 #           available yet, until available, we need:
 ifeq ($(LD_HAS_HASH_STYLE_OPTION),y)
@@ -436,6 +443,11 @@ CXXFLAGS_L4_GENERIC += $(CARCHFLAGS) $(CCXX_FLAGS)
 CXXFLAGS_L4_GENERIC += $(if $(GCC_HAS_ATOMICS),-DL4_GCC_HAS_ATOMICS)
 CXXFLAGS_L4_GENERIC += $(GCCNOSTACKPROTOPT)
 CXXFLAGS_L4_GENERIC += -fuse-cxa-atexit
+endif
+
+CXXFLAGS_CXX11 ?= -std=gnu++11
+ifneq ($(SRC_CC_IS_CXX11),)
+CXXFLAGS+= $(CXXFLAGS_CXX11)
 endif
 
 CXXFLAGS+= $(if $(CONFIG_BID_GCC_OMIT_FP),-fomit-frame-pointer,)
@@ -690,7 +702,7 @@ endif
 #
 # If we have ld.so, we use it to create our dependencies (see MAKEDEP
 # definition). Otherwise, we fall back to whatever we need. For
-# compilation with gcc, this is using "-MD" and postprocessing the
+# compilation with gcc, this is using "-MD" and post-processing the
 # generated files.
 
 ifeq ($(CONFIG_HAVE_LDSO),)
@@ -803,7 +815,7 @@ endif	# $(SYSTEM) is defined
 # General rules
 
 # scrub: delete temporary editor files and stuff like this
-#        can be extended by lokals
+#        can be extended by locals
 scrub cleanall::
 	$(VERBOSE)$(SCRUB)
 

@@ -76,9 +76,9 @@ void
 Resource::dump(int indent) const
 {
   static char const *ty[] = { "INVALID", "IRQ   ", "IOMEM ", "IOPORT",
-                              "BUS   ", "unk" };
+                              "BUS   ", "unk", "", "" };
 
-  dump(ty[type()], indent);
+  dump(ty[type() % 8], indent);
 }
 
 
@@ -128,7 +128,7 @@ Resource_provider::_RS::alloc(Resource *parent, Device *pdev,
   Addr end;
   Size min_align = L4_PAGESIZE - 1;
 
-  if (p != _rl.end() && (*p)->start() == 0)
+  if (p != _rl.end() && (*p)->start() == start)
     {
       start = (*p)->end() + 1;
       ++p;

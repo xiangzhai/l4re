@@ -137,7 +137,7 @@ void wrap(Device *h, Vi::Device **first, Tagged_parameter *filter)
         if (r >= 0)
           c->mark_used();
         if (r == -EINVAL)
-          d_printf(DBG_ERR, "ERROR: filter '%*.s' has unsupoorted value\n", c->tag().len(), c->tag().start());
+          d_printf(DBG_ERR, "ERROR: filter '%*.s' has unsupported value\n", c->tag().len(), c->tag().start());
       }
 
   if (vd)

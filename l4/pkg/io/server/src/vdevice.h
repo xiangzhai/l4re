@@ -48,7 +48,7 @@ public:
   using Device_tree_mixin<Device>::begin;
   using Device_tree_mixin<Device>::end;
 
-  // disptach helper for server object
+  // dispatch helper for server object
   int vdevice_dispatch(l4_umword_t obj, l4_uint32_t func, L4::Ipc::Iostream &ios);
 
   typedef std::vector<Dev_feature*> Feature_list;

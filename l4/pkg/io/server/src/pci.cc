@@ -248,16 +248,16 @@ unsigned
 Pci_dev::disable_decoders()
 {
   l4_uint32_t v = 0;
-  // disable decoders
-  cfg_read(C_command, &v, Hw::Pci::Cfg_byte);
-  cfg_write(C_command, v & ~3, Hw::Pci::Cfg_byte);
+  // disable decoders, and mask IRQs
+  cfg_read(C_command, &v, Hw::Pci::Cfg_short);
+  cfg_write(C_command, (v & ~3) | (1<<10), Hw::Pci::Cfg_short);
   return v & 0xff;
 }
 
 void
 Pci_dev::restore_decoders(unsigned cmd)
 {
-  cfg_write(C_command, cmd, Hw::Pci::Cfg_byte);
+  cfg_write(C_command, cmd, Hw::Pci::Cfg_short);
 }
 
 int
@@ -268,7 +268,7 @@ Pci_dev::discover_bar(int bar)
 
   _bars[bar] = 0;
   int r = C_bar_0 + bar * 4;
-  l4_uint8_t cmd = disable_decoders();
+  l4_uint16_t cmd = disable_decoders();
 
   cfg_read(r, &v, Cfg_long);
   cfg_write(r, ~0U, Cfg_long);
@@ -650,7 +650,7 @@ Pci_dev::setup_resources(Hw::Device *)
 
       int reg = 0x10 + i * 4;
       l4_uint64_t s = r->start();
-      l4_uint8_t cmd = disable_decoders();
+      l4_uint16_t cmd = disable_decoders();
       cfg_write(reg, s, Cfg_long);
       if (r->is_64bit())
 	{

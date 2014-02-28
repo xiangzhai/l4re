@@ -169,6 +169,7 @@ function App_env.new(proto)
     f.log = nil;
   elseif type(f.log) == "function" then
     f.log = f.log()
+    f.log_args = {}
   else
     f.log_args = {}
   end

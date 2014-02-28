@@ -118,6 +118,7 @@ doc:
 
 cont:
 	$(VERBOSE)$(MAKE) -C pkg cont
+	$(VERBOSE)$(MAKE) l4defs
 
 .PHONY: all clean cleanall install up update doc
 .PHONY: $(BUILD_DIRS) doc check_build_tools cont cleanfast

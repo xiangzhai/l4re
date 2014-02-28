@@ -1048,6 +1048,8 @@ public:
    * \brief Do an IPC call using the message in the output stream and
    *        receiving to the input stream.
    * \param dst The destination L4 UID (thread) to call.
+   * \param timeout The IPC timeout for the call.
+   * \param proto The protocol value to use in the message tag.
    * \return the result dope of the IPC operation.
    *
    * This is a combined IPC operation consisting of a send and a receive
@@ -1056,8 +1058,8 @@ public:
    * A call is usually used by clients for RPCs to a server.
    *
    */
-  inline l4_msgtag_t call(l4_cap_idx_t dst);
-  inline l4_msgtag_t call(l4_cap_idx_t dst, long label);
+  inline l4_msgtag_t call(l4_cap_idx_t dst, l4_timeout_t timeout, long proto = 0);
+  inline l4_msgtag_t call(l4_cap_idx_t dst, long proto = 0);
 
   /**
    * \brief Do an IPC reply and wait.
@@ -1154,10 +1156,10 @@ Ostream::send(l4_cap_idx_t dst, long proto, unsigned flags)
 }
 
 inline l4_msgtag_t
-Iostream::call(l4_cap_idx_t dst)
+Iostream::call(l4_cap_idx_t dst, l4_timeout_t timeout, long label)
 {
-  l4_msgtag_t tag = prepare_ipc();
-  tag = l4_ipc_call(dst, Ostream::_utcb, tag, L4_IPC_NEVER);
+  l4_msgtag_t tag = prepare_ipc(label);
+  tag = l4_ipc_call(dst, Ostream::_utcb, tag, timeout);
   Istream::tag() = tag;
   Istream::_pos = 0;
   return tag;
@@ -1165,13 +1167,7 @@ Iostream::call(l4_cap_idx_t dst)
 
 inline l4_msgtag_t
 Iostream::call(l4_cap_idx_t dst, long label)
-{
-  l4_msgtag_t tag = prepare_ipc(label);
-  tag = l4_ipc_call(dst, Ostream::_utcb, tag, L4_IPC_NEVER);
-  Istream::tag() = tag;
-  Istream::_pos = 0;
-  return tag;
-}
+{ return call(dst, L4_IPC_NEVER, label); }
 
 
 inline l4_msgtag_t

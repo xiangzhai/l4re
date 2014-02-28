@@ -217,6 +217,19 @@ printk(const char *format, ...)
 }
 
 
+/* VESA access functions start here */
+
+enum Function
+{
+  VBE_get_info      = 0x4f00,
+  VBE_get_mode_info = 0x4f01,
+  VBE_set_mode      = 0x4f02,
+  VBE_set_base_addr = 0x4f07,
+  VBE_power         = 0x4f10,
+  VBE_ddc           = 0x4f15,
+};
+
+
 static int
 x86emu_int10_init(void)
 {
@@ -314,6 +327,23 @@ x86emu_int10_init(void)
   return 0;
 }
 
+static void setup_int10_entry(l4_uint16_t function)
+{
+  M.x86.R_EAX  = function;
+  M.x86.R_IP   = 0;		/* address of "int10; hlt" */
+  M.x86.R_SP   = L4_PAGESIZE;	/* SS:SP pointer to stack */
+  M.x86.R_CS   =
+  M.x86.R_DS   =
+  M.x86.R_ES   =
+  M.x86.R_SS   = L4_PAGESIZE >> 4;
+}
+
+static bool exec_int10()
+{
+  X86EMU_exec();
+  return M.x86.R_AX == 0x004F;
+}
+
 int
 x86emu_int10_done(void)
 {
@@ -366,18 +396,10 @@ static void dump_mode(int mode, l4util_mb_vbe_mode_t *m)
 static
 l4util_mb_vbe_mode_t *get_mode_info(int mode)
 {
-  M.x86.R_EAX  = 0x4F01;	/* int10 function number */
+  setup_int10_entry(VBE_get_mode_info);
   M.x86.R_ECX  = mode;		/* VESA mode */
   M.x86.R_EDI  = 0x800;		/* ES:DI pointer to at least 256 bytes */
-  M.x86.R_IP   = 0;		/* address of "int10; hlt" */
-  M.x86.R_SP   = L4_PAGESIZE;	/* SS:SP pointer to stack */
-  M.x86.R_CS   =
-  M.x86.R_DS   =
-  M.x86.R_ES   =
-  M.x86.R_SS   = L4_PAGESIZE >> 4;
-  X86EMU_exec();
-
-  if (M.x86.R_AX != 0x004F)
+  if (!exec_int10())
     return 0;
 
   l4util_mb_vbe_mode_t *m = (l4util_mb_vbe_mode_t*)(v_page[1] + 0x800);
@@ -387,6 +409,118 @@ l4util_mb_vbe_mode_t *get_mode_info(int mode)
   return 0;
 }
 
+static int
+x86emu_int10_read_ddc(unsigned *xres, unsigned *yres)
+{
+  int error;
+
+  if ((error = x86emu_int10_init()))
+    return error;
+
+  printf("Trying to read DDC info\n");
+
+  // test whether DDC function is supported
+  setup_int10_entry(VBE_ddc);
+  M.x86.R_EBX = 0;
+  M.x86.R_ECX = 0;
+  if (!exec_int10())
+    {
+      printf("DDC function not supported\n");
+      return -L4_ENODEV;
+    }
+
+  printf("DDC level supported: 0x%x, screen blanked: %d\n",
+         M.x86.R_EBX & 0x3, M.x86.R_EBX & 0x4);
+  printf("Read EDID data\n");
+
+  // read EDID data block
+  setup_int10_entry(VBE_ddc);
+  M.x86.R_EBX = 1; // read EDID
+  M.x86.R_ECX = 0; // controller number, 0 = primary controller
+  M.x86.R_EDX = 0; // EDID block number
+  M.x86.R_EDI = 0x100; // ES.DI: pointer to 128 byte block where EDID block shall be returned
+  if (!exec_int10())
+    {
+      printf("EDID call failed 0x%x\n", M.x86.R_AX);
+      return -L4_EINVAL;
+    }
+
+  const char *edid_ptr = (char *)(v_page[1] + 0x100);
+
+  printf("EDID Version 0x%x, Revision 0x%x\n", edid_ptr[18], edid_ptr[19]);
+  printf("   %d extension blocks\n", edid_ptr[126]);
+
+  // dump EDID block (debugging)
+  for (int i = 0; i < 128; i += 4)
+    printf("[%03d] %02x %02x %02x %02x\n", i, edid_ptr[i] & 0xff, edid_ptr[i+1] & 0xff,
+           edid_ptr[i+2] & 0xff, edid_ptr[i+3] & 0xff);
+
+  // extract manufacturer ID, 2 bytes at offset 0x8
+  const char *m_id = edid_ptr + 0x8;
+  char id[4];
+  id[0] = ((m_id[0] & 0x7c) >> 2) + '@';
+  id[1] = (((m_id[0] & 0x2) << 3) | ((m_id[1] & 0xe0) >> 5)) + '@';
+  id[2] = (m_id[1] & 0x1f) + '@';
+  id[3] = 0;
+
+  printf("PNP ID=%s\n", id);
+
+  // show standard timings
+  const char *st = edid_ptr + 0x26;
+  unsigned hpx = 0, vpx = 0;
+  while (st[0] != 0)
+    {
+      hpx = ((st[0] & 0xff) + 31) * 8;
+      switch (((st[1] & 0xC0) >> 6))
+        {
+      case 0: // 16:10
+        vpx = hpx * 10 / 16;
+        break;
+      case 1: // 4:3
+        vpx = hpx * 3 / 4;
+        break;
+      case 2: // 5:4
+        vpx = hpx * 4 / 5;
+        break;
+      case 3: // 16:9
+        vpx = hpx * 9 / 16;
+        break;
+        }
+      printf("%dx%d (AR=%d)\n", hpx, vpx, (st[1] & 0xc) >> 6);
+      st += 2;
+    }
+
+  // prefered display mode, at offset 0x36, 18 byte descriptor
+  const char *p_mode = edid_ptr + 0x36;
+  hpx = (p_mode[2] & 0xff) | ((p_mode[4] & 0xf0) << 4);
+  vpx = (p_mode[5] & 0xff) | ((p_mode[7] & 0xf0) << 4);
+
+  printf("Prefered mode: %dx%d\n", hpx, vpx);
+
+  *xres = hpx;
+  *yres = vpx;
+
+  return 0;
+}
+
+static
+bool is_better_than(l4util_mb_vbe_mode_t *best, l4util_mb_vbe_mode_t *mode)
+{
+  if (!best)
+    return true;
+
+  // the bigger the better
+  if (   mode->x_resolution > best->x_resolution
+      || mode->y_resolution > best->y_resolution)
+    return true;
+
+  if (   mode->x_resolution < best->x_resolution
+      || mode->y_resolution < best->y_resolution)
+    return false;
+
+  // prefer 16bit
+  return mode->bits_per_pixel == 16;
+}
 
 int
 x86emu_int10_set_vbemode(int mode, l4util_mb_vbe_ctrl_t **ctrl_info,
@@ -400,22 +534,15 @@ x86emu_int10_set_vbemode(int mode, l4util_mb_vbe_ctrl_t **ctrl_info,
   printf("Trying execution of ``set VBE mode'' using x86emu\n");
 
   /* Get VESA BIOS controller information. */
-  M.x86.R_EAX  = 0x4F00;	/* int10 function number */
+  setup_int10_entry(VBE_get_info);
   M.x86.R_EDI  = 0x100;		/* ES:DI pointer to at least 512 bytes */
-  M.x86.R_IP   = 0;		/* address of "int10; hlt" */
-  M.x86.R_SP   = L4_PAGESIZE;	/* SS:SP pointer to stack */
-  M.x86.R_CS   =
-  M.x86.R_DS   =
-  M.x86.R_ES   =
-  M.x86.R_SS   = L4_PAGESIZE >> 4;
-  X86EMU_exec();
-  *ctrl_info = (l4util_mb_vbe_ctrl_t*)(v_page[1] + 0x100);
-  if (M.x86.R_AX != 0x4F)
+  if (!exec_int10())
     {
       printf("VBE BIOS not present.\n");
       return -L4_EINVAL;
     }
 
+  *ctrl_info = (l4util_mb_vbe_ctrl_t*)(v_page[1] + 0x100);
   const char *oem_string = (const char *)far_to_addr((*ctrl_info)->oem_string);
   printf("Found VESA BIOS version %d.%d\n"
          "OEM %s\n",
@@ -433,21 +560,39 @@ x86emu_int10_set_vbemode(int mode, l4util_mb_vbe_ctrl_t **ctrl_info,
       // mode == ~0 means to look for the 'best' mode available, we'll look
       // for the highest 16bit mode
       int max_val = 0;
+      int res;
+      unsigned pref_x = 0, pref_y = 0;
+
       printf("Scanning for 'best' possible mode:\n");
       l4_uint16_t *mode_list = (l4_uint16_t *)far_to_addr((*ctrl_info)->video_mode);
+
+      if ((res = x86emu_int10_read_ddc(&pref_x, &pref_y)) < 0)
+        printf("EDID not available (%d), finding best possible mode ...\n", res);
+
+      l4util_mb_vbe_mode_t *best_mode = 0;
+
       for (; *mode_list != 0xffff; ++mode_list)
         {
           l4util_mb_vbe_mode_t *m = get_mode_info(*mode_list);
+          if (!m)
+            continue;
+
           dump_mode(*mode_list, m);
-          if (m)
+
+          if (pref_x > 0)
             {
-              // our 'best' expression...
-              if (m->x_resolution > max_val && m->bits_per_pixel == 16)
+              if (   m->x_resolution <= pref_x && m->y_resolution <= pref_y
+                  && is_better_than(best_mode, m))
                 {
-                  max_val = m->x_resolution;
+                  best_mode = m;
                   mode = *mode_list;
-                  *mode_info = m;
                 }
+            }
+          else if (m->x_resolution > max_val && m->bits_per_pixel == 16)
+            {
+              max_val = m->x_resolution;
+              mode = *mode_list;
+              best_mode = m;
             }
         }
       if (mode == ~0)
@@ -458,6 +603,7 @@ x86emu_int10_set_vbemode(int mode, l4util_mb_vbe_ctrl_t **ctrl_info,
       printf("Choosen mode:\n");
       dump_mode(mode, get_mode_info(mode));
       printf("To force a specific setting use a '-m <mode>' option.\n");
+      *mode_info = best_mode;
     }
   else if (!(*mode_info = get_mode_info(mode)))
     {
@@ -471,19 +617,13 @@ x86emu_int10_set_vbemode(int mode, l4util_mb_vbe_ctrl_t **ctrl_info,
     }
 
   /* Switch mode. */
-  M.x86.R_EAX  = 0x4F02;	/* int10 function number */
+  setup_int10_entry(VBE_set_mode);
   M.x86.R_EBX  = mode & 0xf7ff;	/* VESA mode; use current refresh rate */
   M.x86.R_EBX |= (1<<14);	/* use flat buffer model */
   if (0)
     M.x86.R_EBX |= (1<<15);	/* no screen clearing */
-  M.x86.R_IP   = 0;		/* address of "int10; hlt" */
-  M.x86.R_SP   = L4_PAGESIZE;	/* SS:SP pointer to stack */
-  M.x86.R_CS   =
-  M.x86.R_DS   =
-  M.x86.R_ES   =
-  M.x86.R_SS   = L4_PAGESIZE >> 4;
   X86EMU_exec();
-
+  // error check missing ?
   printf("VBE mode 0x%x successfully set.\n", mode);
   return 0;
 }
@@ -499,19 +639,11 @@ x86emu_int10_pan(unsigned *x, unsigned *y)
   printf("Trying execution of ``set display start'' using x86emu\n");
 
   /* Get VESA BIOS controller information. */
-  M.x86.R_EAX  = 0x4F07;	/* int10 function number */
+  setup_int10_entry(VBE_set_base_addr);
   M.x86.R_BL   = 0x00;          /* set display start */
   M.x86.R_CX   = *x;            /* first displayed pixel in scanline */
   M.x86.R_DX   = *y;            /* first displayed scanline */
-  M.x86.R_IP   = 0;		/* address of "int10; hlt" */
-  M.x86.R_SP   = L4_PAGESIZE;	/* SS:SP pointer to stack */
-  M.x86.R_CS   =
-  M.x86.R_DS   =
-  M.x86.R_ES   =
-  M.x86.R_SS   = L4_PAGESIZE >> 4;
-  X86EMU_exec();
-
-  if (M.x86.R_AX != 0x004F)
+  if (!exec_int10())
     {
       printf("Panning to %d,%d not supported\n", *x, *y);
       return -L4_EINVAL;

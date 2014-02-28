@@ -413,8 +413,7 @@ static unsigned long parse_flags(cxx::String const &_args, Dbg_bits const *dbb,
 
 static void hdl_debug(cxx::String const &args)
 {
-  unsigned long lvl = parse_flags(args, dbb, "--debug");
-  Dbg::level = lvl;
+  Dbg::set_level(parse_flags(args, dbb, "--debug"));
 }
 
 static void hdl_init(cxx::String const &args)
@@ -510,7 +509,7 @@ int main(int argc, char**argv)
 {
   (void)argc; (void)argv;
   Dbg::set_level(Dbg::Info | Dbg::Warn);
-  //Dbg::level |= Dbg::Boot;
+  //Dbg::set_level(Dbg::Info | Dbg::Warn | Dbg::Boot);
 
   info.printf("Hello world\n");
 

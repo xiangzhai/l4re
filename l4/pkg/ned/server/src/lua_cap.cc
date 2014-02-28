@@ -165,7 +165,7 @@ Cap::find_dynamic_type(lua_State *l) const
 
   if (int err = l4_error(res.tag()))
     {
-      dbg.printf("Hm, capability %lx does not support the meta protocol: %d\n",
+      dbg.printf("Warning: Capability %lx does not support the meta protocol: %d\n",
                  _c.cap(), err);
       return false;
     }

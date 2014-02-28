@@ -22,7 +22,6 @@ objects that are accessible by the threads executing in this task
 and to transfer capabilities between tasks.
 
 \todo A more detailed introduction to these concepts is given in the User Manual.
-\todo _XXX REF TO APPROPRIATE SPEC / BIG TODO / L4-Ref
 
 \section l4re_concepts_structure General System Structure
 
