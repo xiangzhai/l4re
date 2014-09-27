@@ -51,7 +51,7 @@ L4con::puts(const char *s, unsigned long len, short x, short y,
   L4::Ipc::Iostream io(l4_utcb());
   io << L4::Opcode(L4con_::Puts);
   io << x << y << fg_color << bg_color
-     << L4::Ipc::Buf_cp_out<const char>(s, len);
+     << L4::Ipc::buf_cp_out(s, len);
   return l4_error(io.call(Framebuffer::cap(), L4con::Protocol::Vc));
 }
 
@@ -64,7 +64,7 @@ L4con::puts_scale(const char *s, unsigned long len,
   L4::Ipc::Iostream io(l4_utcb());
   io << L4::Opcode(L4con_::Puts_scale);
   io << x << y << fg_color << bg_color << scale_x << scale_y
-     << L4::Ipc::Buf_cp_out<const char>(s, len);
+     << L4::Ipc::buf_cp_out(s, len);
   return l4_error(io.call(Framebuffer::cap(), L4con::Protocol::Vc));
 }
 
@@ -74,7 +74,7 @@ L4con::get_font_size(unsigned int *fn_w, unsigned int *fn_h) const throw()
   L4::Ipc::Iostream io(l4_utcb());
   io << L4::Opcode(L4con_::Get_font_size);
   long r = l4_error(io.call(Framebuffer::cap(), L4con::Protocol::Vc));
-  if (EXPECT_FALSE(r < 0))
+  if (L4_UNLIKELY(r < 0))
     return r;
 
   io >> *fn_w >> *fn_h;

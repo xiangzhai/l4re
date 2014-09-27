@@ -15,9 +15,9 @@
 #ifndef __CRYPTO_BASE64_H
 #define __CRYPTO_BASE64_H
 
-#include <l4/sys/compiler.h>
+#include "private/misc.h"
 
-EXTERN_C_BEGIN
+CRYPTO_EXTERN_C_BEGIN
 
 /*
  * *****************************************************************
@@ -34,7 +34,7 @@ EXTERN_C_BEGIN
 
 int crypto_base64_encode(const char *in, char *out, unsigned int len);
 
-EXTERN_C_END
+CRYPTO_EXTERN_C_END
 
 #endif /* __CRYPTO_BASE64_H */
 

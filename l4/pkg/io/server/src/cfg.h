@@ -20,7 +20,9 @@ public:
   virtual bool legacy_ide_resources(Hw::Device *) const = 0;
   virtual bool expansion_rom(Hw::Device *) const = 0;
   virtual int verbose() const = 0;
+  virtual ~Io_config() = 0;
 
   static Io_config *cfg;
-  virtual ~Io_config() {}
 };
+
+inline Io_config::~Io_config() {}

@@ -99,7 +99,7 @@ namespace Romain
 
 		protected:
 
-		std::map<unsigned, Romain::Thread_group*> _replica_thread_groups;
+		std::map<l4_umword_t, Romain::Thread_group*> _replica_thread_groups;
 
 		/*******************************************
 		 * Thread-related system calls
@@ -141,6 +141,16 @@ namespace Romain
 
 
 	/*
+	 * DEBUG: make memory inaccessible on demand (e.g., mark as shared region)
+	 */
+	class MarkSharedObserver: public Observer
+	{
+		public:
+		static MarkSharedObserver* Create();
+	};
+
+
+	/*
 	 * Software-Implemented Fault Injection
 	 */
 	class SWIFIObserver : public Observer
@@ -171,11 +181,11 @@ namespace Romain
 			struct {
 				l4_addr_t local_addr;
 			} buffers[Romain::MAX_REPLICAS];
-			int _timeout;
+			l4_mword_t _timeout;
 			bool _cancel;
 			pthread_t _to_thread;
 
-			void map_eventlog(Romain::App_instance *i, int logsizeMB);
-			void dump_eventlog(unsigned id) const;
+			void map_eventlog(Romain::App_instance *i, l4_mword_t logsizeMB);
+			void dump_eventlog(l4_umword_t id) const;
 	};
 }

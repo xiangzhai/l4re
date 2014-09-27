@@ -15,10 +15,10 @@ public:
   enum Log  { BREAK=0, LOG=1 };
 
 private:
-  typedef struct 
+  typedef struct
     {
       int other;
-      Mword thread; 
+      Mword thread;
     } Bp_thread_res;
 
   typedef struct
@@ -27,20 +27,20 @@ private:
       Mword task;
     } Bp_task_res;
 
-  typedef struct 
+  typedef struct
     {
       char reg;
       Address y, z;
     } Bp_reg_res;
 
-  typedef struct 
+  typedef struct
     {
       unsigned char len;
       Address addr;
       Address y, z;
     } Bp_mem_res;
-  
-  typedef struct 
+
+  typedef struct
     {
       Bp_thread_res thread;
       Bp_task_res   task;
@@ -57,7 +57,7 @@ private:
   static char const * const mode_names[4];
 };
 
-class Jdb_bp 
+class Jdb_bp
 {
 public:
   static int		global_breakpoints();
@@ -75,7 +75,7 @@ IMPLEMENTATION[ia32,amd64,ux]:
 #include <cstdio>
 
 #include "jdb.h"
-#include "jdb_input.h"
+#include "jdb_input_task.h"
 #include "jdb_module.h"
 #include "jdb_handler_queue.h"
 #include "jdb_screen.h"
@@ -215,7 +215,7 @@ Breakpoint::restrict_memory(Mword addr, Mword len, Mword y, Mword z)
 }
 
 PUBLIC inline NOEXPORT
-void 
+void
 Breakpoint::clear_restriction()
 {
   restrict.thread.thread = 0;
@@ -269,19 +269,18 @@ Breakpoint::show()
 	      if (j++)
 		printf("%32s", "and ");
 	      printf("register %s in [" L4_PTR_FMT ", " L4_PTR_FMT "]\n",
-		  (restrict.reg.reg > 0) && (restrict.reg.reg < 10) 
-		      ? Jdb_screen::Reg_names[restrict.reg.reg-1] 
-		      : "???",
-		   restrict.reg.y, restrict.reg.z);
+                     (restrict.reg.reg > 0) && (restrict.reg.reg < 10)
+                     ? Jdb_screen::Reg_names[restrict.reg.reg-1] : "???",
+                     restrict.reg.y, restrict.reg.z);
 	    }
 	  if (restrict.mem.len != 0)
 	    {
 	      if (j++)
 		printf("%32s", "and ");
 	      printf("%d-byte var at " L4_PTR_FMT " in [" L4_PTR_FMT ", "
-		     L4_PTR_FMT "]\n", 
-		  restrict.mem.len, restrict.mem.addr, 
-		  restrict.mem.y,   restrict.mem.z);
+                     L4_PTR_FMT "]\n",
+                     restrict.mem.len, restrict.mem.addr,
+                     restrict.mem.y,   restrict.mem.z);
 	    }
 	}
     }
@@ -355,7 +354,7 @@ Breakpoint::test_break(String_buffer *buf, Thread *t)
   Space *task = t->space();
 
   buf->printf("break on %s at " L4_PTR_FMT, mode_names[mode], addr);
-  if (mode==WRITE || mode==ACCESS)
+  if (mode == WRITE || mode == ACCESS)
     {
       // If it's a write or access (read) breakpoint, we look at the
       // appropriate place and print the bytes we find there. We do
@@ -428,7 +427,7 @@ static inline
 void
 Jdb_bp::clr_dr7(int num, Mword &dr7)
 {
-  dr7 &= ~(((3 + (3 <<2)) << (16 + 4*num)) + (3 << (2*num)));
+  dr7 &= ~(((3 + (3 <<2)) << (16 + 4 * num)) + (3 << (2 * num)));
 }
 
 static inline
@@ -439,7 +438,7 @@ Jdb_bp::set_dr7(int num, Mword len, Breakpoint::Mode mode, Mword &dr7)
   if (len == 8)
     len = 3;
 
-  dr7 |= ((((mode & 3) + ((len-1)<<2)) << (16 + 4*num)) + (2 << (2*num)));
+  dr7 |= ((((mode & 3) + ((len-1)<<2)) << (16 + 4 * num)) + (2 << (2 * num)));
   dr7 |= 0x200; /* exact breakpoint enable (not available on P6 and below) */
 }
 
@@ -458,8 +457,8 @@ Jdb_bp::set_breakpoint(int num, Address addr, Mword len,
   return 0;
 }
 
-PUBLIC static 
-void 
+PUBLIC static
+void
 Jdb_bp::clr_breakpoint(int num)
 {
   clr_debug_address_register(num);
@@ -479,7 +478,7 @@ Jdb_bp::first_unused()
 {
   int i;
 
-  for (i=0; i<4 && !bps[i].unused(); i++)
+  for (i = 0; i < 4 && !bps[i].unused(); i++)
     ;
 
   return i;
@@ -493,11 +492,11 @@ Jdb_bp::test_break(String_buffer *buf, Mword dr6)
   Thread *t = Jdb::get_thread(Cpu_number::boot_cpu());
   Jdb_entry_frame *e = Jdb::get_entry_frame(Cpu_number::boot_cpu());
 
-  for (int i=0; i<4; i++)
-    if (dr6 & (1<<i))
+  for (int i = 0; i < 4; i++)
+    if (dr6 & (1 << i))
       {
 	if (bps[i].break_at_instruction())
-      	  e->flags(e->flags() | EFLAGS_RF);
+          e->flags(e->flags() | EFLAGS_RF);
 	if (bps[i].test_break(buf, t))
 	  return 1;
       }
@@ -514,8 +513,8 @@ Jdb_bp::test_log(Mword &dr6)
   Thread *t = Jdb::get_thread(Cpu_number::boot_cpu());
   Jdb_entry_frame *e = Jdb::get_entry_frame(Cpu_number::boot_cpu());
 
-  for (int i=0; i<4; i++)
-    if (dr6 & (1<<i))
+  for (int i = 0; i < 4; i++)
+    if (dr6 & (1 << i))
       {
 	if (!bps[i].is_break())
 	  {
@@ -525,7 +524,7 @@ Jdb_bp::test_log(Mword &dr6)
 	    if (bps[i].break_at_instruction())
 	      e->flags(e->flags() | EFLAGS_RF);
 	    // clear condition
-	    dr6 &= ~(1<<i);
+	    dr6 &= ~(1 << i);
 	  }
       }
 }
@@ -534,9 +533,9 @@ PUBLIC static
 Mword
 Jdb_bp::test_match(Address addr, Breakpoint::Mode mode)
 {
-  for (int i=0; i<4; i++)
+  for (int i = 0; i < 4; i++)
     if (bps[i].match_addr(addr, mode))
-      return i+1;
+      return i + 1;
 
   return 0;
 }
@@ -583,14 +582,14 @@ Jdb_bp::clear_restriction(int num)
 }
 
 PUBLIC static
-void 
+void
 Jdb_bp::list()
 {
   putchar('\n');
 
-  for(int i=0; i<4; i++)
+  for(int i = 0; i < 4; i++)
     {
-      printf("  #%d: ", i+1);
+      printf("  #%d: ", i + 1);
       bps[i].show();
     }
 
@@ -754,7 +753,7 @@ got_address:
 	      if (!Jdb::get_register(&breakpoint_restrict_reg.reg))
 		return NOTHING;
 	      fmt  = " in [" L4_ADDR_INPUT_FMT "-" L4_ADDR_INPUT_FMT "]\n";
-    	      args = &breakpoint_restrict_reg.low;
+              args = &breakpoint_restrict_reg.low;
 	      state = 8;
 	      return EXTRA_INPUT;
 	    case '1':
@@ -810,7 +809,7 @@ PUBLIC
 Jdb_module::Cmd const *
 Jdb_set_bp::cmds() const
 {
-  static Cmd cs[] = 
+  static Cmd cs[] =
     {
 	{ 0, "b", "bp", "%c",
 	  "b{i|a|w|p}<addr>\tset breakpoint on instruction/access/write/io "

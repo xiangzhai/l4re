@@ -44,6 +44,8 @@ struct Phys_region
   { return phys + size - 1 < o.phys; }
   bool contains(Phys_region const &o) const throw()
   { return o.phys >= phys && o.phys + o.size -1 <= phys + size -1; }
+  Phys_region() = default;
+  Phys_region(l4_addr_t phys, l4_addr_t size) : phys(phys), size(size) {}
 };
 
 struct Io_region : public Phys_region, public cxx::Avl_tree_node
@@ -53,6 +55,7 @@ struct Io_region : public Phys_region, public cxx::Avl_tree_node
   mutable cxx::Bitmap_base pages;
 
   Io_region() : pages(0) {}
+  Io_region(Phys_region const &pr) : Phys_region(pr), virt(0), pages(0) {}
 };
 
 struct Io_region_get_key
@@ -144,23 +147,23 @@ l4_addr_t res_map_iomem(l4_addr_t phys, l4_addr_t size)
   while ((1UL << p2size) < (size + (phys - l4_trunc_size(phys, p2size))))
     ++p2size;
 
-
   Io_region *iomem = 0;
   Phys_region r;
   r.phys = l4_trunc_page(phys);
   r.size = l4_round_page(size + phys - r.phys);
 
+  // we need to look for proper aligned and sized regions here
+  Phys_region io_reg(l4_trunc_size(phys, p2size), 1UL << p2size);
+
   while (1)
     {
-      Io_region *reg = io_set.find_node(r);
+      Io_region *reg = io_set.find_node(io_reg);
       if (!reg)
 	{
-	  iomem = new Io_region();
+	  iomem = new Io_region(io_reg);
 
-	  iomem->phys = l4_trunc_size(phys, p2size);
+          // start searching for virtual region at L4_PAGESIZE
 	  iomem->virt = L4_PAGESIZE;
-	  iomem->size = 1UL << p2size;
-
 	  int res = L4Re::Env::env()->rm()->reserve_area(&iomem->virt,
 	      iomem->size, L4Re::Rm::Search_addr, p2size);
 
@@ -197,7 +200,6 @@ l4_addr_t res_map_iomem(l4_addr_t phys, l4_addr_t size)
 	}
     }
 
-  l4_addr_t p_virt   = iomem->virt + r.phys - l4_trunc_size(phys, p2size);
   l4_addr_t min = 0, max;
   bool not_mapped = false;
   int all_ok = 0;
@@ -213,7 +215,7 @@ l4_addr_t res_map_iomem(l4_addr_t phys, l4_addr_t size)
 	  not_mapped = false;
 
 	  int res = map_iomem_range(iomem->phys + min, iomem->virt + min,
-	      max - min);
+	                            max - min);
 
 	  d_printf(DBG_DEBUG2, "map mem: p=%lx v=%lx s=%lx: %s(%d)\n",
 	           iomem->phys + min,
@@ -238,8 +240,7 @@ l4_addr_t res_map_iomem(l4_addr_t phys, l4_addr_t size)
   if (all_ok < 0)
     return 0;
 
-  l4_addr_t ofs = phys - r.phys;
-  return p_virt + ofs;
+  return iomem->virt + phys - iomem->phys;
 }
 
 #if defined(ARCH_amd64) || defined(ARCH_x86)
@@ -257,7 +258,6 @@ static void set_iobit(unsigned port)
 {
   iobitmap[port / L4_MWORD_BITS] |= (1UL << (port % L4_MWORD_BITS));
 }
-
 
 int res_get_ioport(unsigned port, int size)
 {
@@ -284,5 +284,3 @@ int res_get_ioport(unsigned port, int size)
 }
 
 #endif
-
-

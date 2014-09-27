@@ -17,8 +17,9 @@
 
 /* L4 includes */
 #include <l4/sys/err.h>
+#include <l4/sys/kdebug.h>
 #include <l4/util/bitops.h>
-#include <l4/util/macros.h>
+#include <l4/util/l4_macros.h>
 #include <l4/re/c/mem_alloc.h>
 #include <l4/re/c/util/cap_alloc.h>
 #include <l4/re/c/rm.h>

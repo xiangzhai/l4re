@@ -28,9 +28,7 @@ public:
   {
     void *base = GC_base((void*)this);
     if (base != 0)
-      {
-	GC_register_finalizer_ignore_self(base, finalizer, (void *)((char *)this - (char *)base), 0, 0);
-      }
+      GC_register_finalizer_ignore_self(base, finalizer, (void *)((char *)this - (char *)base), 0, 0);
   }
 };
 
@@ -156,9 +154,9 @@ public:
     Obj *o = _alloc.alloc();
     if (o)
       {
-	Qtr::quota(o, quota);
-	g.done();
-	return o;
+        Qtr::quota(o, quota);
+        g.done();
+        return o;
       }
 
     throw L4::Out_of_memory();

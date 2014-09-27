@@ -36,8 +36,8 @@ __BEGIN_DECLS
  *
  * See VESA Specification 3.0.
  */
-L4_CV int x86emu_int10_set_vbemode(int mode, l4util_mb_vbe_ctrl_t **ctrl_info,
-                                   l4util_mb_vbe_mode_t **mode_info);
+L4_CV int x86emu_int10_set_vbemode(int mode, l4util_mb_vbe_ctrl_t *ctrl_info,
+                                   l4util_mb_vbe_mode_t *mode_info);
 
 /**
  * Pan the graphics memory.

@@ -23,6 +23,16 @@ l4vbus_gpio_setup(l4_cap_idx_t vbus, l4vbus_device_handle_t handle,
 }
 
 int L4_CV
+l4vbus_gpio_config_pull(l4_cap_idx_t vbus, l4vbus_device_handle_t handle,
+                        unsigned pin, unsigned mode)
+{
+  L4::Ipc::Iostream s(l4_utcb());
+  l4vbus_device_msg(handle, L4VBUS_GPIO_OP_CONFIG_PULL, s);
+  s << pin << mode;
+  return l4_error(s.call(vbus));
+}
+
+int L4_CV
 l4vbus_gpio_config_pad(l4_cap_idx_t vbus, l4vbus_device_handle_t handle,
                        unsigned pin, unsigned func, unsigned value)
 {
@@ -68,29 +78,33 @@ l4vbus_gpio_set(l4_cap_idx_t vbus, l4vbus_device_handle_t handle, unsigned pin, 
 
 int L4_CV
 l4vbus_gpio_multi_setup(l4_cap_idx_t vbus, l4vbus_device_handle_t handle,
-                        unsigned mask, unsigned mode, unsigned outvalues)
+                        unsigned offset, unsigned mask,
+                        unsigned mode, unsigned outvalues)
 {
   L4::Ipc::Iostream s(l4_utcb());
   l4vbus_device_msg(handle, L4VBUS_GPIO_OP_MULTI_SETUP, s);
-  s << mask << mode << outvalues;
+  s << offset << mask << mode << outvalues;
   return l4_error(s.call(vbus));
 }
 
 int L4_CV
 l4vbus_gpio_multi_config_pad(l4_cap_idx_t vbus, l4vbus_device_handle_t handle,
-                              unsigned mask, unsigned func, unsigned value)
+                             unsigned offset, unsigned mask,
+                             unsigned func, unsigned value)
 {
   L4::Ipc::Iostream s(l4_utcb());
   l4vbus_device_msg(handle, L4VBUS_GPIO_OP_MULTI_CONFIG_PAD, s);
-  s << mask << func << value;
+  s << offset << mask << func << value;
   return l4_error(s.call(vbus));
 }
 
 int L4_CV
-l4vbus_gpio_multi_get(l4_cap_idx_t vbus, l4vbus_device_handle_t handle, unsigned *data)
+l4vbus_gpio_multi_get(l4_cap_idx_t vbus, l4vbus_device_handle_t handle,
+                      unsigned offset, unsigned *data)
 {
   L4::Ipc::Iostream s(l4_utcb());
   l4vbus_device_msg(handle, L4VBUS_GPIO_OP_MULTI_GET, s);
+  s << offset;
   int err = l4_error(s.call(vbus));
   if (err >= 0 && data)
     s >> *data;
@@ -98,11 +112,12 @@ l4vbus_gpio_multi_get(l4_cap_idx_t vbus, l4vbus_device_handle_t handle, unsigned
 }
 
 int L4_CV
-l4vbus_gpio_multi_set(l4_cap_idx_t vbus, l4vbus_device_handle_t handle, unsigned mask, unsigned data)
+l4vbus_gpio_multi_set(l4_cap_idx_t vbus, l4vbus_device_handle_t handle,
+                      unsigned offset, unsigned mask, unsigned data)
 {
   L4::Ipc::Iostream s(l4_utcb());
   l4vbus_device_msg(handle, L4VBUS_GPIO_OP_MULTI_SET, s);
-  s << mask << data;
+  s << offset << mask << data;
   return l4_error(s.call(vbus));
 }
 

@@ -105,7 +105,7 @@ static void con_puts(termstate_t *term, int x, int y, l4_int8_t *s, int len,
   fb.refresh(fn_x * x, fn_y * y, fn_x * len, fn_y);
 }
 
-termstate_t *term_init(int cols, int rows, int hist)
+static termstate_t *term_init(int cols, int rows, int hist)
 {
   // get new termstate
   termstate_t *term = (termstate_t *)malloc(sizeof(termstate_t));
@@ -187,7 +187,7 @@ touch_repeat(termstate_t * term, unsigned code, unsigned repeat)
  (void)term; (void)code; (void)repeat;
 }
 
-void handle_key(L4Re::Event_buffer::Event *e)
+static void handle_key(L4Re::Event_buffer::Event *e)
 {
   switch (e->payload.code)
     {

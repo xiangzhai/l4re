@@ -50,8 +50,8 @@ class Tb_entry
 protected:
   Mword		_number;	///< event number
   Address	_ip;		///< instruction pointer
-  Context const *_ctx;		///< Context
   Unsigned64	_tsc;		///< time stamp counter
+  Context const *_ctx;		///< Context
   Unsigned32	_pmc1;		///< performance counter value 1
   Unsigned32	_pmc2;		///< performance counter value 2
   Unsigned32	_kclock;	///< lower 32 bits of kernel clock
@@ -204,17 +204,6 @@ public:
   void print(String_buffer *buf) const;
 };
 
-#if 0
-/** logged short-cut ipc failed. */
-class Tb_entry_ipc_sfl : public Tb_entry_base
-{
-private:
-  Global_id	_from;	///< short ipc rcv descriptor
-  L4_timeout_pair	_timeout;	///< ipc timeout
-  Global_id	_dst;		///< partner
-  Unsigned8	_is_irq, _snd_lst, _dst_ok, _dst_lck, _preempt;
-};
-#endif
 
 /** logged pagefault. */
 class Tb_entry_pf : public Tb_entry
@@ -246,14 +235,14 @@ class Tb_entry_ke_t : public BASE
 protected:
   union Msg
   {
-    char msg[BASE::Tb_entry_size - sizeof(BASE)];
+    char msg[BASE::Tb_entry_size - sizeof(BASE) - 4];
     struct Ptr
     {
       char tag[2];
       char const *ptr;
     } mptr;
   } _msg;
-} __attribute__((__packed__));
+}; // __attribute__((__packed__));
 
 typedef Tb_entry_ke_t<Tb_entry, Tbuf_ke> Tb_entry_ke;
 
@@ -261,7 +250,7 @@ class Tb_entry_ke_reg_b : public Tb_entry
 {
 public:
   Mword v[3];
-} __attribute__((__packed__));
+}; // __attribute__((__packed__));
 
 class Tb_entry_ke_reg : public Tb_entry_ke_t<Tb_entry_ke_reg_b, Tbuf_ke_reg>
 {

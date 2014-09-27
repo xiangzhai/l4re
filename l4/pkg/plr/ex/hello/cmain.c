@@ -5,7 +5,7 @@
 
 #include <l4/plr/measurements.h>
 
-int main()
+int main(void)
 {
 	printf("starting Hello (C version)\n");
 

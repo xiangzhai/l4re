@@ -22,8 +22,9 @@
 
 namespace L4Re { namespace Util {
 
-unsigned long Dbg::level;
 static FILE *out = stdout;
+#ifndef NDEBUG
+unsigned long Dbg::level;
 
 void
 Dbg::tag() const
@@ -68,6 +69,7 @@ Dbg::cprintf(char const *fmt, ...) const
 
   return n;
 }
+#endif /* NDEBUG */
 
 
 char const *const Err::levels[] =

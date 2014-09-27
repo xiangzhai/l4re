@@ -48,10 +48,10 @@ static void GC_default_push_other_roots(void)
     {
       L4::Cap<L4::Ipc_gate> g(c);
       if (!object_pool.cap_alloc()->is_allocated(g))
-	continue;
+        continue;
 
       if (l4_error(g->get_infos(&o)) < 0)
-	continue;
+        continue;
 
       o &= ~3UL;
       GC_push_one(o);

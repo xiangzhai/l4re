@@ -27,6 +27,8 @@ public:
   static void enable(Cpu_number cpu);
   static void disable(Cpu_number cpu);
 
+  static Timer_tick *boot_cpu_timer_tick();
+
 protected:
   static bool allocate_irq(Irq_base *irq, unsigned irqnum);
 

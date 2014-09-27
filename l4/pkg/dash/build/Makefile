@@ -7,6 +7,7 @@ REQUIRES_LIBS    = libc_be_sig libc_support_misc libc_be_file_stdin
 PRIVATE_INCDIR   = $(PKGDIR)/contrib/src $(SRC_DIR) $(L4DIR)
 DEFINES          = -DBSD=1 -DSHELL -DHAVE_CONFIG_H
 CFLAGS           = -include $(SRC_DIR)/config.h
+WARNINGS         = $(WARNINGS_MINIMAL) -Wno-unused-but-set-variable
 
 vpath %.c   $(PKGDIR)/contrib/src
 
@@ -18,5 +19,3 @@ SRC_C            = alias.c arith_yacc.c arith_yylex.c cd.c error.c eval.c \
 		   builtins.c nodes.c signames.c init.c
 
 include $(L4DIR)/mk/prog.mk
-
-CFLAGS   := $(filter-out -Wextra -Wall,$(CFLAGS))

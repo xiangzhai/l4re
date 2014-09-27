@@ -26,7 +26,6 @@
 #if !defined(ARCH_arm) && !defined(ARCH_ppc32) && !defined(ARCH_sparc)
 #include <l4/util/port_io.h>
 #endif
-#include <l4/util/macros.h>
 
 #include <pthread.h>
 

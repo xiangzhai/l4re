@@ -28,204 +28,21 @@
 #include "queue.h"
 #include "restart.h"
 
-#include <l4/util/atomic.h>
-#include <l4/plr/pthread_rep.h>
-#include <l4/plr/measurements.h>
-
+#include "pt_rep.h"
 
 int pthread_mutex_lock_rep(pthread_mutex_t * mutex);
 int pthread_mutex_unlock_rep(pthread_mutex_t * mutex);
 
-lock_info* __lip_address = LOCK_INFO_ADDR;
-
-
-#define LOCKli(li, mtx) (li)->locks[(mtx)->__m_reserved]
-#define ACQ(li, mtx)    lock_li(  (li), (mtx)->__m_reserved)
-#define REL(li, mtx)    unlock_li((li), (mtx)->__m_reserved)
-
-#define YIELD()  yield() 
-#define BARRIER() asm volatile ("" : : : "memory");
-
-#define GO_TO_SLEEP 0
-
-/*
- * The generated code uses registers to access and modify data in
- * the lock info page. This page is shared between all replicas, but
- * the counts written to it may differ between replicas, which in turn
- * may lead to the master process detecting state deviation if the values
- * remain in those registers.
- *
- * To fix that, we store the original values of EBX, ECX, and EDX in
- * thread-private storage and restore them before we a) leave the function or
- * b) perform a system call that would be observed by the master.
- *
- * XXX: This assumes that we will not cause a page fault or
- *      any other exception during execution, because then we might end
- *      up with differing register values as well.
- */
-static inline void rep_function_save_regs(void)
+static void
+init_replica_mutex(pthread_mutex_t* mtx)
 {
-#if 0
-  BARRIER();
-  asm volatile ("mov %%ebx, %0\t\n"
-                "mov %%ecx, %1\t\n"
-                "mov %%edx, %2\t\n"
-                /*
-                "mov %%esi, %3\t\n"
-                "mov %%edi, %4\t\n"*/
-                : "=m" (thread_self()->ebx),
-                  "=m" (thread_self()->ecx),
-                  "=m" (thread_self()->edx)/*,
-                  "=m" (thread_self()->esi),
-                  "=m" (thread_self()->edi)*/
-                :
-                : "memory"
-  );
-  BARRIER();
-#endif
+  mtx->__m_reserved = rep_find_free_lock_entry(mtx);
 }
-
-
-static inline void rep_function_restore_regs(void)
-{
-  BARRIER();
-#if 0
-  asm volatile ("mov %0, %%ebx\t\n"
-                "mov %1, %%ecx\t\n"
-                "mov %2, %%edx\t\n"
-                /*
-                "mov %3, %%esi\t\n"
-                "mov %4, %%edi\t\n"*/
-                :
-                : "m" (thread_self()->ebx),
-                  "m" (thread_self()->ecx),
-                  "m" (thread_self()->edx)/*,
-                  "m" (thread_self()->esi),
-                  "m" (thread_self()->edi)*/
-                : "memory"
-  );
-#else
-  asm volatile ("mov $0, %%ebx\t\n"
-                "mov $0, %%ecx\t\n"
-                "mov $0, %%edx\t\n"
-                ::: "memory");
-#endif
-  BARRIER();
-}
-
-#ifdef PT_SOLO
-#define yield stall
-#else
-static inline void yield()
-{
-	rep_function_restore_regs();
-	asm volatile ("ud2" : : : "edx", "ecx", "ebx", "memory");
-	rep_function_save_regs();
-}
-#endif
-
-
-static inline void lock_rep_wait(pthread_mutex_t* mutex)
-{
-    /*
-     * Go to sleep. This is a system call and will be checked by the master. Therefore,
-     * we need to load the ECX and EDX values we pushed in the beginning, so that the
-     * master process sees a consistent state here.
-     */
-    rep_function_restore_regs();
-    asm volatile (
-                  "push %0\t\n"
-                  "mov $0xA020, %%eax\t\n"
-                  "call *%%eax\t\n"
-                  "pop %0\t\n"
-                  :
-                  : "r" (mutex)
-                  : "eax", "memory");
-    rep_function_save_regs();
-}
-
-
-
-static inline void lock_rep_post(pthread_mutex_t* mutex)
-{
-    /*
-     * Send the actual notification. This is a special case in the master,
-     * because here only one replica performs the system call while all
-     * others continue untouched.
-     */
-    BARRIER();
-    asm volatile ("push %0\t\n"
-                  "mov $0xA040, %%eax\t\n"
-                  "call *%%eax\t\n"
-                  "pop %0\t\n": : "r" (mutex) : "eax", "memory");
-}
-
-
-static void init_replica_mutex(pthread_mutex_t* mtx)
-{
-  unsigned i = 0;
-  lock_info* li = get_lock_info();
-
-  rep_function_save_regs();
-  
-  /*
-   * find either the respective lock (if it has been registered by another
-   * replica yet) or a free slot to use
-   */
-  for (i = 0; i < NUM_LOCKS; ++i) {
-
-	lock_li(li, i);
-
-	// slot already acquired by another replica
-	if (li->locks[i].lockdesc == (l4_addr_t)mtx) {
-	  mtx->__m_reserved = i;
-	  unlock_li(li, i);
-	  break;
-	}
-
-	// free slot -> we can use it
-	if (li->locks[i].owner == lock_entry_free) {
-	  li->locks[i].lockdesc = (l4_addr_t)mtx;
-	  li->locks[i].owner    = lock_unowned;
-	  mtx->__m_reserved     = i;
-	  unlock_li(li, i);
-	  break;
-	}
-
-	unlock_li(li, i);
-  }
-
-  if (i >= NUM_LOCKS) {
-	  enter_kdebug("out of locks");
-  }
-  
-  rep_function_restore_regs();
-}
-
-#if 0
-#define EVENT(_mtx, _type, _data1, _data2) \
-do { \
-  char *evb = evbuf_get_address(); \
-  struct GenericEvent *ev = evbuf_next(evb); \
-  ev->header.tsc          = evbuf_get_time(evb, 1); \
-  ev->header.vcpu         = (unsigned)thread_self(); \
-  ev->header.type         = 9; \
-  ev->data.shml.lockid    = (_mtx)->__m_reserved; \
-  ev->data.shml.type      = _type; \
-  ev->data.shml.epoch     = _data1; \
-  ev->data.shml.owner     = _data2; \
-} while (0)
-#else
-#define EVENT(_mtx, _type, _data1, _data2) do {} while(0)
-#endif
 
 int
 attribute_hidden
 pthread_mutex_lock_rep(pthread_mutex_t * mutex)
 {
-
-  rep_function_save_regs();
-  
 	/*
 	 * not initialized yet? -> happens for statically initialized
 	 * locks as those don't call mutex_init(). And as we need to
@@ -235,84 +52,19 @@ pthread_mutex_lock_rep(pthread_mutex_t * mutex)
 	if (!mutex->__m_reserved) {
 	  init_replica_mutex(mutex);
 	}
-
-  lock_info* li            = get_lock_info();
-  thread_self()->p_epoch  += 1;
-  
-  ACQ(li, mutex);
-  EVENT(mutex, 2, thread_self()->p_epoch, LOCKli(li, mutex).owner);
-  REL(li, mutex);
-  
-  /*outstring("lock() "); outhex32(thread_self()->p_epoch); outstring("\n");*/
-
-  while (1) {
-
-	ACQ(li, mutex);
-  
-    if (LOCKli(li, mutex).owner == lock_unowned)
-    {
-      LOCKli(li, mutex).owner       = (l4_addr_t)thread_self();
-      LOCKli(li, mutex).owner_epoch = thread_self()->p_epoch;
-      LOCKli(li, mutex).acq_count   = li->replica_count;
-      break;
-    }
-    else if (LOCKli(li, mutex).owner == (l4_addr_t)thread_self())
-    {
-      if (LOCKli(li, mutex).owner_epoch != thread_self()->p_epoch) {
-        //outchar42('.'); outchar42(' '); outhex42(thread_self());
-        REL(li, mutex);
-        YIELD();
-        continue;
-      }
-
-      break;
-    }
-    else
-    {
-      REL(li, mutex);
-      YIELD();
-      continue;
-    }
-  }
-
-  EVENT(mutex, 3, thread_self()->p_epoch, 0);
-
-  REL(li, mutex);
-
-  rep_function_restore_regs();
-
+  rep_acquire(mutex->__m_reserved);
+  rep_function_reset_regs();
 	return 0;
 }
-
-
-int pthread_mutex_unlock_rep(pthread_mutex_t * mutex);
 
 int
 attribute_hidden
 pthread_mutex_unlock_rep(pthread_mutex_t * mutex)
 {
-  rep_function_save_regs();
-
-  lock_info *li = get_lock_info();
-  
-  ACQ(li, mutex);
-  EVENT(mutex, 4, LOCKli(li, mutex).acq_count, 0);
-  
-  LOCKli(li, mutex).acq_count -= 1;
-  if (LOCKli(li, mutex).acq_count == 0) {
-      LOCKli(li, mutex).owner = lock_unowned;
-  }
-
-  EVENT(mutex, 5, thread_self()->p_epoch, LOCKli(li, mutex).owner);
-
-  REL(li, mutex);
-
-  rep_function_restore_regs();
-
+  rep_release(mutex->__m_reserved);
+  rep_function_reset_regs();
   return 0;
 }
-
-#undef LOCKli
 
 int
 attribute_hidden
@@ -324,6 +76,7 @@ __pthread_mutex_init(pthread_mutex_t * mutex,
     mutex_attr == NULL ? PTHREAD_MUTEX_TIMED_NP : mutex_attr->__mutexkind;
   mutex->__m_count = 0;
   mutex->__m_owner = NULL;
+  mutex->__m_reserved = 0;
   return 0;
 }
 strong_alias (__pthread_mutex_init, pthread_mutex_init)

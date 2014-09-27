@@ -1,11 +1,12 @@
 /* -*- c -*- */
-
+#include "globalconfig.h"
 /* this file defines the construction of the kernel's virtual address
    space */
-
-
-
+#ifdef CONFIG_CPU_VIRT
+virt_address       = kernel_load_addr;
+#else
 virt_address       = 0xf0000000;
+#endif
 phys_offset        = virt_address - kernel_load_addr;
 
 

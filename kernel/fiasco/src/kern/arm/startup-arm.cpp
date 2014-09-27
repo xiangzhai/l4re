@@ -7,6 +7,7 @@ IMPLEMENTATION [arm]:
 #include "ipi.h"
 #include "kern_lib_page.h"
 #include "kernel_task.h"
+#include "kernel_uart.h"
 #include "kip_init.h"
 #include "kmem_alloc.h"
 #include "kmem_space.h"
@@ -28,6 +29,7 @@ IMPLEMENT FIASCO_INIT FIASCO_NOINLINE
 void
 Startup::stage1()
 {
+  Kernel_uart::init(Kernel_uart::Init_after_mmu);
   Proc::cli();
   Boot_info::init();
   Cpu::early_init();
@@ -48,7 +50,7 @@ Startup::stage2()
   // Initialize cpu-local data management and run constructors for CPU 0
   Per_cpu_data::init_ctors();
   Per_cpu_data_alloc::alloc(boot_cpu);
-  Per_cpu_data::run_ctors(boot_cpu, false);
+  Per_cpu_data::run_ctors(boot_cpu);
 
   Kmem_space::init();
   Kernel_task::init();

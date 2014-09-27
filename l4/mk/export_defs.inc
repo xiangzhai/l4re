@@ -106,6 +106,31 @@ endif # called for static
 
 #   ----------------------------------------------------
 
+ifeq ($(CALLED_FOR),minimal)
+
+MODE = sigma0
+
+ifneq ($(SYSTEM),)
+REQUIRES_LIBS = libc_minimal
+
+L4_CPPFLAGS_MINIMAL = $(CPPFLAGS)
+L4_CFLAGS_MINIMAL   = $(CFLAGS)
+L4_CXXFLAGS_MINIMAL = $(CXXFLAGS)
+
+all::
+	@$(call do_output_all,L4_CPPFLAGS_MINIMAL)
+	@$(call do_output_all,L4_CFLAGS_MINIMAL)
+	@$(call do_output_all,L4_CXXFLAGS_MINIMAL)
+else
+all::
+endif
+
+include $(L4DIR)/mk/prog.mk
+
+endif # called for minimal
+
+#   ----------------------------------------------------
+
 ifeq ($(CALLED_FOR),shared)
 
 MODE = shared

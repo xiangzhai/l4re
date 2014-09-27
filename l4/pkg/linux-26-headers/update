@@ -39,4 +39,18 @@ for f in linux/pci_ids.h; do
   cp include/$f $pkgdir/include/$f
 done
 
+cd -
+
 echo "Now check for removed/added files."
+
+echo "Disappeared files:"
+(
+  cd $pkgdir/include
+  find -name '*.h' | while read i; do
+    if [ "$i" != "./linux/pci_ids.h" ]; then
+      if [ ! -e $linuxtree/usr/include/$i ]; then
+        echo "include/${i#./}"
+      fi
+    fi
+  done
+)

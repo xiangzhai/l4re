@@ -1,5 +1,6 @@
 /*
  * Copyright © 2006 Robert Millan
+ * Copyright © 2011 Guillem Jover <guillem@hadrons.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,49 +25,43 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <bsd/err.h>
+#include <err.h>
 #include <errno.h>
 #include <stdarg.h>
 
 void
-warnc (int code, const char *format, ...)
+warnc(int code, const char *format, ...)
 {
-  int tmp = errno;
-  va_list ap;
-  va_start (ap, format);
+	va_list ap;
 
-  errno = code;
-  warn (format, ap);
-  errno = tmp;
-
-  va_end (ap);
+	va_start(ap, format);
+	vwarnc(code, format, ap);
+	va_end(ap);
 }
 
 void
-vwarnc (int code, const char *format, va_list ap)
+vwarnc(int code, const char *format, va_list ap)
 {
-  int tmp = errno;
+	int tmp = errno;
 
-  errno = code;
-  vwarn (format, ap);
-  errno = tmp;
+	errno = code;
+	vwarn(format, ap);
+	errno = tmp;
 }
 
 void
-errc (int status, int code, const char *format, ...)
+errc(int status, int code, const char *format, ...)
 {
-  va_list ap;
-  va_start (ap, format);
+	va_list ap;
 
-  errno = code;
-  err (status, format, ap);
-
-  va_end (ap);
+	va_start(ap, format);
+	verrc(status, code, format, ap);
+	va_end(ap);
 }
 
 void
-verrc (int status, int code, const char *format, va_list ap)
+verrc(int status, int code, const char *format, va_list ap)
 {
-  errno = code;
-  verr (status, format, ap);
+	errno = code;
+	verr(status, format, ap);
 }

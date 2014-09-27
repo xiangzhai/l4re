@@ -63,6 +63,14 @@ void ddekit_lock_unlock  (ddekit_lock_t *mtx);
  */
 int ddekit_lock_owner(ddekit_lock_t *mtx);
 
+/** Find out if lock is locked.
+ *
+ *  \return 0 unlocked
+ *          !=0 owner
+ * \ingroup DDEKit_synchronization
+ */
+int ddekit_lock_is_locked(ddekit_lock_t *mtx);
+
 L4_INLINE void ddekit_lock_init_unlocked(ddekit_lock_t *mtx)
 {
 	ddekit_lock_init(mtx);

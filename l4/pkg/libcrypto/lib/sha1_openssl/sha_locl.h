@@ -66,7 +66,7 @@
 
 #else
 
-#include <l4/crypto/private/sha_openssl.h>
+#include "private/sha_openssl.h"
 
 #endif
 

@@ -76,6 +76,9 @@ public:
   static void set_label_prop(Session *s, Property_handler const *, cxx::String const &v);
   static void set_color_prop(Session *s, Property_handler const *, cxx::String const &v);
 
+  virtual void put_event(l4_umword_t stream, int type, int code, int value,
+                         l4_uint64_t time) = 0;
+
   virtual ~Session();
 
 };

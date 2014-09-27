@@ -32,26 +32,26 @@ App_task::dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios)
     {
       case L4Re::Parent_::Signal:
       {
-	unsigned long sig;
-	unsigned long val;
-	ios >> sig >> val;
+        unsigned long sig;
+        unsigned long val;
+        ios >> sig >> val;
 
-	switch (sig)
-	  {
-	  case 0: // exit
-	    {
-	      object_pool.cap_alloc()->free(this);
-	      if (val != 0)
-	        L4::cout << "MOE: task " << obj << " exited with " << val
+        switch (sig)
+          {
+          case 0: // exit
+            {
+              object_pool.cap_alloc()->free(this);
+              if (val != 0)
+                L4::cout << "MOE: task " << obj << " exited with " << val
                          << '\n';
 
-	      GC_gcollect();
-	      GC_gcollect_and_unmap();
-	      return -L4_ENOREPLY;
-	    }
-	  default: break;
-	  }
-	return L4_EOK;
+              GC_gcollect();
+              GC_gcollect_and_unmap();
+              return -L4_ENOREPLY;
+            }
+          default: break;
+          }
+        return L4_EOK;
       }
     default:
       return -L4_ENOSYS;

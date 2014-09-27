@@ -256,7 +256,7 @@ int Dope_app::client_cmd(L4::Ipc::Iostream &ios)
   char buf_in[256];
 
   len = sizeof(buf_in);
-  ios >> L4::Ipc::Buf_cp_in<char>(buf_in, len);
+  ios >> L4::Ipc::buf_cp_in(buf_in, len);
   buf_in[len] = 0;
 
   cmd(buf_in);
@@ -270,7 +270,7 @@ int Dope_app::client_cmd_req(L4::Ipc::Iostream &ios)
   char buf_out[256];
 
   len = sizeof(buf_in);
-  ios >> L4::Ipc::Buf_cp_in<char>(buf_in, len);
+  ios >> L4::Ipc::buf_cp_in(buf_in, len);
   buf_in[len] = 0;
 
   cmd_ret(buf_in, buf_out, sizeof(buf_out));
@@ -282,7 +282,7 @@ int Dope_app::client_cmd_req(L4::Ipc::Iostream &ios)
       buf_out[sizeof(buf_out) - 1] = 0;
     }
 
-  ios << L4::Ipc::Buf_cp_out<char>(buf_out, len);
+  ios << L4::Ipc::buf_cp_out(buf_out, len);
 
   return -L4_EOK;
 }
@@ -294,7 +294,7 @@ int Dope_app::client_vscreen_get_fb(L4::Ipc::Iostream &ios)
   char buf[40];
 
   len = sizeof(buf_in);
-  ios >> L4::Ipc::Buf_cp_in<char>(buf_in, len);
+  ios >> L4::Ipc::buf_cp_in(buf_in, len);
   buf_in[len] = 0;
 
   snprintf(buf, sizeof(buf), "%s.map()", buf_in);

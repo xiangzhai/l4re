@@ -26,13 +26,12 @@ pthread_mutex_t mtx;
 
 #define NUM_THREADS 2
 
-static const unsigned print_iterations = 100;
-static const unsigned inc_iterations   = 1000 / NUM_THREADS;
+static const unsigned print_iterations = 1000;
+static const unsigned inc_iterations   = 10000 / NUM_THREADS;
 
-static
-void *thread(void *data)
+static void counterLoop(char const *who)
 {
-	(void)data;
+	//assign_to_cpu(1);
 #if 0
 	while (1) {
 #else
@@ -43,11 +42,18 @@ void *thread(void *data)
 			globalcounter++;
 			pthread_mutex_unlock(&mtx);
 		}
+	}
 
 		pthread_mutex_lock(&mtx);
-		printf("\033[31mThread: %d\n", globalcounter);
+	printf("\033[31m%s:\033[0m %d\n", who, globalcounter);
 		pthread_mutex_unlock(&mtx);
-	}
+}
+
+static
+void *thread(void *data)
+{
+	(void)data;
+	counterLoop("Worker");
 	return NULL;
 }
 
@@ -66,6 +72,8 @@ int main(int argc, char **argv)
 	pthread_t pt;
 
 	struct timeval start, stop;
+	//count_CPUs();
+	//assign_to_cpu(0);
 
 	gettimeofday(&start, NULL);
 
@@ -74,21 +82,7 @@ int main(int argc, char **argv)
 	int res = pthread_create(&pt, NULL, thread, NULL);
 	assert(res == 0);
 
-#if 0
-	while (1) {
-#else
-	for (unsigned cnt = 0; cnt < print_iterations; ++cnt) {
-#endif
-		for (unsigned i = 0; i < inc_iterations; ++i) {
-			pthread_mutex_lock(&mtx);
-			globalcounter++;
-			pthread_mutex_unlock(&mtx);
-		}
-
-		pthread_mutex_lock(&mtx);
-		printf("\033[32mMain: %d\n", globalcounter);
-		pthread_mutex_unlock(&mtx);
-	}
+	counterLoop("Main");
 
 	pthread_join(pt, NULL);
 	printf("joined\n");

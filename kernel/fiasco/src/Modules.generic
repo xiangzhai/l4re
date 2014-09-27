@@ -1,7 +1,7 @@
 # -*- makefile -*-
 # vi:se ft=make:
 
-INTERFACES_KERNEL	:= cpu_mask rcupdate kobject_mapdb context_base \
+INTERFACES_KERNEL	:= cpu_mask rcupdate kobject_mapdb context_base pm \
 			   mem_region per_cpu_data startup boot_info         \
 			   queue queue_item l4_buf_iter bitmap               \
 			   mapping spin_lock mapping_tree mappable           \

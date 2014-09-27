@@ -91,7 +91,7 @@ OUTPUTDIR = $(shell perl -n -e '/^\s*OUTPUT_DIRECTORY\s*=\s*(\S+)/ && print "$$1
 # we refer to %/html sometimes. However, make fails on a rule of the form
 # "% %/html:%.cfg", thus the workaround (others than static-pattern-rules
 # won't work)
-$(addprefix $(OBJ_DIR)/,$(addsuffix /html,$(TARGET_DOX))):$(OBJ_DIR)/%/html:$(OBJ_DIR)/%
+$(addprefix $(OBJ_DIR)/,$(addsuffix /html,$(TARGET_DOX))):$(OBJ_DIR)/%/html:$(TARGET_DOX)
 
 # We can give an internal rule for doxygen, as the directory specified
 # in the config-file should be the name of the config file with the

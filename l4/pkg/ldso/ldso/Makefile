@@ -16,6 +16,7 @@ vpath %.c $(CON_DIR)/ldso
 vpath %.S $(CON_DIR)/ldso/$(DIR_$(ARCH))
 vpath aeabi_read_tp-v6p.S     $(UCC_DIR)/ARCH-arm
 vpath aeabi_read_tp_generic.c $(UCC_DIR)/ARCH-arm
+vpath ssp-l4.c                $(UCC_DIR)
 
 PRIVATE_INCDIR-x86 := $(CON_DIR)/../libc
 PRIVATE_INCDIR := $(PRIVATE_INCDIR-$(ARCH)) \
@@ -55,6 +56,14 @@ CRTN :=
 
 
 include $(L4DIR)/mk/lib.mk
+
+# stack protector handling
+ifdef CONFIG_BID_GCC_ENABLE_STACK_PROTECTOR
+DEFINES  += -D__UCLIBC_HAS_SSP__=1
+SRC_C    += ssp-l4.c
+CPPFLAGS := $(filter-out $(DEFINES), $(CPPFLAGS))
+CPPFLAGS += $(DEFINES)
+endif
 
 ldso.1.o: ldso.o
 	$(OBJCOPY) --weaken $< $@

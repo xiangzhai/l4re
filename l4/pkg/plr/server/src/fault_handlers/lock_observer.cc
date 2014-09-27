@@ -11,18 +11,23 @@
  */
 
 #include "lock_observer.h"
+#include <l4/util/util.h>
 
 #define DEBUGt(t) DEBUG() <<  "[" << t->vcpu() << "] "
 
+#if EVENT_LOGGING
 #define EVENT(event, ptr) \
     do { \
-	 	Measurements::GenericEvent* ev = Romain::_the_instance_manager->logbuf()->next(); \
-		ev->header.tsc                 = Romain::_the_instance_manager->logbuf()->getTime(Log::logLocalTSC); \
+	 	Measurements::GenericEvent* ev = Romain::globalLogBuf->next(); \
+		ev->header.tsc                 = Romain::globalLogBuf->getTime(Log::logLocalTSC); \
 		ev->header.vcpu                = (l4_uint32_t)t->vcpu(); \
 		ev->header.type                = Measurements::Locking; \
 		ev->data.lock.eventType        = event; \
 		ev->data.lock.lockPtr          = ptr; \
     } while (0)
+#else
+#define EVENT(event, ptr) do {} while (0)
+#endif
 
 Romain::PThreadLockObserver*
 Romain::PThreadLockObserver::Create()
@@ -34,8 +39,6 @@ namespace Romain {
 
 void Romain::PThreadLock_priv::status() const
 {
-	INFO() << "[lock] LOCK.lock   = " << det_lock_count;
-	INFO() << "[lock] LOCK.unlock = " << det_unlock_count;
 	INFO() << "[lock] MTX.lock    = " << mtx_lock_count;
 	INFO() << "[lock] MTX.unlock  = " << mtx_unlock_count;
 	INFO() << "[lock] pt.lock     = " << pt_lock_count;
@@ -55,23 +58,8 @@ Romain::PThreadLock_priv::notify(Romain::App_instance* inst,
 		return Romain::Observer::Ignored;
 	}
 
-	DEBUG() << "LOCK observer";
+	DEBUG() << group->name << " entering LOCK observer";
 	l4util_inc32(&total_count);
-
-	/*
-	 * HACK: intercept notifications coming from the replication-
-	 *       aware pthread library.
-	 */
-	if (thread->vcpu()->r()->ip == 0xA021) {
-		l4util_inc32(&det_lock_count);
-		det_lock(inst, thread, group, model);
-		//thread->vcpu()->r()->flags |= TrapFlag;
-		return Romain::Observer::Replicatable;
-	} else if (thread->vcpu()->r()->ip == 0xA041) {
-		l4util_inc32(&det_unlock_count);
-		det_unlock(inst, thread, group, model);
-		return Romain::Observer::Replicatable;
-	}
 
 #define HANDLE_BP(var, handler) do { \
 		if(_functions[(var)].orig_address == thread->vcpu()->r()->ip - 1) { \
@@ -88,27 +76,80 @@ Romain::PThreadLock_priv::notify(Romain::App_instance* inst,
 
 #undef HANDLE_BP
 
+	DEBUG() << "{" << group->name << "}" << " ignored lock...";
 	l4util_inc32(&ignore_count);
 	return Romain::Observer::Ignored;
 }
 
 
+void Romain::PThreadLock_priv::attach_lock_info_priv(Romain::App_instance*inst, Romain::App_model *am)
+{
+
+	L4::Cap<L4Re::Dataspace> page;
+	l4_addr_t page_local  = Romain::Region_map::allocate_and_attach(&page, L4_PAGESIZE, 0, 0);
+	
+	inst->vcpu_task()->map(L4Re::This_task, l4_fpage((l4_addr_t)page_local, L4_PAGESHIFT, L4_FPAGE_RO),
+						   PRIV_INFO_ADDR);
+	((lip_priv_info*)page_local)->replica_id = inst->id();
+}
+
+
 void Romain::PThreadLock_priv::attach_lock_info_page(Romain::App_model *am)
 {
-	_lip_ds           = am->alloc_ds(L4_PAGESIZE);
-	_lip_local        = am->local_attach_ds(_lip_ds, L4_PAGESIZE, 0);
-	INFO() << "Local LIP address: " << std::hex << _lip_local;
-	void* remote__lip = (void*)am->prog_attach_ds(Romain::LOCK_INFO_PAGE,
-	                                              L4_PAGESIZE, _lip_ds, 0, 0,
+	l4_size_t lip_size = l4_round_page(sizeof(lock_info));
+	_lip_local = Romain::Region_map::allocate_and_attach(&_lip_ds, lip_size);
+
+	INFO() << "Local LIP address: " << std::hex << _lip_local
+	       << " size = " << lip_size << " target " << LOCK_INFO_ADDR;
+	void* remote__lip = (void*)am->prog_attach_ds(LOCK_INFO_ADDR,
+	                                              lip_size, _lip_ds, 0, 0,
 	                                              "lock info page",
 	                                              _lip_local, true);
-	_check(reinterpret_cast<l4_umword_t>(remote__lip) != Romain::LOCK_INFO_PAGE,
+	_check(reinterpret_cast<l4_umword_t>(remote__lip) != LOCK_INFO_ADDR, 
 	       "LIP did not attach to proper remote location");
 
-	am->lockinfo_local(_lip_local);
-	am->lockinfo_remote(Romain::LOCK_INFO_PAGE);
+	INFO() << "Remotely attached LIP to " << remote__lip;
 
-	memset((void*)_lip_local, 0, L4_PAGESIZE);
+#if 1
+	/*
+	 * Reserve guard pages before and after the LIP. This will make sure that the
+	 * application never attaches memory directly adjacent to the LIP. A stray write
+	 * (e.g., a memcpy) from a valid application address will therefore never touch
+	 * the LIP because it will beforehand raise a page fault in the guard pages.
+	 *
+	 * [This does not protect valid LIP writes, though. For this we use LIP canaries.]
+	 */
+	l4_addr_t remote_start = reinterpret_cast<l4_addr_t>(remote__lip);
+	l4_addr_t remote_end   = remote_start + lip_size;
+
+	_check(am->rm()->attach_area(remote_start - L4_PAGESIZE, L4_PAGESIZE) == L4_INVALID_ADDR,
+		   "Could not reserve LIP guard #1");
+	INFO() << "Reserved [" << std::hex << remote_start - L4_PAGESIZE << " - "
+	       << remote_start << "]";
+
+	_check(am->rm()->attach_area(remote_end, L4_PAGESIZE) == L4_INVALID_ADDR,
+		   "Could not reserve LIP guard #2");
+	INFO() << "Reserved [" << std::hex << remote_end << " - "
+	       << remote_end + L4_PAGESIZE << "]";
+
+	am->lockinfo_local(_lip_local);
+	am->lockinfo_remote(LOCK_INFO_ADDR);
+	//l4_touch_rw((void*)_lip_local, lip_size);
+#endif
+
+	memset((void*)_lip_local, 0, lip_size);
+
+#if 1
+	/* Initialize LIP canaries that will protect single LIP lock entries
+	 * from being arbitrarily overwritten by stray writes witihin the LIP.
+	 */
+	lock_info *lip             = reinterpret_cast<lock_info*>(_lip_local);
+	for (unsigned i = 0; i < NUM_LOCKS; ++i) {
+		// arbitrary fixed canary value - we only want to protect against
+		// erroneous overwrite, we don't assume malicious code
+		lip->locks[i].canary = static_cast<l4_uint16_t>(LIP_CANARY);
+	}
+#endif
 }
 
 
@@ -117,7 +158,7 @@ void Romain::PThreadLock_priv::startup_notify(Romain::App_instance *inst,
                                               Romain::Thread_group *,
                                               Romain::App_model *am)
 {
-	static unsigned callCount  = 0;
+	static l4_umword_t callCount  = 0;
 	lock_info *lip             = reinterpret_cast<lock_info*>(_lip_local);
 
 #if INTERNAL_DETERMINISM
@@ -131,6 +172,8 @@ void Romain::PThreadLock_priv::startup_notify(Romain::App_instance *inst,
 		lip                    = reinterpret_cast<lock_info*>(_lip_local);
 		lip->locks[0].lockdesc = 0xFAFAFAFA;
 		lip->locks[0].owner    = 0xDEADBEEF;
+		_check(am->rm()->attach_area(PRIV_INFO_ADDR, L4_PAGESIZE) == L4_INVALID_ADDR,
+		       "Could not reserve private lock info area");
 
 #endif
 		//DEBUG() << "Replica LIP address: " << std::hex << remote_lock_info;
@@ -139,14 +182,30 @@ void Romain::PThreadLock_priv::startup_notify(Romain::App_instance *inst,
 		 * Breakpoints / patching of function entries is only done once,
 		 * because code is shared across all replicas.
 		 */
-		for (unsigned idx = 0; idx < pt_max_wrappers; ++idx) {
+		for (l4_umword_t idx = 0; idx < pt_max_wrappers; ++idx) {
 			//DEBUG() << idx;
 			_functions[idx].activate(inst, am);
 		}
 #if INTERNAL_DETERMINISM
 	}
+	attach_lock_info_priv(inst, am);
 	callCount++;
 	lip->replica_count += 1;
+
+	// TODO: Iterate over the LIP's pages and map them all
+	//       immediately to prevent getting pagefaults while
+	//       executing pthread_rep code
+	l4_umword_t map_size = l4_round_page(sizeof(lock_info));
+	l4_addr_t   src_addr = reinterpret_cast<l4_addr_t>(_lip_local);
+	l4_addr_t   dst_addr = LOCK_INFO_ADDR;
+
+	while (map_size > 0) {
+		inst->map_aligned(src_addr, dst_addr, L4_PAGESHIFT, L4_FPAGE_RW);
+		src_addr += L4_PAGESIZE;
+		dst_addr += L4_PAGESIZE;
+		map_size -= L4_PAGESIZE;
+	}
+
 #endif
 	//enter_kdebug();
 }
@@ -190,6 +249,10 @@ void Romain::PThreadLock_priv::lock(Romain::App_instance *inst,
                                     Romain::Thread_group *tg,
                                     Romain::App_model *am)
 {
+#if BENCHMARKING
+	unsigned long long t1, t2;
+	t1 = l4_rdtsc();
+#endif
 	l4util_inc32(&pt_lock_count);
 	l4_addr_t stack  = am->rm()->remote_to_local(t->vcpu()->r()->sp, inst->id());
 	l4_umword_t ret  = *(l4_umword_t*)stack;
@@ -197,14 +260,18 @@ void Romain::PThreadLock_priv::lock(Romain::App_instance *inst,
 
 	EVENT(Measurements::LockEvent::lock, lock);
 
-	DEBUG() << "Stack ptr " << std::hex << t->vcpu()->r()->sp << " => "
+	DEBUG() << "{" << tg->name << "}" << "Stack ptr " << std::hex << t->vcpu()->r()->sp << " => "
          	<< stack;
-	DEBUG() << "Lock @ " << std::hex << lock;
-	DEBUG() << "Return addr " << std::hex << ret;
+	DEBUG() << "{" << tg->name << "}" << "Lock @ " << std::hex << lock;
+	DEBUG() << "{" << tg->name << "}" << "Return addr " << std::hex << ret;
 
 	lookup_or_create(lock)->lock(tg);
 
 	t->return_to(ret);
+#if BENCHMARKING
+	t2 = l4_rdtsc();
+	t->count_lock(t2-t1);
+#endif
 }
 
 
@@ -218,6 +285,10 @@ void Romain::PThreadLock_priv::unlock(Romain::App_instance *inst,
                                       Romain::Thread_group *tg,
                                       Romain::App_model *am)
 {
+#if BENCHMARKING
+	unsigned long long t1, t2;
+	t1 = l4_rdtsc();
+#endif
 	l4util_inc32(&pt_unlock_count);
 	l4_addr_t stack     = am->rm()->remote_to_local(t->vcpu()->r()->sp, inst->id());
 	l4_umword_t retaddr = *(l4_umword_t*)stack;
@@ -225,8 +296,8 @@ void Romain::PThreadLock_priv::unlock(Romain::App_instance *inst,
 
 	EVENT(Measurements::LockEvent::unlock, lock);
 
-	DEBUG() << "Return addr " << std::hex << retaddr;
-	DEBUG() << "Lock @ " << std::hex << lock;
+	DEBUG() << "{" << tg->name << "}" << "Return addr " << std::hex << retaddr;
+	DEBUG() << "{" << tg->name << "}" << "Lock @ " << std::hex << lock;
 
 	//enter_kdebug("unlock");
 
@@ -234,6 +305,10 @@ void Romain::PThreadLock_priv::unlock(Romain::App_instance *inst,
 
 	t->vcpu()->r()->ax  = ret;
 	t->return_to(retaddr);
+#if BENCHMARKING
+	t2 = l4_rdtsc();
+	t->count_lock(t2-t1);
+#endif
 }
 
 /*
@@ -244,6 +319,10 @@ void Romain::PThreadLock_priv::unlock(Romain::App_instance *inst,
 void Romain::PThreadLock_priv::mutex_lock(Romain::App_instance* inst, Romain::App_thread* t,
                                           Romain::Thread_group* group, Romain::App_model* model)
 {
+#if BENCHMARKING
+	unsigned long long t1, t2;
+	t1 = l4_rdtsc();
+#endif
 	l4util_inc32(&mtx_lock_count);
 
 	l4_addr_t stack     = model->rm()->remote_to_local(t->vcpu()->r()->sp, inst->id());
@@ -275,12 +354,20 @@ void Romain::PThreadLock_priv::mutex_lock(Romain::App_instance* inst, Romain::Ap
 
 	t->vcpu()->r()->ax  = ret;
 	t->return_to(retaddr);
+#if BENCHMARKING
+	t2 = l4_rdtsc();
+	t->count_lock(t2-t1);
+#endif
 }
 
 
 void Romain::PThreadLock_priv::mutex_unlock(Romain::App_instance* inst, Romain::App_thread* t,
                                             Romain::Thread_group* group, Romain::App_model* model)
 {
+#if BENCHMARKING
+	unsigned long long t1, t2;
+	t1 = l4_rdtsc();
+#endif
 	l4util_inc32(&mtx_unlock_count);
 
 	l4_addr_t stack     = model->rm()->remote_to_local(t->vcpu()->r()->sp, inst->id());
@@ -294,4 +381,8 @@ void Romain::PThreadLock_priv::mutex_unlock(Romain::App_instance* inst, Romain::
 
 	t->vcpu()->r()->ax  = ret;
 	t->return_to(retaddr);
+#if BENCHMARKING
+	t2 = l4_rdtsc();
+	t->count_lock(t2-t1);
+#endif
 }

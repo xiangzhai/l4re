@@ -95,7 +95,7 @@ Factory::map_obj(Kobject_iface *o, Cap_index cap, Task *c_space,
   // must be before the lock guard
   Reap_list rl;
 
-  Lock_guard<decltype(c_space->existence_lock)> space_lock_guard;
+  auto space_lock_guard = lock_guard_dont_lock(c_space->existence_lock);
 
   // We take the existence_lock for syncronizing maps...
   // This is kind of coarse grained
@@ -122,7 +122,6 @@ PRIVATE inline NOEXPORT
 Kobject_iface *
 Factory::new_factory(Utcb const *u, int *)
 {
-  // XXX: should check for type tag in new call
   return create_factory(u->values[2]);
 }
 
@@ -132,7 +131,6 @@ Kobject_iface *
 Factory::new_task(Utcb const *u, int *)
 {
   L4_fpage utcb_area(0);
-  // XXX: should check for type tag in new call
   utcb_area = L4_fpage(u->values[2]);
 
   if (Task *new_t = Task::create<Task>(this, utcb_area))
@@ -168,11 +166,7 @@ Factory::new_gate(L4_msg_tag const &tag, Utcb const *utcb, Obj_space *o_space,
       if (EXPECT_FALSE(!(thread_rights & L4_fpage::Rights::W())))
 	return 0;
     }
-#if 0
-  if (!thread)
-    return reinterpret_cast<Kobject_iface*>(-L4_err::EInval);
-#endif
-  // should check type tag of varg
+
   *err = L4_err::ENomem;
   return static_cast<Ipc_gate_ctl*>(Ipc_gate::create(this, thread, utcb->values[2]));
 }
@@ -225,7 +219,7 @@ Factory::kinvoke(L4_obj_ref ref, L4_fpage::Rights rights, Syscall_frame *f,
   Kobject_iface *new_o;
   int err = L4_err::ENomem;
 
-  Lock_guard<Cpu_lock, Lock_guard_inverse_policy> cpu_lock_guard(&cpu_lock);
+  auto cpu_lock_guard = lock_guard<Lock_guard_inverse_policy>(cpu_lock);
 
   switch ((long)utcb->values[0])
     {
@@ -238,7 +232,7 @@ Factory::kinvoke(L4_obj_ref ref, L4_fpage::Rights rights, Syscall_frame *f,
       break;
 
     case L4_msg_tag::Label_task:
-      new_o =  new_task(utcb, &err);
+      new_o = new_task(utcb, &err);
       break;
 
     case L4_msg_tag::Label_thread:

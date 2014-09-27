@@ -5,7 +5,6 @@
   DUMP_MEMBER1 (THREAD, Context, _sched_context,	SCHED_CONTEXT)
   DUMP_MEMBER1 (THREAD, Context, _sched,		SCHED)
   DUMP_MEMBER1 (THREAD, Context, _period,		PERIOD)
-  DUMP_MEMBER1 (THREAD, Context, _mode,			MODE)
   DUMP_MEMBER1 (THREAD, Context, _fpu_state,		FPU_STATE)
   DUMP_MEMBER1 (THREAD, Context, _consumed_time,	CONSUMED_TIME)
   DUMP_MEMBER1 (THREAD, Thread, _caller,		REPLY_CAP)

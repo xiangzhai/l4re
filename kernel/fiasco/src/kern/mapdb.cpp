@@ -600,7 +600,10 @@ Treemap::lookup(Pcnt key, Space *search_space, Pfn search_va,
   // get and lock the tree.
   assert (trunc_to_page(key) < _key_end);
   Physframe *f = tree(trunc_to_page(key)); // returns locked frame
-  assert (f);
+
+  // FIXME: should we return an OOM here ?
+  if (!f)
+    return false;
 
   Mapping_tree *t = f->tree.get();
   Order const psz = _page_shift;
@@ -686,6 +689,9 @@ Treemap::insert(Physframe* frame, Mapping* parent, Space *space,
 	{
 	  // free the mapping got with allocate
 	  t->free_mapping(payer, free);
+#ifndef NDEBUG
+          ++t->_empty_count;
+#endif
 	  return 0;
 	}
 

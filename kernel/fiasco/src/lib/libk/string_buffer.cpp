@@ -7,7 +7,7 @@ public:
   String_buffer(char *buf, int len) : _buf(buf), _len(len) {}
 
   bool __attribute__((format(printf, 2, 3))) printf(char const *fmt, ...);
-  bool space() const { return _len; }
+  int space() const { return _len; }
   char *remaining_buffer() const { return _buf; }
   void reset(char *buf, int len) { _buf = buf; _len = len; }
   bool append(char c)

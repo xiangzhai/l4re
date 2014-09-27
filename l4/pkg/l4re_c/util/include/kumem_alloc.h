@@ -34,11 +34,6 @@
 EXTERN_C_BEGIN
 
 /**
- * \brief Get free capability index at capability allocator
- * \ingroup api_l4re_c_util_cap
- */
-
-/**
  * \brief Allocate state area.
  * \ingroup api_l4re_c_util_kumem_alloc
  *

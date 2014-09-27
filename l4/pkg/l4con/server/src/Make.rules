@@ -2,13 +2,13 @@
 
 TARGET		= con
 
-REQUIRES_LIBS   += libio input libirq libgfxbitmap l4util l4re_c-util
+REQUIRES_LIBS      += libio input libirq libgfxbitmap l4util l4re_c-util
+REQUIRES_LIBS_x86   = x86emu_int10 lxfuxlibc
+REQUIRES_LIBS_amd64 = x86emu_int10
+REQUIRES_LIBS_arm   = libdrivers-lcd libdrivers-generic
+REQUIRES_LIBS_ppc32 = libdrivers-lcd libdrivers-generic
+REQUIRES_LIBS_sparc = libdrivers-lcd libdrivers-generic
 PRIVATE_INCDIR	= $(SRC_DIR)
-LIBS_x86	= -lclxfux.o -lx86emu_int10 -lx86emu
-LIBS_amd64	=            -lx86emu_int10 -lx86emu
-LIBS_arm        = -larm_lcd.o -larm_generic
-LIBS_ppc32      = -larm_lcd.o -larm_generic
-LIBS_sparc      = -larm_lcd.o -larm_generic
 LIBS	       += -L$(OBJ_DIR)/con_yuv2rgb/OBJ-$(ARCH)_$(CPU) \
 		  -L$(OBJ_DIR)/con_hw/OBJ-$(SYSTEM) \
 		  -lcon_yuv2rgb $(LIBS_$(ARCH)) -lcon_hw

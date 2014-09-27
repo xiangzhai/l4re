@@ -52,15 +52,19 @@ public:
   void inc_sw_irqs() { ++_sw_irqs; }
   void dec_sw_irqs() { ++_sw_irqs; }
   virtual int bind(L4::Cap<L4::Irq> irq, unsigned mode) = 0;
+  virtual int mask() = 0;
   virtual int unmask() = 0;
   virtual int unbind() = 0;
   virtual int set_mode(unsigned mode) = 0;
-  virtual ~Io_irq_pin() {}
+  virtual int clear();
+  virtual ~Io_irq_pin() = 0;
 
   bool shared() const { return _max_sw_irqs > 1; }
   bool shareable() const { return _flags & F_shareable; }
   bool chained() const { return _flags & F_chained; }
 };
+
+inline Io_irq_pin::~Io_irq_pin() {}
 
 class Kernel_irq_pin : public Io_irq_pin
 {
@@ -69,6 +73,7 @@ private:
 public:
   Kernel_irq_pin(unsigned idx) : Io_irq_pin(), _idx(idx) {}
   int bind(L4::Cap<L4::Irq> irq, unsigned mode);
+  int mask();
   int unmask();
   int unbind();
   int set_mode(unsigned mode);

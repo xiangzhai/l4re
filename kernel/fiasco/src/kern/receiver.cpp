@@ -304,7 +304,7 @@ Receiver::handle_remote_abort_send(Drq *, Context *, void *_rq)
   Ipc_remote_dequeue_request *rq = (Ipc_remote_dequeue_request*)_rq;
   if (rq->sender->in_sender_list())
     {
-      // really cancled IPC
+      // really cancel IPC
       rq->state = Abt_ipc_cancel;
       rq->sender->sender_dequeue(rq->partner->sender_list());
       rq->partner->vcpu_update_state();

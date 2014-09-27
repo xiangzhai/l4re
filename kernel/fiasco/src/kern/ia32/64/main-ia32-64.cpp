@@ -31,8 +31,7 @@ kernel_main(void)
 
   // caution: no stack variables in this function because we're going
   // to change the stack pointer!
-  cpu.print();
-  cpu.show_cache_tlb_info("");
+  cpu.print_infos();
 
   printf ("\nFreeing init code/data: %lu bytes (%lu pages)\n\n",
           (Address)(&Mem_layout::initcall_end - &Mem_layout::initcall_start),

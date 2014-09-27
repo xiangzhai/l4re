@@ -65,7 +65,7 @@ class Emulator_base
 		ud_t                    _ud;
 
 		void value_to_operand(l4_umword_t val, ud_operand *op);
-		int  offset_from_operand(ud_operand *op);
+		l4_mword_t offset_from_operand(ud_operand *op);
 
 		l4_umword_t register_to_value(ud_type op);
 		void value_to_register(l4_umword_t val, ud_type op);
@@ -81,10 +81,10 @@ class Emulator_base
 		{
 			switch(size) {
 				case 8:
-					*(unsigned char*)address = (unsigned char)value;
+					*(l4_uint8_t*)address = (l4_uint8_t)value;
 					break;
 				case 16:
-					*(unsigned short*)address = (unsigned short)value;
+					*(l4_uint16_t*)address = (l4_uint16_t)value;
 					break;
 				case 32:
 					*(l4_umword_t*)address = value;
@@ -155,6 +155,23 @@ class WriteEmulator : public Emulator_base
 		}
 
 		void emulate(/*l4_addr_t remote_addr*/);
+};
+
+#include "instruction_length.h"
+
+struct CopyAndExecute
+{
+	L4vcpu::Vcpu *_vcpu;
+	l4_addr_t     _local_ip;
+	l4_umword_t   _ilen;
+	char _instbuf[32];
+
+	public:
+		CopyAndExecute(L4vcpu::Vcpu *vcpu)
+			: _vcpu(vcpu)
+		{ }
+
+		void emulate(Romain::AddressTranslator *at);
 };
 
 }

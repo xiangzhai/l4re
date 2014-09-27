@@ -1,7 +1,7 @@
 # vim:set ft=make:
 
 SUBSYSTEMS              += LIBUART
-OBJECTS_LIBUART         += uart_s3c2410.o
+OBJECTS_LIBUART-$(CONFIG_PF_EXYNOS_UART_NATIVE) += uart_s3c2410.o
 OBJECTS_LIBUART         += $(OBJECTS_LIBUART-y)
 PREPROCESS_PARTS        += exynos libuart pic_gic watchdog tickless_idle \
                            bsp_cpu
@@ -11,6 +11,7 @@ PREPROCESS_PARTS-$(CONFIG_PF_EXYNOS_TIMER_MCT) += exynos_mct
 PREPROCESS_PARTS-$(CONFIG_PF_EXYNOS_TIMER_MP)  += mptimer
 PREPROCESS_PARTS-$(CONFIG_PF_EXYNOS_TIMER_GEN) += arm_generic_timer
 PREPROCESS_PARTS-$(CONFIG_PF_EXYNOS_EXTGIC) += exynos_extgic irregular_gic
+PREPROCESS_PARTS-$(CONFIG_PF_EXYNOS_UART_NATIVE) += exynos_uart_native
 PREPROCESS_PARTS += $(if $(filter-out "",$(CONFIG_PF_EXYNOS_PKG_IDS)),pkg_id_file)
 
 INTERFACES_KERNEL       += gic platform smc timer_mct
@@ -49,3 +50,4 @@ platform_IMPL         += platform-arm-exynos
 watchdog_IMPL         += watchdog-arm-exynos
 
 platform_control_IMPL += platform_control-arm-exynos
+PREPROCESS_PARTS-$(CONFIG_CPU_SUSPEND)  += cpu_suspend

@@ -27,7 +27,7 @@ int main()
 {
 	printf("EB\n");
 	eb.set_buffer(buffer, sizeof(buffer));
-	printf("EB.buf = %p, size %d, index %d\n",
+	printf("EB.buf = %p, size %ld, index %d\n",
 	       eb.buffer, eb.size, eb.index);
 
 	printf("Generating 200 events...\n");
@@ -49,9 +49,9 @@ int main()
 		ev->data.foo.start = 0;
 	}
 
-	printf("EB.buf = %p, size %d, index %d\n",
+	printf("EB.buf = %p, size %ld, index %d\n",
 	       eb.buffer, eb.size, eb.index);
-	printf("EB.oldest = %d\n", eb.oldest());
+	printf("EB.oldest = %ld\n", eb.oldest());
 
 	char const *filename = "sampledump.txt";
 

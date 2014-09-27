@@ -115,7 +115,7 @@ Name_space::query(L4::Ipc::Iostream &ios, char *buffer, size_t max_len)
 {
   char const *name = 0;
   unsigned long len = max_len;
-  ios >> L4::Ipc::Buf_in<char const>(name, len);
+  ios >> L4::Ipc::buf_in(name, len);
 #if 1
   _dbg.printf("query: [%ld] '%.*s'\n", len, (int)len, name);
 #endif
@@ -157,7 +157,7 @@ Name_space::query(L4::Ipc::Iostream &ios, char *buffer, size_t max_len)
       if (part < len)
 	{
 	  result |= L4Re::Namespace::Partly_resolved;
-	  ios << (l4_umword_t)0 << L4::Ipc::Buf_cp_out<char>(buffer, len - part - 1);
+	  ios << (l4_umword_t)0 << L4::Ipc::buf_cp_out(buffer, len - part - 1);
 	}
 
       unsigned flags = L4_FPAGE_RO;
@@ -225,8 +225,8 @@ Name_space::link_entry(L4::Ipc::Iostream &ios, char *buffer, size_t max_len)
   unsigned long len, src_len;
   unsigned flags;
   L4::Ipc::Snd_fpage src_cap;
-  ios >> flags >> L4::Ipc::Buf_in<char const>(name, len)
-      >> L4::Ipc::Buf_in<char const>(src_name, src_len)
+  ios >> flags >> L4::Ipc::buf_in(name, len)
+      >> L4::Ipc::buf_in(src_name, src_len)
       >> src_cap;
 
   L4::Cap<void> reg_cap(L4::Cap_base::No_init);
@@ -284,7 +284,7 @@ Name_space::register_entry(L4::Ipc::Iostream &ios, char *buffer, size_t max_len)
   unsigned long len;
   unsigned flags;
   L4::Ipc::Snd_fpage cap;
-  ios >> flags >> L4::Ipc::Buf_in<char const>(name, len);
+  ios >> flags >> L4::Ipc::buf_in(name, len);
 
   L4::Cap<void> reg_cap(L4_INVALID_CAP);
   l4_msgtag_t tag;
@@ -327,7 +327,7 @@ Name_space::unlink_entry(L4::Ipc::Iostream &ios, char *buffer, size_t max_len)
 {
   char const *name = 0;
   unsigned long len = max_len;
-  ios >> L4::Ipc::Buf_in<char const>(name, len);
+  ios >> L4::Ipc::buf_in(name, len);
 #if 1
   _dbg.printf("unlink: [%ld] '%.*s'\n", len, (int)len, name);
 #endif

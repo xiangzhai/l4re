@@ -857,6 +857,8 @@ struct workqueue_struct *__create_workqueue_key(const char *name,
 		 * lock.
 		 */
 		for_each_possible_cpu(cpu) {
+			if (!cpu_online(cpu))
+				continue;
 			cwq = init_cpu_workqueue(wq, cpu);
 			if (err || !cpu_online(cpu))
 				continue;

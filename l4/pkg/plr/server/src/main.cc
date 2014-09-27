@@ -34,7 +34,7 @@ namespace Romain {
 	l4re_aux_t* l4re_aux;
 }
 
-static void setup_aux(int argc, const char **argv)
+static void setup_aux(l4_mword_t argc, const char **argv)
 {
 	l4_umword_t *auxp = (l4_umword_t*)&argv[argc] + 1;
 	while (*auxp) {
@@ -51,10 +51,11 @@ static void setup_aux(int argc, const char **argv)
 }
 
 namespace Romain {
-Romain::InstanceManager *_the_instance_manager = NULL;
+	Romain::InstanceManager *_the_instance_manager = NULL;
+	Measurements::EventBuf  *globalLogBuf          = NULL;
 }
 
-static int _main(int argc, char const **argv)
+static int _main(l4_mword_t argc, char const **argv)
 {
 	(void)argc; (void)argv;
 	INFO() << "FILE: " << argv[1];
@@ -79,7 +80,7 @@ static int _main(int argc, char const **argv)
 }
 
 
-static void sanity_check_cmdline(int argc, char const **argv)
+static void sanity_check_cmdline(l4_mword_t argc, char const **argv)
 {
 	(void)argv;
 	_check( argc < 2, "No file name given.");
@@ -90,7 +91,7 @@ int main(int argc, char const**argv)
 {
 	INFO() << std::hex << &argc;
 	INFO() << "startup";
-	int err = -1;
+	l4_mword_t err = -1;
 	try {
 		DEBUG() << "argc " << argc;
 		sanity_check_cmdline(argc, argv);

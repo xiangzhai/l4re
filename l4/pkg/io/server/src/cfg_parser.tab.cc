@@ -1,8 +1,8 @@
-/* A Bison parser, made by GNU Bison 2.6.2.  */
+/* A Bison parser, made by GNU Bison 2.7.12-4996.  */
 
 /* Skeleton implementation for Bison LALR(1) parsers in C++
    
-      Copyright (C) 2002-2012 Free Software Foundation, Inc.
+      Copyright (C) 2002-2013 Free Software Foundation, Inc.
    
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -30,15 +30,15 @@
    This special exception was added by the Free Software Foundation in
    version 2.2 of Bison.  */
 /* "%code top" blocks.  */
-/* Line 271 of lalr1.cc  */
+/* Line 276 of lalr1.cc  */
 #line 10 "cfg_parser.yy"
 
-#include "vbus_factory.h"
+#include "virt/vbus_factory.h"
 #include <cstring>
 
 
 
-/* Line 271 of lalr1.cc  */
+/* Line 276 of lalr1.cc  */
 #line 43 "cfg_parser.tab.cc"
 
 // Take the name prefix into account.
@@ -46,7 +46,7 @@
 
 /* First part of user declarations.  */
 
-/* Line 278 of lalr1.cc  */
+/* Line 283 of lalr1.cc  */
 #line 51 "cfg_parser.tab.cc"
 
 
@@ -54,10 +54,10 @@
 
 /* User implementation prologue.  */
 
-/* Line 284 of lalr1.cc  */
+/* Line 289 of lalr1.cc  */
 #line 59 "cfg_parser.tab.cc"
 /* Unqualified %code blocks.  */
-/* Line 285 of lalr1.cc  */
+/* Line 290 of lalr1.cc  */
 #line 91 "cfg_parser.yy"
 
 
@@ -82,7 +82,7 @@ void wrap(Device *h, Vi::Device **first, Tagged_parameter *filter)
 {
   Hw::Device *hd = dynamic_cast<Hw::Device *>(h);
 
-  Vi::Device *vd = Vi::Dev_factory::create(hd, filter);
+  Vi::Device *vd = Vi::Dev_factory::create(hd);
   for (Tagged_parameter *c = filter; c; c = c->next())
     for (Expression *x = c->val(); x; x = x->next())
       {
@@ -108,7 +108,7 @@ void wrap(Device *h, Vi::Device **first, Tagged_parameter *filter)
         if (r >= 0)
           c->mark_used();
         if (r == -EINVAL)
-          d_printf(DBG_ERR, "ERROR: filter '%*.s' has unsupoorted value\n", c->tag().len(), c->tag().start());
+          d_printf(DBG_ERR, "ERROR: filter '%*.s' has unsupported value\n", c->tag().len(), c->tag().start());
       }
 
   if (vd)
@@ -471,7 +471,7 @@ Resource *check_resource_expr(cfg::location const &l, Expression *e)
 }
 
 
-/* Line 285 of lalr1.cc  */
+/* Line 290 of lalr1.cc  */
 #line 476 "cfg_parser.tab.cc"
 
 
@@ -550,9 +550,9 @@ do {					\
 #else /* !YYDEBUG */
 
 # define YYCDEBUG if (false) std::cerr
-# define YY_SYMBOL_PRINT(Title, Type, Value, Location)
-# define YY_REDUCE_PRINT(Rule)
-# define YY_STACK_PRINT()
+# define YY_SYMBOL_PRINT(Title, Type, Value, Location) YYUSE(Type)
+# define YY_REDUCE_PRINT(Rule)        static_cast<void>(0)
+# define YY_STACK_PRINT()             static_cast<void>(0)
 
 #endif /* !YYDEBUG */
 
@@ -566,7 +566,7 @@ do {					\
 
 
 namespace cfg {
-/* Line 352 of lalr1.cc  */
+/* Line 357 of lalr1.cc  */
 #line 571 "cfg_parser.tab.cc"
 
   /* Return YYSTR after stripping away unnecessary quotes and
@@ -640,11 +640,7 @@ namespace cfg {
     std::ostream& yyo = debug_stream ();
     std::ostream& yyoutput = yyo;
     YYUSE (yyoutput);
-    switch (yytype)
-      {
-         default:
-	  break;
-      }
+    YYUSE (yytype);
   }
 
 
@@ -668,14 +664,10 @@ namespace cfg {
     YYUSE (yymsg);
     YYUSE (yyvaluep);
 
-    YY_SYMBOL_PRINT (yymsg, yytype, yyvaluep, yylocationp);
+    if (yymsg)
+      YY_SYMBOL_PRINT (yymsg, yytype, yyvaluep, yylocationp);
 
-    switch (yytype)
-      {
-  
-	default:
-	  break;
-      }
+    YYUSE (yytype);
   }
 
   void
@@ -732,17 +724,18 @@ namespace cfg {
     int yychar = yyempty_;
     int yytoken = 0;
 
-    /* State.  */
+    // State.
     int yyn;
     int yylen = 0;
     int yystate = 0;
 
-    /* Error handling.  */
+    // Error handling.
     int yynerrs_ = 0;
     int yyerrstatus_ = 0;
 
     /// Semantic value of the lookahead.
-    semantic_type yylval;
+    static semantic_type yyval_default;
+    semantic_type yylval = yyval_default;
     /// Location of the lookahead.
     location_type yylloc;
     /// The locations where the error started and ended.
@@ -755,6 +748,10 @@ namespace cfg {
 
     int yyresult;
 
+    // FIXME: This shoud be completely indented.  It is not yet to
+    // avoid gratuitous conflicts when merging into the master branch.
+    try
+      {
     YYCDEBUG << "Starting parse" << std::endl;
 
 
@@ -762,9 +759,9 @@ namespace cfg {
        yynewstate, since the latter expects the semantical and the
        location values to have been already stored, initialize these
        stacks with a primary value.  */
-    yystate_stack_ = state_stack_type (0);
-    yysemantic_stack_ = semantic_stack_type (0);
-    yylocation_stack_ = location_stack_type (0);
+    yystate_stack_.clear ();
+    yysemantic_stack_.clear ();
+    yylocation_stack_.clear ();
     yysemantic_stack_.push (yylval);
     yylocation_stack_.push (yylloc);
 
@@ -790,10 +787,9 @@ namespace cfg {
     /* Read a lookahead token.  */
     if (yychar == yyempty_)
       {
-	YYCDEBUG << "Reading a token: ";
-	yychar = yylex (&yylval, &yylloc);
+        YYCDEBUG << "Reading a token: ";
+        yychar = yylex (&yylval, &yylloc);
       }
-
 
     /* Convert token to internal form.  */
     if (yychar <= yyeof_)
@@ -865,45 +861,48 @@ namespace cfg {
     else
       yyval = yysemantic_stack_[0];
 
+    // Compute the default @$.
     {
       slice<location_type, location_stack_type> slice (yylocation_stack_, yylen);
       YYLLOC_DEFAULT (yyloc, slice, yylen);
     }
+
+    // Perform the reduction.
     YY_REDUCE_PRINT (yyn);
     switch (yyn)
       {
-	  case 2:
-/* Line 661 of lalr1.cc  */
+          case 2:
+/* Line 664 of lalr1.cc  */
 #line 507 "cfg_parser.yy"
     { (yyval.str).s = "(noname)"; (yyval.str).e = (yyval.str).s + strlen((yyval.str).s); }
     break;
 
   case 3:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 511 "cfg_parser.yy"
     { (yyval.param) = new Tagged_parameter(cxx::String((yysemantic_stack_[(3) - (1)].str).s, (yysemantic_stack_[(3) - (1)].str).e), (yysemantic_stack_[(3) - (3)].expr)); }
     break;
 
   case 4:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 512 "cfg_parser.yy"
     { (yyval.param) = new Tagged_parameter(cxx::String((yysemantic_stack_[(5) - (1)].str).s, (yysemantic_stack_[(5) - (1)].str).e), (yysemantic_stack_[(5) - (4)].expr)); }
     break;
 
   case 6:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 516 "cfg_parser.yy"
     { (yyval.param) = (yysemantic_stack_[(3) - (3)].param)->prepend((yysemantic_stack_[(3) - (1)].param)); }
     break;
 
   case 7:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 519 "cfg_parser.yy"
     { (yyval.param) = 0; }
     break;
 
   case 9:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 524 "cfg_parser.yy"
     {
 	    Vi::Device *d = _vbus_factory->create(std::string((yysemantic_stack_[(4) - (2)].str).s, (yysemantic_stack_[(4) - (2)].str).e));
@@ -917,97 +916,97 @@ namespace cfg {
     break;
 
   case 10:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 534 "cfg_parser.yy"
     { (yyval.expr) = wrap_hw_devices((yylocation_stack_[(5) - (3)]), (yysemantic_stack_[(5) - (3)].expr), 0); }
     break;
 
   case 11:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 536 "cfg_parser.yy"
     { (yyval.expr) = wrap_hw_devices((yylocation_stack_[(8) - (6)]), (yysemantic_stack_[(8) - (6)].expr), (yysemantic_stack_[(8) - (3)].param)); check_parameter_list((yylocation_stack_[(8) - (3)]), (yysemantic_stack_[(8) - (3)].param)); Tagged_parameter::del_all((yysemantic_stack_[(8) - (3)].param)); }
     break;
 
   case 13:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 541 "cfg_parser.yy"
     { (yyval.device) = check_dev_expr((yylocation_stack_[(1) - (1)]), (yysemantic_stack_[(1) - (1)].expr)); }
     break;
 
   case 14:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 543 "cfg_parser.yy"
     { (yyval.device) = check_dev_expr((yylocation_stack_[(3) - (3)]), (yysemantic_stack_[(3) - (3)].expr)); set_device_names((yyval.device), cxx::String((yysemantic_stack_[(3) - (1)].str).s, (yysemantic_stack_[(3) - (1)].str).e)); }
     break;
 
   case 15:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 545 "cfg_parser.yy"
     { (yyval.device) = check_dev_expr((yylocation_stack_[(5) - (5)]), (yysemantic_stack_[(5) - (5)].expr)); set_device_names((yyval.device), cxx::String((yysemantic_stack_[(5) - (1)].str).s, (yysemantic_stack_[(5) - (1)].str).e), true); }
     break;
 
   case 16:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 547 "cfg_parser.yy"
     { (yyval.device) = check_dev_expr((yylocation_stack_[(3) - (3)]), (yysemantic_stack_[(3) - (3)].expr)); set_device_names((yyval.device), cxx::String((yysemantic_stack_[(3) - (1)].str).s + 1, (yysemantic_stack_[(3) - (1)].str).e - 1)); }
     break;
 
   case 17:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 549 "cfg_parser.yy"
     { (yyval.device) = check_dev_expr((yylocation_stack_[(5) - (5)]), (yysemantic_stack_[(5) - (5)].expr)); set_device_names((yyval.device), cxx::String((yysemantic_stack_[(5) - (1)].str).s + 1, (yysemantic_stack_[(5) - (1)].str).e - 1), true); }
     break;
 
   case 18:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 552 "cfg_parser.yy"
     { (yyval.device) = 0; }
     break;
 
   case 19:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 554 "cfg_parser.yy"
     { (yyval.device) = concat((yysemantic_stack_[(2) - (1)].device), (yysemantic_stack_[(2) - (2)].device)); }
     break;
 
   case 20:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 557 "cfg_parser.yy"
     { (yyval.device) = 0; }
     break;
 
   case 21:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 558 "cfg_parser.yy"
     { (yyval.device) = (yysemantic_stack_[(3) - (2)].device); }
     break;
 
   case 22:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 561 "cfg_parser.yy"
     { (yyval.expr) = new Expression((yysemantic_stack_[(1) - (1)].hw_device)); }
     break;
 
   case 23:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 562 "cfg_parser.yy"
     { (yyval.expr) = (new Expression((yysemantic_stack_[(3) - (1)].hw_device)))->prepend((yysemantic_stack_[(3) - (3)].expr)); }
     break;
 
   case 24:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 564 "cfg_parser.yy"
     { (yyval.expr) = dev_list_from_dev<match_by_cid>((yysemantic_stack_[(6) - (1)].hw_device), cxx::String((yysemantic_stack_[(6) - (3)].str).s, (yysemantic_stack_[(6) - (3)].str).e), cxx::String((yysemantic_stack_[(6) - (5)].str).s + 1, (yysemantic_stack_[(6) - (5)].str).e - 1), (yylocation_stack_[(6) - (5)])); }
     break;
 
   case 25:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 568 "cfg_parser.yy"
     { (yyval.hw_device) = _hw_root; }
     break;
 
   case 26:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 570 "cfg_parser.yy"
     {
 	    (yyval.hw_device) = find_by_name((yysemantic_stack_[(3) - (1)].hw_device), cxx::String((yysemantic_stack_[(3) - (3)].str).s, (yysemantic_stack_[(3) - (3)].str).e));
@@ -1020,61 +1019,61 @@ namespace cfg {
     break;
 
   case 35:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 599 "cfg_parser.yy"
     { (yyval.expr) = new Expression((yysemantic_stack_[(1) - (1)].num)); }
     break;
 
   case 36:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 601 "cfg_parser.yy"
     { (yyval.expr) = new Expression((yysemantic_stack_[(3) - (1)].num), (yysemantic_stack_[(3) - (3)].num)); }
     break;
 
   case 37:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 603 "cfg_parser.yy"
     { (yyval.expr) = new Expression((yysemantic_stack_[(1) - (1)].str).s, (yysemantic_stack_[(1) - (1)].str).e); }
     break;
 
   case 38:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 606 "cfg_parser.yy"
     { (yyval.expr) = 0; }
     break;
 
   case 39:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 608 "cfg_parser.yy"
     { (yyval.expr) = (yysemantic_stack_[(1) - (1)].expr); }
     break;
 
   case 40:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 610 "cfg_parser.yy"
     { (yyval.expr) = (yysemantic_stack_[(3) - (1)].expr)->prepend((yysemantic_stack_[(3) - (3)].expr)); }
     break;
 
   case 41:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 614 "cfg_parser.yy"
     { (yyval.expr) = create_resource((yylocation_stack_[(6) - (2)]), cxx::String((yysemantic_stack_[(6) - (2)].str).s, (yysemantic_stack_[(6) - (2)].str).e), (yysemantic_stack_[(6) - (4)].expr)); }
     break;
 
   case 42:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 618 "cfg_parser.yy"
     { hw_device_set_property((yylocation_stack_[(5) - (2)]), (yysemantic_stack_[(5) - (0)].hw_device), cxx::String((yysemantic_stack_[(5) - (2)].str).s, (yysemantic_stack_[(5) - (2)].str).e), cxx::String((yysemantic_stack_[(5) - (4)].str).s + 1, (yysemantic_stack_[(5) - (4)].str).e - 1)); }
     break;
 
   case 43:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 620 "cfg_parser.yy"
     { hw_device_set_property((yylocation_stack_[(5) - (2)]), (yysemantic_stack_[(5) - (0)].hw_device), cxx::String((yysemantic_stack_[(5) - (2)].str).s, (yysemantic_stack_[(5) - (2)].str).e), (yysemantic_stack_[(5) - (4)].num)); }
     break;
 
   case 44:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 624 "cfg_parser.yy"
     {
 	    (yyval.hw_device) = (yysemantic_stack_[(1) - (0)].hw_device);
@@ -1085,19 +1084,19 @@ namespace cfg {
     break;
 
   case 45:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 630 "cfg_parser.yy"
     {(yyval.hw_device) = (yysemantic_stack_[(1) - (0)].hw_device); (yyval.hw_device)->add_resource(check_resource_expr((yylocation_stack_[(1) - (1)]), (yysemantic_stack_[(1) - (1)].expr))); }
     break;
 
   case 46:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 631 "cfg_parser.yy"
     { (yyval.hw_device) = (yysemantic_stack_[(1) - (0)].hw_device); }
     break;
 
   case 49:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 639 "cfg_parser.yy"
     {
 	    Hw::Device *d = Hw::Device_factory::create(cxx::String((yysemantic_stack_[(7) - (4)].str).s, (yysemantic_stack_[(7) - (4)].str).e));
@@ -1112,53 +1111,54 @@ namespace cfg {
     break;
 
   case 50:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 648 "cfg_parser.yy"
     { (yyval.hw_device) = (yysemantic_stack_[(10) - (8)].hw_device); }
     break;
 
   case 51:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 651 "cfg_parser.yy"
     { (yyval.hw_device) = (yysemantic_stack_[(2) - (1)].hw_device); }
     break;
 
   case 54:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 655 "cfg_parser.yy"
     { (yyval.device) = 0; }
     break;
 
   case 55:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 656 "cfg_parser.yy"
     { (yyval.device) = 0; }
     break;
 
   case 56:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 659 "cfg_parser.yy"
     { (yyval.device) = 0; }
     break;
 
   case 57:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 661 "cfg_parser.yy"
     { (yyval.device) = concat((yysemantic_stack_[(2) - (1)].device), (yysemantic_stack_[(2) - (2)].device)); }
     break;
 
   case 58:
-/* Line 661 of lalr1.cc  */
+/* Line 664 of lalr1.cc  */
 #line 663 "cfg_parser.yy"
     { _glbl_vbus = (yysemantic_stack_[(1) - (1)].device); }
     break;
 
 
-/* Line 661 of lalr1.cc  */
-#line 1159 "cfg_parser.tab.cc"
-	default:
-          break;
+/* Line 664 of lalr1.cc  */
+#line 1158 "cfg_parser.tab.cc"
+      default:
+        break;
       }
+
     /* User semantic actions sometimes alter yychar, and that requires
        that yytoken be updated with the new translation.  We take the
        approach of translating immediately before every use of yytoken.
@@ -1209,20 +1209,19 @@ namespace cfg {
     yyerror_range[1] = yylloc;
     if (yyerrstatus_ == 3)
       {
-	/* If just tried and failed to reuse lookahead token after an
-	 error, discard it.  */
-
-	if (yychar <= yyeof_)
-	  {
-	  /* Return failure if at end of input.  */
-	  if (yychar == yyeof_)
-	    YYABORT;
-	  }
-	else
-	  {
-	    yydestruct_ ("Error: discarding", yytoken, &yylval, &yylloc);
-	    yychar = yyempty_;
-	  }
+        /* If just tried and failed to reuse lookahead token after an
+           error, discard it.  */
+        if (yychar <= yyeof_)
+          {
+            /* Return failure if at end of input.  */
+            if (yychar == yyeof_)
+              YYABORT;
+          }
+        else
+          {
+            yydestruct_ ("Error: discarding", yytoken, &yylval, &yylloc);
+            yychar = yyempty_;
+          }
       }
 
     /* Else will try to reuse lookahead token after shifting the error
@@ -1271,7 +1270,7 @@ namespace cfg {
 
 	/* Pop the current state because it cannot handle the error token.  */
 	if (yystate_stack_.height () == 1)
-	YYABORT;
+	  YYABORT;
 
 	yyerror_range[1] = yylocation_stack_[0];
 	yydestruct_ ("Error: popping",
@@ -1319,16 +1318,42 @@ namespace cfg {
     /* Do not reclaim the symbols of the rule which action triggered
        this YYABORT or YYACCEPT.  */
     yypop_ (yylen);
-    while (yystate_stack_.height () != 1)
+    while (1 < yystate_stack_.height ())
       {
-	yydestruct_ ("Cleanup: popping",
-		   yystos_[yystate_stack_[0]],
-		   &yysemantic_stack_[0],
-		   &yylocation_stack_[0]);
-	yypop_ ();
+        yydestruct_ ("Cleanup: popping",
+                     yystos_[yystate_stack_[0]],
+                     &yysemantic_stack_[0],
+                     &yylocation_stack_[0]);
+        yypop_ ();
       }
 
     return yyresult;
+    }
+    catch (...)
+      {
+        YYCDEBUG << "Exception caught: cleaning lookahead and stack"
+                 << std::endl;
+        // Do not try to display the values of the reclaimed symbols,
+        // as their printer might throw an exception.
+        if (yychar != yyempty_)
+          {
+            /* Make sure we have latest lookahead translation.  See
+               comments at user semantic actions for why this is
+               necessary.  */
+            yytoken = yytranslate_ (yychar);
+            yydestruct_ (YY_NULL, yytoken, &yylval, &yylloc);
+          }
+
+        while (1 < yystate_stack_.height ())
+          {
+            yydestruct_ (YY_NULL,
+                         yystos_[yystate_stack_[0]],
+                         &yysemantic_stack_[0],
+                         &yylocation_stack_[0]);
+            yypop_ ();
+          }
+        throw;
+      }
   }
 
   // Generate an error message.
@@ -1744,9 +1769,9 @@ namespace cfg {
 
 
 } // cfg
-/* Line 1106 of lalr1.cc  */
-#line 1749 "cfg_parser.tab.cc"
-/* Line 1107 of lalr1.cc  */
+/* Line 1135 of lalr1.cc  */
+#line 1774 "cfg_parser.tab.cc"
+/* Line 1136 of lalr1.cc  */
 #line 665 "cfg_parser.yy"
 
 

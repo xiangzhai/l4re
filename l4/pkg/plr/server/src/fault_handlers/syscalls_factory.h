@@ -33,10 +33,10 @@ class Factory : public SyscallHandler
 	 * This allows us to easily find the thread group belonging to a
 	 * capability (which in reality maps to the gate agent IPC gate)
 	 */
-	std::map<unsigned, Romain::Thread_group*> _threads;
-	unsigned _thread_count;
+	std::map<l4_umword_t, Romain::Thread_group*> _threads;
+	l4_umword_t _thread_count;
 
-	unsigned _irqbits[16]; // trace if certain caps are IRQ objects
+	l4_umword_t _irqbits[16]; // trace if certain caps are IRQ objects
 
 	void create_thread(Romain::App_instance *i,
 	                   Romain::App_thread *t,
@@ -46,7 +46,7 @@ class Factory : public SyscallHandler
 	{
 		char threadname[24];
 		// writing this in C is sooo much shorter than creating a stringbuf...
-		snprintf(threadname, 24, "thread%d", _thread_count);
+		snprintf(threadname, 24, "thread%ld", _thread_count);
 
 		cap >>= L4_CAP_SHIFT;
 
@@ -64,8 +64,8 @@ class Factory : public SyscallHandler
 		 * made sure that all faults raised by these threads will be resolved,
 		 * because we cannot be sure if they run before or after any subsequent
 		 * code. */
-		//unsigned cnt = 0;
-		for (std::vector<Romain::App_thread*>::const_iterator it = newgroup->threads.begin();
+		//l4_umword_t cnt = 0;
+		for (auto it = newgroup->threads.begin();
 			 it != newgroup->threads.end(); ++it)
 		{
 			(*it)->start();
@@ -95,10 +95,10 @@ class Factory : public SyscallHandler
 	/*
 	 * Store that the given cap points to an IRQ object
 	 */
-	void mark_irq(unsigned cap)
+	void mark_irq(l4_umword_t cap)
 	{
 		DEBUG() << "cap = " << std::hex << cap;
-		unsigned *dest  = _irqbits;
+		l4_umword_t *dest  = _irqbits;
 		dest           += cap / (sizeof(*dest) * 8);
 		cap            &= sizeof(*dest) * 8 - 1;
 		*dest          |= (1 << cap);
@@ -140,7 +140,7 @@ class Factory : public SyscallHandler
 		 * Figure out if a cap belongs to an IRQ object (that was created
 		 * through this factory.
 		 */
-		bool is_irq(unsigned cap)
+		bool is_irq(l4_umword_t cap)
 		{
 			cap            >>= L4_CAP_SHIFT;
 			if (cap < Romain::FIRST_REPLICA_CAP) {
@@ -149,7 +149,7 @@ class Factory : public SyscallHandler
 			cap             -= Romain::FIRST_REPLICA_CAP;
 
 			DEBUG() << "cap = " << std::hex << cap;
-			unsigned *dest   = _irqbits;
+			l4_umword_t *dest   = _irqbits;
 			dest            += cap / (sizeof(*dest) * 8);
 			cap             &= sizeof(*dest) * 8 - 1;
 			return *dest & (1 << cap);

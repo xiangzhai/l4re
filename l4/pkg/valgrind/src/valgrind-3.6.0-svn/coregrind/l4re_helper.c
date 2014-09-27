@@ -122,11 +122,14 @@ void free(void *ptr)
 #define size_t int
 // for l4re/lib/src/log.cc
 // for l4re/lib/src/namespace.cc
+// Not required anymore since we handle symbols in uclibc different
+#if 0
 size_t strlen(const char *s);
 size_t strlen(const char *s)
 {
     return VG_(strlen) (s);
 }
+#endif
 
 #include <pub_tool_mallocfree.h>
 // for libc_backends/libc_be_file.h

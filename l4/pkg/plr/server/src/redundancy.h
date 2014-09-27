@@ -15,6 +15,7 @@
 #include "app"
 #include "thread_group.h"
 #include <pthread-l4.h>
+#include <atomic>
 
 namespace Romain {
 
@@ -77,7 +78,22 @@ namespace Romain {
 				 * Skip the handler completely.
 				 */
 				Skip_syscall,
+				/*
+ 				 * Got watchdog interrupt and everything went fine.
+ 				 */
+				Watchdog,
+				/*
+				 * We are in watchdog single-stepping or breakpointing but 
+				 * we were passed by a syscall or exception.
+				 */
+				Watchdog_passed
 			};
+
+			virtual void recover(Romain::App_model *am) = 0;
+#if WATCHDOG
+			Romain::Watchdog* _watchdog;
+			void set_watchdog(Romain::Watchdog *w) { _watchdog = w; }
+#endif
 
 			/*
 			 * Enter redundant handler.
@@ -85,7 +101,7 @@ namespace Romain {
 			 * Determines if the handler needs to be executed.
 			 */
 			virtual EnterReturnVal enter(Romain::App_instance *i, Romain::App_thread *t,
-			                             Romain::App_model *a) = 0;
+			                             Romain::Thread_group* tg, Romain::App_model *a) = 0;
 
 			/*
 			 * Function for the master replica to notify subsequent ones to
@@ -107,7 +123,7 @@ namespace Romain {
 			 * or handling of the next pending fault.
 			 */
 			virtual void resume(Romain::App_instance *i, Romain::App_thread *t,
-			                    Romain::App_model *a) = 0;
+			                    Romain::Thread_group* tg, Romain::App_model *a) = 0;
 
 			/*
 			 * Block this replica until explicitly woken up.
@@ -126,6 +142,7 @@ namespace Romain {
 			 */
 			virtual void wakeup(Romain::App_instance *i, Romain::App_thread *t,
 			                    Romain::App_model *a) = 0;
+
 	};
 
 
@@ -133,14 +150,14 @@ namespace Romain {
 	{
 		public:
 			virtual EnterReturnVal enter(Romain::App_instance *, Romain::App_thread *,
-			                             Romain::App_model *)
+			                             Romain::Thread_group* tg, Romain::App_model *)
 			{ return Romain::RedundancyCallback::First_syscall; }
 			virtual void leader_replicate(Romain::App_instance *, Romain::App_thread *,
 			                              Romain::App_model *) {}
 			virtual void leader_repeat(Romain::App_instance *, Romain::App_thread *,
 			                           Romain::App_model *) {}
 			virtual void resume(Romain::App_instance *, Romain::App_thread *,
-			                    Romain::App_model *) {}
+			                    Romain::Thread_group* tg, Romain::App_model *) {}
 			virtual void wait(Romain::App_instance *i, Romain::App_thread *t,
 			                  Romain::App_model *a)
 			{ enter_kdebug("single instances should never wait."); }
@@ -163,18 +180,19 @@ namespace Romain {
 		/* Sync 1: everyone waits upon entering the fault handler */
 		pthread_cond_t  _enter;
 		pthread_mutex_t _enter_mtx;
-		unsigned        _enter_count;
+		std::atomic_uint _enter_count;
 
 		/* Sync 2: everyone waits before leaving the fault handler */
 		pthread_cond_t  _leave;
 		pthread_mutex_t _leave_mtx;
-		unsigned        _leave_count;
+		std::atomic_uint _leave_count;
 
 		/* Sync 3: additional sync point used by the fault injection framework
 		 * XXX: should this be here? */
 		pthread_cond_t  _block;
 		pthread_mutex_t _block_mtx;
-		unsigned        _block_count;
+		l4_umword_t        _block_count;
+		unsigned long long ts_lead;
 
 		EnterReturnVal  _rv;
 
@@ -185,8 +203,8 @@ namespace Romain {
 		 *    for a while). In this case, _num_instances_bak contains the original
 		 *    number of instances.
 		 */
-		unsigned        _num_instances;
-		unsigned        _num_instances_bak;
+		l4_umword_t        _num_instances;
+		l4_umword_t        _num_instances_bak;
 
 		/*
 		 * List of replicas waiting to execute their fault handler
@@ -196,7 +214,21 @@ namespace Romain {
 		/*
 		 * Checksum all replicas, return if they match.
 		 */
-		bool checksum_replicas();
+		bool checksum_replicas(Romain::App_instance *i, Romain::Thread_group* tg, Romain::App_thread *t);
+
+#if WATCHDOG
+		pthread_cond_t  _watchdog_cond;
+		pthread_mutex_t _watchdog_mtx;
+		unsigned        _watchdog_count;
+
+		/*
+		 * Watchdog: determine whether a replica got the watchdog interrupt
+		 *           or another trap
+		 */
+		bool    _got_watchdog, _help_got_watchdog;
+		bool    _got_other_trap, _help_got_other_trap;
+		bool    _other_trap_chance;
+#endif
 
 		/*
 		 * Recover after checksum mismatch.
@@ -204,22 +236,24 @@ namespace Romain {
 		void recover(Romain::App_model*);
 
 		public:
-
-			DMR(unsigned instances);
+			DMR(l4_umword_t instances);
 
 			virtual EnterReturnVal enter(Romain::App_instance *i, Romain::App_thread *t,
-			                             Romain::App_model *a);
+			                             Romain::Thread_group* tg, Romain::App_model *a);
 			virtual void leader_replicate(Romain::App_instance *i, Romain::App_thread *t,
 			                              Romain::App_model *a);
 			virtual void leader_repeat(Romain::App_instance *i, Romain::App_thread *t,
 			                           Romain::App_model *a);
 			virtual void resume(Romain::App_instance *i, Romain::App_thread *t,
-			                    Romain::App_model *a);
+			                    Romain::Thread_group* tg, Romain::App_model *a);
 			virtual void wait(Romain::App_instance *i, Romain::App_thread *t,
 			                  Romain::App_model *a);
 			virtual void silence(Romain::App_instance *i, Romain::App_thread *t,
 			                     Romain::App_model *a);
 			virtual void wakeup(Romain::App_instance *i, Romain::App_thread *t,
 			                    Romain::App_model *a);
+#if WATCHDOG
+			virtual void watchdog_prepare(Romain::App_model *a);
+#endif
 	};
 }

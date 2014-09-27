@@ -185,103 +185,103 @@ Allocator::disp_factory(l4_umword_t r, L4::Ipc::Iostream &ios)
 
     case L4::Factory::Protocol:
     case L4Re::Protocol::Mem_alloc:
-	{
-	  L4::Ipc::Varg tag;
-	  ios.get(&tag);
+        {
+          L4::Ipc::Varg tag;
+          ios.get(&tag);
 
-	  if (!tag.is_of_int()) // ignore sign
-	    return -L4_EINVAL;
-	  Allocator *child = new (&_quota, tag.value<long>()) Allocator(tag.value<long>());
-	  ko = object_pool.cap_alloc()->alloc(child);
-	  ko->dec_refcnt(1);
-	  ios << ko;
+          if (!tag.is_of_int()) // ignore sign
+            return -L4_EINVAL;
+          Allocator *child = new (&_quota, tag.value<long>()) Allocator(tag.value<long>());
+          ko = object_pool.cap_alloc()->alloc(child);
+          ko->dec_refcnt(1);
+          ios << ko;
 
-	  return 0;
-	}
+          return 0;
+        }
 
     case L4_PROTO_LOG:
-	{
-	  L4::Ipc::Varg tag;
-	  ios.get(&tag);
+        {
+          L4::Ipc::Varg tag;
+          ios.get(&tag);
 
-	  if (!tag.is_of<char const *>())
-	    return -L4_EINVAL;
+          if (!tag.is_of<char const *>())
+            return -L4_EINVAL;
 
-	  L4::Ipc::Varg col;
-	  ios.get(&col);
+          L4::Ipc::Varg col;
+          ios.get(&col);
 
-	  int color;
-	  if (col.is_of<char const *>())
-	    color = LLog::color_value(cxx::String(col.value<char const*>(),
-		                                  col.length()));
-	  else if(col.is_of_int())
-	    color = col.value<l4_mword_t>();
-	  else
-	    color = 7;
+          int color;
+          if (col.is_of<char const *>())
+            color = LLog::color_value(cxx::String(col.value<char const*>(),
+                                      col.length()));
+          else if (col.is_of_int())
+            color = col.value<l4_mword_t>();
+          else
+            color = 7;
 
-	  Moe::Log *l = new (&_quota) Quota_obj<LLog>(tag.value<char const*>(), tag.length(), color);
-	  ko = object_pool.cap_alloc()->alloc(l);
-	  ko->dec_refcnt(1);
+          Moe::Log *l = new (&_quota) Quota_obj<LLog>(tag.value<char const*>(), tag.length(), color);
+          ko = object_pool.cap_alloc()->alloc(l);
+          ko->dec_refcnt(1);
 
-	  ios << ko;
-	  return L4_EOK;
-	}
+          ios << ko;
+          return L4_EOK;
+        }
 
     case L4::Scheduler::Protocol:
-	{
-	  if (!_sched_prio_limit)
-	    return -L4_ENODEV;
+        {
+          if (!_sched_prio_limit)
+            return -L4_ENODEV;
 
-	  L4::Ipc::Varg p_max, p_base, cpus;
-	  ios.get(&p_max);
-	  ios.get(&p_base);
-	  ios.get(&cpus);
+          L4::Ipc::Varg p_max, p_base, cpus;
+          ios.get(&p_max);
+          ios.get(&p_base);
+          ios.get(&cpus);
 
-	  if (!p_max.is_of_int() || !p_base.is_of_int())
-	    return -L4_EINVAL;
+          if (!p_max.is_of_int() || !p_base.is_of_int())
+            return -L4_EINVAL;
 
-	  if (p_max.value<l4_mword_t>() > _sched_prio_limit
-	      || p_base.value<l4_mword_t>() > _sched_prio_limit)
-	    return -L4_ERANGE;
+          if (p_max.value<l4_mword_t>() > _sched_prio_limit
+              || p_base.value<l4_mword_t>() > _sched_prio_limit)
+            return -L4_ERANGE;
 
-	  if (p_max.value<l4_mword_t>() <= p_base.value<l4_mword_t>())
-	    return -L4_EINVAL;
+          if (p_max.value<l4_mword_t>() <= p_base.value<l4_mword_t>())
+            return -L4_EINVAL;
 
-	  l4_umword_t cpu_mask = ~0UL;
+          l4_umword_t cpu_mask = ~0UL;
 
-	  if (!cpus.is_of<void>() && cpus.is_of_int())
-	    cpu_mask = cpus.value<l4_umword_t>();
+          if (!cpus.is_of<void>() && cpus.is_of_int())
+            cpu_mask = cpus.value<l4_umword_t>();
 
-	  Sched_proxy *o = new (&_quota) Quota_obj<Sched_proxy>();
-	  o->set_prio(p_base.value<l4_mword_t>(), p_max.value<l4_mword_t>());
-	  o->restrict_cpus(cpu_mask);
-	  ko = object_pool.cap_alloc()->alloc(o);
-	  ko->dec_refcnt(1);
+          Sched_proxy *o = new (&_quota) Quota_obj<Sched_proxy>();
+          o->set_prio(p_base.value<l4_mword_t>(), p_max.value<l4_mword_t>());
+          o->restrict_cpus(cpu_mask);
+          ko = object_pool.cap_alloc()->alloc(o);
+          ko->dec_refcnt(1);
 
-	  ios << ko;
-	  return L4_EOK;
-	}
+          ios << ko;
+          return L4_EOK;
+        }
     case L4Re::Dataspace::Protocol:
-	{
-	  L4::Ipc::Varg size, flags, align;
-	  ios >> size >> flags >> align;
+        {
+          L4::Ipc::Varg size, flags, align;
+          ios >> size >> flags >> align;
 
-	  if (!size.is_of_int())
-	    return -L4_EINVAL;
+          if (!size.is_of_int())
+            return -L4_EINVAL;
 
-	  // L4::cout << "MEM: alloc ... " << size.value<l4_umword_t>() << "; " << flags.value<l4_umword_t>() << "\n";
-	  cxx::Auto_ptr<Moe::Dataspace> mo(alloc(size.value<l4_umword_t>(),
-		flags.is_of_int() ? flags.value<l4_umword_t>() : 0,
+          // L4::cout << "MEM: alloc ... " << size.value<l4_umword_t>() << "; " << flags.value<l4_umword_t>() << "\n";
+          cxx::Auto_ptr<Moe::Dataspace> mo(alloc(size.value<l4_umword_t>(),
+                flags.is_of_int() ? flags.value<l4_umword_t>() : 0,
                 align.is_of_int() ? align.value<l4_umword_t>() : 0));
 
-	  // L4::cout << "MO=" << mo.get() << "\n";
-	  ko = object_pool.cap_alloc()->alloc(mo.get());
-	  ko->dec_refcnt(1);
-	  // L4::cout << "MO_CAP=" << mo->obj_cap() << "\n";
-	  ios << ko;
-	  mo.release();
-	  return L4_EOK;
-	}
+          // L4::cout << "MO=" << mo.get() << "\n";
+          ko = object_pool.cap_alloc()->alloc(mo.get());
+          ko->dec_refcnt(1);
+          // L4::cout << "MO_CAP=" << mo->obj_cap() << "\n";
+          ios << ko;
+          mo.release();
+          return L4_EOK;
+        }
 
     default:
       return -L4_ENODEV;
@@ -309,50 +309,50 @@ Allocator::dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios)
 
     case L4Re::Protocol::Mem_alloc:
       {
-	ios >> op;
-	switch (op)
-	  {
-	  case L4Re::Mem_alloc_::Alloc:
-	    {
-	      unsigned long size;
-	      unsigned long flags;
-	      ios >> size >> flags;
+        ios >> op;
+        switch (op)
+          {
+          case L4Re::Mem_alloc_::Alloc:
+            {
+              unsigned long size;
+              unsigned long flags;
+              ios >> size >> flags;
 
               printf("MOE: WARNING: Using deprecated interface L4Re::Mem_alloc_::Alloc\n");
-	      //L4::cout << "MEM: alloc ... " << size << "; " << flags << "\n";
+              //L4::cout << "MEM: alloc ... " << size << "; " << flags << "\n";
               cxx::Auto_ptr<Moe::Dataspace> mo(alloc(size,flags));
 
-	      // L4::cout << "MO=" << mo.get() << "\n";
-	      L4::Cap<void> o = object_pool.cap_alloc()->alloc(mo.get());
-	      //L4::cout << "MO_CAP=" << mo->obj_cap() << "\n";
-	      ios << o;
+              // L4::cout << "MO=" << mo.get() << "\n";
+              L4::Cap<void> o = object_pool.cap_alloc()->alloc(mo.get());
+              //L4::cout << "MO_CAP=" << mo->obj_cap() << "\n";
+              ios << o;
               mo.release();
-	      return L4_EOK;
-	    }
-	  case L4Re::Mem_alloc_::Free:
-	    {
-	      l4_umword_t rc1, rc2;
+              return L4_EOK;
+            }
+          case L4Re::Mem_alloc_::Free:
+            {
+              l4_umword_t rc1, rc2;
 
-	      Moe::Dataspace *mo = 0;
-	      ios >> rc1 >> rc2;
-	      if ((rc1 & 0xe) == 0xc) // XXX: change with cap.id_received()
-		mo = dynamic_cast<Moe::Dataspace*>(object_pool.find(rc2));
+              Moe::Dataspace *mo = 0;
+              ios >> rc1 >> rc2;
+              if ((rc1 & 0xe) == 0xc) // XXX: change with cap.id_received()
+                mo = dynamic_cast<Moe::Dataspace*>(object_pool.find(rc2));
 
+              // FIXME: check if dataspace comes from this allocator
 
-	      // FIXME: check if dataspace comes from this allocator 
+              if (!mo || mo->is_static())
+                return -L4_EINVAL;
 
-	      if (!mo || mo->is_static())
-		return -L4_EINVAL;
-
-	      object_pool.cap_alloc()->free(mo);
-	      mo->unmap();
-	      delete mo;
-	      return L4_EOK;
-	    }
-	  default:
-	    return -L4_ENOSYS;
-	  }
+              object_pool.cap_alloc()->free(mo);
+              mo->unmap();
+              delete mo;
+              return L4_EOK;
+            }
+          default:
+          return -L4_ENOSYS;
+          }
       }
+#ifndef NDEBUG
     case L4Re::Protocol::Debug:
       {
         printf("MOE: mem_alloc: quota: limit=%zd Byte, used=%zd Byte\n",
@@ -361,6 +361,7 @@ Allocator::dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios)
                Single_page_alloc_base::_avail());
         return L4_EOK;
       }
+#endif
     default:
       return -L4_EBADPROTO;
     }

@@ -5,6 +5,7 @@ TARGET          = libjpeg.a libjpeg.so
 SYSTEMS         = $(SYSTEMS_PLAIN)
 LIBS            = $(GCCLIB)
 CONTRIB_INCDIR  = libjpeg
+WARNINGS        = $(WARNINGS_MEDIUM)
 
 SRC_C           = jaricom.c jcapimin.c jcapistd.c jcarith.c jccoefct.c jccolor.c jcdctmgr.c jchuff.c \
         jcinit.c jcmainct.c jcmarker.c jcmaster.c jcomapi.c jcparam.c \
@@ -18,6 +19,3 @@ SRC_C           = jaricom.c jcapimin.c jcapistd.c jcarith.c jccoefct.c jccolor.c
 vpath %.c $(SRC_DIR)/../contrib
 
 include $(L4DIR)/mk/lib.mk
-
-# prevent warnings
-CFLAGS := $(filter-out -Wextra -Wall,$(CFLAGS))

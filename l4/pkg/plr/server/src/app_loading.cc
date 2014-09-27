@@ -20,10 +20,10 @@ Romain::App_model::Const_dataspace Romain::App_model::open_file(char const *name
 {
 	MSG() << name;
 
-	int err = open(name, O_RDONLY);
+	l4_mword_t err = open(name, O_RDONLY);
 	MSG() << "fopen: " << err;
 	if (err < 0) {
-		ERROR() << "Could not open binary file '" << name << "'";
+		ERROR() << "Could not open binary file '" << name << "'\n";
 		enter_kdebug("file not found");
 	}
 
@@ -37,8 +37,8 @@ Romain::App_model::Const_dataspace Romain::App_model::open_file(char const *name
 }
 
 l4_addr_t Romain::App_model::local_attach_ds(Romain::App_model::Const_dataspace ds,
-                                             unsigned long size,
-                                             unsigned long offset,
+                                             l4_umword_t size,
+                                             l4_umword_t offset,
                                              l4_umword_t address_hint) const
 {
 	Romain::Rm_guard r(rm(), 0); // we always init stuff for instance 0,
@@ -50,7 +50,7 @@ l4_addr_t Romain::App_model::local_attach_ds(Romain::App_model::Const_dataspace 
 	      << offset << " "
 	      << l4_round_page(offset);
 #endif
-	unsigned flags = L4Re::Rm::Search_addr;
+	l4_umword_t flags = L4Re::Rm::Search_addr;
 
 	/* This function is called during startup for attaching the
 	 * binary DS read-only to read ELF info. However, in this case
@@ -71,7 +71,7 @@ l4_addr_t Romain::App_model::local_attach_ds(Romain::App_model::Const_dataspace 
 }
 
 
-void Romain::App_model::local_detach_ds(l4_addr_t addr, unsigned long /*size*/) const
+void Romain::App_model::local_detach_ds(l4_addr_t addr, l4_umword_t /*size*/) const
 {
 #if 0
 	MSG() << (void*)addr;
@@ -82,8 +82,8 @@ void Romain::App_model::local_detach_ds(l4_addr_t addr, unsigned long /*size*/) 
 }
 
 
-int Romain::App_model::prog_reserve_area(l4_addr_t *start, unsigned long size,
-                                      unsigned flags, unsigned char align)
+l4_mword_t Romain::App_model::prog_reserve_area(l4_addr_t *start, l4_umword_t size,
+                                                l4_umword_t flags, l4_uint8_t align)
 {
 	MSG() << (void*)start << " "
 	      << size << " "
@@ -134,9 +134,9 @@ void Romain::App_model::prog_attach_kip()
 
 
 void*
-Romain::App_model::prog_attach_ds(l4_addr_t addr, unsigned long size,
-                                  Romain::App_model::Const_dataspace ds, unsigned long offset,
-                                  unsigned flags, char const *what, l4_addr_t local_start,
+Romain::App_model::prog_attach_ds(l4_addr_t addr, l4_umword_t size,
+                                  Romain::App_model::Const_dataspace ds, l4_umword_t offset,
+                                  l4_umword_t flags, char const *what, l4_addr_t local_start,
                                   bool sharedFlag)
 {
 	(void)what;
@@ -193,16 +193,16 @@ Romain::App_model::add_env()
 }
 
 
-Romain::App_model::Dataspace Romain::App_model::alloc_ds(unsigned long size) const
+Romain::App_model::Dataspace Romain::App_model::alloc_ds(l4_umword_t size) const
 {
 	Dataspace ds;
 	Romain::Region_map::allocate_ds(&ds, size);
 	return ds;
 }
 
-void Romain::App_model::copy_ds(Romain::App_model::Dataspace dst, unsigned long dst_offs,
-                                Const_dataspace src, unsigned long src_offs,
-                                unsigned long size)
+void Romain::App_model::copy_ds(Romain::App_model::Dataspace dst, l4_umword_t dst_offs,
+                                Const_dataspace src, l4_umword_t src_offs,
+                                l4_umword_t size)
 {
 #if 0
 	MSG() << std::hex << dst.cap() << " "

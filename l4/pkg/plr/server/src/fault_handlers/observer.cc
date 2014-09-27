@@ -33,6 +33,7 @@ Romain::ObserverFactory::CreateObserver(char const *name)
 	CASE("trap_limit", TrapLimitObserver::Create());
 	CASE("threads",    PThreadLockObserver::Create());
 	CASE("replicalog", new ReplicaLogObserver());
+	CASE("mso",        MarkSharedObserver::Create());
 
 #if 0
 	if (strcmp(name, "gdb") == 0) {
@@ -63,7 +64,7 @@ bool Romain::Observer::entry_reason_is_int3(L4vcpu::Vcpu* vcpu,
 	 * right now and we skip, too.
 	 */
 	l4_addr_t remote = vcpu->r()->ip - 1;
-	unsigned char op = *(unsigned char*)am->rm()->remote_to_local(remote, 0);
+	l4_uint8_t op = *(l4_uint8_t*)am->rm()->remote_to_local(remote, 0);
 	return (vcpu->r()->trapno == 3) && (op == 0xCC);
 }
 

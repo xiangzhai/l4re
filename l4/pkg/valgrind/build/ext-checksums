@@ -1,2 +1,2 @@
-23a3d41fed316568dbe468b2e4448470a1bab9fc  uclibc/lib/contrib/uclibc/libc/misc/internals/__uClibc_main.c
-6638fd79ec96dedd7583029d5381bb6f7e903612  uclibc/lib/contrib/uclibc/libc/sysdeps/linux/i386/crt1.S
+037f9a0bcbb192465940baaa490de1878acc4147  uclibc/lib/contrib/uclibc/libc/misc/internals/__uClibc_main.c
+2c3a68770f6b2314a84870d1bb8dda0d6904ad2f  uclibc/lib/contrib/uclibc/libc/sysdeps/linux/i386/crt1.S

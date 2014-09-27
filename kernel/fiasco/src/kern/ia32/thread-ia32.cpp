@@ -167,9 +167,8 @@ Thread::print_page_fault_error(Mword e)
 
 /**
  * The global trap handler switch.
- * This function handles CPU-exception reflection, emulation of CPU 
- * instructions (LIDT, WRMSR, RDMSR), int3 debug messages, 
- * kernel-debugger invocation, and thread crashes (if a trap cannot be 
+ * This function handles CPU-exception reflection, int3 debug messages,
+ * kernel-debugger invocation, and thread crashes (if a trap cannot be
  * handled).
  * @param state trap state
  * @return 0 if trap has been consumed by handler;
@@ -370,9 +369,6 @@ thread_page_fault(Address pfa, Mword error_code, Address ip, Mword flags,
 	}
     }
 
-  if (t->vcpu_pagefault(pfa, error_code, ip))
-    return 1;
-
   return t->handle_page_fault(pfa, error_code, ip, regs);
 }
 
@@ -450,6 +446,10 @@ Thread::send_exception_arch(Trap_state *ts)
   return 1; // make it an exception
 }
 
+//----------------------------------------------------------------------------
+IMPLEMENTATION [!(vmx || svm) && (ia32 || amd64)]:
+
+PRIVATE inline void Thread::_hw_virt_arch_init_vcpu_state(Vcpu_state *) {}
 
 //----------------------------------------------------------------------------
 IMPLEMENTATION [(vmx || svm) && (ia32 || amd64)]:
@@ -457,26 +457,97 @@ IMPLEMENTATION [(vmx || svm) && (ia32 || amd64)]:
 #include "vmx.h"
 #include "svm.h"
 
-IMPLEMENT inline NEEDS["vmx.h", "svm.h"]
+PRIVATE inline NEEDS["vmx.h", "svm.h"]
 void
-Thread::arch_init_vcpu_state(Vcpu_state *vcpu_state, bool ext)
+Thread::_hw_virt_arch_init_vcpu_state(Vcpu_state *vcpu_state)
 {
-  if (!ext)
-    return;
-
   if (Vmx::cpus.current().vmx_enabled())
     Vmx::cpus.current().init_vmcs_infos(vcpu_state);
 
   // currently we do nothing for SVM here
 }
 
+IMPLEMENT
+bool
+Thread::arch_ext_vcpu_enabled()
+{
+  return Vmx::cpus.current().vmx_enabled() || Svm::cpus.current().svm_enabled();
+}
+
+//----------------------------------------------------------------------------
+IMPLEMENTATION [ia32]:
+
+IMPLEMENT inline NEEDS[Thread::_hw_virt_arch_init_vcpu_state]
+void
+Thread::arch_init_vcpu_state(Vcpu_state *vcpu_state, bool ext)
+{
+  if (ext)
+    _hw_virt_arch_init_vcpu_state(vcpu_state);
+}
+
+//----------------------------------------------------------------------------
+IMPLEMENTATION [amd64]:
+
+IMPLEMENT inline NEEDS[Thread::_hw_virt_arch_init_vcpu_state]
+void
+Thread::arch_init_vcpu_state(Vcpu_state *vcpu_state, bool ext)
+{
+  vcpu_state->host_fs_base = _fs_base;
+  vcpu_state->host_gs_base = _gs_base;
+  vcpu_state->host_ds = 0;
+  vcpu_state->host_es = 0;
+  vcpu_state->host_fs = 0;
+  vcpu_state->host_ds = 0;
+  vcpu_state->user_ds32 = Gdt::gdt_data_user | Gdt::Selector_user;
+  vcpu_state->user_cs64 = Gdt::gdt_code_user | Gdt::Selector_user;
+  vcpu_state->user_cs32 = Gdt::gdt_code_user32 | Gdt::Selector_user;
+
+  if (ext)
+    _hw_virt_arch_init_vcpu_state(vcpu_state);
+}
+
 //----------------------------------------------------------------------------
 IMPLEMENTATION [ia32 || amd64]:
+
+#include <feature.h>
+KIP_KERNEL_FEATURE("segments");
 
 PROTECTED inline
 void
 Thread::vcpu_resume_user_arch()
 {}
+
+PRIVATE inline
+L4_msg_tag
+Thread::sys_gdt_x86(L4_msg_tag tag, Utcb *utcb)
+{
+  // if no words given then return the first gdt entry
+  if (EXPECT_FALSE(tag.words() == 1))
+    {
+      utcb->values[0] = Gdt::gdt_user_entry1 >> 3;
+      return Kobject_iface::commit_result(0, 1);
+    }
+
+  unsigned idx = 0;
+
+  for (unsigned entry_number = utcb->values[1];
+      entry_number < Gdt_user_entries
+      && Utcb::val_idx(Utcb::val64_idx(2) + idx) < tag.words();
+      ++idx, ++entry_number)
+    {
+      Gdt_entry d = access_once((Gdt_entry *)&utcb->val64[Utcb::val64_idx(2) + idx]);
+      if (!d.unsafe())
+        _gdt_user_entries[entry_number] = d;
+    }
+
+  if (this == current_thread())
+    load_gdt_user_entries();
+
+  return Kobject_iface::commit_result((utcb->values[1] << 3) + Gdt::gdt_user_entry1 + 3);
+}
+
+
+
 
 //----------------------------------------------------------------------------
 IMPLEMENTATION [ux]:
@@ -735,7 +806,7 @@ Thread::check_io_bitmap_delimiter_fault(Trap_state *ts)
   // check for page fault at the byte following the IO bitmap
   if (ts->_trapno == 14           // page fault?
       && (ts->_err & 4) == 0         // in supervisor mode?
-      && ts->ip() < Kmem::mem_user_max   // delimiter byte accessed?
+      && ts->ip() <= Mem_layout::User_max   // delimiter byte accessed?
       && (ts->_cr2 == Mem_layout::Io_bitmap + Mem_layout::Io_port_max / 8))
     {
       // page fault in the first byte following the IO bitmap
@@ -773,7 +844,7 @@ Thread::handle_sysenter_trap(Trap_state *ts, Address eip, bool from_user)
   if (EXPECT_FALSE
       ((ts->_trapno == 6 || ts->_trapno == 13)
        && (ts->_err & 0xffff) == 0
-       && (eip < Kmem::mem_user_max - 2)
+       && (eip < Mem_layout::User_max - 1)
        && (mem_space()->peek((Unsigned16*) eip, from_user)) == 0x340f))
     {
       // somebody tried to do sysenter on a machine without support for it

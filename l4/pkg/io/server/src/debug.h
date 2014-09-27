@@ -24,4 +24,14 @@ void set_debug_level(unsigned level);
 void d_printf(unsigned level, char const *fmt, ...);
 bool dlevel(unsigned level);
 
+enum Trace_events
+{
+  TRACE_ACPI_EVENT = 0x1,
+};
+
+void set_trace_mask(unsigned mask);
+void trace_event(unsigned event, char const *fmt, ...);
+bool trace_event_enabled(unsigned event);
+
+void acpi_set_debug_level(unsigned level);
 

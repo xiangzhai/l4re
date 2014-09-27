@@ -1,7 +1,7 @@
 #pragma once
 /**
  * \file
- * \brief   Auxiliary defintions
+ * \brief   Auxiliary definitions
  */
 /*
  * (c) 2008-2009 Adam Lackorzynski <adam@os.inf.tu-dresden.de>,

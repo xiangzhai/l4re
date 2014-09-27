@@ -8,20 +8,20 @@
  * Please see the COPYING-GPL-2 file for details.
  */
 %code top {
-#include "vbus_factory.h"
+#include "virt/vbus_factory.h"
 #include <cstring>
 
 }
 
 %code requires {
 
-#include "vdevice.h"
+#include "virt/vdevice.h"
 #include "device.h"
 #include "expression.h"
 #include "hw_device.h"
 #include <vector>
 #include <l4/cxx/string>
-#include "vbus_factory.h"
+#include "virt/vbus_factory.h"
 #include "tagged_parameter.h"
 
 }
@@ -111,7 +111,7 @@ void wrap(Device *h, Vi::Device **first, Tagged_parameter *filter)
 {
   Hw::Device *hd = dynamic_cast<Hw::Device *>(h);
 
-  Vi::Device *vd = Vi::Dev_factory::create(hd, filter);
+  Vi::Device *vd = Vi::Dev_factory::create(hd);
   for (Tagged_parameter *c = filter; c; c = c->next())
     for (Expression *x = c->val(); x; x = x->next())
       {

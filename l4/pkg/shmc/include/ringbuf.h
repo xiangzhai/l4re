@@ -125,8 +125,8 @@ enum lock_content
 static L4_CV inline void l4shmc_rb_lock(l4shmc_ringbuf_head_t *head)
 {
 	ASSERT_NOT_NULL(head);
-	assert(head->lock > lock_cont_min);
-	assert(head->lock < lock_cont_max);
+	ASSERT_ASSERT(head->lock > lock_cont_min);
+	ASSERT_ASSERT(head->lock < lock_cont_max);
 
 	while (!l4util_cmpxchg32(&head->lock,
 	                         unlocked, locked))
@@ -137,8 +137,8 @@ static L4_CV inline void l4shmc_rb_lock(l4shmc_ringbuf_head_t *head)
 static L4_CV inline void l4shmc_rb_unlock(l4shmc_ringbuf_head_t *head)
 {
 	ASSERT_NOT_NULL(head);
-	assert(head->lock > lock_cont_min);
-	assert(head->lock < lock_cont_max);
+	ASSERT_ASSERT(head->lock > lock_cont_min);
+	ASSERT_ASSERT(head->lock < lock_cont_max);
 
 	head->lock = unlocked;
 }

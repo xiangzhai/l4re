@@ -11,6 +11,7 @@ EXTRA_TARGET += \
   error_helper \
   event     \
   log       \
+  inhibitor \
   mem_alloc \
   namespace \
   parent    \

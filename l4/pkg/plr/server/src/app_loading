@@ -76,20 +76,20 @@ class App_model : public Ldr::Base_app_model<Romain::App_stack>
 
 		static Const_dataspace open_file(char const *name);
 
-		Dataspace    alloc_ds(unsigned long size) const;
-		static void  copy_ds(Dataspace dst, unsigned long dst_offs,
-		                     Const_dataspace src, unsigned long src_offs,
-		                     unsigned long size);
+		Dataspace    alloc_ds(l4_umword_t size) const;
+		static void  copy_ds(Dataspace dst, l4_umword_t dst_offs,
+		                     Const_dataspace src, l4_umword_t src_offs,
+		                     l4_umword_t size);
 
-		void *       prog_attach_ds(l4_addr_t addr, unsigned long size,
-		                            Const_dataspace ds, unsigned long offset,
-		                            unsigned flags, char const *what, l4_addr_t local_start = 0,
+		void *       prog_attach_ds(l4_addr_t addr, l4_umword_t size,
+		                            Const_dataspace ds, l4_umword_t offset,
+		                            l4_umword_t flags, char const *what, l4_addr_t local_start = 0,
 		                            bool shared = false);
-		l4_addr_t    local_attach_ds(Const_dataspace ds, unsigned long size,
-		                             unsigned long offset, l4_umword_t address_hint = 0) const;
-		void         local_detach_ds(l4_addr_t addr, unsigned long /*size*/) const;
-		int          prog_reserve_area(l4_addr_t *start, unsigned long size,
-		                               unsigned flags, unsigned char align);
+		l4_addr_t    local_attach_ds(Const_dataspace ds, l4_umword_t size,
+		                             l4_umword_t offset, l4_umword_t address_hint = 0) const;
+		void         local_detach_ds(l4_addr_t addr, l4_umword_t /*size*/) const;
+		l4_mword_t   prog_reserve_area(l4_addr_t *start, l4_umword_t size,
+		                               l4_umword_t flags, l4_uint8_t align);
 
 		Dataspace    alloc_app_stack();
 		void         prog_attach_stack(Dataspace app_stack);
@@ -125,7 +125,7 @@ class App_model : public Ldr::Base_app_model<Romain::App_stack>
 		void push_initial_caps()
 		{
 			L4Re::Env::Cap_entry const *c = L4Re::Env::env()->initial_caps();
-			unsigned count = 0;
+			l4_umword_t count = 0;
 			for ( ; c->flags != ~0UL; ++c, ++count) {
 				_stack.push(*c);
 			}
@@ -137,15 +137,15 @@ class App_model : public Ldr::Base_app_model<Romain::App_stack>
 
 		void push_argv_strings()
 		{
-			for (unsigned i = 0; i < _argc; ++i) {
+			for (l4_umword_t i = 0; i < _argc; ++i) {
 				_remote_argv[i] = _stack.push_str(_argv[i], strlen(_argv[i]));
 			}
 		}
 
 		void push_trampoline()
 		{
-			unsigned v = 0;
-			for (unsigned i = 0; i < Romain::TRAMPOLINE_SIZE / sizeof(v); ++i)
+			l4_umword_t v = 0;
+			for (l4_umword_t i = 0; i < Romain::TRAMPOLINE_SIZE / sizeof(v); ++i)
 				_stack.push(v);
 			INFO() << "trampoline ptr " << (void*)_stack.ptr()
 			       << " " << (void*)_stack.relocate(_stack.ptr());
@@ -167,7 +167,7 @@ class App_model : public Ldr::Base_app_model<Romain::App_stack>
 		void push_envp()
 		{
 			_stack.push(0UL);
-			for (unsigned i = 0; i < _env_count; ++i) {
+			for (l4_umword_t i = 0; i < _env_count; ++i) {
 				_stack.push_local_ptr(_remote_env[i]);
 			}
 		}
@@ -176,7 +176,7 @@ class App_model : public Ldr::Base_app_model<Romain::App_stack>
 		void push_argv()
 		{
 			_stack.push(0UL);
-			for (unsigned i = _argc; i > 0; --i) {
+			for (l4_umword_t i = _argc; i > 0; --i) {
 				_stack.push_local_ptr(_remote_argv[i-1]);
 			}
 			_stack.push(_argc);
@@ -190,11 +190,11 @@ class App_model : public Ldr::Base_app_model<Romain::App_stack>
 	private:
 		Const_dataspace  _binary_ds;       // dataspace containing the original ELF binary
 		Romain::Region_map *_rm;           // our region map
-		unsigned         _argc;            // app argc
+		l4_umword_t         _argc;            // app argc
 		char const     **_argv;            // app argv
 		char const     *_remote_argv[32];  // XXX
 		char const     *_remote_env[32];   // XXX
-		unsigned         _env_count;       //
+		l4_umword_t         _env_count;       //
 		Dataspace        _utcb_area;       // XXX: this is per thread!
 
 		/*
@@ -212,7 +212,7 @@ class App_model : public Ldr::Base_app_model<Romain::App_stack>
 		l4_addr_t        _lockinfo_remote;
 
 	public:
-		App_model(char const *filename, unsigned argc, char const **argv)
+		App_model(char const *filename, l4_umword_t argc, char const **argv)
 			: _binary_ds(Romain::App_model::open_file(filename)),
 			  _argc(argc), _argv(argv), _env_count(0),
 		      _trampoline_local(0), _trampoline_remote(0),
@@ -258,7 +258,7 @@ class App_model : public Ldr::Base_app_model<Romain::App_stack>
 };
 
 
-class AppModelAddressTranslator : public Romain::AddressTranslator
+struct AppModelAddressTranslator : public Romain::AddressTranslator
 {
 	Romain::App_model *am;
 	Romain::App_instance *inst;

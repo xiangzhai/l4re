@@ -21,6 +21,7 @@
 unsigned long __per_cpu_offset[NR_CPUS];
 
 extern void driver_init(void);
+extern int ide_init(void);
 extern int classes_init(void);
 
 void __init __attribute__((used)) l4dde26_init(void)
@@ -29,6 +30,9 @@ void __init __attribute__((used)) l4dde26_init(void)
 	ddekit_init();
 
 	l4dde26_kmalloc_init();
+
+        l4dde26_process_init();
+        l4dde26_softirq_init ();
 
 	/* Init Linux driver framework before trying to add PCI devs to the bus */
 	driver_init();

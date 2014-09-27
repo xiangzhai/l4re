@@ -29,10 +29,10 @@ void Romain::App_thread::alloc_vcpu_mem()
 
 	/* store segment registers - stolen from the example */
 	//_vcpu->r()->gs = _master_ds;
-	_vcpu->r()->fs = _master_ds;
-	_vcpu->r()->es = _master_ds;
-	_vcpu->r()->ds = _master_ds;
-	_vcpu->r()->ss = _master_ds;
+	_vcpu->r()->fs = _master_ds & 0xFF;
+	_vcpu->r()->es = _master_ds & 0xFF;
+	_vcpu->r()->ds = _master_ds & 0xFF;
+	_vcpu->r()->ss = _master_ds & 0xFF;
 
 	/* We want to catch ALL exceptions for this vCPU. */
 	_vcpu->saved_state()->set(
@@ -89,7 +89,7 @@ void Romain::App_thread::start()
 	_vcpu->entry_sp(handler_sp());
 	_vcpu->entry_ip((l4_umword_t)_handler_fn);
 
-	int err = pthread_create(&_pthread, NULL, pthread_fn, this);
+	l4_mword_t err = pthread_create(&_pthread, NULL, pthread_fn, this);
 	_check(err != 0, "pthread_create");
 
 	//_vcpu_cap = L4::Cap<L4::Thread>(pthread_getl4cap(_pthread));
@@ -101,7 +101,7 @@ void Romain::App_thread::start()
  *
  * This checksum is used to compare replica states.
  */
-unsigned long
+l4_umword_t
 Romain::App_thread::csum_state()
 {
 	// XXX: this should also include the UTCB, which
@@ -116,6 +116,20 @@ Romain::App_thread::csum_state()
 	     /*+ _vcpu->r()->fs
 	     + _vcpu->r()->gs*/
 	     ;
+}
+
+
+void Romain::App_thread::commit_client_gdt()
+{
+	vcpu()->r()->fs = fiasco_gdt_set(vcpu_cap().cap(), gdt(), gdt_size(), 1, l4_utcb());
+
+	if (_client_gdt[1].base_low != 0)
+		vcpu()->r()->gs = vcpu()->r()->fs + 8;
+
+	DEBUG() << "CPU " << cpu() << " FS " << std::hex << vcpu()->r()->fs;
+	DEBUG() << "CPU " << cpu() << " GS " << std::hex << vcpu()->r()->gs;
+	//vcpu()->print_state();
+	_gdt_modified = false;
 }
 
 
@@ -169,7 +183,7 @@ Romain::Thread_group::ex_regs(Romain::App_thread *caller)
 	l4_umword_t esp = thread->vcpu()->r()->sp;
 
 	DEBUG() << (void*)thread->vcpu();
-	for (unsigned i = 0; i < threads.size(); ++i) {
+	for (l4_umword_t i = 0; i < threads.size(); ++i) {
 		threads[i]->vcpu()->r()->ip = buf->mr[1];
 		threads[i]->vcpu()->r()->sp = buf->mr[2];
 	}
@@ -212,13 +226,13 @@ Romain::Thread_group::scheduler_run(Romain::App_thread *caller)
 
 
 void
-Romain::Thread_group::sanity_check_control(unsigned flags, l4_utcb_t *utcb)
+Romain::Thread_group::sanity_check_control(l4_umword_t flags, l4_utcb_t *utcb)
 {
 	DEBUG() << "Control flags: " << std::hex << l4_utcb_mr_u(utcb)->mr[L4_THREAD_CONTROL_MR_IDX_FLAGS];
 
 	if ((flags & L4_THREAD_CONTROL_ALIEN) ||
 		(flags & L4_THREAD_CONTROL_UX_NATIVE)) {
-		ERROR() << "ux_native and alien not supported yet";
+		ERROR() << "ux_native and alien not supported yet\n";
 	}
 
 	if (flags & L4_THREAD_CONTROL_BIND_TASK) {
@@ -228,7 +242,7 @@ Romain::Thread_group::sanity_check_control(unsigned flags, l4_utcb_t *utcb)
 		        << l4_utcb_mr_u(utcb)->mr[L4_THREAD_CONTROL_MR_IDX_BIND_UTCB] << ", "
 		        << l4_fpage_page(fp) << ")";
 		if (l4_fpage_page(fp) != (L4Re::This_task >> L4_CAP_SHIFT)) {
-			ERROR() << "Binding to different task not supported yet.";
+			ERROR() << "Binding to different task not supported yet.\n";
 			enter_kdebug("error");
 		}
 		/* Apart from these checks, don't do anything. The replica vCPUs
@@ -236,8 +250,8 @@ Romain::Thread_group::sanity_check_control(unsigned flags, l4_utcb_t *utcb)
 		 */
 	}
 
-	unsigned handler = 0;
-	unsigned pager   = 0;
+	l4_umword_t handler = 0;
+	l4_umword_t pager   = 0;
 
 	if (flags & L4_THREAD_CONTROL_SET_PAGER) {
 		pager = l4_utcb_mr_u(utcb)->mr[L4_THREAD_CONTROL_MR_IDX_PAGER];
@@ -253,17 +267,17 @@ Romain::Thread_group::sanity_check_control(unsigned flags, l4_utcb_t *utcb)
 		if ((handler != pager)  || 
 			(handler != Ldr::Remote_app_std_caps::Rm_thread_cap << L4_CAP_SHIFT) ||
 			(pager != Ldr::Remote_app_std_caps::Rm_thread_cap << L4_CAP_SHIFT)) {
-			ERROR() << "setting different pager or exc. handler not supported yet";
+			ERROR() << "setting different pager or exc. handler not supported yet\n";
 			enter_kdebug("error");
 		}
 	}
 
 	if (handler && (handler != Ldr::Remote_app_std_caps::Rm_thread_cap << L4_CAP_SHIFT)) {
-		ERROR() << "setting non-standard pager not supported yet";
+		ERROR() << "setting non-standard pager not supported yet\n";
 	}
 
 	if (pager && (pager != Ldr::Remote_app_std_caps::Rm_thread_cap << L4_CAP_SHIFT)) {
-		ERROR() << "setting non-standard exc. handler not supported yet";
+		ERROR() << "setting non-standard exc. handler not supported yet\n";
 	}
 }
 
@@ -271,7 +285,7 @@ Romain::Thread_group::sanity_check_control(unsigned flags, l4_utcb_t *utcb)
 void
 Romain::Thread_group::control(Romain::App_thread *t, l4_utcb_t *utcb, Romain::App_model *am)
 {
-	unsigned flags = l4_utcb_mr_u(utcb)->mr[L4_THREAD_CONTROL_MR_IDX_FLAGS];
+	l4_umword_t flags = l4_utcb_mr_u(utcb)->mr[L4_THREAD_CONTROL_MR_IDX_FLAGS];
 
 	sanity_check_control(flags, utcb);
 
@@ -295,9 +309,9 @@ Romain::Thread_group::control(Romain::App_thread *t, l4_utcb_t *utcb, Romain::Ap
 		                            L4Re::Rm::Search_addr, L4_PAGESHIFT, false);
 		am->rm()->release();
 
-		DEBUG() << "Remote TIP address: " << tip_addr;
+		INFO() << "Remote TIP address: " << tip_addr;
 
-		for (unsigned i = 0; i < threads.size(); ++i) {
+		for (l4_umword_t i = 0; i < threads.size(); ++i) {
 			threads[i]->setup_utcb_segdesc(reinterpret_cast<l4_addr_t>(tip_addr), 4);
 
 			l4_addr_t utcb_local = am->rm()->remote_to_local(utcb_remote, i);
@@ -323,7 +337,7 @@ Romain::Thread_group::gdt(Romain::App_thread* t, l4_utcb_t *utcb)
 	enum { replica_gs_base = 0x58 };
 
 	l4_msgtag_t *tag = reinterpret_cast<l4_msgtag_t*>(&t->vcpu()->r()->ax);
-	DEBUG() << BOLD_BLUE "GDT: words" << NOCOLOR << " = " << tag->words();
+	DEBUG() << BOLD_BLUE << "GDT: words" << NOCOLOR << " = " << tag->words();
 
 	// 1 word -> query GDT start
 	if (tag->words() == 1) {
@@ -331,10 +345,10 @@ Romain::Thread_group::gdt(Romain::App_thread* t, l4_utcb_t *utcb)
 		t->vcpu()->r()->ax = l4_msgtag(0, 1, 0, 0).raw;
 		enter_kdebug("gdt query");
 	} else { // setup new GDT entry
-		unsigned idx      = l4_utcb_mr_u(utcb)->mr[1];
-		unsigned numbytes = (tag->words() == 4) ? 8 : 16;
+		l4_umword_t idx      = l4_utcb_mr_u(utcb)->mr[1];
+		l4_umword_t numbytes = (tag->words() == 4) ? 8 : 16;
 
-		for (unsigned i = 0; i < threads.size(); ++i) {
+		for (l4_umword_t i = 0; i < threads.size(); ++i) {
 			Romain::App_thread* thread = threads[i];
 
 			if ((idx == 0) and (numbytes == 8)) { // actually, we only support a single entry here
@@ -395,7 +409,7 @@ void* Romain::GateAgent::listener_function(void *gk)
 		memcpy(utcb_copy, my_utcb, L4_UTCB_OFFSET);
 		memcpy(my_utcb, (void*)agent->current_client->remote_utcb(), L4_UTCB_OFFSET);
 
-		//outhex32((unsigned)agent->current_client->vcpu()); outstring(" enter kernel\n");
+		//outhex32((l4_umword_t)agent->current_client->vcpu()); outstring(" enter kernel\n");
 		asm volatile( L4_ENTER_KERNEL
 			  : "=a" (agent->current_client->vcpu()->r()->ax),
 		        "=b" (agent->current_client->vcpu()->r()->bx),
@@ -412,8 +426,8 @@ void* Romain::GateAgent::listener_function(void *gk)
 			  : "memory", "cc"
 		);
 #if 0
-		outhex32((unsigned)agent->current_client->vcpu()); outstring(" ret from kernel ");
-		outhex32((unsigned)agent->current_client->vcpu()->r()->ax); outstring("\n");
+		outhex32((l4_umword_t)agent->current_client->vcpu()); outstring(" ret from kernel ");
+		outhex32((l4_umword_t)agent->current_client->vcpu()->r()->ax); outstring("\n");
 #endif
 
 		memcpy((void*)agent->current_client->remote_utcb(), my_utcb, L4_UTCB_OFFSET);

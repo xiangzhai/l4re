@@ -28,9 +28,7 @@
 
 #define MSG() DEBUGf(Romain::Log::Faults)
 #define MSGi(inst) MSG() << "[" << (inst)->id() << "] "
-#define MSGit(inst,tg) MSG() << "[" << (inst)->id() << "] " << BLUE << "{" << tg->name << "}" << NOCOLOR
-
-#define ____dummy " /* ST2 highlighting fix XXX */
+#define MSGit(inst,tg) MSG() << "[" << (inst)->id() << "] " << PURPLE << "{" << tg->name << "}" << NOCOLOR
 
 EXTERN_C void *pthread_fn(void *data);
 EXTERN_C void *pthread_fn(void *data)
@@ -99,11 +97,11 @@ class SplitHandler
 	Romain::InstanceManager *_im;
 	Romain::Replicator       _replicator;
 	SplitInfo **             _psi;
-	unsigned long *          _checksums;
+	l4_umword_t*          _checksums;
 
 	void wait_for_instances()
 	{
-		for (unsigned cnt = 0; cnt < _im->instance_count(); ++cnt) {
+		for (l4_umword_t cnt = 0; cnt < _im->instance_count(); ++cnt) {
 #if SYNC_IPC
 			l4_umword_t label  = 0;
 			l4_msgtag_t t      = l4_ipc_wait(l4_utcb(), &label, L4_IPC_NEVER);
@@ -127,15 +125,15 @@ class SplitHandler
 
 	bool validate_instances()
 	{
-		for (unsigned cnt = 1; cnt < _im->instance_count(); ++cnt) {
+		for (l4_umword_t cnt = 1; cnt < _im->instance_count(); ++cnt) {
 			if (_checksums[cnt] != _checksums[cnt-1]) {
-				ERROR() << std::hex << _checksums[cnt] << " != " << _checksums[cnt-1];
-				ERROR() << "State mismatch detected!";
-				ERROR() << "=== vCPU states ===";
+				ERROR() << std::hex << _checksums[cnt] << " != " << _checksums[cnt-1] << "\n";
+				ERROR() << "State mismatch detected!\n";
+				ERROR() << "=== vCPU states ===\n";
 				
-				for (unsigned i = 0; i < _im->instance_count(); ++i) {
+				for (l4_umword_t i = 0; i < _im->instance_count(); ++i) {
 					ERROR() << "Instance " << _psi[i]->i->id() << " "
-					        << "csum " << std::hex << _psi[i]->t->csum_state();
+					        << "csum " << std::hex << _psi[i]->t->csum_state() << "\n";
 					_psi[i]->t->print_vcpu_state();
 				}
 
@@ -148,7 +146,7 @@ class SplitHandler
 	void handle_fault()
 	{
 		L4vcpu::Vcpu *vcpu = _psi[0]->t->vcpu();
-		unsigned trap      = _psi[0]->t->vcpu()->r()->trapno;
+		l4_umword_t trap      = _psi[0]->t->vcpu()->r()->trapno;
 
 		while (trap) {
 			MSGi(_psi[0]->i) << BOLD_YELLOW << "TRAP 0x"
@@ -161,7 +159,7 @@ class SplitHandler
 			switch(v) {
 				case Romain::Observer::Finished:
 					{
-						for (unsigned c = 1; c < _im->instance_count(); ++c) {
+						for (l4_umword_t c = 1; c < _im->instance_count(); ++c) {
 							_im->fault_notify(_psi[c]->i, _psi[c]->t, _psi[c]->tg, _psi[c]->a);
 						}
 					}
@@ -169,7 +167,7 @@ class SplitHandler
 				case Romain::Observer::Replicatable:
 					{
 						_replicator.put(_psi[0]->t);
-						for (unsigned c = 1; c < _im->instance_count(); ++c) {
+						for (l4_umword_t c = 1; c < _im->instance_count(); ++c) {
 							_replicator.get(_psi[c]->t);
 						}
 					}
@@ -187,7 +185,7 @@ class SplitHandler
 
 	void resume_instances()
 	{
-		for (unsigned c = 0; c < _im->instance_count(); ++c) {
+		for (l4_umword_t c = 0; c < _im->instance_count(); ++c) {
 			MSGi(_psi[c]->i) << "Resuming instance @ " << std::hex << _psi[c]->t->vcpu()->r()->ip;
 #if SYNC_IPC
 			l4_ipc_send(_psi[c]->cap, l4_utcb(), l4_msgtag(0,0,0,0), L4_IPC_NEVER);
@@ -202,7 +200,7 @@ class SplitHandler
 
 		static SplitHandler*     _handlers[5];
 
-		static SplitHandler* get(unsigned idx)
+		static SplitHandler* get(l4_umword_t idx)
 		{
 			assert(idx == 0); // for now
 			return _handlers[idx];
@@ -250,7 +248,7 @@ class SplitHandler
 		      _im(im), _replicator()
 		{
 			_psi       = new SplitInfo*[_im->instance_count()];
-			_checksums = new unsigned long [_im->instance_count()];
+			_checksums = new l4_umword_t[_im->instance_count()];
 			memset(_psi, 0, sizeof(SplitInfo*) * _im->instance_count());
 		}
 
@@ -282,7 +280,7 @@ class SplitHandler
 			}
 		}
 
-		void psi(unsigned idx, SplitInfo* si)
+		void psi(l4_umword_t idx, SplitInfo* si)
 		{ _psi[idx] = si; }
 
 		l4_cap_idx_t split_handler_cap()
@@ -315,17 +313,18 @@ void __attribute__((noreturn)) Romain::InstanceManager::VCPU_startup(Romain::Ins
 	L4vcpu::Vcpu *vcpu = t->vcpu();
 	vcpu->task(i->vcpu_task());
 
-	tg->ready();
-	
-	t->commit_client_gdt();
-	//t->print_vcpu_state();
-
 	char namebuf[16];
-	snprintf(namebuf, 16, "%s.%d", tg->name.c_str(), i->id());
+	snprintf(namebuf, 16, "%s.%ld", tg->name.c_str(), i->id());
 	l4_debugger_set_object_name(t->vcpu_cap().cap(), namebuf);
-	DEBUG() << std::hex << (unsigned)t->vcpu_cap().cap() << " = "
+	DEBUG() << std::hex << (l4_umword_t)t->vcpu_cap().cap() << " = "
 	        << l4_debugger_global_id(t->vcpu_cap().cap())
 	        << " ->" << namebuf;
+
+	tg->ready();
+
+	if (t->gdt_changed()) {
+		t->commit_client_gdt();
+	}
 
 	struct timeval tv;
 	gettimeofday(&tv, 0);
@@ -336,16 +335,29 @@ void __attribute__((noreturn)) Romain::InstanceManager::VCPU_startup(Romain::Ins
 
 	MSGit(i,tg) << "Resuming instance @ " << (void*)vcpu->r()->ip << " ...";
 
-	Measurements::GenericEvent* ev = m->logbuf()->next();
-	ev->header.tsc                 = Romain::_the_instance_manager->logbuf()->getTime(Log::logLocalTSC);
+#if EVENT_LOGGING
+	Measurements::GenericEvent* ev = Romain::globalLogBuf->next();
+	ev->header.tsc                 = Romain::globalLogBuf->getTime(Log::logLocalTSC);
 	ev->header.vcpu                = (l4_uint32_t)vcpu;
 	ev->header.type                = Measurements::Thread_start;
+	ev->data.threadstart.startEIP  = vcpu->r()->ip;
+#endif
+
+#if WATCHDOG
+	/* Enable watchdog for this replica */
+	if (tg->watchdog->enabled()) {
+		if (tg->watchdog->enable(i, t))
+			INFO() << "Watchdog enabled for instance " << i->id();
+		else
+			INFO() << "Failed to enable watchdog!";
+	}
+#endif
+
+	t->ts_user_resume(true);
 
 	L4::Cap<L4::Thread> cap = t->vcpu_cap();
-
 	cap->vcpu_resume_commit(cap->vcpu_resume_start());
-
-	enter_kdebug("after resume");
+	enter_kdebug("startup: after resume");
 	l4_sleep_forever();
 }
 
@@ -360,7 +372,10 @@ static void local_vCPU_handling(Romain::InstanceManager *m,
 	//      expected by the master task, which might differ from the client.
 
 	L4vcpu::Vcpu *vcpu = t->vcpu();
-	unsigned trap = t->vcpu()->r()->trapno;
+	l4_umword_t trap = t->vcpu()->r()->trapno;
+#if BENCHMARKING
+	t->ts_from_user();
+#endif
 
 	/*
 	 * We potentially handle multiple traps here: As we are emulating a bunch
@@ -370,6 +385,11 @@ static void local_vCPU_handling(Romain::InstanceManager *m,
 	 * a new exception in such circumstances.
 	 */
 	while (trap) {
+		static int x=0;
+		if (!x) {
+			++x;
+			INFO() << "first " << i->id();
+		}
 		MSGit(i,tg) << BOLD_YELLOW << "TRAP 0x" << std::hex << vcpu->r()->trapno
 		        << " @ 0x" << vcpu->r()->ip << NOCOLOR;
 
@@ -377,6 +397,16 @@ static void local_vCPU_handling(Romain::InstanceManager *m,
 			m->fault_notify(i,t,tg,a);
 			break;
 		}
+
+#if WATCHDOG
+		Romain::RedundancyCallback::EnterReturnVal wrv = Romain::RedundancyCallback::Invalid;
+		if (tg->watchdog->enabled()) {
+			if (t->watchdog_ss())
+				wrv = tg->watchdog->single_stepping(i, t, a);
+			if (t->watchdog_breakpointing())
+				wrv = tg->watchdog->breakpointing(i, t, a);
+		}
+#endif
 
 #if 0
 		/*
@@ -394,13 +424,27 @@ static void local_vCPU_handling(Romain::InstanceManager *m,
 #endif
 
 		Romain::Observer::ObserverReturnVal v         = Romain::Observer::Invalid;
-
+		Romain::RedundancyCallback::EnterReturnVal rv;
 		/*
 		 * Enter redundancy mode. May cause vCPU to block until leader vCPU executed
 		 * its handlers.
 		 */
-		Romain::RedundancyCallback::EnterReturnVal rv = tg->redundancyCB->enter(i,t,a);
+#if WATCHDOG
+		if (!tg->watchdog->enabled()) {
+			rv = tg->redundancyCB->enter(i,t,tg,a);
+		} else {
+			if (wrv != Romain::RedundancyCallback::Watchdog) {
+				rv = tg->redundancyCB->enter(i,t,tg,a);
 		//MSGi(i) << "red::enter: " << rv;
+			} else {
+				rv = wrv;
+			}
+		}
+#else
+		rv = tg->redundancyCB->enter(i,t,tg,a);
+#endif
+
+		t->ts_sync_leave();
 
 		/*
 		 * Case 1: we are the first to exec this system call.
@@ -458,7 +502,8 @@ static void local_vCPU_handling(Romain::InstanceManager *m,
 		if ((trap = t->get_pending_trap()) != 0)
 			t->vcpu()->r()->trapno = trap;
 
-		tg->redundancyCB->resume(i, t, a);
+		t->ts_resume_start();
+		tg->redundancyCB->resume(i, t, tg, a);
 	}
 
 	//print_vcpu_state();
@@ -516,15 +561,24 @@ void __attribute__((noreturn)) Romain::InstanceManager::VCPU_handler(Romain::Ins
 	L4vcpu::Vcpu *vcpu = t->vcpu();
 	vcpu->state()->clear(L4_VCPU_F_EXCEPTIONS | L4_VCPU_F_DEBUG_EXC);
 	handler_prolog(t);
+	unsigned long long t1, t2;
 
-	Measurements::GenericEvent* ev = m->logbuf()->next();
-	ev->header.tsc     = Romain::_the_instance_manager->logbuf()->getTime(Log::logLocalTSC);
+#if EVENT_LOGGING
+	Measurements::GenericEvent* ev = Romain::globalLogBuf->next();
+	ev->header.tsc     = Romain::globalLogBuf->getTime(Log::logLocalTSC);
 	ev->header.vcpu        = (l4_uint32_t)vcpu;
 	ev->header.type        = Measurements::Trap;
 	ev->data.trap.start    = 1;
 	ev->data.trap.trapaddr = vcpu->r()->ip;
 	ev->data.trap.trapno   = vcpu->r()->trapno;
+#endif
 
+#if BENCHMARKING
+	unsigned long long t1, t2;
+	t1 = l4_rdtsc();
+#endif
+
+	t1 = l4_rdtsc();
 #if MIGRATE_VCPU
 	migrated_vCPU_handling(m, i, t, tg, a);
 #elif SPLIT_HANDLING
@@ -535,16 +589,34 @@ void __attribute__((noreturn)) Romain::InstanceManager::VCPU_handler(Romain::Ins
 #error No vCPU handling method selected!
 #endif
 
-	ev = m->logbuf()->next();
-	ev->header.tsc     = Romain::_the_instance_manager->logbuf()->getTime(Log::logLocalTSC);
+#if WATCHDOG
+	if (tg->watchdog->enabled())
+		tg->watchdog->reset(i, t, t->watchdog_timeout());
+#endif
+	t2 = l4_rdtsc();
+
+#if BENCHMARKING
+	t2 = l4_rdtsc();
+	t->count_handling(t2-t1);
+#endif
+
+	if (t->gdt_changed()) {
+		t->commit_client_gdt();
+	}
+
+#if EVENT_LOGGING
+	ev = Romain::globalLogBuf->next();
+	ev->header.tsc     = Romain::globalLogBuf->getTime(Log::logLocalTSC);
 	ev->header.vcpu      = (l4_uint32_t)vcpu;
 	ev->header.type      = Measurements::Trap;
 	ev->data.trap.start  = 0;
 	ev->data.trap.trapno = ~0U;
+#endif
 
+	t->ts_user_resume();
 	L4::Cap<L4::Thread> self;
 	self->vcpu_resume_commit(self->vcpu_resume_start());
 
-	enter_kdebug("after resume");
+	enter_kdebug("notify: after resume");
 	l4_sleep_forever();
 }

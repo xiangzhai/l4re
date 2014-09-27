@@ -64,18 +64,18 @@ Moe::Dataspace_noncont::address(l4_addr_t offset,
   if ((rw == Writable) && (p.flags() & Page_cow))
     {
       if (Moe::Pages::ref_count(*p) == 1)
-	p.set(*p, p.flags() & ~Page_cow);
+        p.set(*p, p.flags() & ~Page_cow);
       else
-	{
-	  void *np = Page_alloc::_alloc(quota(), page_size(), page_size());
-	  Moe::Pages::share(np);
+        {
+          void *np = Page_alloc::_alloc(quota(), page_size(), page_size());
+          Moe::Pages::share(np);
 
-	  // L4::cout << "copy on write for " << *p << " to " << np << '\n';
-	  memcpy(np, *p, page_size());
-	  unmap_page(p);
-	  Moe::Pages::unshare(*p);
-	  p.set(np, 0);
-	}
+          // L4::cout << "copy on write for " << *p << " to " << np << '\n';
+          memcpy(np, *p, page_size());
+          unmap_page(p);
+          Moe::Pages::unshare(*p);
+          p.set(np, 0);
+        }
     }
 
   if (!*p)
@@ -96,7 +96,7 @@ Moe::Dataspace_noncont::pre_allocate(l4_addr_t offset, l4_size_t size, unsigned 
     {
       Address a = address(offset, rights & L4_CAP_FPAGE_W ? Writable : Read_only);
       if (a.is_nil())
-	return a.error();
+        return a.error();
     }
   return 0;
 }
@@ -199,24 +199,24 @@ namespace {
       pages = (unsigned long*)Page_alloc::_alloc(quota(), meta_size(), Meta_align);
       memset(pages, 0, meta_size());
     }
-      
+
     ~Mem_small() throw()
     {
       register const unsigned long pgsz = page_size();
       for (unsigned long i = num_pages(); i > 0; --i)
-	free_page(page((i-1)*pgsz));
+        free_page(page((i-1)*pgsz));
 
       Page_alloc::_free(quota(), pages, meta_size());
     }
 
     Page &page(unsigned long offs) const throw()
     { return (Page &)(pages[offs >> 12]); }
-    
+
     Page &alloc_page(unsigned long offs) const throw()
     { return (Page &)(pages[offs >> 12]); }
 
   };
-  
+
   class Mem_big : public Moe::Dataspace_noncont
   {
   public:
@@ -227,13 +227,12 @@ namespace {
     static unsigned long entries2() throw()
     { return meta2_size()/sizeof(unsigned long); }
 
-  
   private:
     class L1
     {
     private:
       unsigned long p;
-      
+
     public:
       Page *l2() const throw() { return (Page*)(p & ~0xfffUL); }
       Page &operator [] (unsigned long offs) throw()
@@ -247,8 +246,8 @@ namespace {
 
     L1 &__p(unsigned long offs) const throw()
     { return ((L1*)pages)[(offs >> 12) / entries2()]; }
-    
-  public:   
+
+  public:
     unsigned long entries1() const throw()
     { return (num_pages() + entries2() - 1)/entries2(); }
 
@@ -265,18 +264,18 @@ namespace {
     ~Mem_big() throw()
     {
       for (unsigned long i = 0; i < size(); i+=page_size())
-	{
-	  free_page(page(i));
-	}
+        {
+          free_page(page(i));
+        }
 
       for (unsigned long i = 0; i < size(); i+=page_size()*1024)
-	{
-	  L1 &p = __p(i); 
+        {
+          L1 &p = __p(i); 
 
-	  if (*p)
-	    Page_alloc::_free(quota(), *p, meta2_size());
-	  p.set(0);
-	}
+          if (*p)
+            Page_alloc::_free(quota(), *p, meta2_size());
+          p.set(0);
+        }
 
       Page_alloc::_free(quota(), pages, meta1_size());
     }
@@ -285,26 +284,26 @@ namespace {
     {
       static Page invalid_page;
       if (!__p(offs).cnt())
-	return invalid_page;
-      
+        return invalid_page;
+
       return __p(offs)[offs];
     }
-    
+
     Page &alloc_page(unsigned long offs) const
     {
       L1 &_p = __p(offs);
       if (!_p.cnt())
-	{
-	  void *a = Page_alloc::_alloc(quota(), meta2_size(), meta2_size());
+        {
+          void *a = Page_alloc::_alloc(quota(), meta2_size(), meta2_size());
 
-	  _p.set(a);
-	  memset(a, 0, meta2_size());
-	}
+          _p.set(a);
+          memset(a, 0, meta2_size());
+        }
 
       Page &_pa = _p[offs];
 
       if (!_pa.valid())
-	_p.inc();
+        _p.inc();
 
       return _pa;
     }

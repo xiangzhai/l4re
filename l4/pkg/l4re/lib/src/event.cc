@@ -88,4 +88,17 @@ Event::get_axis_info(l4_umword_t id, unsigned naxes, unsigned *axis,
   return 0;
 }
 
+long
+Event::get_stream_state_for_id(l4_umword_t stream_id, Event_stream_state *state) const throw()
+{
+  L4::Ipc::Iostream io(l4_utcb());
+  io << Opcode(Event_::Get_stream_state_for_id) << stream_id;
+  long res = l4_error(io.call(cap(), L4Re::Protocol::Event));
+  if (res < 0)
+    return res;
+
+  io.get(*state);
+  return 0;
+}
+
 }

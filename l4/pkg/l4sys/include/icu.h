@@ -34,6 +34,13 @@
  * \brief The ICU class.
  *
  * <c>\#include <l4/sys/icu.h></c>
+ *
+ * To setup an IRQ vector the following steps are required:
+ * 1. #l4_icu_set_mode() (optional if IRQ has a default mode)
+ * 2. #l4_irq_attach() to attach the IRQ capability to a thread
+ * 3. #l4_icu_bind()
+ * 4. #l4_icu_unmask() to receive the first IRQ
+ *
  */
 
 
@@ -276,7 +283,8 @@ l4_icu_msi_info_u(l4_cap_idx_t icu, unsigned irqnum, l4_umword_t *msg,
  * \param irqnum IRQ vector at the ICU.
  * \param label  If non-NULL the function also waits for the next message.
  * \param to     Timeout for message to ICU, if unsure use L4_IPC_NEVER.
- * \return Syscall return tag
+ * \return Syscall return tag, the error values therein are undefined because
+ *         #l4_icu_unmask() is a sender-only IPC
  */
 L4_INLINE l4_msgtag_t
 l4_icu_unmask(l4_cap_idx_t icu, unsigned irqnum, l4_umword_t *label,
@@ -355,13 +363,9 @@ l4_icu_info_u(l4_cap_idx_t icu, l4_icu_info_t *info,
   l4_msg_regs_t *m = l4_utcb_mr_u(utcb);
   m->mr[0] = L4_ICU_OP_INFO;
   res = l4_ipc_call(icu, utcb, l4_msgtag(L4_PROTO_IRQ, 1, 0, 0), L4_IPC_NEVER);
-  if (!l4_msgtag_has_error(res) && l4_msgtag_label(res) >= 0
-      && l4_msgtag_words(res) >= 3)
-    {
-      info->features = m->mr[0];
-      info->nr_irqs  = m->mr[1];
-      info->nr_msis  = m->mr[2];
-    }
+  info->features = m->mr[0];
+  info->nr_irqs  = m->mr[1];
+  info->nr_msis  = m->mr[2];
   return res;
 }
 
@@ -374,9 +378,7 @@ l4_icu_msi_info_u(l4_cap_idx_t icu, unsigned irqnum, l4_umword_t *msg,
   m->mr[0] = L4_ICU_OP_MSI_INFO;
   m->mr[1] = irqnum;
   res = l4_ipc_call(icu, utcb, l4_msgtag(L4_PROTO_IRQ, 2, 0, 0), L4_IPC_NEVER);
-  if (!l4_msgtag_has_error(res) && l4_msgtag_label(res) >= 0
-      && l4_msgtag_words(res) >= 1)
-    *msg = m->mr[0];
+  *msg = m->mr[0];
   return res;
 }
 

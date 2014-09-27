@@ -35,7 +35,7 @@ class Configuration
 			dictionary* d = _files[filename];
 			if (!d) {
 				d = iniparser_load(filename);
-				_check(!d, "file not found");
+				_check(!d, "INI file error");
 				_files[filename] = d;
 			}
 			return d;
@@ -58,16 +58,16 @@ struct ConfigValue
 
 struct ConfigIntValue : public ConfigValue
 {
-	int _val;
-	ConfigIntValue(char const * const key, int _default = -1)
+	l4_mword_t _val;
+	ConfigIntValue(char const * const key, l4_mword_t _default = -1)
 		: ConfigValue()
 	{
 		_val = iniparser_getint(_dict, key, _default);
 	}
 	
-	operator int() { return _val; }
-	operator unsigned int() { return _val; }
-	operator l4_addr_t() { return static_cast<l4_addr_t>(_val); }
+	operator l4_mword_t() { return _val; }
+	operator l4_umword_t() { return _val; }
+	//operator l4_addr_t() { return static_cast<l4_addr_t>(_val); }
 };
 
 

@@ -40,8 +40,7 @@ void ux_setup(Hw::Device *bus)
          {
 	   input->set_hid("L4UXinput");
            input->add_resource
-             (new Resource(Resource::Mmio_res
-                           | Resource::F_fixed_size | Resource::F_fixed_addr,
+             (new Resource(Resource::Mmio_res,
                            vhwe->mem_start,
                            vhwe->mem_start + vhwe->mem_size - 1));
            input->add_resource
@@ -61,8 +60,7 @@ void ux_setup(Hw::Device *bus)
         {
 	  fb->set_hid("L4UXfb");
           fb->add_resource
-            (new Resource(Resource::Mmio_res
-                          | Resource::F_fixed_size | Resource::F_fixed_addr,
+            (new Resource(Resource::Mmio_res,
                           vhwe->mem_start,
                           vhwe->mem_start + vhwe->mem_size - 1));
           bus->add_child(fb);

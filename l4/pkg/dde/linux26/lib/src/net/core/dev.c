@@ -542,9 +542,11 @@ int __init netdev_boot_setup(char *str)
 	int ints[5];
 	struct ifmap map;
 
+#ifndef DDE_LINUX
 	str = get_options(str, ARRAY_SIZE(ints), ints);
 	if (!str || !*str)
 		return 0;
+#endif
 
 	/* Save settings */
 	memset(&map, 0, sizeof(map));
@@ -1722,10 +1724,12 @@ static u16 simple_tx_hash(struct net_device *dev, struct sk_buff *skb)
 	u32 hash, ihl;
 	u8 ip_proto = 0;
 
+#ifndef DDE_LINUX
 	if (unlikely(!simple_tx_hashrnd_initialized)) {
 		get_random_bytes(&simple_tx_hashrnd, 4);
 		simple_tx_hashrnd_initialized = 1;
 	}
+#endif
 
 	switch (skb->protocol) {
 	case htons(ETH_P_IP):

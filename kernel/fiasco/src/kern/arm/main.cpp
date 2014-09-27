@@ -85,6 +85,7 @@ kernel_main()
   static Kernel_thread *kernel = new (Ram_quota::root) Kernel_thread;
   Task *const ktask = Kernel_task::kernel_task();
   check(kernel->bind(ktask, User<Utcb>::Ptr(0)));
+  assert(((Mword)kernel->init_stack() & 7) == 0);
 
   Mem_unit::tlb_flush();
 
@@ -141,7 +142,8 @@ int boot_ap_cpu()
 	Proc::halt();
     }
 
-  Per_cpu_data::run_ctors(_cpu, !cpu_is_new);
+  if (cpu_is_new)
+    Per_cpu_data::run_ctors(_cpu);
 
   Cpu &cpu = Cpu::cpus.cpu(_cpu);
   cpu.init(!cpu_is_new, false);

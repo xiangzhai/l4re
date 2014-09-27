@@ -8,7 +8,6 @@
  */
 
 #include "app_model.h"
-#include "debug.h"
 
 #include <l4/re/error_helper>
 #include <l4/re/util/env_ns>

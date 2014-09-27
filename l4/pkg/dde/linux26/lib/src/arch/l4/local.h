@@ -16,6 +16,7 @@
 #include <linux/sched.h>
 
 #include <l4/dde/ddekit/assert.h>
+#include <l4/dde/ddekit/block.h>
 #include <l4/dde/ddekit/condvar.h>
 #include <l4/dde/ddekit/debug.h>
 #include <l4/dde/ddekit/initcall.h>

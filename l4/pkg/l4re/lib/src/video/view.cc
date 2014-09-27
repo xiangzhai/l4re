@@ -39,7 +39,7 @@ View::info(Info *info) const throw()
   L4::Ipc::Iostream io(l4_utcb());
   io << Opcode(Goos_::View_info) << _view_idx;
   long err = l4_error(io.call(_goos.cap(), L4Re::Protocol::Goos));
-  if (EXPECT_FALSE(err < 0))
+  if (L4_UNLIKELY(err < 0))
     return err;
 
   io.get(*info);

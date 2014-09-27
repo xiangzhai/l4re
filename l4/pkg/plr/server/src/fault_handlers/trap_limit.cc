@@ -18,12 +18,12 @@ namespace Romain
 {
 class TrapLimitObserver_priv : public TrapLimitObserver
 {
-	int _limit;
-	int _callcount;
+	l4_mword_t _limit;
+	l4_mword_t _callcount;
 
 	bool limitIsValid() { return _limit != -1; }
-	int  count()        { return _callcount; }
-	int  limit()        { return _limit; }
+	l4_mword_t  count()        { return _callcount; }
+	l4_mword_t  limit()        { return _limit; }
 	void increment()    { ++_callcount; }
 
 	public:

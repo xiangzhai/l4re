@@ -69,6 +69,7 @@ class EventFactory:
             tsar_events.ThreadStopEvent,
             tsar_events.LockingEvent,
             tsar_events.SHMLockingEvent,
+            tsar_events.MapEvent,
             tsar_events.BarnesEvent,
         ]
 
@@ -207,12 +208,14 @@ def print_pretty(events):
         if e.type == 0:
             continue
 
-        # Uncomment if you need horizontal separators between events
-        #print "." * 14,
-        #for i in range(len(ids)):
-        #    print "|",
-        #    print "." * 20,
-        #print
+        # set to True if you need horizontal separators between events
+        want_horizontal_spacers = False
+        if want_horizontal_spacers:
+            print "." * 14,
+            for i in range(len(ids)):
+                print "|",
+                print "." * 20,
+            print
 
         first = True
         for line in e.pretty():

@@ -1220,7 +1220,9 @@ _GLIBCXX_END_NAMESPACE
 /* #undef _GLIBCXX_USE_SCHED_YIELD */
 
 /* Define if code specialized for wchar_t should be used. */
-//#define _GLIBCXX_USE_WCHAR_T 1
+#ifndef L4_MINIMAL_LIBC
+#define _GLIBCXX_USE_WCHAR_T 1
+#endif
 
 #if defined (_GLIBCXX_HAVE__ACOSF) && ! defined (_GLIBCXX_HAVE_ACOSF)
 # define _GLIBCXX_HAVE_ACOSF 1

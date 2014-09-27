@@ -341,7 +341,7 @@ PUBLIC inline
 void
 Vm_vmx_ept::load_vm_memory(void *src)
 {
-  load(0x6802, src);
+  load(Vmx::F_guest_cr3, src);
   Vmx::vmwrite(0x201a, _ept_phys | 6 | (3 << 3));
 }
 
@@ -349,7 +349,7 @@ PUBLIC inline
 void
 Vm_vmx_ept::store_vm_memory(void *dest)
 {
-  store(0x6802, dest);
+  store(Vmx::F_guest_cr3, dest);
 }
 
 PUBLIC static

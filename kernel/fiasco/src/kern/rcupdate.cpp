@@ -138,7 +138,6 @@ class Rcu
 public:
   /// The lock to prevent a quiescent state.
   typedef Cpu_lock Lock;
-  enum { Period = 3000 /* 10ms */ };
   static Rcu_glbl *rcu() { return &_rcu; }
 private:
   static Rcu_glbl _rcu;
@@ -267,7 +266,7 @@ Rcu_data::do_batch()
     }
 
   // XXX: I do not know why this and the former stuff is w/o cpu lock
-  //      but the couting needs it ?
+  //      but the couting needs it?
   _d.clear();
 
   // XXX: we use clear, we seemingly worked through the whole list
@@ -277,13 +276,7 @@ Rcu_data::do_batch()
       auto guard = lock_guard(cpu_lock);
       _len -= count;
     }
-#if 0
-  if (_d.full())
-    {
-      Timeout *t = &_rcu_timeout.cpu(_cpu);
-      t->set(t->get_timeout(0) + Rcu::Period, _cpu);
-    }
-#endif
+
   return need_resched;
 }
 
@@ -553,9 +546,6 @@ Rcu::do_pending_work(Cpu_number cpu)
     {
       inc_q_cnt(cpu);
       return process_callbacks(cpu);
-#if 0
-      Rcu::schedule_callbacks(cpu, Kip::k()->clock + Rcu::Period);
-#endif
     }
   return false;
 }

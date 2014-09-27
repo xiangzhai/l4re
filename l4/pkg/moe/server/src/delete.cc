@@ -12,7 +12,7 @@
 
 void operator delete(void *p) throw()
 {
-  L4::cerr << "FATAL: called delete " << p 
+  L4::cerr << "FATAL: called delete " << p
     << " =============================\n";
 }
 

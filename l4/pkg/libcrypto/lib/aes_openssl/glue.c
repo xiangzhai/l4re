@@ -13,7 +13,7 @@
  */
 
 /* L4-specific includes */
-#include <l4/crypto/aes.h>
+#include "aes.h"
 
 /*
  * Unfortunately, we need wrapper functions here ...

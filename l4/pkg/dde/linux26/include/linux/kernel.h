@@ -251,6 +251,7 @@ extern bool printk_timed_ratelimit(unsigned long *caller_jiffies,
 #else // DDE_LINUX
 #include <l4/dde/ddekit/printf.h>
 #define printk ddekit_printf
+#define vprintk ddekit_vprintf
 #endif
 #else
 static inline int vprintk(const char *s, va_list args)

@@ -9,17 +9,50 @@
 #pragma once
 
 #include "hw_device.h"
+
 namespace Hw {
 
 class Root_bus : public Device
 {
-private:
-  char const *_name;
-
 public:
+  struct Pm
+  {
+    virtual int suspend() = 0;
+    virtual int shutdown() = 0;
+    virtual int reboot() = 0;
+    virtual ~Pm() = 0;
+  };
+
   explicit Root_bus(char const *name);
   char const *name() const { return _name; }
 
+  Pm *set_pm(Pm *pm)
+  {
+    Pm *old = _pm;
+    _pm = pm;
+    return old;
+  }
+
+  /// Test if power management API is supported
+  bool supports_pm() const { return _pm; }
+
+  void suspend();
+
+  /**
+   * \pre supports_pm() must be true
+   */
+  void shutdown() { _pm->shutdown(); }
+
+  /**
+   * \pre supports_pm() must be true
+   */
+  void reboot() { _pm->reboot(); }
+
+private:
+  char const *_name;
+  Pm *_pm;
 };
+
+inline Root_bus::Pm::~Pm() {}
 
 }

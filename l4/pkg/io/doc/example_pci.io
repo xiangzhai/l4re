@@ -1,5 +1,7 @@
 -- This is a configuration snippet for PCI device selection
 
+local hw = Io.system_bus();
+
 Io.add_vbusses
 {
   pciclient = Io.Vi.System_bus(function ()

@@ -42,21 +42,21 @@ Moe::Dataspace_cont::address(l4_addr_t offset,
     {
       l4_addr_t map_base = l4_trunc_size(adr, order + 1);
       if (map_base < l4_addr_t(_start))
-	break;
+        break;
 
       if (map_base + (1UL << (order + 1)) -1 > (l4_addr_t(_start) + round_size() - 1))
-	break;
+        break;
 
       map_base = l4_trunc_size(hot_spot, order + 1);
       if (map_base < min)
-	break;
+        break;
 
       if (map_base + (1UL << (order + 1)) -1 > max)
-	break;
+        break;
 
       l4_addr_t mask = ~(~0UL << (order + 1));
       if (hot_spot == ~0UL || ((adr ^ hot_spot) & mask))
-	break;
+        break;
 
       ++order;
     }
@@ -79,7 +79,7 @@ void Moe::Dataspace_cont::unmap(bool ro) const throw()
     {
       Address addr = address(offs, Writable, ~0);
       l4_fpage_t fp
-	 = l4_fpage_set_rights(addr.fp(), ro ? L4_FPAGE_W : L4_FPAGE_RWX);
+        = l4_fpage_set_rights(addr.fp(), ro ? L4_FPAGE_W : L4_FPAGE_RWX);
       l4_task_unmap(L4_BASE_TASK_CAP, fp, L4_FP_OTHER_SPACES);
       _size -= (1UL << l4_fpage_size(fp));
       offs  += (1UL << l4_fpage_size(fp));

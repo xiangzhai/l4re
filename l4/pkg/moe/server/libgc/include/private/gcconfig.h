@@ -43,7 +43,7 @@ extern void *__libc_stack_end;
 //#define STACKBOTTOM __libc_stack_end
 
 
-#if defined(L4_ARCH_amd64)
+#if defined(__LP64__)
 # define CPP_WORDSZ 64
 # define ALIGNMENT  8
 #else

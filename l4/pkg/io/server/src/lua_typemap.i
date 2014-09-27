@@ -19,11 +19,12 @@
   l4_size_t,l4_addr_t
 {$1 = lua_isnumber(L, $input);}
 
-%typemap(in,checkfn="lua_isnumber") l4_int32_t, int, short, long, signed char
+%typemap(in,checkfn="lua_isnumber") l4_int8_t, l4_int16_t, l4_int32_t, l4_mword_t,
+        int, short, long, signed char
 %{$1 = ($type)lua_tointeger(L, $input);%}
 
-%typemap(in,checkfn="lua_isnumber") l4_addr_t, l4_umword_t, unsigned int, unsigned short,
-        unsigned long, unsigned char
+%typemap(in,checkfn="lua_isnumber") l4_uint8_t, l4_uint16_t, l4_uint32_t, l4_addr_t,
+        l4_umword_t, unsigned int, unsigned short, unsigned long, unsigned char
 %{//SWIG_contract_assert((lua_tonumber(L,$input)>=0),"number must not be negative")
 $1 = ($type)lua_tointeger(L, $input);%}
 
@@ -33,8 +34,9 @@ $1 = ($type)lua_tointeger(L, $input);%}
 %typemap(out) enum SWIGTYPE
 %{  lua_pushinteger(L, (int)($1)); SWIG_arg++;%}
 
-%typemap(out) l4_addr_t,l4_umword_t,l4_int32_t,int,short,long,
-             unsigned int,unsigned short,unsigned long,
+%typemap(out) l4_addr_t, l4_umword_t, l4_mword_t, l4_int32_t, l4_uint32_t,
+             l4_int8_t, l4_uint8_t, l4_int16_t, l4_uint16_t, l4_size_t,
+             int,short,long,unsigned int,unsigned short,unsigned long,
              signed char,unsigned char
 %{  lua_pushinteger(L, $1); SWIG_arg++;%}
 
@@ -42,10 +44,6 @@ $1 = ($type)lua_tointeger(L, $input);%}
              unsigned int*,unsigned short*,unsigned long*,
              signed char*,unsigned char*
 %{  lua_pushinteger(L, *$1); SWIG_arg++;%}
-
-%typemap(typecheck,precedence=SWIG_TYPECHECK_INTEGER) l4_addr_t,l4_umword_t,l4_int32_t {
-   $1 = lua_isnumber(L, $input);
-}
 
 %typemap(typecheck,precedence=SWIG_TYPECHECK_STRING) cxx::String, cxx::String const & {
    $1 = lua_isstring(L, $input);

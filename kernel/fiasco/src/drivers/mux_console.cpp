@@ -39,7 +39,7 @@ IMPLEMENTATION:
 
 PUBLIC
 Mux_console::Mux_console()
-  : _next_getchar(-1), _items(0)
+: Console(ENABLED), _next_getchar(-1), _items(0)
 {}
 
 IMPLEMENT
@@ -222,10 +222,6 @@ Mux_console::register_console(Console *c, int pos = 0)
 
   _items++;
   _cons[pos] = c;
-  if (_cons[pos]->state() & DISABLED_INIT)
-    _cons[pos]->state(DISABLED);
-  else
-    _cons[pos]->state(INENABLED | OUTENABLED);
 
   return true;
 }

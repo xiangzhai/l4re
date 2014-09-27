@@ -39,7 +39,7 @@ Goos::info(Info *info) const throw()
   L4::Ipc::Iostream io(l4_utcb());
   io << Opcode(Goos_::Info);
   long err = l4_error(io.call(cap(), L4Re::Protocol::Goos));
-  if (EXPECT_FALSE(err < 0))
+  if (L4_UNLIKELY(err < 0))
     return err;
 
   io.get(*info);

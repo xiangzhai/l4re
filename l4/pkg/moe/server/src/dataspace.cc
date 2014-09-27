@@ -37,10 +37,10 @@ Moe::Dataspace::map(l4_addr_t offs, l4_addr_t hot_spot, bool _rw,
 
   if (!check_limit(offs))
     {
-#if 1
-      L4::cout << "MOE: ds access out of bounds: offset=" << L4::n_hex(offs)
-	       << " size=" << L4::n_hex(size()) << "\n";
-#endif
+      if (1)
+        L4::cout << "MOE: ds access out of bounds: offset=" << L4::n_hex(offs)
+                 << " size=" << L4::n_hex(size()) << "\n";
+
       return -L4_ERANGE;
     }
 
@@ -74,112 +74,112 @@ Moe::Dataspace::dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios)
 
   L4::Opcode op;
   ios >> op;
-#if 0
-  L4::cout << "MOE: DS: op=" << L4::n_hex(op) << "\n";
-#endif
+
+  if (0)
+    L4::cout << "MOE: DS: op=" << L4::n_hex(op) << "\n";
 
   switch (op)
     {
     case L4Re::Dataspace_::Map:
       {
-	// L4_FPAGE_X means writable for DSs!
-	bool read_only = !is_writable() || !(obj & L4_FPAGE_X);
-	l4_addr_t offset, spot;
-	unsigned long flags;
-	L4::Ipc::Snd_fpage fp;
-	ios >> offset >> spot >> flags;
-#if 0
-	L4::cout << "MAPrq: " << L4::hex << offset << ", " << spot << ", "
-	         << flags << "\n";
-#endif
+        bool read_only = !is_writable() || !(obj & L4_CAP_FPAGE_W);
+        l4_addr_t offset, spot;
+        unsigned long flags;
+        L4::Ipc::Snd_fpage fp;
+        ios >> offset >> spot >> flags;
 
-	if (read_only && (flags & Writable))
-	  return -L4_EPERM;
+        if (0)
+          L4::cout << "MAPrq: " << L4::hex << offset << ", " << spot << ", "
+                   << flags << "\n";
 
-	long int ret = map(offset, spot, flags & Writable, 0, ~0, fp);
-#if 0
-	L4::cout << "MAP: " << L4::hex << reinterpret_cast<unsigned long *>(&fp)[0]
-	         << ", " << reinterpret_cast<unsigned long *>(&fp)[1]
-		 << ", " << flags << ", " << (!read_only && (flags & 1))
-		 << ", ret=" << ret << '\n';
-#endif
-	if (ret == L4_EOK)
-	  ios << fp;
+        if (read_only && (flags & Writable))
+          return -L4_EPERM;
 
-	return ret;
+        long int ret = map(offset, spot, flags & Writable, 0, ~0, fp);
+
+        if (0)
+          L4::cout << "MAP: " << L4::hex << reinterpret_cast<unsigned long *>(&fp)[0]
+                   << ", " << reinterpret_cast<unsigned long *>(&fp)[1]
+                   << ", " << flags << ", " << (!read_only && (flags & Writable))
+                   << ", ret=" << ret << '\n';
+
+        if (ret == L4_EOK)
+          ios << fp;
+
+        return ret;
       }
     case L4Re::Dataspace_::Clear:
       {
-	if (!(obj & L4_FPAGE_X) /* read only*/
-	    || !is_writable())
-	  return -L4_EACCESS;
+        if (   !(obj & L4_CAP_FPAGE_W)
+            || !is_writable())
+          return -L4_EACCESS;
 
-	l4_addr_t offs;
-	unsigned long sz;
+        l4_addr_t offs;
+        unsigned long sz;
 
-	ios >> offs >> sz;
-	return clear(offs, sz);
+        ios >> offs >> sz;
+        return clear(offs, sz);
       }
     case L4Re::Dataspace_::Stats:
       {
-	L4Re::Dataspace::Stats s;
-	s.size = size();
-	// only return writable if really writable
-	s.flags = flags() & ~Writable;
-        if ((obj & L4_FPAGE_X) && is_writable())
+        L4Re::Dataspace::Stats s;
+        s.size = size();
+        // only return writable if really writable
+        s.flags = flags() & ~Writable;
+        if ((obj & L4_CAP_FPAGE_W) && is_writable())
           s.flags |= Writable;
 
-	ios << s;
-	return L4_EOK;
+        ios << s;
+        return L4_EOK;
       }
     case L4Re::Dataspace_::Copy:
       {
-	l4_addr_t dst_offs;
-	Moe::Dataspace *src = 0;
-	l4_addr_t src_offs;
-	unsigned long sz;
-	L4::Ipc::Snd_fpage src_cap;
+        l4_addr_t dst_offs;
+        Moe::Dataspace *src = 0;
+        l4_addr_t src_offs;
+        unsigned long sz;
+        L4::Ipc::Snd_fpage src_cap;
 
-	ios >> dst_offs >> src_offs >> sz >> src_cap;
+        ios >> dst_offs >> src_offs >> sz >> src_cap;
 
-	if (src_cap.id_received())
-	  src = dynamic_cast<Moe::Dataspace*>(object_pool.find(src_cap.data()));
+        if (src_cap.id_received())
+          src = dynamic_cast<Moe::Dataspace*>(object_pool.find(src_cap.data()));
 
-	if (!(obj & L4_FPAGE_X))
-	  return -L4_EACCESS;
+        if (!(obj & L4_CAP_FPAGE_W))
+          return -L4_EACCESS;
 
-	if (!src)
-	  return -L4_EINVAL;
+        if (!src)
+          return -L4_EINVAL;
 
-	if (sz == 0)
-	  return L4_EOK;
+        if (sz == 0)
+          return L4_EOK;
 
-	Dataspace_util::copy(this, dst_offs, src, src_offs, sz);
+        Dataspace_util::copy(this, dst_offs, src, src_offs, sz);
 
-	return L4_EOK;
+        return L4_EOK;
       }
     case L4Re::Dataspace_::Phys:
       {
-	l4_addr_t offset;
-	l4_addr_t phys_addr;
-	l4_size_t phys_size;
+        l4_addr_t offset;
+        l4_addr_t phys_addr;
+        l4_size_t phys_size;
 
-	ios >> offset;
+        ios >> offset;
 
-	int ret = phys(offset, phys_addr, phys_size);
-	if (ret)
-	  return -L4_EINVAL;
+        int ret = phys(offset, phys_addr, phys_size);
+        if (ret)
+          return -L4_EINVAL;
 
-	ios << phys_addr << phys_size;
+        ios << phys_addr << phys_size;
 
         return L4_EOK;
       }
     case L4Re::Dataspace_::Allocate:
       {
-	l4_addr_t offset;
-	l4_size_t size;
-	ios >> offset >> size;
-	return pre_allocate(offset, size, obj & 3);
+        l4_addr_t offset;
+        l4_size_t size;
+        ios >> offset >> size;
+        return pre_allocate(offset, size, obj & 3);
       }
     case L4Re::Dataspace_::Take:
       take();
@@ -187,11 +187,11 @@ Moe::Dataspace::dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios)
       return L4_EOK;
     case L4Re::Dataspace_::Release:
       if (release() == 0 && !is_static())
-	{
-	  //L4::cout << "MOE: R[" << this << "]: refs=" << ref_cnt() << '\n';
-	  delete this;
-	  return 0;
-	}
+        {
+          //L4::cout << "MOE: R[" << this << "]: refs=" << ref_cnt() << '\n';
+          delete this;
+          return 0;
+        }
       //L4::cout << "MOE: R[" << this << "]: refs=" << ref_cnt() << '\n';
 
       return 1;

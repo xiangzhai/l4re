@@ -48,6 +48,8 @@ public:
   int get_axis_info(l4_umword_t, unsigned /*naxes*/, unsigned * /*axes*/,
                     L4Re::Event_absinfo *)
   { return -L4_EINVAL; }
+  int get_stream_state_for_id(l4_umword_t, L4Re::Event_stream_state *)
+  { return -L4_EINVAL; }
 };
 
 template<typename SVR>
@@ -107,6 +109,15 @@ Event_svr<SVR>::dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios)
 	  ios << L4::Ipc::buf_cp_out(infos, naxes);
 	  return r;
 	}
+    case L4Re::Event_::Get_stream_state_for_id:
+        {
+          l4_umword_t stream_id;
+          ios >> stream_id;
+          Event_stream_state si;
+          int r = static_cast<SVR*>(this)->get_stream_state_for_id(stream_id, &si);
+          ios.put(si);
+          return r;
+        }
     default:
       return -L4_ENOSYS;
     }

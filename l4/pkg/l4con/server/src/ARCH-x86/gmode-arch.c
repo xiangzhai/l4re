@@ -17,7 +17,6 @@
 
 #include <l4/sys/types.h>
 #include <l4/sys/err.h>
-#include <l4/util/macros.h>
 #include <l4/x86emu/int10.h>
 #include <l4/re/c/namespace.h>
 #include <l4/re/c/rm.h>

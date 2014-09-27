@@ -196,7 +196,7 @@ Ux_dir::getdents(char *buf, size_t nbytes) throw()
             if ((char *) dp == buf) {
                 /* The buffer the user passed in is too small to hold even
                    one entry.  */
-                __set_errno (EINVAL);
+                errno = EINVAL;
                 return -1;
             }
             break;

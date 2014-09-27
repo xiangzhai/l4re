@@ -43,6 +43,7 @@ ACPICA_SRC_C		= \
 	events/evsci.c \
 	events/evxface.c \
 	events/evxfevnt.c \
+	events/evxfgpe.c \
 	events/evxfregn.c \
 	executer/exconfig.c \
 	executer/exconvrt.c \
@@ -76,6 +77,7 @@ ACPICA_SRC_C		= \
 	hardware/hwesleep.c \
 	hardware/hwvalid.c \
 	hardware/hwxface.c \
+	hardware/hwxfsleep.c \
 	namespace/nsaccess.c \
 	namespace/nsalloc.c \
 	namespace/nsdump.c \
@@ -173,5 +175,3 @@ clean::
 	$(VERBOSE)$(RM) dsdt-static.hex
 	$(VERBOSE)$(RM) acpi-dsdt.aml
 	$(VERBOSE)$(RM) isaids.h
-
-CFLAGS := $(filter-out -Wextra,$(CFLAGS))

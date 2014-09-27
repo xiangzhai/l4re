@@ -40,7 +40,7 @@ $(1): $(2)
 endef
 
 # which template rule do we really use
-BID_MAKE_RULE_template = $(BID_MAKE_RULE_template_gendep)
+BID_MAKE_RULE_template = $(BID_MAKE_RULE_template_nongendep)
 
 #
 # Generate the default set of make rules.

@@ -17,7 +17,7 @@
 #include <stdlib.h>
 
 #include <l4/sys/types.h>
-#include <l4/util/macros.h>
+#include <l4/util/l4_macros.h>
 #include <l4/io/io.h>
 
 #include "iomem.h"

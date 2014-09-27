@@ -1,4 +1,4 @@
-IMPLEMENTATION[arm]:
+IMPLEMENTATION[arm && !hyp]:
 
 #include "config.h"
 #include "globals.h"
@@ -24,6 +24,24 @@ Kernel_task::map_syscall_page(void *p)
   pte.create_page(Phys_mem_addr(Kmem_space::kdir()->virt_to_phys((Address)p)),
                   Page::Attr(Page::Rights::URX(), Page::Type::Normal(), Page::Kern::Global()));
   pte.write_back_if(true, Mem_unit::Asid_kernel);
+}
+
+IMPLEMENTATION[arm && hyp]:
+
+#include "config.h"
+#include "globals.h"
+#include "kmem_space.h"
+
+PRIVATE inline NEEDS["globals.h", "kmem_space.h"]
+Kernel_task::Kernel_task()
+: Task(Ram_quota::root, reinterpret_cast<Pdir*>(Kmem_space::kdir()), Caps::none())
+{}
+
+PUBLIC static inline
+void
+Kernel_task::map_syscall_page(void *p)
+{
+  Mem_space::set_syscall_page(p);
 }
 
 

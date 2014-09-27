@@ -20,7 +20,6 @@
 #include <l4/input/libinput.h>
 #include <l4/sys/kdebug.h>
 #include <l4/util/parse_cmd.h>
-#include <l4/util/macros.h>
 #include <l4/sys/err.h>
 #include <l4/re/c/mem_alloc.h>
 #include <l4/re/c/namespace.h>

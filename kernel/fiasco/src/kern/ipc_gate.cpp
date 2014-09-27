@@ -155,8 +155,7 @@ Ipc_gate_obj::destroy(Kobject ***r)
     {
       _thread = 0;
       unblock_all();
-      if (tmp->dec_ref() == 0)
-        tmp->initiate_deletion(r);
+      tmp->put_n_reap(r);
     }
 }
 

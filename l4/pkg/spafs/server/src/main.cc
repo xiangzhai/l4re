@@ -183,7 +183,7 @@ Fprov_server::dispatch(l4_umword_t, L4::Ipc::Iostream &ios)
         {
           char filename[Max_filename_len];
           unsigned long len = Max_filename_len;
-          ios >> L4::Ipc::Buf_cp_in<char>(filename, len);
+          ios >> L4::Ipc::buf_cp_in(filename, len);
           filename[len] = 0;
 
           return get_file(filename, ios);
@@ -252,7 +252,7 @@ Fprov_service::dispatch(l4_umword_t, L4::Ipc::Iostream &ios)
 	  unsigned long name_size = Name_size;
 	  static char config[Name_size];
 
-	  ios >> L4::Ipc::Buf_cp_in<char>(config, name_size);
+	  ios >> L4::Ipc::buf_cp_in(config, name_size);
 	  config[name_size] = 0;
 
 	  Fprov_server *server = Fprov_service::create_server(config);

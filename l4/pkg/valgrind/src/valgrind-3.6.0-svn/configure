@@ -6273,6 +6273,11 @@ _ACEOF
   GLIBC_VERSION="`$CPP conftest.$ac_ext | $SED -n 's/^glibc version is: //p' | $SED 's/ /./g'`"
 fi
 
+# adam: hack: gcc5 is doing CPP differently so that the SED does not work
+# anymore
+test -z "${GLIBC_VERSION}" && GLIBC_VERSION=2.13
+# adam end
+
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 

@@ -269,8 +269,8 @@ l4slab_cache_init(l4slab_cache_t * cache, l4_size_t obj_size,
   cache->data = NULL;
 
   if (DEBUG_SLAB_INIT)
-    printf("object size = %u, slab size = %u\n"
-                        "objects per slab = %d, sizeof(struct l4slab_slab) = %d\n",
+    printf("object size = %zu, slab size = %zu\n"
+                        "objects per slab = %d, sizeof(struct l4slab_slab) = %zd\n",
                         obj_size, slab_size, cache->num_objs, sizeof(struct l4slab_slab));
 
   /* done */

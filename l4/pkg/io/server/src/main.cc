@@ -23,9 +23,10 @@
 #include "server.h"
 #include "res.h"
 #include "pci.h"
+#include "platform_control.h"
 #include "__acpi.h"
-#include "vbus.h"
-#include "vbus_factory.h"
+#include "virt/vbus.h"
+#include "virt/vbus_factory.h"
 #include "phys_space.h"
 #include "ux.h"
 #include "cfg.h"
@@ -49,6 +50,32 @@
 #include <lualib.h>
 
 #include "lua_glue.swg.h"
+
+namespace {
+
+static Hw::Root_bus *
+hw_system_bus()
+{
+  static Hw::Root_bus _sb("System Bus");
+  return &_sb;
+}
+
+static Platform_control *
+platform_control()
+{
+  static Platform_control pfc(hw_system_bus());
+  return &pfc;
+}
+
+
+struct Virtual_sbus : Vi::System_bus
+{
+  Virtual_sbus() : Vi::System_bus(platform_control()) {}
+};
+
+static Vi::Dev_factory_t<Virtual_sbus> __sb_root_factory("System_bus");
+
+}
 
 int luaopen_Io(lua_State *);
 
@@ -96,8 +123,7 @@ Io_config *Io_config::cfg = &_my_cfg;
 Hw::Device *
 system_bus()
 {
-  static Hw::Root_bus _sb("System Bus");
-  return &_sb;
+  return hw_system_bus();
 }
 
 Hw_icu *
@@ -120,19 +146,25 @@ static void dump(Device *d)
   Device::iterator i = Device::iterator(0, d, 100);
   for (; i != d->end(); ++i)
     {
-      for (int x = 0; x < i->depth(); ++x)
-	printf("  ");
-      printf("%s: %s \"%s\"\n",
-             type_name(*i), i->name(),
-             i->hid() ? i->hid() : "");
+      int indent = i->depth() * 2;
       if (dlevel(DBG_INFO))
-        i->dump(i->depth() * 2);
+        i->dump(indent);
       if (dlevel(DBG_DEBUG))
-        for (Resource_list::const_iterator r = i->resources()->begin();
-             r != i->resources()->end(); ++r)
-          if (*r)
-            (*r)->dump(i->depth() * 2 + 2);
+        {
+          printf("%*.s  Resources: ==== start ====\n", indent, " ");
+          for (Resource_list::const_iterator r = i->resources()->begin();
+               r != i->resources()->end(); ++r)
+            if (*r)
+              (*r)->dump(indent + 2);
+          printf("%*.s  Resources: ===== end =====\n", indent, " ");
+        }
     }
+}
+
+static void check_conflicts(Hw::Device *d)
+{
+  for (auto i = Hw::Device::iterator(0, d, 100); i != d->end(); ++i)
+    (*i)->check_conflicts();
 }
 
 void dump_devs(Device *d);
@@ -297,12 +329,16 @@ arg_init(int argc, char * const *argv, Io_config_x *cfg)
       enum
       {
         OPT_TRANSPARENT_MSI   = 1,
+        OPT_TRACE             = 2,
+        OPT_ACPI_DEBUG        = 3,
       };
 
       struct option opts[] =
       {
         { "verbose",           0, 0, 'v' },
         { "transparent-msi",   0, 0, OPT_TRANSPARENT_MSI },
+        { "trace",             1, 0, OPT_TRACE },
+        { "acpi-debug-level",  1, 0, OPT_ACPI_DEBUG },
         { 0, 0, 0, 0 },
       };
 
@@ -319,6 +355,20 @@ arg_init(int argc, char * const *argv, Io_config_x *cfg)
 	  d_printf(DBG_INFO, "Enabling transparent MSIs\n");
           cfg->set_transparent_msi(true);
           break;
+        case OPT_TRACE:
+          {
+            unsigned trace_mask = strtol(optarg, 0, 0);
+            set_trace_mask(trace_mask);
+            printf("Set trace mask to 0x%08x\n", trace_mask);
+            break;
+          }
+        case OPT_ACPI_DEBUG:
+          {
+            l4_uint32_t acpi_debug_level = strtol(optarg, 0, 0);
+            acpi_set_debug_level(acpi_debug_level);
+            printf("Set acpi debug level to 0x%08x\n", acpi_debug_level);
+            break;
+          }
         }
     }
   return optind;
@@ -391,6 +441,12 @@ run(int argc, char * const *argv)
       dump(system_bus());
     }
 
+  check_conflicts(system_bus());
+
+  if (!registry->register_obj(platform_control(), "platform_ctl"))
+    d_printf(DBG_WARN, "warning: could not register control interface at"
+                       " cap 'platform_ctl'\n");
+
   fprintf(stderr, "Ready. Waiting for request.\n");
   server_loop();
 
@@ -406,13 +462,13 @@ main(int argc, char * const *argv)
     }
   catch (L4::Runtime_error &e)
     {
-      std::cerr << "FATAL uncought exception: " << e
+      std::cerr << "FATAL uncaught exception: " << e
                 << "\nterminating...\n";
 
     }
   catch (...)
     {
-      std::cerr << "FATAL uncought exception of unknown type\n"
+      std::cerr << "FATAL uncaught exception of unknown type\n"
                 << "terminating...\n";
     }
   return -1;

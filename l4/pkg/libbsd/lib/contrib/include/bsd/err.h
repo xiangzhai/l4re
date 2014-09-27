@@ -1,6 +1,6 @@
 /*
  * Copyright © 2006 Robert Millan
- * Copyright © 2009 Guillem Jover
+ * Copyright © 2009, 2011 Guillem Jover <guillem@hadrons.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,11 +25,17 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef LIBBSD_OVERLAY
+#include_next <err.h>
+#else
+#include <err.h>
+#endif
+
 #ifndef LIBBSD_ERR_H
 #define LIBBSD_ERR_H
 
 #include <sys/cdefs.h>
-#include <err.h>
+
 #include <stdarg.h>
 
 __BEGIN_DECLS

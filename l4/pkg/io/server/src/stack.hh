@@ -1,8 +1,8 @@
-/* A Bison parser, made by GNU Bison 2.6.2.  */
+/* A Bison parser, made by GNU Bison 2.7.12-4996.  */
 
 /* Stack handling for Bison parsers in C++
    
-      Copyright (C) 2002-2012 Free Software Foundation, Inc.
+      Copyright (C) 2002-2013 Free Software Foundation, Inc.
    
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -35,14 +35,14 @@
  ** Define the cfg::stack class.
  */
 
-#ifndef CFG_STACK_HH
-# define CFG_STACK_HH
+#ifndef YY_CFG_STACK_HH_INCLUDED
+# define YY_CFG_STACK_HH_INCLUDED
 
 # include <deque>
 
 
 namespace cfg {
-/* Line 37 of stack.hh  */
+/* Line 34 of stack.hh  */
 #line 47 "stack.hh"
   template <class T, class S = std::deque<T> >
   class stack
@@ -89,6 +89,12 @@ namespace cfg {
         seq_.pop_front ();
     }
 
+    void
+    clear ()
+    {
+      seq_.clear ();
+    }
+
     inline
     unsigned int
     height () const
@@ -100,6 +106,8 @@ namespace cfg {
     inline const_iterator end () const { return seq_.rend (); }
 
   private:
+    stack (const stack&);
+    stack& operator= (const stack&);
     S seq_;
   };
 
@@ -127,7 +135,7 @@ namespace cfg {
   };
 
 } // cfg
-/* Line 119 of stack.hh  */
-#line 132 "stack.hh"
+/* Line 124 of stack.hh  */
+#line 140 "stack.hh"
 
-#endif /* !CFG_STACK_HH  */
+#endif /* !YY_CFG_STACK_HH_INCLUDED  */

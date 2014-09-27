@@ -19,7 +19,7 @@ l4vbus_i2c_write(l4_cap_idx_t vbus, l4vbus_device_handle_t handle,
   L4::Ipc::Iostream s(l4_utcb());
   l4vbus_device_msg(handle, L4vbus_i2c_write, s);
   s << addr << sub_addr << size;
-  s << L4::Ipc::Buf_cp_out<l4_uint8_t>(buffer, size);
+  s << L4::Ipc::buf_cp_out(buffer, size);
   return l4_error(s.call(vbus));
 }
 
@@ -35,6 +35,6 @@ l4vbus_i2c_read(l4_cap_idx_t vbus, l4vbus_device_handle_t handle,
   int err = l4_error(s.call(vbus));
   if (err)
     return err;
-  s >> *size >> L4::Ipc::Buf_cp_in<l4_uint8_t>(buffer, *size);
+  s >> *size >> L4::Ipc::buf_cp_in(buffer, *size);
   return 0;
 }

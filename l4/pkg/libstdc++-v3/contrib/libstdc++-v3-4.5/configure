@@ -18860,8 +18860,10 @@ ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
   CXXFLAGS="$CXXFLAGS -fno-exceptions"
   ac_save_LIBS="$LIBS"
 
-  ac_has_clock_monotonic=no;
-  ac_has_clock_realtime=no;
+  ac_has_clock_monotonic=no
+  ac_has_clock_realtime=no
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $enable_libstdcxx_time" >&5
+$as_echo "$enable_libstdcxx_time" >&6; }
 
   if test x"$enable_libstdcxx_time" != x"no"; then
 
@@ -25560,7 +25562,7 @@ rm -f core conftest.err conftest.$ac_objext \
 	CFLAGS="$chktls_save_CFLAGS"
 	if test "X$thread_CFLAGS" != Xfailed; then
 	  CFLAGS="$thread_CFLAGS $chktls_save_CFLAGS"
-	  if test "$cross_compiling" = yes; then :
+ 	  	  	  	  	  	  if test "$cross_compiling" = yes; then :
   { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
 $as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
 as_fn_error "cannot run test program while cross compiling
@@ -25570,7 +25572,7 @@ else
 /* end confdefs.h.  */
 #include <pthread.h>
 		__thread int a;
-		static int *a_in_other_thread;
+		static int *volatile a_in_other_thread;
 		static void *
 		thread_func (void *arg)
 		{
@@ -25582,11 +25584,11 @@ main ()
 {
 pthread_t thread;
 		void *thread_retval;
-		int *a_in_main_thread;
+		int *volatile a_in_main_thread;
+		a_in_main_thread = &a;
 		if (pthread_create (&thread, (pthread_attr_t *)0,
 				    thread_func, (void *)0))
 		  return 0;
-		a_in_main_thread = &a;
 		if (pthread_join (thread, &thread_retval))
 		  return 0;
 		return (a_in_other_thread == a_in_main_thread);
@@ -44498,7 +44500,7 @@ rm -f core conftest.err conftest.$ac_objext \
 	CFLAGS="$chktls_save_CFLAGS"
 	if test "X$thread_CFLAGS" != Xfailed; then
 	  CFLAGS="$thread_CFLAGS $chktls_save_CFLAGS"
-	  if test "$cross_compiling" = yes; then :
+ 	  	  	  	  	  	  if test "$cross_compiling" = yes; then :
   { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
 $as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
 as_fn_error "cannot run test program while cross compiling
@@ -44508,7 +44510,7 @@ else
 /* end confdefs.h.  */
 #include <pthread.h>
 		__thread int a;
-		static int *a_in_other_thread;
+		static int *volatile a_in_other_thread;
 		static void *
 		thread_func (void *arg)
 		{
@@ -44520,11 +44522,11 @@ main ()
 {
 pthread_t thread;
 		void *thread_retval;
-		int *a_in_main_thread;
+		int *volatile a_in_main_thread;
+		a_in_main_thread = &a;
 		if (pthread_create (&thread, (pthread_attr_t *)0,
 				    thread_func, (void *)0))
 		  return 0;
-		a_in_main_thread = &a;
 		if (pthread_join (thread, &thread_retval))
 		  return 0;
 		return (a_in_other_thread == a_in_main_thread);
@@ -50583,7 +50585,7 @@ rm -f core conftest.err conftest.$ac_objext \
 	CFLAGS="$chktls_save_CFLAGS"
 	if test "X$thread_CFLAGS" != Xfailed; then
 	  CFLAGS="$thread_CFLAGS $chktls_save_CFLAGS"
-	  if test "$cross_compiling" = yes; then :
+ 	  	  	  	  	  	  if test "$cross_compiling" = yes; then :
   { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
 $as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
 as_fn_error "cannot run test program while cross compiling
@@ -50593,7 +50595,7 @@ else
 /* end confdefs.h.  */
 #include <pthread.h>
 		__thread int a;
-		static int *a_in_other_thread;
+		static int *volatile a_in_other_thread;
 		static void *
 		thread_func (void *arg)
 		{
@@ -50605,11 +50607,11 @@ main ()
 {
 pthread_t thread;
 		void *thread_retval;
-		int *a_in_main_thread;
+		int *volatile a_in_main_thread;
+		a_in_main_thread = &a;
 		if (pthread_create (&thread, (pthread_attr_t *)0,
 				    thread_func, (void *)0))
 		  return 0;
-		a_in_main_thread = &a;
 		if (pthread_join (thread, &thread_retval))
 		  return 0;
 		return (a_in_other_thread == a_in_main_thread);

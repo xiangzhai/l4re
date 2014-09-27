@@ -12,7 +12,7 @@ using L4Re::chksys;
 
 struct timerArgs
 {
-	unsigned cpu;
+	l4_umword_t cpu;
 	l4_addr_t timer;
 };
 
@@ -41,16 +41,16 @@ void *timerThread(void *argp)
 }
 
 void
-Measurements::EventBuf::launchTimerThread(l4_addr_t timer, unsigned CPU)
+Measurements::EventBuf::launchTimerThread(l4_addr_t timer, l4_umword_t CPU)
 {
 	pthread_t tmr;
 
 	global_arg.timer = timer;
 	global_arg.cpu   = CPU;
 
-	int err = pthread_create(&tmr, 0, timerThread, (void*)&global_arg);
+	l4_mword_t err = pthread_create(&tmr, 0, timerThread, (void*)&global_arg);
 	if (err) {
-		ERROR() << "Error creating timer thread: " << err;
+		ERROR() << "Error creating timer thread: " << err << "\n";
 		enter_kdebug();
 	}
 }

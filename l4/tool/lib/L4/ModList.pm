@@ -217,7 +217,7 @@ sub get_module_entry($$)
 
       if (/^modaddr\s+(\S+)/) {
         $modaddr_global = $1 if  $global;
-        $modaddr_title  = $1 if !$global;
+        $modaddr_title  = $1 if !$global and $process_mode;
         next;
       }
 
@@ -370,7 +370,7 @@ sub get_module_entry($$)
     $bootstrap_cmdline .= " -modaddr $m";
   }
 
-  my @filse; # again, this is redundant but helps generator functions
+  my @files; # again, this is redundant but helps generator functions
   push @files, $bootstrap_command;
   push @files, $_->{command} foreach @mods;
 
@@ -393,7 +393,7 @@ sub entry_is_linux(%)
 sub entry_is_mb(%)
 {
   my %e = @_;
-  return defined $e{type} and $e{type} eq 'MB';
+  return defined $e{type} && $e{type} eq 'MB';
 }
 
 sub get_entries($)

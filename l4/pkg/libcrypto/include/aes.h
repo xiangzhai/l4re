@@ -15,9 +15,9 @@
 #ifndef __CRYPTO_AES_H
 #define __CRYPTO_AES_H
 
-#include <l4/sys/compiler.h>
+#include "private/misc.h"
 
-EXTERN_C_BEGIN
+CRYPTO_EXTERN_C_BEGIN
 
 #include "private/cipher.h"
 #include "private/aes_linux.h"
@@ -41,6 +41,7 @@ typedef union
 {
     struct aes_c_ctx   __aes_linux;
     struct aes_586_ctx __aes_linux_586;
+    struct crypto_aes_ctx __aes_linux_586_new;
     struct {
         AES_KEY __enc;
         AES_KEY __dec;
@@ -55,7 +56,7 @@ extern crypto_cipher_set_key_fn_t aes_cipher_set_key;
 extern crypto_cipher_encrypt_fn_t aes_cipher_encrypt;
 extern crypto_cipher_decrypt_fn_t aes_cipher_decrypt;
 
-EXTERN_C_END
+CRYPTO_EXTERN_C_END
 
 #endif /* __CRYPTO_AES_H */
 

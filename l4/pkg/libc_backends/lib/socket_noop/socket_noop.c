@@ -156,12 +156,3 @@ int gethostent_r(struct hostent *ret, char *buf, size_t buflen,
   errno = -EINVAL;
   return -1;
 }
-
-
-int gethostname(char *name, size_t len)
-{
-  const char const *my_fine_hostname = "l4re-host";
-  strncpy(name, my_fine_hostname, len);
-  name[len - 1] = 0;
-  return 0;
-}

@@ -844,7 +844,7 @@ static int conf_split_config(void)
 	name = conf_get_autoconfig_name();
 	conf_read_simple(name, S_DEF_AUTO);
 
-	if (chdir("config"))
+	if (chdir("include/config"))
 		return 1;
 
 	res = 0;
@@ -938,7 +938,7 @@ static int conf_split_config(void)
 		close(fd);
 	}
 out:
-	if (chdir(".."))
+	if (chdir("../.."))
 		return 1;
 
 	return res;
@@ -953,7 +953,7 @@ int conf_write_autoconf(void)
 
 	sym_clear_all_valid();
 
-	file_write_dep("config/auto.conf.cmd");
+	file_write_dep("include/config/auto.conf.cmd");
 
 	if (conf_split_config())
 		return 1;
@@ -1178,7 +1178,10 @@ bool conf_set_all_new_symbols(enum conf_def_mode mode)
 				sym->def[S_DEF_USER].tri = mod;
 				break;
 			case def_no:
-				sym->def[S_DEF_USER].tri = no;
+				if (sym->flags & SYMBOL_ALLNOCONFIG_Y)
+					sym->def[S_DEF_USER].tri = yes;
+				else
+					sym->def[S_DEF_USER].tri = no;
 				break;
 			case def_random:
 				sym->def[S_DEF_USER].tri = no;

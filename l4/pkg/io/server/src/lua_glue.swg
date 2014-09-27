@@ -7,8 +7,8 @@
 
 %{
 
-#include "vdevice.h"
-#include "vbus_factory.h"
+#include "virt/vdevice.h"
+#include "virt/vbus_factory.h"
 #include "hw_device.h"
 #include "gpio"
 
@@ -36,7 +36,6 @@ void dump_devs(Device *d);
 
 %}
 
-
 %apply SWIG_BIGUINT { Resource::Addr }
 %apply SWIG_BIGINT { Resource::Size }
 
@@ -46,8 +45,8 @@ void dump_devs(Device *d);
 %typemap(in, checkfn="is_lua_propval") Hw::Device::Prop_val const & (Hw::Device::Prop_val tmp)
 %{tmp = to_lua_propval(L, $input); $1 = &tmp; %}
 
-
 %ignore Resource_space;
+%ignore Resource_list;
 %ignore Resource_provider;
 %ignore Root_resource;
 %ignore Vi::Dev_feature;
@@ -113,10 +112,10 @@ class Dev_factory
 {
 public:
   virtual Device *vcreate() = 0;
-  virtual Device *vcreate(Hw::Device *f) = 0;
+  virtual Device *do_match(Hw::Device *f) = 0;
 
   static Device *create(std::string const &_class);
-  static Device *create(Hw::Device *f, bool warn = true);
+  static Device *create(Hw::Device *f);
 };
 }
 
@@ -132,6 +131,7 @@ public:
   struct Prop_val;
   int set_property(char const *prop, Prop_val const &val);
   void add_child(Device *disown);
+  void add_cid(char const *);
   void set_name(char const *);
   char const *name() const;
   bool match_cid(char const *cid) const;
@@ -198,16 +198,24 @@ public:
 
 %luacode {
 
+local function check_device(dev, depth, err)
+  if not Io.swig_instance_of(dev, "Generic_device *") then
+    local e = err or "expected device, got: " .. tostring(dev);
+    error(e, depth + 1);
+  end
+  return dev
+end
+
 Io.Res = {}
 
 function Io.Res.io(start, _end, flags)
   local f = flags or 0
-  return Io.Resource(Io.Resource_Io_res + f, start, _end or start)
+  return Io.Resource(Io.Resource_Io_res, f, start, _end or start)
 end
 
 function Io.Res.mmio(start, _end, flags)
   local f = flags or 0
-  return Io.Resource(Io.Resource_Mmio_res + f, start, _end or start)
+  return Io.Resource(Io.Resource_Mmio_res, f, start, _end or start)
 end
 
 function Io.Res.irq(start, flags)
@@ -220,7 +228,7 @@ function Io.Res.irq(start, flags)
     s = start
     e = start
   end
-  return Io.Resource(Io.Resource_Irq_res + f, s, e)
+  return Io.Resource(Io.Resource_Irq_res, f, s, e)
 end
 
 Io.Dt = {}
@@ -239,20 +247,16 @@ function Io.Dt.add_child(parent, name, dev, idx)
 end
 
 function Io.Dt.add_children(parent, bus_func)
+  check_device(parent, 2);
   if type(bus_func) == "function" then
     local d = {}
-    setmetatable(d, { __index = getfenv(1) })
+    local my_env = getfenv(1)
+    local old_ENV = my_env._ENV;
+    my_env._ENV = d;
+    setmetatable(d, { __index = my_env })
     setfenv(bus_func, d)
     bus_func()
-    if type(d._res) == "table" then
-      for i, r in ipairs(d._res) do
-        Io.Dt.add_resource(parent, r)
-      end
-      d._res = nil
-    elseif type(d._res) == "userdata" then
-      Io.Dt.add_resource(parent, d._res)
-      d._res = nil
-    end
+    my_env._ENV = old_ENV;
     Io.Dt.add_device_data(parent, d)
   end
   return parent;
@@ -280,7 +284,7 @@ function Io.Dt.iterator(dev, max_depth)
       local p = c
       while (true) do
         p = p:parent()
-        if (not p) or (p == start) then
+        if (not p) or swig_equals(p, start) then
           current = nil
           return c
         elseif p:next() then
@@ -292,9 +296,9 @@ function Io.Dt.iterator(dev, max_depth)
   end
 end
 
-function Io.Dt.match_cids(self, cids)
+function Io.Dt.match_cids(self, ...)
   local r = {}
-  for v in string.gmatch(cids, "([^,]+),*") do
+  for _, v in ipairs{...} do
     if self:match_cid(v) then
       return true
     end
@@ -320,14 +324,17 @@ function Io.Dt.Range(start, stop)
   return { range = true, start, stop }
 end
 
-function Io.Dt.match(self, cids)
+function Io.Dt.match(self, ...)
+  local cids = {...}
   for t,v in pairs(Io.Dt.PCI_cc) do
-    cids = cids:gsub("(PCI/"..t..")", "PCI/" .. v)
+    for i, cid in ipairs(cids) do
+      cids[i] = cid:gsub("(PCI/"..t..")", "PCI/" .. v)
+    end
   end
 
   local devs = {}
   for d in self:devices(Io.Dt.MAX_DEPTH) do
-    if d:match_cids(cids) then
+    if d:match_cids(unpack(cids)) then
       devs[#devs+1] = d
     end
   end
@@ -389,19 +396,29 @@ end
 
 local add_child = Io.Dt.add_child
 
-local handle_device_member = function(dev, val, name)
-  if Io.swig_instance_of(val, "Resource *") then
+local function handle_device_member(dev, val, name)
+  if name == "compatible" then
+    if type(val) == "table" then
+      for k, v in ipairs(val) do
+        dev:add_cid(v)
+      end
+    elseif type(val) == "string" then
+      dev:add_cid(val)
+    end
+    return
+  elseif type(val) == "table" then
+    for i, v in pairs(val) do
+      handle_device_member(dev, v, name .. '[' .. i .. ']')
+    end
+    return
+  elseif Io.swig_instance_of(val, "Resource *") then
+    val:set_id(name)
     dev:add_resource(val)
     return
   elseif Io.swig_instance_of(val, "Generic_device *") then
     add_child(dev, name, val)
     return
-  elseif type(val) == "table" then
-    for i, v in ipairs(val) do
-      add_child(dev, name, v, i)
-    end
-    return
-  elseif type(name) == "string" then
+  else
     local sp = dev.set_property
     if type(sp) == "function" then
       sp(dev, name, val)
@@ -412,8 +429,11 @@ local handle_device_member = function(dev, val, name)
 end
 
 function Io.Dt.add_resource(dev, res)
+  if not Io.swig_instance_of(dev, "Generic_device *") then
+    error("expected a device got: " .. tostring(dev), 2)
+  end
   if not Io.swig_instance_of(res, "Resource *") then
-    error("expected a resource object got: " .. tostring(res))
+    error("expected a resource got: " .. tostring(res), 2)
   end
   dev:add_resource(res)
 end
@@ -438,7 +458,7 @@ Io.Hw = {}
 
 setmetatable(Io.Hw, { __index = function (self, t)
   return function (data)
-    local b = Io.Hw_dev_factory_create(t)
+    local b = check_device(Io.Hw_dev_factory_create(t), 3, "could not create device: " .. t)
     if type(data) == "function" then
       add_children(b, data)
     elseif type(data) == "table" then
@@ -450,12 +470,17 @@ end})
 
 function Io.hw_add_devices(data)
   local sb = Io.system_bus()
-  for n, dev in pairs(data) do
-    if type(n) == "string" then
-      dev:set_property("name", n)
+  local dtype = type(data)
+  if dtype == 'function' then
+    Io.Dt.add_children(sb, data)
+  elseif dtype == 'table' then
+    for n, dev in pairs(data) do
+      if type(n) == "string" then
+        dev:set_property("name", n)
+      end
+      sb:add_child(dev)
+      dev:plugin()
     end
-    sb:add_child(dev)
-    dev:plugin()
   end
   return data
 end
@@ -481,7 +506,7 @@ function wrap(devs_, filter)
   end
   local v = {}
   for _, d in ipairs(devs) do
-    local vd = Io.Vi_dev_factory_create(d, false)
+    local vd = Io.Vi_dev_factory_create(d)
     if vd then
       if type(filter) == "table" then
         for tag, val in pairs(filter) do

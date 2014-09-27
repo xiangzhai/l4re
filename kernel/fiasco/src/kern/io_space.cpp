@@ -83,7 +83,7 @@ public:
   { return Mdb_types::Pcnt(cxx::int_value<V_pfc>(V_pfc(1) << s)); }
 
   static Page_order to_order(Mdb_types::Order p)
-  { return Page_order(cxx::int_value<Mdb_types::Order>(p) + Config::PAGE_SHIFT); }
+  { return Page_order(cxx::int_value<Mdb_types::Order>(p)); }
 
   static V_pfc to_size(Page_order p)
   { return V_pfc(1) << p; }

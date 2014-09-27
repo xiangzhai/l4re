@@ -93,11 +93,6 @@ Jdb::leave_trap_handler(Cpu_number)
 
 }
 
-PROTECTED static inline
-void
-Jdb::monitor_address(Cpu_number, void *)
-{}
-
 IMPLEMENT inline
 bool
 Jdb::handle_user_request(Cpu_number)
@@ -252,7 +247,7 @@ Jdb::handle_nested_trap(Jdb_entry_frame *e)
 
 IMPLEMENT inline
 bool
-Jdb::handle_conditional_breakpoint(Cpu_number)
+Jdb::handle_conditional_breakpoint(Cpu_number, Jdb_entry_frame *)
 { return false; }
 
 
@@ -433,19 +428,6 @@ Jdb::leave_getchar()
 {
   if (!--getchar_entered)
     tcsetattr (fileno (stdin), TCSAFLUSH, &raw);
-}
-
-PROTECTED static inline
-template< typename T >
-void
-Jdb::set_monitored_address(T *dest, T val)
-{ *dest = val; }
-
-PROTECTED static inline
-template< typename T >
-T Jdb::monitor_address(Cpu_number, T volatile *addr)
-{
-  return *addr;
 }
 
 //----------------------------------------------------------------------------

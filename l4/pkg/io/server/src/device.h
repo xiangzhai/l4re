@@ -17,6 +17,7 @@
 
 #include <cstdio> 
 #include <cstring>
+#include <string>
 
 template< typename D >
 class Device_tree
@@ -91,12 +92,17 @@ public:
 
     iterator operator ++ ()
     {
+      if (!_c)
+        return *this;
+
       if (_d > _c->depth() && _c->children())
 	// go to a child if not at max depth and there are children
 	_c = _c->children();
       else if (_c->next())
 	// go to the next sibling
 	_c = _c->next();
+      else if (_c == _p)
+        _c = 0;
       else
 	{
 	  for (D *x = _c->parent(); x && x != _p; x = x->parent())
@@ -180,6 +186,7 @@ public:
   void request_child_resources();
   void allocate_pending_child_resources();
   void allocate_pending_resources();
+
   virtual void setup_resources() = 0;
 
   virtual char const *name() const = 0;
@@ -188,13 +195,15 @@ public:
 
   virtual void dump(int) const {};
 
-  virtual ~Device() {}
-
   typedef Device_tree<Device>::iterator iterator;
 
   iterator begin(int depth = 0) const { return iterator(this, depth); }
   static iterator end() { return iterator(); }
 
+  virtual int pm_suspend() = 0;
+  virtual int pm_resume() = 0;
+
+  virtual std::string get_full_path() const = 0;
 };
 
 
@@ -211,18 +220,26 @@ public:
   void add_resource(Resource *r)
   { _resources.push_back(r); }
 
+  void add_resource_rq(Resource *r)
+  {
+    add_resource(r);
+    request_resource(r);
+  }
+
   virtual bool match_cid(cxx::String const &) const { return false; }
-  virtual char const *name() const { return "(noname)"; }
-  virtual char const *hid() const { return 0; }
-  virtual bool name(cxx::String const &) { return false; }
 
+  char const *name() const { return "(noname)"; }
+  char const *hid() const { return 0; }
+  bool name(cxx::String const &) { return false; }
 
-  virtual bool request_child_resource(Resource *, Device *);
-  virtual bool alloc_child_resource(Resource *, Device *);
-  virtual void setup_resources();
+  bool request_child_resource(Resource *, Device *);
+  bool alloc_child_resource(Resource *, Device *);
+  void setup_resources();
 
-  virtual ~Generic_device() {}
+  int pm_suspend() { return 0; }
+  int pm_resume() { return 0; }
 
+  std::string get_full_path() const;
 };
 
 

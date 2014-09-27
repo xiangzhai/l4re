@@ -36,9 +36,9 @@ namespace L4Re {
 typedef l4re_event_stream_id_t Event_stream_id;
 typedef l4re_event_absinfo_t Event_absinfo;
 
-class L4_EXPORT Event_stream_info : public l4re_event_stream_info_t
+class L4_EXPORT Event_stream_bitmap_h
 {
-private:
+protected:
   static unsigned __get_idx(unsigned idx)
   { return idx / (sizeof(unsigned long)*8); }
 
@@ -62,8 +62,12 @@ private:
     else
       bm[__get_idx(idx)] &= ~__get_mask(idx);
   }
+};
 
-
+class L4_EXPORT Event_stream_info
+: public l4re_event_stream_info_t,
+  private Event_stream_bitmap_h
+{
 public:
   bool get_propbit(unsigned idx) const
   { return __get_bit(propbits, L4RE_EVENT_PROP_MAX, idx); }
@@ -94,6 +98,30 @@ public:
 
   void set_absbit(unsigned idx, bool v)
   { __set_bit(absbits, L4RE_EVENT_ABS_MAX, idx, v); }
+
+  bool get_swbit(unsigned idx) const
+  { return __get_bit(swbits, L4RE_EVENT_SW_MAX, idx); }
+
+  void set_swbit(unsigned idx, bool v)
+  { __set_bit(swbits, L4RE_EVENT_SW_MAX, idx, v); }
+};
+
+class L4_EXPORT Event_stream_state
+: public l4re_event_stream_state_t,
+  private Event_stream_bitmap_h
+{
+public:
+  bool get_keybit(unsigned idx) const
+  { return __get_bit(keybits, L4RE_EVENT_KEY_MAX, idx); }
+
+  void set_keybit(unsigned idx, bool v)
+  { __set_bit(keybits, L4RE_EVENT_KEY_MAX, idx, v); }
+
+  bool get_swbit(unsigned idx) const
+  { return __get_bit(swbits, L4RE_EVENT_SW_MAX, idx); }
+
+  void set_swbit(unsigned idx, bool v)
+  { __set_bit(swbits, L4RE_EVENT_SW_MAX, idx, v); }
 };
 
 /**
@@ -118,6 +146,7 @@ public:
   long get_stream_info_for_id(l4_umword_t stream_id, Event_stream_info *info) const throw();
   long get_axis_info(l4_umword_t stream_id, unsigned naxes, unsigned *axis,
                      Event_absinfo *info) const throw();
+  long get_stream_state_for_id(l4_umword_t stream_id, Event_stream_state *state) const throw();
 };
 
 struct L4_EXPORT Default_event_payload

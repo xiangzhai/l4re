@@ -22,7 +22,7 @@ void * mmap(void * /*start*/, size_t length, int /*prot*/, int flags, int /*fd*/
   char *addr;
 
   // some checks
-  if (offset < 0)  
+  if (offset < 0)
     {
       errno = -EINVAL;
       return MAP_FAILED;
@@ -60,7 +60,7 @@ int munmap(void * /*start*/, size_t  /*length*/) throw()
 }
 
 void * mremap(void * /*old_address*/, size_t /*old_size*/, size_t /*new_size*/,
-	      int /*may_move*/, ...) throw()
+              int /*may_move*/, ...) throw()
 {
   L4::cout << "mremap() called: unimplemented!\n";
   errno = EINVAL;

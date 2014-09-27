@@ -39,19 +39,19 @@ public:
     void flags(unsigned long add, unsigned long del = 0) throw()
     {
       p = (p & Page_addr_mask & ~(del & ~Page_addr_mask))
-	| ((unsigned long)add & ~Page_addr_mask);
+        | ((unsigned long)add & ~Page_addr_mask);
     }
 
     void addr(void *a) throw()
     { p = (p & ~Page_addr_mask) | ((unsigned long)a & Page_addr_mask); }
   };
-  
+
   bool is_static() const throw() { return false; }
-  
+
   Dataspace_noncont(unsigned long size, unsigned long flags = Writable) throw()
   : Dataspace(size, flags | Cow_enabled), pages(0)
   {}
-  
+
   virtual ~Dataspace_noncont() {}
 
   Address address(l4_addr_t offset,
@@ -75,20 +75,20 @@ public:
 #if 0
 private:
   unsigned idx_of(unsigned long offset) const { return offset >> 12; }
-  
-  void *page(unsigned idx) const 
+
+  void *page(unsigned idx) const
   { return (void*)(pages[idx] & Page_addr_mask); }
   unsigned flags(unsigned idx) const { return pages[idx] & ~Page_addr_mask; }
   void page(unsigned idx, void *page, unsigned flags = 0) const
-  { 
-    pages[idx] = (unsigned long)page & Page_addr_mask | flags 
+  {
+    pages[idx] = (unsigned long)page & Page_addr_mask | flags
       & ~Page_addr_mask; 
   }
 #endif
-  
+
   void free_page(Page &p) const throw();
   void unmap_page(Page const &p, bool ro = false) const throw();
-  
+
 public:
   long clear(unsigned long offs, unsigned long size) const throw();
 

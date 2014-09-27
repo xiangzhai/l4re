@@ -28,6 +28,7 @@
  */
 
 /* Linux */
+#include <linux/bootmem.h>
 #include <linux/gfp.h>
 #include <linux/string.h>
 #include <linux/pagevec.h>
@@ -236,7 +237,7 @@ int set_page_dirty_lock(struct page *page)
 	return 0;
 }
 
-
+int hashdist = HASHDIST_DEFAULT;
 /*
  * basically copied from linux/mm/page_alloc.c
  */

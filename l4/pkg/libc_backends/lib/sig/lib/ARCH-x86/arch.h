@@ -8,6 +8,7 @@
 #pragma once
 
 #include <ucontext.h>
+#include <sys/ucontext.h>
 #include <stdio.h>
 
 static inline int get_es(void)

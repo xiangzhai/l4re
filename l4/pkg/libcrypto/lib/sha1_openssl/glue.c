@@ -13,7 +13,7 @@
  */
 
 /* L4-specific includes */
-#include <l4/crypto/sha1.h>
+#include "sha1.h"
 
 static void final(void *ctx, unsigned char *d) {
     

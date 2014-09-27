@@ -117,6 +117,30 @@ l4vbus_release_resource(l4_cap_idx_t vbus, l4vbus_resource_t *res)
 }
 
 int
+l4vbus_is_compatible(l4_cap_idx_t vbus, l4vbus_device_handle_t dev,
+                     char const *cid)
+{
+  L4::Ipc::Iostream s(l4_utcb());
+  s << dev << l4_uint32_t(L4vbus_vdevice_is_compatible) << cid;
+  return l4_error(s.call(vbus));
+}
+
+int
+l4vbus_get_hid(l4_cap_idx_t vbus, l4vbus_device_handle_t dev, char *hid,
+               unsigned long max_len)
+{
+  unsigned long len = max_len;
+  L4::Ipc::Iostream s(l4_utcb());
+  s << dev << l4_uint32_t(L4vbus_vdevice_get_hid);
+  int err = l4_error(s.call(vbus));
+  if (err < 0)
+    return err;
+
+  s >> L4::Ipc::buf_cp_in(hid, len);
+  return len;
+}
+
+int
 l4vbus_vicu_get_cap(l4_cap_idx_t vbus, l4vbus_device_handle_t icu,
                     l4_cap_idx_t res)
 {

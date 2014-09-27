@@ -341,6 +341,19 @@ Client_fb::handle_event(Hid_report *e, Point const &mouse, bool core_dev)
     _ev_irq.trigger();
 }
 
+void
+Client_fb::put_event(l4_umword_t stream, int type, int code, int value,
+                     l4_uint64_t time)
+{
+  L4Re::Event_buffer::Event e;
+  e.time = time;
+  e.payload.stream_id = stream;
+  e.payload.type = type;
+  e.payload.code = code;
+  e.payload.value = value;
+  _events.put(e);
+  _ev_irq.trigger();
+}
 
 int
 Client_fb::refresh(int x, int y, int w, int h)

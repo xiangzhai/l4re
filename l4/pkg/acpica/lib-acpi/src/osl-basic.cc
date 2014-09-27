@@ -49,42 +49,6 @@ AcpiOsFree (void * memory)
   return;
 }
 
-#ifndef HAVE_NOT_IMPLEMENTED_AcpiOsInstallInterruptHandler
-ACPI_STATUS
-AcpiOsInstallInterruptHandler (
-	uint32_t                        interrupt_number,
-	ACPI_OSD_HANDLER                service_routine,
-	void                            *context)
-{
-  printf("%s:%d:%s(%d, %p, %p): UNINPLEMENTED\n",
-         __FILE__, __LINE__, __func__,
-         interrupt_number, service_routine, context);
-  return AE_OK;
-}
-#endif
-
-ACPI_STATUS
-AcpiOsRemoveInterruptHandler (
-	uint32_t                        interrupt_number,
-	ACPI_OSD_HANDLER                service_routine)
-{
-  printf("%s:%d:%s(%d, %p): UNINPLEMENTED\n",
-         __FILE__, __LINE__, __func__,
-         interrupt_number, service_routine);
-  return AE_OK;
-}
-
-ACPI_STATUS
-AcpiOsExecute (
-	ACPI_EXECUTE_TYPE                type,
-	ACPI_OSD_EXEC_CALLBACK           function,
-	void                            *context)
-{
-  printf("%s:%d:%s(%d, %p, %p): UNINPLEMENTED\n",
-         __FILE__, __LINE__, __func__, type, function, context);
-  return !AE_OK;
-}
-
 void
 AcpiOsSleep (ACPI_INTEGER milliseconds)
 {
@@ -180,7 +144,7 @@ AcpiOsGetRootPointer (void)
   ACPI_SIZE table_address = 0;
   printf("Find root Pointer\n");
   AcpiFindRootPointer(&table_address);
-  printf("Find root Pointer: %x\n", table_address);
+  printf("Find root Pointer: %lx\n", (unsigned long)table_address);
   return (ACPI_PHYSICAL_ADDRESS)table_address;
 }
 
@@ -274,8 +238,8 @@ AcpiOsReadMemory (
     UINT32                  Width)
 {
 
-    printf("%s:%d:%s(%x, %p, %u): UNINPLEMENTED\n",
-           __FILE__, __LINE__, __func__, Address, Value, Width);
+    printf("%s:%d:%s(%lx, %p, %u): UNINPLEMENTED\n",
+           __FILE__, __LINE__, __func__, (unsigned long)Address, Value, Width);
     switch (Width)
     {
     case 8:
@@ -312,8 +276,8 @@ AcpiOsWriteMemory (
     UINT64                  Value,
     UINT32                  Width)
 {
-  printf("%s:%d:%s(%x, %llu, %u): UNINPLEMENTED\n",
-         __FILE__, __LINE__, __func__, Address, Value, Width);
+  printf("%s:%d:%s(%lx, %llu, %u): UNINPLEMENTED\n",
+         __FILE__, __LINE__, __func__, (unsigned long)Address, Value, Width);
     return (AE_OK);
 }
 
@@ -340,10 +304,10 @@ AcpiOsPhysicalTableOverride (
     ACPI_PHYSICAL_ADDRESS   *NewAddress,
     UINT32                  *NewTableLength)
 {
-  printf("%s:%d:%s(%p, %p, %p): UNINPLEMENTED\n",
-         __FILE__, __LINE__, __func__, ExistingTable, NewAddress, NewTableLength);
-
-    return (AE_SUPPORT);
+  (void)ExistingTable;
+  (void)NewTableLength;
+  *NewAddress = 0;
+  return (AE_SUPPORT);
 }
 
 /******************************************************************************

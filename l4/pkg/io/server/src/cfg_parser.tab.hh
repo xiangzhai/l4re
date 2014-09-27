@@ -1,8 +1,8 @@
-/* A Bison parser, made by GNU Bison 2.6.2.  */
+/* A Bison parser, made by GNU Bison 2.7.12-4996.  */
 
 /* Skeleton interface for Bison LALR(1) parsers in C++
    
-      Copyright (C) 2002-2012 Free Software Foundation, Inc.
+      Copyright (C) 2002-2013 Free Software Foundation, Inc.
    
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -37,26 +37,26 @@
 
 /* C++ LALR(1) parser skeleton written by Akim Demaille.  */
 
-#ifndef CFG_CFG_PARSER_TAB_HH
-# define CFG_CFG_PARSER_TAB_HH
+#ifndef YY_CFG_CFG_PARSER_TAB_HH_INCLUDED
+# define YY_CFG_CFG_PARSER_TAB_HH_INCLUDED
 
 /* "%code requires" blocks.  */
-/* Line 36 of lalr1.cc  */
+/* Line 33 of lalr1.cc  */
 #line 16 "cfg_parser.yy"
 
 
-#include "vdevice.h"
+#include "virt/vdevice.h"
 #include "device.h"
 #include "expression.h"
 #include "hw_device.h"
 #include <vector>
 #include <l4/cxx/string>
-#include "vbus_factory.h"
+#include "virt/vbus_factory.h"
 #include "tagged_parameter.h"
 
 
 
-/* Line 36 of lalr1.cc  */
+/* Line 33 of lalr1.cc  */
 #line 61 "cfg_parser.tab.hh"
 
 
@@ -72,7 +72,7 @@
 
 
 namespace cfg {
-/* Line 36 of lalr1.cc  */
+/* Line 33 of lalr1.cc  */
 #line 77 "cfg_parser.tab.hh"
 
   /// A Bison parser.
@@ -83,7 +83,7 @@ namespace cfg {
 #ifndef YYSTYPE
     union semantic_type
     {
-/* Line 36 of lalr1.cc  */
+/* Line 33 of lalr1.cc  */
 #line 53 "cfg_parser.yy"
 
     l4_uint64_t num;
@@ -97,7 +97,7 @@ namespace cfg {
     Hw::Device *hw_device;
 
 
-/* Line 36 of lalr1.cc  */
+/* Line 33 of lalr1.cc  */
 #line 102 "cfg_parser.tab.hh"
     };
 #else
@@ -150,6 +150,10 @@ namespace cfg {
 #endif
 
   private:
+    /// This class is not copyable.
+    Parser (const Parser&);
+    Parser& operator= (const Parser&);
+
     /// Report a syntax error.
     /// \param loc    where the syntax error is found.
     /// \param msg    a description of the syntax error.
@@ -267,6 +271,7 @@ namespace cfg {
 
     /// \brief Reclaim the memory associated to a symbol.
     /// \param yymsg        Why this token is reclaimed.
+    ///                     If null, do not display the symbol, just free it.
     /// \param yytype       The symbol type.
     /// \param yyvaluep     Its semantic value.
     /// \param yylocationp  Its location.
@@ -300,9 +305,9 @@ namespace cfg {
   };
 
 } // cfg
-/* Line 36 of lalr1.cc  */
-#line 305 "cfg_parser.tab.hh"
+/* Line 33 of lalr1.cc  */
+#line 310 "cfg_parser.tab.hh"
 
 
 
-#endif /* !CFG_CFG_PARSER_TAB_HH  */
+#endif /* !YY_CFG_CFG_PARSER_TAB_HH_INCLUDED  */

@@ -149,6 +149,7 @@ generate_l4defs_files = \
 	echo "L4_BUILDDIR = $(OBJ_BASE)"                >> $$tmpdir/Makefile && \
 	echo "SRC_DIR = $$tmpdir"                       >> $$tmpdir/Makefile && \
 	echo "PKGDIR_ABS = $(L4DIR_ABS)/l4defs.gen.dir" >> $$tmpdir/Makefile && \
+	echo "BUILD_MESSAGE ="                          >> $$tmpdir/Makefile && \
 	cat $(L4DIR)/mk/export_defs.inc                 >> $$tmpdir/Makefile && \
 	PWD=$$tmpdir $(MAKE) -C $$tmpdir -f $$tmpdir/Makefile          \
 	  CALLED_FOR=$(1) L4DEF_FILE_MK=$(L4DEF_FILE_MK) L4DEF_FILE_SH=$(L4DEF_FILE_SH) && \
@@ -156,6 +157,7 @@ generate_l4defs_files = \
 
 $(L4DEF_FILE_MK): $(BUILD_DIRS) $(DROPSCONF_CONFIG_MK) $(L4DIR)/mk/export_defs.inc
 	+$(call generate_l4defs_files,static)
+	+$(call generate_l4defs_files,minimal)
 	+$(call generate_l4defs_files,shared)
 	+$(call generate_l4defs_files,sharedlib)
 
@@ -163,6 +165,7 @@ $(L4DEF_FILE_SH): $(L4DEF_FILE_MK)
 
 regen_l4defs:
 	+$(call generate_l4defs_files,static)
+	+$(call generate_l4defs_files,minimal)
 	+$(call generate_l4defs_files,shared)
 	+$(call generate_l4defs_files,sharedlib)
 
@@ -253,9 +256,9 @@ Makeconf.bid.local-helper:
 	               $(ARCH)_$(CPU)-$(BUILD_ABI))" >> $(DROPSCONF_CONFIG_MK)
 	$(VERBOSE)$(foreach v, GCCDIR GCCLIB_HOST GCCLIB_EH GCCLIB_S_SO \
 	                GCCVERSION GCCMAJORVERSION GCCMINORVERSION      \
-			GCCSUBVERSION GCC_HAS_ATOMICS                   \
-			GCCNOSTACKPROTOPT LDVERSION GCCSYSLIBDIRS       \
-			GCCFORTRANAVAIL                                 \
+			GCC_HAS_ATOMICS                   \
+			GCCNOSTACKPROTOPT GCCSTACKPROTOPT GCCSTACKPROTALLOPT LDVERSION \
+			GCCSYSLIBDIRS GCCFORTRANAVAIL                                 \
 			$(if $(GCCNOFPU_$(ARCH)_f),GCCNOFPU_$(ARCH))    \
 			$(if $(GCCIS_$(ARCH)_leon_f),GCCIS_$(ARCH)_leon),   \
 			echo $(v)=$(call $(v)_f,$(ARCH))                \
@@ -266,7 +269,6 @@ Makeconf.bid.local-helper:
 			>>$(DROPSCONF_CONFIG_MK);)
 	$(VERBOSE)$(foreach v, LD_GENDEP_PREFIX, echo $v=$($(v)) >>$(DROPSCONF_CONFIG_MK);)
 	$(VERBOSE)echo "HOST_SYSTEM=$(HOST_SYSTEM)" >>$(DROPSCONF_CONFIG_MK)
-	$(VERBOSE)echo "COLOR_TERMINAL=$(shell if [ $$(tput colors || echo -1) = '-1' ]; then echo n; else echo y; fi)" >>$(DROPSCONF_CONFIG_MK)
 	$(VERBOSE)echo "LD_HAS_HASH_STYLE_OPTION=$(shell if $(LD) --help 2>&1 | grep -q ' --hash-style='; then echo y; else echo n; fi)" >>$(DROPSCONF_CONFIG_MK)
 	$(VERBOSE)# we need to call make again, because HOST_SYSTEM (set above) must be
 	$(VERBOSE)# evaluated for LD_PRELOAD to be set, which we need in the following
@@ -441,6 +443,10 @@ fastboot fastboot_rawimage: rawimage
 fastboot_uimage: uimage
 	$(VERBOSE)$(FASTBOOT_BOOT_CMD) $(IMAGES_DIR)/bootstrap.uimage
 
+efiimage: check_and_adjust_ram_base
+	$(checkx86amd64build)
+	$(call genimage,BOOTSTRAP_DO_UIMAGE= BOOTSTRAP_DO_RAW_IMAGE= BOOTSTRAP_DO_UEFI=y)
+
 ifneq ($(filter $(ARCH),x86 amd64),)
 qemu:
 	$(VERBOSE)$(entryselection);                                      \
@@ -520,6 +526,7 @@ exportpack:
 help::
 	@echo
 	@echo "Image generation targets:"
+	@echo "  efiimage   - Generate an EFI image, containing all modules."
 	@echo "  elfimage   - Generate an ELF image, containing all modules."
 	@echo "  rawimage   - Generate a raw image (memory dump), containing all modules."
 	@echo "  uimage     - Generate a uimage for u-boot, containing all modules."

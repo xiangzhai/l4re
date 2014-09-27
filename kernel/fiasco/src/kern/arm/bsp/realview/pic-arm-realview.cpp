@@ -88,11 +88,6 @@ void Pic::init_ap(Cpu_number, bool resume)
   gic->init_ap(resume);
 }
 
-PRIVATE static inline
-void
-Pic::init_ap_other_gics()
-{}
-
 //-------------------------------------------------------------------
 IMPLEMENTATION [arm && pic_gic]:
 

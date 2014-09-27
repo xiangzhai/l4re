@@ -12,7 +12,7 @@ public:
    * The implementation is platform specific. Two x86 implementations
    * are timer-pit and timer-rtc.
    */
-  static void init(Cpu_number cpu) FIASCO_INIT_CPU;
+  static void init(Cpu_number cpu) FIASCO_INIT_CPU_AND_PM;
 
   /**
    * Initialize the system clock.

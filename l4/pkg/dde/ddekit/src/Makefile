@@ -6,6 +6,7 @@ TARGET = libddekit.a
 
 # list your .c files here
 SRC_C = \
+		block.c \
 		condvar.c \
 		init.c \
 		interrupt.c \

@@ -177,23 +177,22 @@ Vm::resume_vcpu(Context *ctxt, Vcpu_state *vcpu, bool user_mode)
       state->irq_inject.group = 0;
     }
 
-  int err = 0;
   while (true)
     {
       if (   !(vcpu->_saved_state & Vcpu_state::F_irqs)
           && (vcpu->sticky_flags & Vcpu_state::Sf_irq_pending))
         {
           state->exit_reason = ER_irq;
-          err = 1;
-          break;
+          ctxt->arch_load_vcpu_kern_state(vcpu, true);
+          return 1;
         }
 
       log_vm(state, 1);
 
       if (!get_fpu())
         {
-          err = -L4_err::EInval;
-          break;
+          ctxt->arch_load_vcpu_kern_state(vcpu, true);
+          return -L4_err::EInval;
         }
 
       Cpu::cpus.current().tz_switch_to_ns((Mword *)state);
@@ -205,15 +204,20 @@ Vm::resume_vcpu(Context *ctxt, Vcpu_state *vcpu, bool user_mode)
       if (state->exit_reason == ER_irq || state->exit_reason == ER_fiq)
         Proc::preemption_point();
 
-      if (   state->exit_reason == ER_vmm_call
-          || state->exit_reason == ER_inst_abort
-          || state->exit_reason == ER_data_abort)
-        break;
-
-      if (state->exit_reason == ER_undef)
+      switch (state->exit_reason)
         {
+        case ER_data_abort:
+          if ((state->pfs & 0x237) == 0x211)
+            break;
+          ctxt->arch_load_vcpu_kern_state(vcpu, true);
+          return 0;
+        case ER_undef:
           printf("should not happen: %lx\n", state->pc);
-          break;
+          // fall through
+        case ER_vmm_call:
+        case ER_inst_abort:
+          ctxt->arch_load_vcpu_kern_state(vcpu, true);
+          return 0;
         }
 
       Thread *t = nonull_static_cast<Thread*>(ctxt);
@@ -225,8 +229,6 @@ Vm::resume_vcpu(Context *ctxt, Vcpu_state *vcpu, bool user_mode)
         }
     }
 
-  ctxt->arch_load_vcpu_kern_state(vcpu, true);
-  return err;
 }
 
 // --------------------------------------------------------------------------

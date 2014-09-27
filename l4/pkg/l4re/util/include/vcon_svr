@@ -31,8 +31,9 @@ namespace L4Re { namespace Util {
  * This template uses vcon_write() and vcon_read() to get and deliver data
  * from the implementor.
  *
- * vcon_read() needs to return a value bigger than the given size to
- * indicate that there's more data to read for the other end.
+ * vcon_read() needs to update the status argument with the
+ * L4_vcon_read_stat flags, especially the L4_VCON_READ_STAT_DONE flag
+ * to indicate that there's nothing more to read for the other end.
  *
  * vcon_write() gets the live data from the UTCB. Make sure to copy out the
  * data before using the UTCB again.
@@ -88,7 +89,7 @@ Vcon_svr<SVR>::dispatch(l4_umword_t, L4::Ipc::Iostream &ios)
         {
           unsigned long size = 0;
           char *buf = 0;
-          ios >> L4::Ipc::Buf_in<char>(buf, size);
+          ios >> L4::Ipc::buf_in(buf, size);
           this_vcon()->vcon_write(buf, size);
           return -L4_ENOREPLY;
         }
@@ -120,11 +121,14 @@ Vcon_svr<SVR>::dispatch(l4_umword_t, L4::Ipc::Iostream &ios)
 
   char buf[size];
   // Hmm, could we avoid the double copy here?
-  unsigned r = this_vcon()->vcon_read(buf, size);
+  l4_umword_t v = this_vcon()->vcon_read(buf, size);
+  unsigned bytes = v & L4_VCON_READ_SIZE_MASK;
 
-  // don't use stream operators, because we need to set eof bit!
-  ios.put(r > size ? size : r | 1UL << 31);
-  ios.put(buf, size);
+  if (bytes < size)
+    v |= L4_VCON_READ_STAT_DONE;
+
+  ios.put(v);
+  ios.put(buf, bytes);
 
   return -L4_EOK;
 }

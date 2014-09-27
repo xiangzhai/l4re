@@ -450,9 +450,9 @@ static void free_more_memory(void)
 			try_to_free_pages(node_zonelist(nid, GFP_NOFS), 0,
 						GFP_NOFS);
 	}
-#else
+#else  /* DDE_LINUX */
 	WARN_UNIMPL;
-#endif
+#endif  /* !DDE_LINUX */
 }
 
 /*
@@ -1109,7 +1109,7 @@ grow_dev_page(struct block_device *bdev, sector_t block,
 	struct page *page;
 	struct buffer_head *bh;
 
-#ifdef DDE_LINUX
+#ifndef DDE_LINUX
 	WARN_UNIMPL;
 	return NULL;
 #endif
@@ -1335,6 +1335,7 @@ static struct buffer_head *__bread_slow(struct buffer_head *bh)
 		bh->b_end_io = end_buffer_read_sync;
 		submit_bh(READ, bh);
 		wait_on_buffer(bh);
+  ddekit_printf ("WAH %s:%s:%d disk %x\n", __FILE__, __FUNCTION__, __LINE__, bh);
 		if (buffer_uptodate(bh))
 			return bh;
 	}
@@ -1529,6 +1530,7 @@ __bread(struct block_device *bdev, sector_t block, unsigned size)
 
 	if (likely(bh) && !buffer_uptodate(bh))
 		bh = __bread_slow(bh);
+  ddekit_printf ("WAH %s:%s:%d disk %x\n", __FILE__, __FUNCTION__, __LINE__, block);
 	return bh;
 }
 EXPORT_SYMBOL(__bread);
@@ -2106,7 +2108,7 @@ int block_write_begin(struct file *file, struct address_space *mapping,
 			 */
 			if (pos + len > inode->i_size)
 				vmtruncate(inode, inode->i_size);
-#endif
+#endif  /* !DDE_LINUX */
 		}
 	}
 
@@ -2706,8 +2708,10 @@ out_release:
 	page_cache_release(page);
 	*pagep = NULL;
 
+#ifndef DDE_LINUX
 	if (pos + len > inode->i_size)
 		vmtruncate(inode, inode->i_size);
+#endif  /* !DDE_LINUX */
 
 	return ret;
 }

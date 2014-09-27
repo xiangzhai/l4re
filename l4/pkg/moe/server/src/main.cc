@@ -128,22 +128,22 @@ static void find_memory()
     {
       while (!l4sigma0_map_anypage(Sigma0_cap, 0, L4_WHOLE_ADDRESS_SPACE,
                                    &addr, order))
-	{
-	  unsigned long size = 1UL << order;
+        {
+          unsigned long size = 1UL << order;
 
-	  if (addr == 0)
-	    {
-	      addr = L4_PAGESIZE;
-	      size -= L4_PAGESIZE;
-	      if (!size)
-		continue;
-	    }
+          if (addr == 0)
+            {
+              addr = L4_PAGESIZE;
+              size -= L4_PAGESIZE;
+              if (!size)
+                continue;
+            }
 
-	  if (addr < min_addr) min_addr = addr;
-	  if (addr + size > max_addr) max_addr = addr + size;
+          if (addr < min_addr) min_addr = addr;
+          if (addr + size > max_addr) max_addr = addr + size;
 
-	  Single_page_alloc_base::_free((void*)addr, size, true);
-	}
+          Single_page_alloc_base::_free((void*)addr, size, true);
+        }
     }
 
   info.printf("found %ld KByte free memory\n",
@@ -302,38 +302,38 @@ public:
 
     if (tag.is_exception())
       {
-	dbg.cprintf("\n");
-	Dbg(Dbg::Exceptions).printf("unhandled exception...\n");
-	return -L4_ENOREPLY;
+        dbg.cprintf("\n");
+        Dbg(Dbg::Exceptions).printf("unhandled exception...\n");
+        return -L4_ENOREPLY;
       }
     else
       {
-	// L4::cout << "ROOT: CALL(" << (void*)obj<< "): " << op << "...\n";
-	o = r.find(obj & ~3UL);
+        // L4::cout << "ROOT: CALL(" << (void*)obj<< "): " << op << "...\n";
+        o = r.find(obj & ~3UL);
 
-	// L4::cout << "ROOT: obj=" << o << "\n";
+        // L4::cout << "ROOT: obj=" << o << "\n";
 
-	// enter_kdebug("a");
+        // enter_kdebug("a");
 
-	if (!o)
-	  {
-	    dbg.cprintf(": invalid object\n");
-	    return -L4_ENOENT;
-	  }
+        if (!o)
+          {
+            dbg.cprintf(": invalid object\n");
+            return -L4_ENOENT;
+          }
 
-	dbg.cprintf(": object is a %s\n", typeid(*o).name());
-	try
-	  {
-	    int res = o->dispatch(obj, ios);
-	    dbg.printf("reply = %d\n", res);
-	    return res;
-	  }
-	catch (L4::Runtime_error &e)
-	  {
-	    int res = e.err_no();
-	    dbg.printf("reply(excption) = %d\n", res);
+        dbg.cprintf(": object is a %s\n", typeid(*o).name());
+        try
+          {
+            int res = o->dispatch(obj, ios);
+            dbg.printf("reply = %d\n", res);
             return res;
-	  }
+          }
+        catch (L4::Runtime_error &e)
+          {
+            int res = e.err_no();
+            dbg.printf("reply(excption) = %d\n", res);
+            return res;
+          }
       }
 
     Dbg(Dbg::Warn).printf("Invalid message (tag.label=%ld)\n", tag.label());
@@ -387,26 +387,26 @@ static unsigned long parse_flags(cxx::String const &_args, Dbg_bits const *dbb,
       cxx::String a = args.head(c);
 
       if (a.empty())
-	break;
+        break;
 
       args = args.substr(c+1);
       Dbg_bits const *b;
 
       for (b = &dbb[0]; b->tag; ++b)
-	{
-	  if (a == b->tag)
-	    {
-	      lvl |= b->bits;
-	      break;
-	    }
-	}
+        {
+          if (a == b->tag)
+            {
+              lvl |= b->bits;
+              break;
+            }
+        }
 
       if (!b->tag)
-	{
-	  warn.printf("ignore unkown argument for %.*s: '%.*s'\n",
-	              opt.len(), opt.start(), a.len(), a.start());
+        {
+          warn.printf("ignore unkown argument for %.*s: '%.*s'\n",
+                      opt.len(), opt.start(), a.len(), a.start());
 
-	}
+        }
     }
   return lvl;
 }
@@ -450,10 +450,10 @@ parse_long_option(cxx::String const &o)
   for (Get_opt const *opt = _options; opt->tag; ++opt)
     {
       if (o.starts_with(opt->tag))
-	{
-	  opt->hdl(o.substr(strlen(opt->tag)));
-	  return;
-	}
+        {
+          opt->hdl(o.substr(strlen(opt->tag)));
+          return;
+        }
     }
 
   warn.printf("unknown command-line option '%.*s'\n", o.len(), o.start());
@@ -477,14 +477,12 @@ parse_option(cxx::String const &o)
   for (cxx::String::Index s = o.start() + 1; !o.eof(s); ++s)
     {
       switch (o[s])
-	{
-	default:
-	  warn.printf("unkown command-line option '%c'\n", o[s]);
-	  break;
-	}
+        {
+        default:
+          warn.printf("unkown command-line option '%c'\n", o[s]);
+          break;
+        }
     }
-
-
 }
 
 static Elf_loader elf_loader;
@@ -569,37 +567,37 @@ int main(int argc, char**argv)
       bool skip_argv0 = true;
       cxx::Pair<cxx::String, cxx::String> a;
       for (a = next_arg(cmdline); !a.first.empty(); a = next_arg(a.second))
-	{
-	  if (skip_argv0)
-	    {
-	      skip_argv0 = false;
-	      continue;
-	    }
+        {
+          if (skip_argv0)
+            {
+              skip_argv0 = false;
+              continue;
+            }
 
-	  if (a.first[0] != '-') // not an option start init
-	    {
-	      elf_loader.start(_init_prog, cxx::String(a.first.start(), a.second.end()));
-	      break;
-	    }
+          if (a.first[0] != '-') // not an option start init
+            {
+              elf_loader.start(_init_prog, cxx::String(a.first.start(), a.second.end()));
+              break;
+            }
 
-	  if (a.first == "--")
-	    {
-	      elf_loader.start(_init_prog, a.second);
-	      break;
-	    }
+          if (a.first == "--")
+            {
+              elf_loader.start(_init_prog, a.second);
+              break;
+            }
 
-	  parse_option(a.first);
-	}
+          parse_option(a.first);
+        }
 
       if (a.first.empty())
         elf_loader.start(_init_prog, cxx::String(""));
 
       // dump name space information
       if (boot.is_active())
-	{
-	  boot.printf("dump of root name space:\n");
-	  root_name_space()->dump(1);
-	}
+        {
+          boot.printf("dump of root name space:\n");
+          root_name_space()->dump(1);
+        }
 
       // we handle our exceptions ourselves
       server.loop_noexc(My_dispatcher<L4::Basic_registry>());

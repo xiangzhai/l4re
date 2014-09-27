@@ -91,10 +91,10 @@ Name_space::get_capability(L4::Ipc::Snd_fpage const &cap_fp, L4::Cap<void> *cap,
     {
       L4::Server_object *o = object_pool.find(cap_fp.data());
       if (!o)
-	return -L4_EINVAL;
+        return -L4_EINVAL;
 
       if (lo)
-	*lo = o;
+        *lo = o;
 
       *cap = o->obj_cap();
       return 0;
@@ -143,14 +143,14 @@ Name_space::dump(bool rec, int indent) const
   for (Const_iterator i = begin(); i != end(); ++i)
     {
       for (int x = 0; x < indent; ++x)
-	L4::cout << "  ";
+        L4::cout << "  ";
 
       L4::cout << "  " << i->name()  << " -> " << i->obj()->cap()
                << " o=" << (void*)i->obj()->obj()  << " f="
                << i->obj()->flags() << '\n';
-      if (rec && i->obj()->is_valid() 
-	  && (n = dynamic_cast<Name_space const *>(i->obj()->obj())))
-	n->dump(rec, indent + 1);
+      if (rec && i->obj()->is_valid()
+          && (n = dynamic_cast<Name_space const *>(i->obj()->obj())))
+        n->dump(rec, indent + 1);
     }
 }
 

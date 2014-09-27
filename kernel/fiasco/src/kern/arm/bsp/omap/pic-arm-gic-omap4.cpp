@@ -1,9 +1,9 @@
-INTERFACE [arm && pic_gic && omap4]:
+INTERFACE [arm && pic_gic && (omap4 || omap5)]:
 
 #include "gic.h"
 
 // ------------------------------------------------------------------------
-IMPLEMENTATION [arm && pic_gic && omap4]:
+IMPLEMENTATION [arm && pic_gic && (omap4 || omap5)]:
 
 #include "irq_mgr_multi_chip.h"
 #include "kmem.h"
@@ -32,7 +32,7 @@ void Pic::restore_all(Status)
 {}
 
 // ------------------------------------------------------------------------
-IMPLEMENTATION [arm && mp && pic_gic && omap4]:
+IMPLEMENTATION [arm && mp && pic_gic && (omap4 || omap5)]:
 
 PUBLIC static
 void Pic::init_ap(Cpu_number, bool resume)

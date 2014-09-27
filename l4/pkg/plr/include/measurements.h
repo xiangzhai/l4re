@@ -43,13 +43,14 @@ namespace Measurements
 		Thread_stop  = 7,
 		Locking = 8,
 		SHMLocking = 9,
+		Map = 10,
 	};
 
 	struct __attribute__((packed))
 	SensorHead {
 		l4_uint64_t   tsc;   // TSC: stop
 		l4_uint32_t   vcpu;  // vcpu ptr
-		unsigned char type;  // event type
+		l4_uint8_t    type;  // event type
 	};
 
 
@@ -62,12 +63,30 @@ namespace Measurements
 		l4_addr_t remotebase;
 	};
 
+
+	struct __attribute__((packed))
+	MapEvent
+	{
+		l4_addr_t local;
+		l4_addr_t remote;
+		l4_size_t size;
+		char unmap;
+	};
+
+
 	struct __attribute__((packed))
 	TrapEvent
 	{
 		char        start;
 		l4_addr_t   trapaddr;
 		l4_uint32_t trapno;
+	};
+
+
+	struct __attribute__((packed))
+	ThreadStartEvent
+	{
+		l4_addr_t   startEIP;
 	};
 
 
@@ -82,31 +101,33 @@ namespace Measurements
 	struct __attribute__((packed))
 	FooEvent
 	{
-		unsigned start;
+		l4_umword_t start;
 	};
 
 
 	struct __attribute__((packed))
 	LockEvent
 	{
+#ifdef __cplusplus
 		enum LockEvents {
 			lock,
 			unlock,
 			mtx_lock,
 			mtx_unlock
 		};
-		unsigned eventType;
-		unsigned lockPtr;
+#endif
+		l4_umword_t eventType;
+		l4_umword_t lockPtr;
 	};
 
 
 	struct __attribute__((packed))
 	SHMLockEvent
 	{
-		unsigned lockid;
-		unsigned epoch;
-		unsigned owner; // current owner
-		unsigned type; // 1 -> init
+		l4_umword_t lockid;
+		l4_umword_t epoch;
+		l4_umword_t owner; // current owner
+		l4_umword_t type; // 1 -> init
 			           // 2 -> lock_enter
 					   // 3 -> lock_exit
 			           // 4 -> unlock_enter
@@ -117,9 +138,9 @@ namespace Measurements
 	struct __attribute__((packed))
 	BarnesEvent
 	{
-		unsigned ptr;
-		unsigned num;
-		unsigned type;
+		l4_umword_t ptr;
+		l4_umword_t num;
+		l4_umword_t type;
 	};
 
 
@@ -129,9 +150,11 @@ namespace Measurements
 		struct SensorHead header;
 		union {
 			struct PagefaultEvent pf;
+			struct MapEvent       map;
 			struct SyscallEvent sys;
 			struct FooEvent     foo;
 			struct TrapEvent    trap;
+			struct ThreadStartEvent threadstart;
 			struct LockEvent    lock;
 			struct SHMLockEvent shml;
 			struct BarnesEvent  barnes;
@@ -162,9 +185,9 @@ namespace Measurements
 	EventBuf
 	{
 		struct GenericEvent*  buffer;
-		unsigned       index;
-		unsigned       size;
-		unsigned       sharedTSC;
+		l4_uint32_t       index;
+		l4_umword_t       size;
+		l4_umword_t       sharedTSC;
 		l4_uint64_t   *timestamp;
 		char _end[];
 
@@ -189,7 +212,7 @@ namespace Measurements
 		  	timestamp = new l4_uint64_t();
 		  }
 
-		  static unsigned char dummyBuffer[32];
+		  static l4_uint8_t      dummyBuffer[32];
 		  set_buffer(dummyBuffer, 32);
 		}
 
@@ -203,7 +226,7 @@ namespace Measurements
 		}
 
 
-		void set_buffer(unsigned char *buf, unsigned size_in_bytes)
+		void set_buffer(l4_uint8_t    *buf, l4_umword_t size_in_bytes)
 		{
 			buffer = reinterpret_cast<GenericEvent*>(buf);
 			size   = size_in_bytes / sizeof(GenericEvent);
@@ -216,7 +239,7 @@ namespace Measurements
 		}
 
 
-		static void launchTimerThread(l4_addr_t timerAddress, unsigned CPU);
+		static void launchTimerThread(l4_addr_t timerAddress, l4_umword_t CPU);
 
 		l4_uint64_t getTime(bool local=false)
 		{
@@ -236,13 +259,13 @@ namespace Measurements
 		 */
 		GenericEvent* next()
 		{
-			unsigned val = l4util_inc32_res(&index) - 1;
+			l4_umword_t val = l4util_inc32_res(&index) - 1;
 			val %= size;
 			return &buffer[val];
 		}
 
 
-		unsigned oldest() const
+		l4_umword_t oldest() const
 		{
 			if (index < size) {
 				return 0;
@@ -261,7 +284,7 @@ extern "C"
 {
 #endif
 	void *evbuf_get_address(void);
-	l4_uint64_t evbuf_get_time(void *eb, unsigned is_local);
+	l4_uint64_t evbuf_get_time(void *eb, l4_umword_t is_local);
 	struct GenericEvent* evbuf_next(void *eb);
 #ifdef __cplusplus
 }

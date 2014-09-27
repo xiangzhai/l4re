@@ -23,7 +23,7 @@ Moe::Server_object::~Server_object()
   if (obj_cap().is_valid())
     {
       l4_task_unmap(L4_BASE_TASK_CAP,
-	  obj_cap().fpage(L4_FPAGE_RWX), L4_FP_ALL_SPACES);
+          obj_cap().fpage(L4_FPAGE_RWX), L4_FP_ALL_SPACES);
       //printf("free SO cap: %lx\n", obj_cap().cap());
       object_pool.cap_alloc()->free(this);
       //printf("  hint=%lx\n", object_pool.cap_alloc()->hint());

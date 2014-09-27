@@ -39,7 +39,7 @@ PRIVATE_INCDIR-$(E1000) += $(SRC_DIR)/../netlib/e1000e
 SRC_C += $(SRC_C-y)
 REQUIRES_LIBS += libstdc++ libsupc++ l4re-util l4re l4re_c \
 				 l4re_c-util log slab libboost-lite ddekit dde-linux26 dde-linux26_net shmc \
-				 shmc_ringbuf libankh_packet_analyzer \
+				 dde-linux26_pci shmc_ringbuf libankh_packet_analyzer \
 				 $(REQUIRES_LIBS-ARCH-$(ARCH))
 
 ifeq ($(ARCH), arm)

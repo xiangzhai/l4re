@@ -2,8 +2,7 @@ PKGDIR?= ../..
 L4DIR ?= $(PKGDIR)/../..
 
 # the name of your library
-TARGET	= $(PKGNAME)_sha1_ref.a
-BUILD_PIC = $(TARGET)
+TARGET	= $(PKGNAME)_sha1_ref.a $(PKGNAME)_sha1_ref.p.a
 SYSTEMS = x86 arm amd64
 PC_FILENAME = $(PKGNAME)_sha1_ref
 

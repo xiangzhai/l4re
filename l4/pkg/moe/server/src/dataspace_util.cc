@@ -36,7 +36,7 @@ __do_real_copy(Dataspace *dst, unsigned long &dst_offs,
       Dataspace::Address dst_a = dst->address(dst_offs, Dataspace::Writable);
 
       unsigned long b_sz = min(min(src_a.sz() - src_a.of(),
-	    dst_a.sz() - dst_a.of()), sz);
+            dst_a.sz() - dst_a.of()), sz);
 
       memcpy(dst_a.adr(), src_a.adr(), b_sz);
 
@@ -75,22 +75,22 @@ __do_cow_copy2(Dataspace_noncont *dst, unsigned long &dst_offs, unsigned dst_pg_
       Dataspace_noncont::Page &src_p = src->page(src_offs);
       Dataspace_noncont::Page *dst_p;
       if (src_p.valid())
-	dst_p = &dst->alloc_page(dst_offs);
+        dst_p = &dst->alloc_page(dst_offs);
       else
-	dst_p = &dst->page(dst_offs);
-      
+        dst_p = &dst->page(dst_offs);
+
       dst->free_page(*dst_p);
       if (*src_p)
-	{
-	  Moe::Pages::share(*src_p);
-	  if (!(src_p.flags() & Dataspace_noncont::Page_cow))
-	    {
-	      src->unmap_page(src_p, true);
-	      src_p.set(*src_p, src_p.flags() | Dataspace_noncont::Page_cow);
-	    }
+        {
+          Moe::Pages::share(*src_p);
+          if (!(src_p.flags() & Dataspace_noncont::Page_cow))
+            {
+              src->unmap_page(src_p, true);
+              src_p.set(*src_p, src_p.flags() | Dataspace_noncont::Page_cow);
+            }
 
-	  dst_p->set(*src_p, src_p.flags() | Dataspace_noncont::Page_cow);
-	}
+          dst_p->set(*src_p, src_p.flags() | Dataspace_noncont::Page_cow);
+        }
 
       src_offs += dst_pg_sz;
       dst_offs += dst_pg_sz;
@@ -114,7 +114,7 @@ __do_eager_copy(Dataspace *dst, unsigned long dst_offs,
 }
 
 
-bool  
+bool
 __do_lazy_copy(Dataspace_noncont *dst, unsigned long dst_offs,
     Dataspace const *src, unsigned long src_offs, unsigned long &size)
 {
@@ -125,7 +125,7 @@ __do_lazy_copy(Dataspace_noncont *dst, unsigned long dst_offs,
       size = 0;
       return true;
     }
-  
+
   unsigned dst_pg_sz = dst->page_size();
 
   if (src->page_size() < dst_pg_sz)
@@ -135,46 +135,45 @@ __do_lazy_copy(Dataspace_noncont *dst, unsigned long dst_offs,
     }
 
   unsigned long dst_align = dst_offs & (dst_pg_sz-1);
-  
+
   if (dst_align != (src_offs & (dst_pg_sz-1)))
     {
-#if 0
-      L4::cout << "alignment error " << L4::hex << src_offs 
-	<< " " << dst_offs << L4::dec << '\n';
-#endif
+        if (0)
+          L4::cout << "alignment error " << L4::hex << src_offs 
+                   << " " << dst_offs << L4::dec << '\n';
+
       return false;
     }
-#if 0
-  L4::cout << "do copy on write\n";
-#endif
+  if (0)
+    L4::cout << "do copy on write\n";
+
   unsigned long copy_sz = size 
     = min(min(size, dst_sz - dst_offs), src_sz - src_offs);
-  
+
   if (dst_align)
     {
       unsigned long cp_sz = min(copy_sz, dst_pg_sz - dst_align);
       copy_sz -= cp_sz;
-#if 0
-      L4::cout << "ensure cow starts on page: cp=" << cp_sz << '\n';
-#endif
+
+      if (0)
+        L4::cout << "ensure cow starts on page: cp=" << cp_sz << '\n';
 
       __do_real_copy(dst, dst_offs, src, src_offs, cp_sz);
     }
-  
+
   unsigned long cow_sz = trunc_page(dst_pg_sz, copy_sz);
   unsigned long cp_sz = copy_sz - cow_sz;
-#if 0
-  L4::cout  
-    << "cow_sz=" << cow_sz << "; cp_sz=" << cp_sz << '\n';
-#endif
-    
+
+  if (0)
+    L4::cout << "cow_sz=" << cow_sz << "; cp_sz=" << cp_sz << '\n';
+
   __do_cow_copy(dst, dst_offs, dst_pg_sz, src, src_offs, cow_sz);
   __do_real_copy(dst, dst_offs, src, src_offs, cp_sz);
 
   return true;
 }
 
-bool  
+bool
 __do_lazy_copy2(Dataspace_noncont *dst, unsigned long dst_offs,
     Dataspace_noncont const *src, unsigned long src_offs, unsigned long &size)
 {
@@ -185,7 +184,7 @@ __do_lazy_copy2(Dataspace_noncont *dst, unsigned long dst_offs,
       size = 0;
       return true;
     }
-  
+
   unsigned dst_pg_sz = dst->page_size();
 
   if (src->page_size() != dst_pg_sz)
@@ -195,39 +194,39 @@ __do_lazy_copy2(Dataspace_noncont *dst, unsigned long dst_offs,
     }
 
   unsigned long dst_align = dst_offs & (dst_pg_sz-1);
-  
+
   if (dst_align != (src_offs & (dst_pg_sz-1)))
     {
-#if 0
-      L4::cout << "alignment error " << L4::hex << src_offs 
-	<< " " << dst_offs << L4::dec << '\n';
-#endif
+      if (0)
+        L4::cout << "alignment error " << L4::hex << src_offs
+                 << " " << dst_offs << L4::dec << '\n';
+
       return false;
     }
-#if 0
-  L4::cout << "do copy on write\n";
-#endif
+
+  if (0)
+    L4::cout << "do copy on write\n";
+
   unsigned long copy_sz = size 
     = min(min(size, dst_sz - dst_offs), src_sz - src_offs);
-  
+
   if (dst_align)
     {
       unsigned long cp_sz = min(copy_sz, dst_pg_sz - dst_align);
       copy_sz -= cp_sz;
-#if 0
-      L4::cout << "ensure cow starts on page: cp=" << cp_sz << '\n';
-#endif
+
+      if (0)
+        L4::cout << "ensure cow starts on page: cp=" << cp_sz << '\n';
 
       __do_real_copy(dst, dst_offs, src, src_offs, cp_sz);
     }
-  
+
   unsigned long cow_sz = trunc_page(dst_pg_sz, copy_sz);
   unsigned long cp_sz = copy_sz - cow_sz;
-#if 0
-  L4::cout  
-    << "cow_sz=" << cow_sz << "; cp_sz=" << cp_sz << '\n';
-#endif
-    
+
+  if (0)
+    L4::cout << "cow_sz=" << cow_sz << "; cp_sz=" << cp_sz << '\n';
+
   __do_cow_copy2(dst, dst_offs, dst_pg_sz, src, src_offs, cow_sz);
   __do_real_copy(dst, dst_offs, src, src_offs, cp_sz);
 
@@ -243,19 +242,19 @@ Dataspace_util::copy(Dataspace *dst, unsigned long dst_offs,
   if (src->can_cow() && dst->can_cow())
     {
       if (!src->is_writable() && src->is_static())
-	{
-	  Dataspace_noncont *nc = dynamic_cast<Dataspace_noncont*>(dst);
-	  if (nc && __do_lazy_copy(nc, dst_offs, src, src_offs, size))
-	    return size;
-	}
+        {
+          Dataspace_noncont *nc = dynamic_cast<Dataspace_noncont*>(dst);
+          if (nc && __do_lazy_copy(nc, dst_offs, src, src_offs, size))
+            return size;
+        }
       else
-	{
-	  Dataspace_noncont *dst_n = dynamic_cast<Dataspace_noncont*>(dst);
-	  Dataspace_noncont const *src_n = dynamic_cast<Dataspace_noncont const *>(src);
-	  if (dst_n && src_n 
-	      && __do_lazy_copy2(dst_n, dst_offs, src_n, src_offs, size))
-	    return size;
-	}
+        {
+          Dataspace_noncont *dst_n = dynamic_cast<Dataspace_noncont*>(dst);
+          Dataspace_noncont const *src_n = dynamic_cast<Dataspace_noncont const *>(src);
+          if (dst_n && src_n 
+              && __do_lazy_copy2(dst_n, dst_offs, src_n, src_offs, size))
+            return size;
+        }
     }
 
   return __do_eager_copy(dst, dst_offs, src, src_offs, size);

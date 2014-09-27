@@ -2,8 +2,7 @@ PKGDIR?= ../..
 L4DIR ?= $(PKGDIR)/../..
 
 # the name of your library
-TARGET	= $(PKGNAME)_sha1_openssl.a
-BUILD_PIC = $(TARGET)
+TARGET	= $(PKGNAME)_sha1_openssl.a $(PKGNAME)_sha1_openssl.p.a
 SYSTEMS = x86
 PC_FILENAME = $(PKGNAME)_sha1_openssl
 

@@ -61,7 +61,7 @@ inline long __runtime_error(long err, char const *extra)
 inline
 long chksys(long err, char const *extra = "", long ret = 0)
 {
-  if (EXPECT_FALSE(err < 0))
+  if (L4_UNLIKELY(err < 0))
     Priv::__runtime_error(ret ? ret : err, extra);
 
   return err;
@@ -83,9 +83,9 @@ inline
 long chksys(l4_msgtag_t const &t, char const *extra = "",
             l4_utcb_t *utcb = l4_utcb(), long ret = 0)
 {
-  if (EXPECT_FALSE(t.has_error()))
+  if (L4_UNLIKELY(t.has_error()))
     Priv::__runtime_error(ret ? ret : l4_error_u(t, utcb), extra);
-  else if (EXPECT_FALSE(t.label() < 0))
+  else if (L4_UNLIKELY(t.label() < 0))
     throw L4::Runtime_error(ret ? ret: t.label(), extra);
 
   return t.label();
@@ -110,7 +110,7 @@ long chksys(l4_msgtag_t const &t, l4_utcb_t *utcb, char const *extra = "")
 inline
 long chksys(long ret, long err, char const *extra = "")
 {
-  if (EXPECT_FALSE(ret < 0))
+  if (L4_UNLIKELY(ret < 0))
     Priv::__runtime_error(err, extra);
 
   return ret;
@@ -133,7 +133,7 @@ template<typename T>
 inline
 L4::Cap<T> chkcap(L4::Cap<T> cap, char const *extra = "", long err = -L4_ENOMEM)
 {
-  if (EXPECT_FALSE(!cap.is_valid()))
+  if (L4_UNLIKELY(!cap.is_valid()))
     Priv::__runtime_error(err ? err : cap.cap(), extra);
 
   return cap;

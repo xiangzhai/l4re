@@ -24,12 +24,11 @@ int dope_req(char *res, unsigned long res_max, const char *cmd)
     return -1;
 
   L4::Ipc::Iostream io(l4_utcb());
-  io << L4::Opcode(Dope::Dope_app_::Cmd_req)
-     << L4::Ipc::Buf_cp_out<const char>(cmd, strlen(cmd));
+  io << L4::Opcode(Dope::Dope_app_::Cmd_req) << cmd;
 
   l4_msgtag_t r = io.call(dope_server, Dope::Protocol::App);
 
-  io >> L4::Ipc::Buf_cp_in<char>(res, res_max);
+  io >> L4::Ipc::buf_cp_in(res, res_max);
 
   res[res_max] = 0;
   return l4_error(r);
@@ -58,8 +57,7 @@ int dope_cmd(const char *cmd)
     return -1;
 
   L4::Ipc::Iostream io(l4_utcb());
-  io << L4::Opcode(Dope::Dope_app_::Cmd)
-     << L4::Ipc::Buf_cp_out<const char>(cmd, strlen(cmd));
+  io << L4::Opcode(Dope::Dope_app_::Cmd) << cmd;
 
   l4_msgtag_t r = io.call(dope_server, Dope::Protocol::App);
   return l4_error(r);
@@ -88,8 +86,7 @@ void *dope_vscr_get_fb(const char *s)
 
   ds = L4Re::Util::cap_alloc.alloc<L4Re::Dataspace>();
 
-  io << L4::Opcode(Dope::Dope_app_::Vscreen_get_fb)
-     << L4::Ipc::Buf_cp_out<const char>(s, strlen(s));
+  io << L4::Opcode(Dope::Dope_app_::Vscreen_get_fb) << s;
   io << L4::Ipc::Small_buf(ds.cap(), 0);
 
   l4_msgtag_t r = io.call(dope_server, Dope::Protocol::App);

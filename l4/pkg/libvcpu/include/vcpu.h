@@ -258,7 +258,7 @@ l4vcpu_wait(l4_vcpu_state_t *vcpu, l4_utcb_t *utcb,
   l4vcpu_irq_disable(vcpu);
   setup_ipc(utcb);
   vcpu->i.tag = l4_ipc_wait(utcb, &vcpu->i.label, to);
-  if (EXPECT_TRUE(!l4_msgtag_has_error(vcpu->i.tag)))
+  if (L4_LIKELY(!l4_msgtag_has_error(vcpu->i.tag)))
     do_event_work_cb(vcpu);
 }
 
@@ -279,7 +279,7 @@ l4vcpu_irq_enable(l4_vcpu_state_t *vcpu, l4_utcb_t *utcb,
       vcpu->state |= L4_VCPU_F_IRQ;
       l4_barrier();
 
-      if (EXPECT_TRUE(!(vcpu->sticky_flags & L4_VCPU_SF_IRQ_PENDING)))
+      if (L4_LIKELY(!(vcpu->sticky_flags & L4_VCPU_SF_IRQ_PENDING)))
         break;
 
       l4vcpu_wait(vcpu, utcb, L4_IPC_BOTH_TIMEOUT_0,

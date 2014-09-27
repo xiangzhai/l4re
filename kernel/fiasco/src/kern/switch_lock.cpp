@@ -214,7 +214,10 @@ Switch_lock::lock_dirty()
 
           // Help lock owner until lock becomes free
           //      while (test())
-          current()->switch_exec_helping((Context *)o, Context::Helping, &_lock_owner, o);
+          Context *c = current();
+          if (   c->switch_exec_helping((Context *)o, Context::Helping, &_lock_owner, o) == Context::Switch::Failed
+              && c->home_cpu() != current_cpu())
+            c->schedule();
 
           Proc::preemption_point();
 
@@ -285,7 +288,7 @@ PRIVATE inline
 bool NO_INSTRUMENT
 Switch_lock::set_lock_owner(Context *o)
 {
-  bool have_no_locks = o->_lock_cnt < 1;
+  bool have_no_locks = access_once(&o->_lock_cnt) < 1;
 
   if (have_no_locks)
     {
@@ -363,14 +366,16 @@ Switch_lock::switch_dirty(Lock_context const &c)
    * Just switch back to the helper without changing its helping state.
    */
   if (h != c.owner)
-    c.owner->schedule_if(c.owner->switch_exec_locked(h, Context::Ignore_Helping));
-
+    if (   EXPECT_FALSE(h->home_cpu() != current_cpu())
+        || EXPECT_FALSE((long)c.owner->switch_exec_locked(h, Context::Ignore_Helping)))
+      c.owner->schedule();
   /*
    * Someone apparently tries to delete us. Therefore we aren't
    * allowed to continue to run and therefore let the scheduler
    * pick the next thread to execute.
    */
-  if ((c.owner->lock_cnt() == 0 && c.owner->donatee())) 
+  if (   c.owner->lock_cnt() == 0
+      && (c.owner->home_cpu() != current_cpu() || c.owner->donatee()))
     c.owner->schedule();
 }
 

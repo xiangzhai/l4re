@@ -270,6 +270,7 @@ static inline struct ddekit_slab *ddekit_slab_from_l4slab(l4slab_cache_t *s)
 /**
  * Grow slab cache
  */
+EXTERN_C L4_CV void *_slab_grow(l4slab_cache_t *cache, void **data);
 EXTERN_C L4_CV void *_slab_grow(l4slab_cache_t *cache, void **data)
 {
 	/* the page(s) to be returned */
@@ -315,12 +316,14 @@ EXTERN_C L4_CV void *_slab_grow(l4slab_cache_t *cache, void **data)
 /**
  * Shrink slab cache
  */
-EXTERN_C L4_CV void _slab_shrink(l4slab_cache_t *cache, void *page, void *data)
+EXTERN_C L4_CV
+void _slab_shrink(l4slab_cache_t *cache, void *page, void *data);
+EXTERN_C L4_CV
+void _slab_shrink(l4slab_cache_t *cache, void *page, void *data)
 {
-#if 0
-	ddekit_printf("%s: cache %p, page %p, data %p\n",
-				  __func__, cache, page, data);
-#endif
+        if (0)
+	        ddekit_printf("%s: cache %p, page %p, data %p\n",
+		              __func__, cache, page, data);
 	/* cache deallocated page here */
 	struct ddekit_pcache *head = NULL;
 	/* whether this cache needs physically contiguous pages */
@@ -471,11 +474,9 @@ EXTERN_C void ddekit_large_free(void *objp)
 EXTERN_C void *ddekit_large_malloc(int size)
 {
 	void *res;
-	int pages;
 
 	pthread_mutex_lock(&large_alloc_mtx);
 	size  = l4_round_page(size);
-	pages = size >> L4_PAGESHIFT;
 
 	res = ddekit_slab_allocate_new_region(size, L4Re::Mem_alloc::Continuous | L4Re::Mem_alloc::Pinned,
 	                                      L4Re::Rm::Eager_map);

@@ -40,7 +40,7 @@ Jdb::leave_trap_handler(Cpu_number)
 
 IMPLEMENT inline
 bool
-Jdb::handle_conditional_breakpoint(Cpu_number)
+Jdb::handle_conditional_breakpoint(Cpu_number, Jdb_entry_frame *)
 { return false; }
 
 IMPLEMENT
@@ -239,10 +239,3 @@ void
 Jdb::write_tsc(String_buffer *, Signed64 /*tsc*/, bool /*sign*/)
 {}
 
-PROTECTED static inline
-template< typename T >
-void
-Jdb::set_monitored_address(T *dest, T val)
-{
-  *dest = val;
-}

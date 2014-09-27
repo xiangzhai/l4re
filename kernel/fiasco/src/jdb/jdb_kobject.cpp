@@ -488,7 +488,7 @@ Jdb_kobject::fmt_handler(char /*fmt*/, int *size, char const *cmd_str, void *arg
 
       if (pos < (int)sizeof(buffer) - 1)
 	{
-	  putchar(c);
+          Jdb_core::cmd_putchar(c);
 	  buffer[pos++] = c;
 	  buffer[pos] = 0;
 	}

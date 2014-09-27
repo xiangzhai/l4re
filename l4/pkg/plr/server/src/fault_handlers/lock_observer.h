@@ -15,14 +15,11 @@
 #include "observers.h"
 #include "../instruction_length.h"
 
-#define EXTERNAL_DETERMINISM 0
-#define INTERNAL_DETERMINISM 1
-
 EXTERN_C_BEGIN
 #include <l4/plr/pthread_rep.h>
 EXTERN_C_END
 
-lock_info* __lip_address = reinterpret_cast<lock_info*>(LOCK_INFO_ADDR);
+static lock_info * const __lip_address = reinterpret_cast<lock_info*>(LOCK_INFO_ADDR);
 
 namespace Romain
 {
@@ -42,7 +39,7 @@ namespace Romain
 		sem_t           sem;
 		bool recursive;               // this is a recursive mtx?
 		Romain::Thread_group* owner;  // owning thread group
-		unsigned counter;             // recursive lock counter
+		l4_umword_t counter;             // recursive lock counter
 		
 		public:
 
@@ -114,7 +111,7 @@ namespace Romain
 	{
 		l4_addr_t   orig_address;
 		Breakpoint  *bp;
-		unsigned    function_id;
+		l4_umword_t    function_id;
 		l4_addr_t   wrapper_address;
 
 
@@ -124,7 +121,7 @@ namespace Romain
 
 
 		void configure(char const *configString, char const *alternativeString,
-		               unsigned id)
+		               l4_umword_t id)
 		{
 			DEBUG() << configString;
 			orig_address    = ConfigIntValue(configString);
@@ -165,6 +162,8 @@ namespace Romain
 		void do_patch(Romain::App_model *am)
 		{
 #if INTERNAL_DETERMINISM
+
+			return;
 			DEBUG() << "=============== Patching " << PURPLE << lockID_to_str(function_id)
 			        << NOCOLOR << " ===============";
 
@@ -174,12 +173,10 @@ namespace Romain
 				return;
 			}
 
-			unsigned char *instructionBuffer = lockinfo->trampolines + function_id * 32;
-			memset(instructionBuffer, 0xff, 32);
-			instructionBuffer[0] = 0xCC; // INT3
-			instructionBuffer[1] = 0xC3; // RET
-
-			return;
+			//l4_uint8_t *instructionBuffer = lockinfo->trampolines + function_id * 32;
+			//memset(instructionBuffer, 0xff, 32);
+			//instructionBuffer[0] = 0xCC; // INT3
+			//instructionBuffer[1] = 0xC3; // RET
 
 			/* XXX: Dead code below ... at least for now.  -> This is how we
 			 *      would patch the binary if we did not have access to the
@@ -211,11 +208,11 @@ namespace Romain
 			 * (5 for the CALL, 1 for PUSHing EAX).
 			 */
 
-			unsigned bytes = 0;
+			l4_umword_t bytes = 0;
 			l4_addr_t ip   = func_local;
 			while (bytes < 6) {
 				Romain::InstructionPrinter(ip, 0);
-				unsigned len = mlde32((void*)ip);
+				l4_umword_t len = mlde32((void*)ip);
 				bytes += len;
 				ip += len;
 			}
@@ -252,8 +249,8 @@ namespace Romain
 			 *  Patch the target function to jump to our wrapper
 			 * -----------------------------------------------------
 			 */
-			DEBUG() << "Patching original code... (ibuf @ " << std::hex
-			        << (void*)instructionBuffer << ")";
+			//DEBUG() << "Patching original code... (ibuf @ " << std::hex
+			//        << (void*)instructionBuffer << ")";
 			memset((void*)func_local, 0x90, bytes);
 			// 5 bytes: JMP [wrapper_func]
 			*((char*)func_local   ) = 0xE9;
@@ -310,11 +307,14 @@ namespace Romain
 		std::map<l4_umword_t, PThreadMutex*> _locks;
 		Romain::App_model::Dataspace         _lip_ds;
 		l4_addr_t                            _lip_local;
+#define USE_RWLOCK 1
+#if USE_RWLOCK
+		pthread_rwlock_t                     _tablemtx;
+#else
 		pthread_mutex_t                      _tablemtx;
+#endif
 
-		unsigned /* Internal determinism counters */
-			     det_lock_count,   // counter: det_lock
-		         det_unlock_count, // counter: det_unlock
+		l4_uint32_t
 		         /* External determinism counters: */
 		         mtx_lock_count,   // counter: pthread_mutex_lock
 		         mtx_unlock_count, // counter: pthread_mutex_unlock
@@ -324,25 +324,41 @@ namespace Romain
 		         ignore_count,     // counter: call ignored
 		         total_count;      // counter: total invocations
 
-		PThreadMutex* lookup_or_fail(unsigned addr)
+		PThreadMutex* lookup_or_fail(l4_umword_t addr)
 		{
+#if USE_RWLOCK
+			pthread_rwlock_rdlock(&_tablemtx);
+#else
 			pthread_mutex_lock(&_tablemtx);
+#endif
 			PThreadMutex* r = _locks[addr];
 			if (!r) {
-				ERROR() << "Called with uninitialized mutex?";
+				ERROR() << "Called with uninitialized mutex?\n";
 				enter_kdebug("op on uninitialized mutex");
 			}
+#if USE_RWLOCK
+			pthread_rwlock_unlock(&_tablemtx);
+#else
 			pthread_mutex_unlock(&_tablemtx);
+#endif
 			return r;
 		}
 
 
-		PThreadMutex* lookup_or_create(unsigned addr, bool init_locked = false,
+		PThreadMutex* lookup_or_create(l4_umword_t addr, bool init_locked = false,
 		                               Romain::Thread_group* tg = 0)
 		{
+#if USE_RWLOCK
+			pthread_rwlock_rdlock(&_tablemtx);
+#else
 			pthread_mutex_lock(&_tablemtx);
+#endif
 			PThreadMutex* mtx = _locks[addr];
 			if (!mtx) {
+#if USE_RWLOCK
+				pthread_rwlock_unlock(&_tablemtx);
+				pthread_rwlock_wrlock(&_tablemtx);
+#endif
 				mtx           = new PThreadMutex(false);
 				_locks[addr]  = mtx;
 
@@ -350,61 +366,30 @@ namespace Romain
 					mtx->lock(tg);
 				}
 			}
+#if USE_RWLOCK
+			pthread_rwlock_unlock(&_tablemtx);
+#else
 			pthread_mutex_unlock(&_tablemtx);
+#endif
 			return mtx;
 		}
 
 
-		void det_lock(Romain::App_instance* inst,
-		              Romain::App_thread*   t,
-		              Romain::Thread_group* tg,
-		              Romain::App_model*    am)
-		{
-			l4_addr_t stackaddr = am->rm()->remote_to_local(t->vcpu()->r()->sp, inst->id());
-			l4_addr_t lock      = *(l4_addr_t*)(stackaddr + 4);
-			DEBUG() << "\033[35mLOCK @ \033[0m" << std::hex << lock;
-			lookup_or_create(lock, true, tg)->lock(tg);
-			//enter_kdebug("det_lock");
-		}
-
-
-		void det_unlock(Romain::App_instance* inst,
-		                Romain::App_thread*   t,
-		                Romain::Thread_group* tg,
-		                Romain::App_model*    am)
-		{
-			l4_addr_t stackaddr = am->rm()->remote_to_local(t->vcpu()->r()->sp, inst->id());
-			l4_addr_t lock      = *(l4_addr_t*)(stackaddr + 4);
-			DEBUG() << "\033[35mUNLOCK @ \033[0m" << std::hex << lock;
-
-			pthread_mutex_lock(&_tablemtx);
-			PThreadMutex* m = _locks[lock];
-			if (!m) {
-				/* This may actually happen! The unlocker is simply faster sending the
-				 * notification than the locker is in sending his wakeup. Hence,
-				 * we need to potentially create the respective lock here.
-				 */
-				l4_umword_t mtx_kind_ptr = am->rm()->remote_to_local(lock + 12, inst->id());
-				m            = new PThreadMutex(*(l4_umword_t*)mtx_kind_ptr == PTHREAD_MUTEX_RECURSIVE_NP);
-				_locks[lock] = m;
-			}
-			pthread_mutex_unlock(&_tablemtx);
-			m->unlock();
-			//enter_kdebug("det_unlock");
-		}
-
-
+		void attach_lock_info_priv(Romain::App_instance *inst, Romain::App_model *am);
 		void attach_lock_info_page(Romain::App_model *am);
 
 		
 		public:
 		PThreadLock_priv()
-			: det_lock_count(0), det_unlock_count(0),
-			  mtx_lock_count(0), mtx_unlock_count(0),
+			: mtx_lock_count(0), mtx_unlock_count(0),
 			  pt_lock_count(0), pt_unlock_count(0),
 			  ignore_count(0), total_count(0)
 		{
+#if USE_RWLOCK
+			pthread_rwlock_init(&_tablemtx, NULL);
+#else
 			pthread_mutex_init(&_tablemtx, 0);
+#endif
 #if 0
 			_functions[mutex_init_id].configure("threads:mutex_init",
 			                                    "threads:mutex_init_rep",

@@ -357,8 +357,7 @@ Irq_sender::free(Thread *t, Kobject ***rl)
 	  // release cpu-lock early, actually before delete
 	  guard.reset();
 
-	  if (t->dec_ref() == 0)
-            t->initiate_deletion(rl);
+          t->put_n_reap(rl);
 	}
     }
 
@@ -479,7 +478,8 @@ Irq_sender::handle_remote_hit(Context::Drq *, Context *, void *arg)
 {
   Irq_sender *irq = (Irq_sender*)arg;
   irq->set_cpu(current_cpu());
-  irq->send_msg(irq->_irq_thread);
+  if (EXPECT_TRUE(irq->send_msg(irq->_irq_thread, false)))
+    return Context::Drq::no_answer_resched();
   return Context::Drq::no_answer();
 }
 
@@ -502,10 +502,10 @@ Irq_sender::count_and_send(Smword queued)
   if (EXPECT_TRUE (queued == 0) && EXPECT_TRUE(_irq_thread != 0))	// increase hit counter
     {
       if (EXPECT_FALSE(_irq_thread->home_cpu() != current_cpu()))
-	_irq_thread->drq(&_drq, handle_remote_hit, this, 0,
+	_irq_thread->drq(&_drq, handle_remote_hit, this,
 	                 Context::Drq::Target_ctxt, Context::Drq::No_wait);
       else
-	send_msg(_irq_thread);
+	send_msg(_irq_thread, true);
     }
 }
 

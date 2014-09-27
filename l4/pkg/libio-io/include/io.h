@@ -219,9 +219,12 @@ l4io_request_resource_iomem(l4io_device_handle_t devhandle,
 
 /**
  * \brief Request all available IO-port resources.
+ * \param res_cb Callback function called for every port resource found,
+ *               give NULL for no callback.
+ *
  */
 L4_CV void L4_EXPORT
-l4io_request_all_ioports(void);
+l4io_request_all_ioports(void (*res_cb)(l4vbus_resource_t const *res));
 
 /**
  * \brief Check if a resource is available.

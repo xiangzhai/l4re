@@ -15,9 +15,9 @@
 #ifndef __CRYPTO_RANDOM_H
 #define __CRYPTO_RANDOM_H
 
-#include <l4/sys/compiler.h>
+#include "private/misc.h"
 
-EXTERN_C_BEGIN
+CRYPTO_EXTERN_C_BEGIN
 
 /*
  * Fill the buffer buf with buf_len random bytes. You must provide an
@@ -25,6 +25,6 @@ EXTERN_C_BEGIN
  */
 int crypto_randomize_buf(char *buf, unsigned int buf_len);
 
-EXTERN_C_END
+CRYPTO_EXTERN_C_END
 
 #endif /* __CRYPTO_RANDOM_H */

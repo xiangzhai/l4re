@@ -37,7 +37,7 @@ static void dump_mb_module(l4util_mb_mod_t const *mod)
 {
   printf("  cmdline: '%s'\n"
          "  range: [%08x; %08x)\n", 
-	 (char const *)mod->cmdline, mod->mod_start, mod->mod_end);
+         (char const *)mod->cmdline, mod->mod_start, mod->mod_end);
 }
 
 static void dump_mbi(l4util_mb_info_t const* mbi)
@@ -57,14 +57,14 @@ static inline cxx::String cmdline_to_name(char const *cmdl)
   for (i = 0; i < len; ++i)
     {
       if (i > 0 && cmdl[i] == ' ' && cmdl[i-1] != '\\')
-	break;
+        break;
     }
 
   int s;
   for (s = i-1; s >= 0; --s)
     {
       if (cmdl[s] == '/')
-	break;
+        break;
     }
 
   ++s;
@@ -129,20 +129,20 @@ Moe::Boot_fs::init_stage2()
     {
       l4_addr_t s = modules[mod].mod_start;
       if (s != m_high + 1 && m_low != (l4_addr_t)-1)
-	{
-	  l4util_splitlog2_hdl(m_low, m_high, s0_request_ram);
-	  m_low = -1;
-	  m_high = 0;
-	}
+        {
+          l4util_splitlog2_hdl(m_low, m_high, s0_request_ram);
+          m_low = -1;
+          m_high = 0;
+        }
 
       if (m_low > s)
-	m_low = s;
+        m_low = s;
 
       //l4_addr_t end = l4_round_page(modules[mod].mod_end);
       l4_addr_t end = modules[mod].mod_end;
 
       if (m_high < l4_round_page(end))
-	m_high = l4_round_page(end);
+        m_high = l4_round_page(end);
 
       Names::Name name = cmdline_to_name((char const *)(unsigned long)modules[mod].cmdline);
 

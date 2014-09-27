@@ -48,7 +48,7 @@ Namespace::_query(char const *name, unsigned len,
     {
       L4::Ipc::Iostream io(l4_utcb());
       io << L4::Opcode(L4Re::Namespace_::Query)
-         << L4::Ipc::Buf_cp_out<const char>(n, res);
+         << L4::Ipc::buf_cp_out(n, res);
       io << L4::Ipc::Small_buf(target.cap(), local_id ? L4_RCV_ITEM_LOCAL_ID : 0);
       l4_msgtag_t r = io.call(ns.cap(), L4Re::Protocol::Namespace);
       long err = l4_error(r);
@@ -60,7 +60,7 @@ Namespace::_query(char const *name, unsigned len,
       if (partly)
 	{
 	  l4_umword_t dummy;
-	  io >> dummy >> L4::Ipc::Buf_in<char const>(n, res);
+	  io >> dummy >> L4::Ipc::buf_in(n, res);
 	}
 
       L4::Ipc::Snd_fpage cap;
@@ -97,7 +97,7 @@ Namespace::query(char const *name, unsigned len, L4::Cap<void> const &target,
       if (ret >= 0)
 	return ret;
 
-      if (EXPECT_FALSE(ret < 0 && (ret != -L4_EAGAIN)))
+      if (L4_UNLIKELY(ret < 0 && (ret != -L4_EAGAIN)))
 	return ret;
 
       if (rem == to)
@@ -126,7 +126,7 @@ Namespace::register_obj(char const *name, L4::Cap<void> const &o,
 {
   L4::Ipc::Iostream io(l4_utcb());
   io << L4::Opcode(L4Re::Namespace_::Register)
-     << flags << L4::Ipc::Buf_cp_out<char const>(name, strlen(name));
+     << flags << L4::Ipc::buf_cp_out(name, strlen(name));
   if (o.is_valid())
     io << L4::Ipc::Snd_fpage(o, L4_FPAGE_RWX & flags) ;
   l4_msgtag_t res = io.call(cap(), L4Re::Protocol::Namespace);
@@ -137,8 +137,7 @@ long
 Namespace::unlink(char const *name) throw()
 {
   L4::Ipc::Iostream io(l4_utcb());
-  io << L4::Opcode(L4Re::Namespace_::Unlink)
-     << L4::Ipc::Buf_cp_out<char const>(name, strlen(name));
+  io << L4::Opcode(L4Re::Namespace_::Unlink) << name;
   l4_msgtag_t res = io.call(cap(), L4Re::Protocol::Namespace);
   return l4_error(res);
 }
@@ -151,8 +150,8 @@ Namespace::link(char const *name, unsigned len,
 {
   L4::Ipc::Iostream io(l4_utcb());
   io << L4::Opcode(L4Re::Namespace_::Link)
-     << flags << L4::Ipc::Buf_cp_out<char const>(name, len)
-     << L4::Ipc::Buf_cp_out<char const>(src_name, src_len)
+     << flags << L4::Ipc::buf_cp_out(name, len)
+     << L4::Ipc::buf_cp_out(src_name, src_len)
      << L4::Ipc::Snd_fpage(src_dir.fpage());
   l4_msgtag_t res = io.call(cap(), L4Re::Protocol::Namespace);
   return l4_error(res);

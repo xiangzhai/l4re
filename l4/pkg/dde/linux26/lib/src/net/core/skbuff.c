@@ -1508,9 +1508,11 @@ done:
 		 * we call into ->sendpage() with the i_mutex lock held
 		 * and networking will grab the socket lock.
 		 */
+#ifndef DDE_LINUX
 		release_sock(sk);
 		ret = splice_to_pipe(pipe, &spd);
 		lock_sock(sk);
+#endif
 		return ret;
 	}
 

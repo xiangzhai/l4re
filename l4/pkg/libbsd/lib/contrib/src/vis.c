@@ -1,3 +1,4 @@
+/*	$OpenBSD: vis.c,v 1.18 2005/08/29 18:38:41 otto Exp $ */
 /*-
  * Copyright (c) 1989, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -30,19 +31,27 @@
 #include <sys/types.h>
 #include <limits.h>
 #include <ctype.h>
+#include <string.h>
 #include <stdio.h>
 #include <vis.h>
 
 #define	isoctal(c)	(((u_char)(c)) >= '0' && ((u_char)(c)) <= '7')
+#define	isvisible(c)							\
+	(((u_int)(c) <= UCHAR_MAX && isascii((u_char)(c)) &&		\
+	(((c) != '*' && (c) != '?' && (c) != '[' && (c) != '#') ||	\
+		(flag & VIS_GLOB) == 0) && isgraph((u_char)(c))) ||	\
+	((flag & VIS_SP) == 0 && (c) == ' ') ||				\
+	((flag & VIS_TAB) == 0 && (c) == '\t') ||			\
+	((flag & VIS_NL) == 0 && (c) == '\n') ||			\
+	((flag & VIS_SAFE) && ((c) == '\b' ||				\
+		(c) == '\007' || (c) == '\r' ||				\
+		isgraph((u_char)(c)))))
 
 /*
  * vis - visually encode characters
  */
 char *
-vis(dst, c, flag, nextc)
-	char *dst;
-	int c, nextc;
-	int flag;
+vis(char *dst, int c, int flag, int nextc)
 {
 	c = (unsigned char)c;
 
@@ -149,20 +158,20 @@ done:
 }
 
 /*
- * strvis, strvisx - visually encode characters from src into dst
+ * strvis, strnvis, strvisx - visually encode characters from src into dst
  *
  *	Dst must be 4 times the size of src to account for possible
  *	expansion.  The length of dst, not including the trailing NUL,
  *	is returned.
  *
+ *	Strnvis will write no more than siz-1 bytes (and will NULL terminate).
+ *	The number of bytes needed to fully encode the string is returned.
+ *
  *	Strvisx encodes exactly len bytes from src into dst.
  *	This is useful for encoding a block of data.
  */
 int
-strvis(dst, src, flag)
-	char *dst;
-	const char *src;
-	int flag;
+strvis(char *dst, const char *src, int flag)
 {
 	char c;
 	char *start;
@@ -174,11 +183,51 @@ strvis(dst, src, flag)
 }
 
 int
-strvisx(dst, src, len, flag)
-	char *dst;
-	const char *src;
-	size_t len;
-	int flag;
+strnvis(char *dst, const char *src, size_t siz, int flag)
+{
+	char *start, *end;
+	char tbuf[5];
+	int c, i;
+
+	i = 0;
+	for (start = dst, end = start + siz - 1; (c = *src) && dst < end; ) {
+		if (isvisible(c)) {
+			i = 1;
+			*dst++ = c;
+			if (c == '\\' && (flag & VIS_NOSLASH) == 0) {
+				/* need space for the extra '\\' */
+				if (dst < end)
+					*dst++ = '\\';
+				else {
+					dst--;
+					i = 2;
+					break;
+				}
+			}
+			src++;
+		} else {
+			i = vis(tbuf, c, flag, *++src) - tbuf;
+			if (dst + i <= end) {
+				memcpy(dst, tbuf, i);
+				dst += i;
+			} else {
+				src--;
+				break;
+			}
+		}
+	}
+	if (siz > 0)
+		*dst = '\0';
+	if (dst + i > end) {
+		/* adjust return value for truncation */
+		while ((c = *src))
+			dst += vis(tbuf, c, flag, *++src) - tbuf;
+	}
+	return (dst - start);
+}
+
+int
+strvisx(char *dst, const char *src, size_t len, int flag)
 {
 	int c;
 	char *start;

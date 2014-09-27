@@ -51,6 +51,7 @@ enum Protocols
   Mem_alloc,          ///< ID for memory allocator objects
   Rm,                 ///< ID for region map objects
   Event,              ///< ID for event channel objects
+  Inhibitor,          ///< ID for inhibitor objects
 
   Debug   = ~0x7fffUL ///< ID for debug objects
 };

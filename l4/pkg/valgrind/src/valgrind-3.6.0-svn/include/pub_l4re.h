@@ -33,6 +33,7 @@
 //#include "pub_core_ume.h"
 #include <l4/re/env.h>
 #undef offsetof
+#include <stddef.h>
 #include <unistd.h>
 #include <l4/sys/kdebug.h>
 

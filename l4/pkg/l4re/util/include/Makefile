@@ -16,6 +16,7 @@ EXTRA_TARGET += basic_dispatcher   \
   meta               \
   name_space_svr     \
   object_registry    \
+  poll_timeout_kipclock \
   region_mapping     \
   region_mapping_svr \
   vcon_svr           \

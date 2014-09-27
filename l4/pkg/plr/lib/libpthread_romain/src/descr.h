@@ -23,24 +23,8 @@
 #include <tls.h>
 #include <l4/sys/utcb.h>
 
-/* Fast thread-specific data internal to libc.  */
-enum __libc_tsd_key_t { _LIBC_TSD_KEY_MALLOC = 0,
-			_LIBC_TSD_KEY_DL_ERROR,
-			_LIBC_TSD_KEY_RPC_VARS,
-			_LIBC_TSD_KEY_LOCALE,
-			_LIBC_TSD_KEY_CTYPE_B,
-			_LIBC_TSD_KEY_CTYPE_TOLOWER,
-			_LIBC_TSD_KEY_CTYPE_TOUPPER,
-			_LIBC_TSD_KEY_N };
-
-/* The type of thread descriptors */
-typedef struct _pthread_descr_struct *pthread_descr;
-
-
-/* Some more includes.  */
 #include <pt-machine.h>
-//#include <linuxthreads_db/thread_dbP.h>
-
+typedef struct pthread *pthread_descr;
 
 /* Arguments passed to thread creation routine */
 struct pthread_start_args {
@@ -84,6 +68,9 @@ typedef struct _pthread_rwlock_info {
   int pr_lock_count;
 } pthread_readlock_info;
 
+#ifndef TCB_ALIGNMENT
+# define TCB_ALIGNMENT sizeof (double)
+#endif
 
 /* We keep thread specific data in a special data structure, a two-level
    array.  The top-level array contains pointers to dynamically allocated
@@ -102,27 +89,32 @@ typedef struct _pthread_rwlock_info {
 
 union dtv;
 
-struct _pthread_descr_struct
+struct pthread
 {
-#if !defined USE_TLS || !TLS_DTV_AT_TP || INCLUDE_TLS_PADDING
-  /* This overlaps tcbhead_t (see tls.h), as used for TLS without threads.  */
   union
   {
+#if !defined(TLS_DTV_AT_TP)
+  /* This overlaps tcbhead_t (see tls.h), as used for TLS without threads.  */
+	tcbhead_t header;
+#else
     struct
     {
-      void *tcb;		/* Pointer to the TCB.  This is not always
-				   the address of this thread descriptor.  */
-      union dtv *dtvp;
-      pthread_descr self;	/* Pointer to this structure */
       int multiple_threads;
-      uintptr_t sysinfo;
-    } data;
-    void *__padding[16];
-  } p_header;
-# define p_multiple_threads p_header.data.multiple_threads
-#elif defined TLS_MULTIPLE_THREADS_IN_TCB && TLS_MULTIPLE_THREADS_IN_TCB
-  int p_multiple_threads;
+	  int gscope_flags;
+# ifndef CONFIG_L4
+# ifndef __ASSUME_PRIVATE_FUTEX
+	  int private_futex;
+# endif
+# endif
+	} header;
 #endif
+
+    /* This extra padding has no special purpose, and this structure layout
+       is private and subject to change without affecting the official ABI.
+       We just have it here in case it might be convenient for some
+       implementation-specific instrumentation hack or suchlike.  */
+    void *__padding[24];
+  };
 
   pthread_descr p_nextlive, p_prevlive;
                                 /* Double chaining of active threads */
@@ -180,11 +172,7 @@ struct _pthread_descr_struct
   unsigned p_epoch;
   unsigned ebx, ecx, edx, esi, edi;
   /* New elements must be added at the end.  */
-} __attribute__ ((aligned(32))); /* We need to align the structure so that
-				    doubles are aligned properly.  This is 8
-				    bytes on MIPS and 16 bytes on MIPS64.
-				    32 bytes might give better cache
-				    utilization.  */
+} __attribute__ ((aligned (TCB_ALIGNMENT)));
 
 
 

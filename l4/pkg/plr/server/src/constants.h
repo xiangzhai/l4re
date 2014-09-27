@@ -35,6 +35,42 @@
  */
 #define SPLIT_HANDLING 0
 
+
+/*
+ * Introduce additional benchmarking code
+ */
+#define BENCHMARKING 0
+
+/*
+ * Enable to generate trace events
+ */
+#define EVENT_LOGGING 0
+
+/*
+ * Configure which alternative to use for syncing replicas
+ * upon entry into the master.
+ *
+ * SHM = 0 -> uses a pthread condition variable to sleep until the
+ *            leading replica finished processing; this blocks all
+ *            other replicas, therefore saves energy. however, sync
+ *            costs are higher, which will impact overhead.
+ * SHM = 1 -> lets passive replicas poll on a shared variable to
+ *            wait for the leader to finish processing. this is busy
+ *            waiting and therefore consumes tons of energy; but it
+ *            is faster
+ */
+#define DMR_SYNC_SHM 1
+
+
+/*
+ * Configure what to do when the replicated application
+ * calls exit().
+ *
+ * 0 -> simply exit() Romain
+ * 1 -> enter_kdebug() with the reboot command
+ */
+#define REBOOT_ON_EXIT 0
+
 namespace Romain
 {
 	enum {
@@ -45,8 +81,8 @@ namespace Romain
 		HANDLER_STACK_SIZE  = (1 << 14), // size of the VCPU handler stack
 		DEBUG_ENTRIES       = 1000,      // dbg: # of 64bit entries in thread->_measurements
 		FIRST_REPLICA_CAP   = 0x1000,    // first replica cap markes as unused
-		LOCK_INFO_PAGE      = 0xA000,    // address the lock info page is mapped to in replicas
 		REPLICA_TSC_ADDRESS = 0xC000,    // start of replica-shared TSC buffer
 		REPLICA_LOG_ADDRESS = 0xB0000000,   // start of replica log buffer (XXX: don't go lower -> KIP is there!)
+		Watchdog_irq_label  = 2000,
 	};
 }

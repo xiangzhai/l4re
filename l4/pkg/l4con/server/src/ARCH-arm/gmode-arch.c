@@ -18,7 +18,6 @@
 
 #include <l4/sys/l4int.h>
 #include <l4/drivers/lcd.h>
-#include <l4/util/macros.h>
 
 #include "gmode.h"
 #include "vc.h"

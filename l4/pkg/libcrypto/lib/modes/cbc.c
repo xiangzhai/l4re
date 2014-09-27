@@ -17,7 +17,9 @@
 
 /* L4-specific includes */
 #include <stdint.h>
-#include <l4/crypto/cbc.h>
+
+/* local includes */
+#include "cbc.h"
 
 /*
  * *****************************************************************

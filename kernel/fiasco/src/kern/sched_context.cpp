@@ -10,7 +10,6 @@ public:
     void set_current_sched(Sched_context *sched);
     void invalidate_sched() { activate(0); }
     bool deblock(Sched_context *sc, Sched_context *crs, bool lazy_q = false);
-    void deblock(Sched_context *sc);
     void ready_enqueue(Sched_context *sc)
     {
       assert_kdb(cpu_lock.test());
@@ -19,7 +18,7 @@ public:
       if (EXPECT_FALSE (sc->in_ready_list()))
         return;
 
-      enqueue(sc, sc == current_sched());
+      enqueue(sc, true);
     }
 
     void ready_dequeue(Sched_context *sc)
@@ -80,9 +79,9 @@ Sched_context::Ready_queue::set_current_sched(Sched_context *sched)
     {
       Signed64 left = tt->get_timeout(clock);
       if (left > 0)
-	s->set_left(left);
+        s->set_left(left);
       else
-	s->replenish();
+        s->replenish();
 
       LOG_SCHED_SAVE(s);
     }
@@ -99,24 +98,8 @@ Sched_context::Ready_queue::set_current_sched(Sched_context *sched)
 
 
 /**
- * \param cpu must be current_cpu()
- */
-IMPLEMENT inline NEEDS["kdb_ke.h"]
-void
-Sched_context::Ready_queue::deblock(Sched_context *sc)
-{
-  assert_kdb(cpu_lock.test());
-
-  Sched_context *cs = current_sched();
-  if (sc != cs)
-      deblock_refill(sc);
-
-  ready_enqueue(sc);
-}
-
-/**
- * \param cpu must be current_cpu()
- * \param crs the Sched_context of the current context
+ * \param sc Sched_context that shall be deblocked
+ * \param crs the Sched_context of the currently running context
  * \param lazy_q queue lazily if applicable
  */
 IMPLEMENT inline NEEDS["kdb_ke.h"]
@@ -130,14 +113,14 @@ Sched_context::Ready_queue::deblock(Sched_context *sc, Sched_context *crs, bool 
   if (sc == cs)
     {
       if (crs->dominates(sc))
-	res = false;
+        res = false;
     }
   else
     {
       deblock_refill(sc);
 
       if ((EXPECT_TRUE(cs != 0) && cs->dominates(sc)) || crs->dominates(sc))
-	res = false;
+        res = false;
     }
 
   if (res && lazy_q)

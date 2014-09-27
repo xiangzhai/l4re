@@ -61,3 +61,9 @@ int ddekit_lock_owner(ddekit_lock_t *mtx)
 {
 	return (int)((*mtx)->mtx.__m_owner);
 }
+
+
+int ddekit_lock_is_locked(ddekit_lock_t *mtx)
+{
+  return (*mtx)->mtx.__m_lock.__status;
+}

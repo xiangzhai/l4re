@@ -28,9 +28,9 @@
 
 extern l4_addr_t __libc_l4_gettime;
 
-static int pf_write  = 0; // statistical counter
-static int pf_mapped = 0; // statistical counter
-static int pf_kip    = 0; // statistical counter
+static l4_mword_t pf_write  = 0; // statistical counter
+static l4_mword_t pf_mapped = 0; // statistical counter
+static l4_mword_t pf_kip    = 0; // statistical counter
 
 #define MSG() DEBUGf(Romain::Log::Memory) << "[" << i->id() << "] "
 #define MSGt(t) DEBUGf(Romain::Log::Faults) << "[" << t->vcpu() << "] "
@@ -83,8 +83,10 @@ l4_umword_t Romain::PageFaultObserver::fit_alignment(Romain::Region const* local
 		}
 	}
 
-	// XXX: tweak here if you want < 4MB mappings
 	return std::min(align, 22UL);
+
+	/* XXX: Use this if you want to test the single-page-mapping version. */
+	//return L4_PAGESHIFT;
 }
 
 Romain::Observer::ObserverReturnVal
@@ -95,28 +97,35 @@ Romain::PageFaultObserver::notify(Romain::App_instance *i, Romain::App_thread *t
 		return Romain::Observer::Ignored;
 
 	if (t->unhandled_pf()) {
+		Romain::_the_instance_manager->show_stats();
 		enter_kdebug("unhandled pf");
 	}
+#if BENCHMARKING
+	unsigned long long t1, t2;
+	t1 = l4_rdtsc();
+#endif
 
-	Romain::Observer::ObserverReturnVal retVal = Romain::Observer::Finished;
+	auto retVal = Romain::Observer::Finished;
 	L4vcpu::Vcpu *vcpu = t->vcpu();
 
 	bool write_pf = vcpu->r()->err & 0x2;
 	l4_addr_t pfa = vcpu->r()->pfa;
 
-	Measurements::GenericEvent *ev = Romain::_the_instance_manager->logbuf()->next();
-	ev->header.tsc         = Romain::_the_instance_manager->logbuf()->getTime(Log::logLocalTSC);
+#if EVENT_LOGGING
+	Measurements::GenericEvent *ev = Romain::globalLogBuf->next();
+	ev->header.tsc         = Romain::globalLogBuf->getTime(Log::logLocalTSC);
 	ev->header.vcpu        = (l4_uint32_t)t->vcpu();
 	ev->header.type        = Measurements::Pagefault;
 	ev->data.pf.address    = pfa;
 	ev->data.pf.rw         = write_pf ? 1 : 0;
 	ev->data.pf.localbase  = 0;
 	ev->data.pf.remotebase = 0;
+#endif
 
 	MSGt(t) << (write_pf ? RED "write" NOCOLOR : BOLD_BLUE "read" NOCOLOR)
 	      << " page fault @ 0x" << std::hex << pfa;
 
-	Romain::Region_map::Base::Node n = a->rm()->find(pfa);
+	auto n = a->rm()->find(pfa);
 	MSGt(t) << "rm_find(" << std::hex << pfa << ") = " << n;
 	if (n) {
 		const_cast<Romain::Region_handler&>(n->second).count_pf();
@@ -125,8 +134,7 @@ Romain::PageFaultObserver::notify(Romain::App_instance *i, Romain::App_thread *t
 		 */
 		MSGt(t) << Romain::Region_map::print_mapping(n, i->id());
 
-		if (write_pf && (always_readonly() ||
-		                (n->second.writable() == Romain::Region_handler::Read_only_emulate_write))) {
+		if (write_pf && (always_readonly() || n->second.writable() == Romain::Region_handler::Read_only_emulate_write)) {
 			++pf_write;
 			/* XXX: can we use a static object here instead? */
 			AppModelAddressTranslator *aat = new AppModelAddressTranslator(a, i);
@@ -144,14 +152,32 @@ Romain::PageFaultObserver::notify(Romain::App_instance *i, Romain::App_thread *t
 			 */
 			if (t->vcpu()->r()->flags & TrapFlag)
 				t->set_pending_trap(1);
+		} else if (n->second.writable() == Romain::Region_handler::Copy_and_execute) {
+			++pf_write;
+
+			static AppModelAddressTranslator at(0, 0);
+			at.am = a;
+			at.inst = i;
+
+			static Romain::CopyAndExecute cne(0);
+			cne._vcpu = vcpu;
+			cne.emulate(&at);
+
+			/*
+			 * For emulated operations single-stepping won't work, because
+			 * the real instruction is never executed in the target AS. Therefore,
+			 * we need to inject a "virtual" INT1 into the manager here.
+			 */
+			if (t->vcpu()->r()->flags & TrapFlag)
+				t->set_pending_trap(1);
 		} else {
 			++pf_mapped;
 
-			Romain::Region_handler const * rh   = &n->second;
-			L4Re::Util::Region const * remote   = &n->first;
-			l4_addr_t offset_in_region          = l4_trunc_page(pfa - remote->start());
-			l4_addr_t remotebase                = remote->start() + offset_in_region;
-			unsigned pageflags                  = rh->is_ro() ? L4_FPAGE_RO : L4_FPAGE_RW;
+			auto rh                    = &n->second;
+			auto remote                = &n->first;
+			l4_addr_t offset_in_region = l4_trunc_page(pfa - remote->start());
+			l4_addr_t remotebase       = remote->start() + offset_in_region;
+			l4_umword_t pageflags      = rh->is_ro() ? L4_FPAGE_RO : L4_FPAGE_RW;
 			l4_umword_t last_align = 0;
 
 			for (l4_umword_t instID = 0;
@@ -196,9 +222,9 @@ Romain::PageFaultObserver::notify(Romain::App_instance *i, Romain::App_thread *t
 
 				if (instID > 0) {
 					if (align != last_align) {
-						ERROR() << "Mapping with diverging alignments!";
-						ERROR() << Romain::Region_map::print_mapping(n, instID);
-						ERROR() << "align: " << align << " but last was " << last_align;
+						ERROR() << "Mapping with diverging alignments!\n";
+						ERROR() << Romain::Region_map::print_mapping(n, instID) << "\n";
+						ERROR() << "align: " << align << " but last was " << last_align << "\n";
 						enter_kdebug("Align!");
 					}
 				}
@@ -209,6 +235,12 @@ Romain::PageFaultObserver::notify(Romain::App_instance *i, Romain::App_thread *t
 				localbase  = localbase  - (localbase  & ((1 << align) - 1));
 
 				remotebase = remotebase - (remotebase & ((1 << align) - 1));
+#if 0
+				if (write_pf)
+					l4_touch_rw((void*)localbase, 1<<align);
+				else
+					l4_touch_ro((void*)localbase, 1<<align);
+#endif
 
 				MSGt(t) << std::hex << "map: " << localbase << " -> "
 						<< remotebase << " size " << (1 << align);
@@ -217,9 +249,17 @@ Romain::PageFaultObserver::notify(Romain::App_instance *i, Romain::App_thread *t
 				
 				// set flags properly, only check ro(), because else we'd already ended
 				// up in the emulation branch above
-				ev->data.pf.localbase  = localregion->start() + offset_in_region;
-				ev->data.pf.remotebase = remote->start() + offset_in_region;
 
+#if EVENT_LOGGING
+				Measurements::GenericEvent *ev2 = Romain::globalLogBuf->next();
+				ev2->header.tsc         = Romain::globalLogBuf->getTime(Log::logLocalTSC);
+				ev2->header.vcpu        = (l4_uint32_t)t->vcpu();
+				ev2->header.type        = Measurements::Map;
+				ev2->data.map.local     = localbase;
+				ev2->data.map.remote    = remotebase;
+				ev2->data.map.size      = align;
+				ev2->data.map.unmap     = 0;
+#endif
 				Romain::_the_instance_manager->instance(instID)->map_aligned(localbase,
 																			 remotebase,
 																			 align, pageflags);
@@ -235,7 +275,10 @@ Romain::PageFaultObserver::notify(Romain::App_instance *i, Romain::App_thread *t
 	    t->set_unhandled_pf();
 	} else {
 		ERROR() << "Unhandled page fault @ address 0x" << std::hex << pfa
-		        << " PC @ 0x" << vcpu->r()->ip;
+		        << " PC @ 0x" << vcpu->r()->ip << " write: "
+				<< (write_pf ? "y" : "n")
+				<< "\n";
+		enter_kdebug();
 		t->set_unhandled_pf();
 	}
 
@@ -246,6 +289,10 @@ Romain::PageFaultObserver::notify(Romain::App_instance *i, Romain::App_thread *t
 	 */
 	MSGt(t) << "Page faults so far: mapped " << pf_mapped << " write emu " << pf_write << " kip " << pf_kip;
 
+#if BENCHMARKING
+	t2 = l4_rdtsc();
+	t->count_pfh(t2-t1);
+#endif
 	return retVal;
 }
 

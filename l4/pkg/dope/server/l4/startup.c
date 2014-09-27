@@ -19,7 +19,6 @@
 
 /*** L4 INCLUDES ***/
 #include <l4/util/getopt.h>
-#include <l4/util/macros.h>
 
 #if USE_RT_MON
 #include <l4/rt_mon/histogram2d.h>

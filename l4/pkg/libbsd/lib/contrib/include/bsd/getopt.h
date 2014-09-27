@@ -1,6 +1,5 @@
 /*
- * Copyright © 2006 Robert Millan
- * Copyright © 2009 Guillem Jover
+ * Copyright © 2011 Guillem Jover <guillem@hadrons.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,16 +24,10 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef LIBBSD_GETOPT_H
-#define LIBBSD_GETOPT_H
-
-#include <sys/cdefs.h>
+#ifdef LIBBSD_OVERLAY
+#include_next <getopt.h>
+#include <unistd.h>
+#else
 #include <getopt.h>
-
-__BEGIN_DECLS
-extern int optreset;
-
-int bsd_getopt (int, char **, char *);
-__END_DECLS
-
+#include <bsd/unistd.h>
 #endif

@@ -15,9 +15,9 @@
 #ifndef __PAD_OAEP_H
 #define __PAD_OAEP_H
 
-#include <l4/sys/compiler.h>
+#include "private/misc.h"
 
-EXTERN_C_BEGIN
+CRYPTO_EXTERN_C_BEGIN
 
 int mgf1(const char *seed, unsigned seed_len,
          char *mask_out, unsigned mask_len);
@@ -26,6 +26,6 @@ int pad_oaep(const char *msg, unsigned msg_len,
              const char *label, unsigned label_len,
              unsigned mod_len, char *enc_msg_out);
 
-EXTERN_C_END
+CRYPTO_EXTERN_C_END
 
 #endif /* __PAD_OAEP_H */

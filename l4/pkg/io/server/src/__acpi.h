@@ -16,8 +16,10 @@ class Acpi_config
 {
 public:
   virtual Pci_survey_config *pci_survey_config() = 0;
-  virtual ~Acpi_config() {}
+  virtual ~Acpi_config() = 0;
 };
+
+inline Acpi_config::~Acpi_config() {}
 
 struct acpica_pci_irq
 {
@@ -27,4 +29,5 @@ struct acpica_pci_irq
 };
 
 int acpica_init();
+int acpi_ecdt_scan();
 

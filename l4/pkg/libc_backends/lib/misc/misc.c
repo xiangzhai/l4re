@@ -20,10 +20,9 @@
 #include <l4/re/env.h>
 #include <sys/utsname.h>
 #include <sys/resource.h>
-
+#include <sched.h>
 
 int __ctype_b_loc(void);
-int __sched_cpucount(void);
 int getloadavg(double loadavg[], int nelem);
 
 /* Implementations */
@@ -33,8 +32,10 @@ int __ctype_b_loc(void)
   return 0;
 }
 
-int __sched_cpucount(void)
+int __sched_cpucount(size_t __setsize, const cpu_set_t *__setp)
 {
+  (void)__setsize;
+  (void)__setp;
   return 4; // just some number
 }
 
@@ -43,7 +44,7 @@ long sysconf(int name)
   switch (name)
   {
   case _SC_NPROCESSORS_ONLN:
-    return __sched_cpucount();
+    return __sched_cpucount(0, NULL);
   case _SC_PAGE_SIZE:
     return L4_PAGESIZE;
   case _SC_CLK_TCK:

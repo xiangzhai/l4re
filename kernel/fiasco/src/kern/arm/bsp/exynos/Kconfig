@@ -13,6 +13,11 @@ config PF_EXYNOS5
         depends on PF_EXYNOS
         select CAN_ARM_CPU_CORTEX_A15
 
+config CPU_SUSPEND
+        bool
+        default y if PF_EXYNOS && (PF_EXYNOS_EXTGIC || PF_EXYNOS5)
+        depends on PF_EXYNOS && (PF_EXYNOS_EXTGIC || PF_EXYNOS5)
+
 config PF_EXYNOS_PKG_IDS
         string "Exynos package ID file"
         default ""
@@ -50,13 +55,24 @@ config PF_EXYNOS5_5250
         help
           Choose for Exynos5 based platforms.
 
+config PF_EXYNOS5_5410
+        bool "5410 - Exynos 5"
+        depends on PF_EXYNOS
+        select PF_EXYNOS5
+        help
+          Choose for Exynos5 based platforms.
+
 endchoice
 
+
+config PF_EXYNOS_UART_NATIVE
+	def_bool y
 
 config PF_EXYNOS_UART_NR
         int "Which UART to use for kernel output"
         range 0 3
         default 2
+        depends on PF_EXYNOS_UART_NATIVE
         help
           Select which UART to use for kernel I/O. If the optional
           package-ID file is used (PF_EXYNOS_PKG_IDS) this file

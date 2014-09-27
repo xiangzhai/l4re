@@ -19,6 +19,8 @@
 #include <l4/scout-gfx/doc/verbatim>
 #include <l4/scout/styles>
 
+#include "browser.h"
+
 using namespace Scout_gfx;
 
 Document *create_about()

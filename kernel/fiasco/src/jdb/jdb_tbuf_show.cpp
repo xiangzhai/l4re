@@ -124,39 +124,6 @@ Jdb_tbuf_show::error(const char * const msg)
   _status_type = Status_error;
 }
 
-static int
-Jdb_tbuf_show::get_string(char *string, unsigned size)
-{
-  for (unsigned pos=strlen(string); ; )
-    {
-      switch(int c=Jdb_core::getchar())
-	{
-	case KEY_BACKSPACE:
-	  if (pos)
-	    {
-	      putstr("\b \b");
-	      string[--pos] = '\0';
-	    }
-	  break;
-	case KEY_RETURN:
-	  return 1;
-	case KEY_ESC:
-	  Jdb::abort_command();
-	  return 0;
-	default:
-	  if (c >= ' ')
-    	    {
-	      if (pos < size-1)
-		{
-		  putchar(c);
-		  string[pos++] = c;
-		  string[pos  ] = '\0';
-		}
-	    }
-	}
-    }
-}
-
 static void
 Jdb_tbuf_show::show_perf_event_unit_mask_entry(Mword nr, Mword idx,
 					       Mword unit_mask, int exclusive)
@@ -864,7 +831,7 @@ restart:
 				   _filter_str);
 	      _status_type = Status_redraw;
 	      Jdb::cursor(Jdb_screen::height(), 21+strlen(_filter_str));
-	      if (!get_string(_filter_str, sizeof(_filter_str)))
+	      if (!Jdb_input::get_string(_filter_str, sizeof(_filter_str)))
 		goto status_line;
 	      if (!Jdb_tbuf_output::set_filter(_filter_str, &entries))
 		{
@@ -1057,7 +1024,7 @@ restart:
 			       	   _search_str);
 	      _status_type = Status_redraw;
 	      Jdb::cursor(Jdb_screen::height(), 14+strlen(_search_str));
-	      if (!get_string(_search_str, sizeof(_search_str)) ||
+	      if (!Jdb_input::get_string(_search_str, sizeof(_search_str)) ||
 		  !_search_str[0])
 		goto status_line;
 	      // fall through
@@ -1116,6 +1083,11 @@ Jdb_tbuf_show::action(int cmd, void *&, char const *&, int &)
       break;
 
     case 1:
+      Jdb_tbuf_output::set_filter(_filter_str, 0);
+      show_events(0, 0, 1000000, 0, 0, 1);
+      break;
+
+    case 2:
       if (Kconsole::console()->find_console(Console::GZIP))
 	{
 	  Jdb_tbuf_output::set_filter(_filter_str, 0);
@@ -1134,11 +1106,12 @@ Jdb_module::Cmd const *
 Jdb_tbuf_show::cmds() const
 {
   static Cmd cs[] =
-    { 
+    {
 	{ 0, "T", "tbuf", "",
 	  "T{P{+|-|k|u|<event>}}\tenter tracebuffer, on/off/kernel/user perf",
 	  0 },
-	 { 1, "Tgzip", "", "", 0 /* invisible */, 0 },
+        { 1, "", "tbufdumptext", "", 0 /* invisible */, 0 },
+        { 2, "", "tbufdumpgzip", "", 0 /* invisible */, 0 },
     };
 
   return cs;
@@ -1148,7 +1121,7 @@ PUBLIC
 int
 Jdb_tbuf_show::num_cmds() const
 {
-  return 2;
+  return 3;
 }
 
 IMPLEMENT

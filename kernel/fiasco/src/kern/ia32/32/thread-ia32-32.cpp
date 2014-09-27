@@ -220,13 +220,16 @@ void
 Thread::user_invoke()
 {
   user_invoke_generic();
+  Mword cx = 0;
+
+  if (current()->space()->is_sigma0())
+    cx = Kmem::virt_to_phys(Kip::k());
 
   asm volatile
     ("  movl %%eax,%%esp \n"    // set stack pointer to regs structure
-     "  movl %%ecx,%%es  \n"
-     "  movl %%ecx,%%ds  \n"
+     "  movl %%edx,%%es  \n"
+     "  movl %%edx,%%ds  \n"
      "  xorl %%eax,%%eax \n"    // clean out user regs
-     "  xorl %%ecx,%%ecx \n"
      "  xorl %%edx,%%edx \n"
      "  xorl %%esi,%%esi \n"
      "  xorl %%edi,%%edi \n"
@@ -235,7 +238,8 @@ Thread::user_invoke()
      "  iret             \n"
      :                          // no output
      : "a" (nonull_static_cast<Return_frame*>(current()->regs())),
-       "c" (Gdt::gdt_data_user | Gdt::Selector_user)
+       "d" (Gdt::gdt_data_user | Gdt::Selector_user),
+       "c" (cx)
      );
 
   // never returns here
@@ -244,43 +248,13 @@ Thread::user_invoke()
 //---------------------------------------------------------------------------
 IMPLEMENTATION [ia32]:
 
-#include <feature.h>
-KIP_KERNEL_FEATURE("segments");
-
-PROTECTED inline
+PROTECTED inline NEEDS[Thread::sys_gdt_x86]
 L4_msg_tag
 Thread::invoke_arch(L4_msg_tag tag, Utcb *utcb)
 {
   switch (utcb->values[0] & Opcode_mask)
     {
-      case Op_gdt_x86:
-
-      // if no words given then return the first gdt entry
-      if (EXPECT_FALSE(tag.words() == 1))
-        {
-          utcb->values[0] = Gdt::gdt_user_entry1 >> 3;
-          return Kobject_iface::commit_result(0, 1);
-        }
-
-        {
-          unsigned entry_number = utcb->values[1];
-          unsigned idx = 2;
-
-          for (; entry_number < Gdt_user_entries
-                 && idx < tag.words()
-               ; idx += 2, ++entry_number)
-            {
-              Gdt_entry *d = (Gdt_entry *)&utcb->values[idx];
-              if (!d->unsafe())
-                _gdt_user_entries[entry_number] = *d;
-            }
-
-          if (this == current_thread())
-            load_gdt_user_entries();
-
-          return Kobject_iface::commit_result((utcb->values[1] << 3) + Gdt::gdt_user_entry1 + 3);
-        }
-
+    case Op_gdt_x86: return sys_gdt_x86(tag, utcb);
     default:
       return commit_result(-L4_err::ENosys);
     };

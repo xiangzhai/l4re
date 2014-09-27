@@ -15,9 +15,9 @@
 #ifndef __CRYPTO_SHA_H
 #define __CRYPTO_SHA_H
 
-#include <l4/sys/compiler.h>
+#include "private/misc.h"
 
-EXTERN_C_BEGIN
+CRYPTO_EXTERN_C_BEGIN
 
 /* generic includes */
 #include <sys/types.h>
@@ -59,7 +59,7 @@ extern crypto_digest_setup_fn_t  sha1_digest_setup;
 extern crypto_digest_update_fn_t sha1_digest_update;
 extern crypto_digest_final_fn_t  sha1_digest_final;
 
-EXTERN_C_END
+CRYPTO_EXTERN_C_END
 
 #endif /* __CRYPTO_SHA_H */
 

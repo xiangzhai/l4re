@@ -398,4 +398,8 @@ EXTERN_C void ddekit_pci_init()
 {
 	ddekit_printf("%s\n", __func__);
 	ddekit_pci_bus = new DDEKit::Pci_bus();
+	if (l4_is_invalid_cap(_vbus)) {
+		ddekit_printf("Failed to create pci bus\n");
+		delete ddekit_pci_bus;
+	}
 }

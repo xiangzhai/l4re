@@ -399,23 +399,3 @@ int get_sb_pseudo(struct file_system_type *fs_type, char *name,
 	return 0;
 }
 
-void inode_init_once(struct inode *inode)
-{
-	memset(inode, 0, sizeof(*inode));
-	INIT_HLIST_NODE(&inode->i_hash);
-	INIT_LIST_HEAD(&inode->i_dentry);
-	INIT_LIST_HEAD(&inode->i_devices);
-	INIT_RADIX_TREE(&inode->i_data.page_tree, GFP_ATOMIC);
-	spin_lock_init(&inode->i_data.tree_lock);
-	spin_lock_init(&inode->i_data.i_mmap_lock);
-	INIT_LIST_HEAD(&inode->i_data.private_list);
-	spin_lock_init(&inode->i_data.private_lock);
-	INIT_RAW_PRIO_TREE_ROOT(&inode->i_data.i_mmap);
-	INIT_LIST_HEAD(&inode->i_data.i_mmap_nonlinear);
-	i_size_ordered_init(inode);
-#ifdef CONFIG_INOTIFY
-	INIT_LIST_HEAD(&inode->inotify_watches);
-	mutex_init(&inode->inotify_mutex);
-#endif
-}
-

@@ -140,6 +140,8 @@ public:
   static void handle_remote_requests_irq() asm ("handle_remote_cpu_requests");
   static void handle_global_remote_requests_irq() asm ("ipi_remote_call");
 
+  bool arch_ext_vcpu_enabled();
+
 protected:
   explicit Thread(Context_mode_kernel);
 
@@ -279,8 +281,6 @@ IMPLEMENT inline
 Thread::Thread(Context_mode_kernel)
   : Receiver(), Sender(), _del_observer(0), _magic(magic)
 {
-  *reinterpret_cast<void(**)()>(--_kernel_sp) = user_invoke;
-
   inc_ref();
   _space.space(Kernel_task::kernel_task());
 
@@ -478,8 +478,21 @@ PUBLIC static
 Context::Drq::Result
 Thread::handle_kill_helper(Drq *src, Context *, void *)
 {
-  delete nonull_static_cast<Thread*>(src->context());
+  delete static_cast<Thread*>(static_cast<Kernel_drq*>(src)->src);
   return Drq::no_answer_resched();
+}
+
+PUBLIC
+void
+Thread::put_n_reap(Kobject ***reap_list)
+{
+  if (dec_ref() == 0)
+    {
+      // we need to re-add the reference
+      // that is released during Reap_list::del
+      inc_ref();
+      initiate_deletion(reap_list);
+    }
 }
 
 
@@ -502,9 +515,6 @@ Thread::do_kill()
     // if IPC timeout active, reset it
     if (_timeout)
       _timeout->reset();
-
-    // Switch to time-sharing mode
-    set_mode(Sched_mode(0));
 
     Sched_context::Ready_queue &rq = Sched_context::rq.current();
 
@@ -607,13 +617,13 @@ Thread::kill()
   if (home_cpu() == current_cpu())
     {
       state_add_dirty(Thread_cancel | Thread_ready);
-      Sched_context::rq.current().deblock(sched());
+      Sched_context::rq.current().deblock(sched(), current()->sched());
       _exc_cont.restore(regs()); // overwrite an already triggered exception
       do_trigger_exception(regs(), (void*)&Thread::leave_and_kill_myself);
       return true;
     }
 
-  drq(Thread::handle_remote_kill, 0, 0, Drq::Any_ctxt);
+  drq(Thread::handle_remote_kill, 0, Drq::Any_ctxt);
 
   return true;
 }
@@ -624,19 +634,9 @@ void
 Thread::set_sched_params(L4_sched_param const *p)
 {
   Sched_context *sc = sched_context();
-  // FIXME: do not know how to figure this out currently, however this
-  // seems to be just an optimization
-#if 0
-  bool const change = prio != sc->prio()
-                   || quantum != sc->quantum();
-  bool const ready_queued = in_ready_list();
-
-  if (!change && (ready_queued || this == current()))
-    return;
-#endif
 
   // this can actually access the ready queue of a CPU that is offline remotely
-  Sched_context::Ready_queue &rq = Sched_context::rq.cpu(home_cpu()); //current();
+  Sched_context::Ready_queue &rq = Sched_context::rq.cpu(home_cpu());
   rq.ready_dequeue(sched());
 
   sc->set(p);
@@ -661,6 +661,11 @@ Thread::control(Thread_ptr const &pager, Thread_ptr const &exc_handler)
 
   return 0;
 }
+
+IMPLEMENT_DEFAULT inline
+bool
+Thread::arch_ext_vcpu_enabled()
+{ return false; }
 
 // used by UX only
 PUBLIC static inline
@@ -713,7 +718,7 @@ Context::Drq::Result
 Thread::handle_migration_helper(Drq *rq, Context *, void *p)
 {
   Migration *inf = reinterpret_cast<Migration *>(p);
-  Thread *v = static_cast<Thread*>(context_of(rq));
+  Thread *v = static_cast<Thread*>(static_cast<Kernel_drq*>(rq)->src);
   Cpu_number target_cpu = access_once(&inf->cpu);
   v->migrate_away(inf, false);
   v->migrate_to(target_cpu, false);
@@ -762,9 +767,9 @@ Thread::do_migration()
   else
     {
       Cpu_number target_cpu = access_once(&inf->cpu);
-      migrate_away(inf, false);
-      migrate_to(target_cpu, false);
-      return false; // we already are chosen by the scheduler...
+      bool resched = migrate_away(inf, false);
+      resched |= migrate_to(target_cpu, false);
+      return resched; // we already are chosen by the scheduler...
     }
 }
 PUBLIC
@@ -780,9 +785,9 @@ Thread::initiate_migration()
   spill_fpu_if_owner();
 
   Cpu_number target_cpu = access_once(&inf->cpu);
-  migrate_away(inf, false);
-  migrate_to(target_cpu, false);
-  return false;
+  bool resched = migrate_away(inf, false);
+  resched |= migrate_to(target_cpu, false);
+  return resched;
 }
 
 PUBLIC
@@ -827,7 +832,7 @@ Thread::switchin_fpu(bool alloc_new_fpu = true)
 
   // Save the FPU state of the previous FPU owner (lazy) if applicable
   if (f.owner())
-    nonull_static_cast<Thread*>(f.owner())->spill_fpu();
+    f.owner()->spill_fpu();
 
   // Become FPU owner and restore own FPU state
   f.restore_state(fpu_state());
@@ -839,7 +844,7 @@ Thread::switchin_fpu(bool alloc_new_fpu = true)
 
 PUBLIC inline NEEDS["fpu.h", "fpu_alloc.h"]
 void
-Thread::transfer_fpu(Thread *to)
+Thread::transfer_fpu(Thread *to) //, Trap_state *trap_state, Utcb *to_utcb)
 {
   if (to->fpu_state()->state_buffer())
     Fpu_alloc::free_state(to->fpu_state());
@@ -928,11 +933,12 @@ IMPLEMENTATION [!mp]:
 
 
 PRIVATE inline
-void
+bool
 Thread::migrate_away(Migration *inf, bool remote)
 {
   assert_kdb (current() != this);
   assert_kdb (cpu_lock.test());
+  bool resched = false;
 
   Cpu_number cpu = inf->cpu;
   //  LOG_MSG_3VAL(this, "MGi ", Mword(current()), (current_cpu() << 16) | cpu(), Context::current_sched());
@@ -952,8 +958,11 @@ Thread::migrate_away(Migration *inf, bool remote)
         {
           // Not sure if this can ever happen
           Sched_context *csc = rq.current_sched();
-          if (!csc || csc->context() == this)
-            rq.set_current_sched(current()->sched());
+          if (csc == sched())
+            {
+              rq.set_current_sched(kernel_context(current_cpu())->sched());
+              resched = true;
+            }
         }
     }
 
@@ -962,9 +971,10 @@ Thread::migrate_away(Migration *inf, bool remote)
   sc->replenish();
   set_sched(sc);
 
+  state_add_dirty(Thread_finish_migration);
   set_home_cpu(cpu);
-  inf->in_progress = true;
-  _need_to_finish_migration = true;
+  write_now(&inf->in_progress, true);
+  return resched;
 }
 
 PRIVATE inline
@@ -1048,7 +1058,7 @@ Thread::migrate(Migration *info)
       while (!mp_cas(&_migration, old, info));
       // flag old migration to be done / stale
       if (old)
-        old->in_progress = true;
+        write_now(&old->in_progress, true);
     }
 
   Cpu_number cpu = home_cpu();
@@ -1087,11 +1097,15 @@ Thread::handle_remote_requests_irq()
   if (migration_q)
     resched |= static_cast<Thread*>(migration_q)->do_migration();
 
-  resched |= c->handle_drq();
+  bool on_current_cpu = c->home_cpu() == current_cpu();
+  if (on_current_cpu)
+    resched |= c->handle_drq();
 
   if (Sched_context::rq.current().schedule_in_progress)
     {
-      if (c->state() & Thread_ready_mask)
+      if (   (c->state() & Thread_ready_mask)
+          && !c->in_ready_list()
+          && on_current_cpu)
         Sched_context::rq.current().ready_enqueue(c->sched());
     }
   else if (resched)
@@ -1109,12 +1123,13 @@ Thread::handle_global_remote_requests_irq()
 }
 
 PRIVATE inline
-void
+bool
 Thread::migrate_away(Migration *inf, bool remote)
 {
   assert_kdb (check_for_current_cpu());
   assert_kdb (current() != this);
   assert_kdb (cpu_lock.test());
+  bool resched = false;
 
   if (_timeout)
     _timeout->reset();
@@ -1131,10 +1146,12 @@ Thread::migrate_away(Migration *inf, bool remote)
 
       rq.ready_dequeue(sched());
 
-      // Not sure if this can ever happen
       Sched_context *csc = rq.current_sched();
-      if (!remote && (!csc || csc->context() == this))
-	rq.set_current_sched(current()->sched());
+      if (!remote && csc == sched())
+        {
+          rq.set_current_sched(kernel_context(current_cpu())->sched());
+          resched = true;
+        }
     }
 
   Cpu_number target_cpu = inf->cpu;
@@ -1149,7 +1166,7 @@ Thread::migrate_away(Migration *inf, bool remote)
                : Lock_guard<cxx::remove_pointer<decltype(q.q_lock())>::type>();
 
       assert_kdb (q.q_lock()->test());
-      // potentailly dequeue from our local queue
+      // potentially dequeue from our local queue
       if (_pending_rq.queued())
         check_kdb (q.dequeue(&_pending_rq, Queue_item::Ok));
 
@@ -1163,16 +1180,18 @@ Thread::migrate_away(Migration *inf, bool remote)
       assert_kdb (!in_ready_list());
       assert_kdb (!_pending_rq.queued());
 
+      state_add_dirty(Thread_finish_migration);
       set_home_cpu(target_cpu);
       Mem::mp_mb();
       write_now(&inf->in_progress, true);
-      _need_to_finish_migration = true;
     }
+
+  return resched;
 }
 
 PRIVATE inline
 bool
-Thread::migrate_to(Cpu_number target_cpu, bool remote)
+Thread::migrate_to(Cpu_number target_cpu, bool /*remote*/)
 {
   bool ipi = false;
     {
@@ -1190,8 +1209,12 @@ Thread::migrate_to(Cpu_number target_cpu, bool remote)
       if (access_once(&_home_cpu) != target_cpu || _pending_rq.queued())
         return false;
 
-      if (remote && target_cpu == current_cpu())
-        return Sched_context::rq.current().deblock(sched(), current()->sched(), false);
+      if (target_cpu == current_cpu())
+        {
+          g.reset();
+          bool resched = handle_drq();
+          return resched | Sched_context::rq.current().deblock(sched(), current()->sched());
+        }
 
       if (!_pending_rq.queued())
         {

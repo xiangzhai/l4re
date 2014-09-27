@@ -29,13 +29,17 @@ Romain::TrapObserver::notify(Romain::App_instance *inst,
                              Romain::App_model *a)
 {
 	if (t->vcpu()->r()->trapno == 6) {
-		ERROR() << "Invalid opcode @ " << std::hex << t->vcpu()->r()->ip;
+		ERROR() << "Invalid opcode @ " << std::hex << t->vcpu()->r()->ip << "\n";
 		enter_kdebug("invalid opcode");
 	}
 
 	if (!entry_reason_is_int3(t->vcpu(), inst, a)) {
 		return Romain::Observer::Ignored;
 	}
+#if BENCHMARKING
+	unsigned long long t1, t2;
+	t1 = l4_rdtsc();
+#endif
 
 	// address is already 1 _behind_ the INT3 opcode
 	l4_addr_t local = a->rm()->remote_to_local(t->vcpu()->r()->ip, inst->id());
@@ -81,16 +85,20 @@ Romain::TrapObserver::notify(Romain::App_instance *inst,
 						INFO() << TrapObserver::jdb_out_prefix << "JDB:" << TrapObserver::jdb_out_suffix << " " << std::hex << t->vcpu()->r()->ax;
 						break;
 					default: 
-						ERROR() << "unhandled out op: " << std::hex << (int)out_op;
+						ERROR() << "unhandled out op: " << std::hex << (int)out_op << "\n";
 						break;
 				};
 			}
 			break;
 		default:
 #if 0
-			ERROR() << "Unhandled JDB opcode: 0x" << std::hex << op;
+			ERROR() << "Unhandled JDB opcode: 0x" << std::hex << op << "\n";
 			break;
 #else
+#if BENCHMARKING
+	t2 = l4_rdtsc();
+	t->count_traps(t2-t1);
+#endif
 			return Romain::Observer::Ignored;
 #endif
 	}

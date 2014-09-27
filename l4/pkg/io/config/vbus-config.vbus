@@ -33,7 +33,9 @@ Io.add_vbusses
       --       CC_02 => network devices
       --       CC_04 => multimedia devices
       --       CC_0c => serial bus devices (USB)
-      pci = wrap(hw:match("PCI/CC_01,PCI/CC_02,PCI/CC_04,PCI/CC_0c"));
+      pci = wrap(hw:match("PCI/CC_01","PCI/CC_02","PCI/CC_04","PCI/CC_0c"));
+      -- human-readable version (also supported):
+      -- pci = wrap(hw:match("PCI/storage","PCI/network","PCI/media","PCI/usb");
     }
   }
 }

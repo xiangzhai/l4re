@@ -44,7 +44,7 @@ Rm::reserve_area(l4_addr_t *start, unsigned long size, unsigned flags,
   L4::Ipc::Iostream io(l4_utcb());
   io << Opcode(Rm_::Attach_area) << *start << size << flags << align;
   long err = l4_error(io.call(cap(), L4Re::Protocol::Rm));
-  if (EXPECT_FALSE(err < 0))
+  if (L4_UNLIKELY(err < 0))
     return err;
 
   io >> *start;
@@ -72,7 +72,7 @@ Rm::attach(l4_addr_t *start, unsigned long size, unsigned long flags,
     io << mem.cap() << mem;
 
   long err = l4_error(io.call(cap(), L4Re::Protocol::Rm));
-  if (EXPECT_FALSE(err < 0))
+  if (L4_UNLIKELY(err < 0))
     return err;
 
   io >> *reinterpret_cast<l4_addr_t*>(start);
@@ -94,7 +94,7 @@ Rm::detach(l4_addr_t addr, unsigned long size, L4::Cap<Dataspace> *mem,
   L4::Ipc::Iostream io(l4_utcb());
   io << Opcode(Rm_::Detach) << addr << size << flags;
   long err = l4_error(io.call(cap(), L4Re::Protocol::Rm));
-  if (EXPECT_FALSE(err < 0))
+  if (L4_UNLIKELY(err < 0))
     return err;
 
   l4_addr_t start;
@@ -146,7 +146,7 @@ Rm::find(l4_addr_t *addr, unsigned long *size, unsigned long *offset,
   L4::Ipc::Iostream io(l4_utcb());
   io << Opcode(Rm_::Find) << *addr << *size;
   long err = l4_error(io.call(cap(), L4Re::Protocol::Rm));
-  if (EXPECT_FALSE(err < 0))
+  if (L4_UNLIKELY(err < 0))
     return err;
 
   l4_cap_idx_t c;

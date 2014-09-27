@@ -117,14 +117,27 @@ Region_map::dispatch(l4_umword_t, L4::Ipc::Iostream &ios)
       try
         {
           return L4Re::Util::region_pf_handler<Dbg>(this, ios);
-	}
+        }
       catch (L4::Out_of_memory const &oom)
-	{
-	  warn.printf("insufficient memory to resolve page fault!\n");
-	  return -L4_ENOREPLY;
-	}
+        {
+          warn.printf("insufficient memory to resolve page fault!\n");
+          return -L4_ENOREPLY;
+        }
     }
-    case L4Re::Protocol::Rm:
+ #if defined(ARCH_x86) || defined(ARCH_amd64)
+    case L4_PROTO_IO_PAGE_FAULT:
+        {
+          l4_umword_t addr, pc;
+          l4_fpage_t fp;
+          ios >> addr >> pc;
+          fp.raw = addr;
+          warn.printf("IO-port-fault: port=0x%lx size=%d pc=0x%lx\n",
+                      l4_fpage_page(fp), 1 << l4_fpage_size(fp), pc);
+        }
+      // return -1, this lets the kernel generate an exception.
+      return -1;
+#endif
+   case L4Re::Protocol::Rm:
       return L4Re::Util::region_map_server<Rm_server>(this, ios);
     default:
       return -L4_EBADPROTO;

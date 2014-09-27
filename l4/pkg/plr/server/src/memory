@@ -70,10 +70,10 @@ namespace Romain
 			 * different from the len parameter for alignment reasons.
 			 */
 			template <typename T>
-			unsigned push_data(T* buf, unsigned len)
+			l4_umword_t push_data(T* buf, l4_umword_t len)
 			{
 				l4_addr_t orig_sp = _sp;
-				unsigned space = len * sizeof(T);
+				l4_umword_t space = len * sizeof(T);
 				_sp -= space;
 				_sp &= ~0x03; // word alignment XXX
 				memcpy((char*)_sp, buf, space);
@@ -113,6 +113,7 @@ namespace Romain
 				: Base(start, end)
 			{}
 
+#if 0
 			void touch_rw()
 			{
 #if 1
@@ -121,6 +122,7 @@ namespace Romain
 #endif
 				l4_touch_rw((void*)this->start(), this->size());
 			}
+#endif
 	};
 
 
@@ -145,6 +147,7 @@ namespace Romain
 				Read_only,
 				Read_only_emulate_write,
 				Writable,
+				Copy_and_execute,
 			};
 
 		private:
@@ -153,7 +156,7 @@ namespace Romain
 				                                                            // multiple instances)
 			l4_addr_t                _offs;       // offset in DS
 			DS                       _mem[Romain::MAX_REPLICAS]; // DS capabilities of underlying dataspaces
-			unsigned char            _flags;      // region flags
+			l4_uint8_t            _flags;      // region flags
 			RegionWritableType       _row;        // rw state
 			bool                     _shared;     // is DS shared across all replicas
 			                                      // (true for internal determinism's lock info page)
@@ -181,20 +184,20 @@ namespace Romain
 				  _align_diff(o.align_diff()),
 				  _numpf(o.numpf())
 			{
-				for (unsigned i = 0; i < o.local_region_count(); ++i) {
+				for (l4_umword_t i = 0; i < o.local_region_count(); ++i) {
 					_local_regions[i] = o.local_region(i);
 					_mem[i]           = o.local_memory(i);
 				}
 			}
 
 			Region_handler_template(DSCAP cap, l4_cap_idx_t client_cap = L4_INVALID_CAP, l4_addr_t offset = 0,
-			                        unsigned flags = 0, Romain::Region local_reg = Romain::Region(0,0))
+			                        l4_umword_t flags = 0, Romain::Region local_reg = Romain::Region(0,0))
 				: _cap(client_cap), _offs(offset), _flags(flags), _shared(false),
 				  _alignment(L4_PAGESHIFT), _align_diff(0), _numpf(0)
 			{
 				_local_regions[0] = local_reg;
 				_mem[0]           = cap;
-				for (unsigned i = 1; i < Romain::MAX_REPLICAS; ++i)
+				for (l4_umword_t i = 1; i < Romain::MAX_REPLICAS; ++i)
 					_mem[i] = DSCAP();
 
 				/*
@@ -210,8 +213,8 @@ namespace Romain
 				}
 			}
 
-			unsigned            local_region_count() const { return MAX_REPLICAS; }
-			Romain::Region const & local_region(unsigned idx) const { return _local_regions[idx]; }
+			l4_umword_t            local_region_count() const { return MAX_REPLICAS; }
+			Romain::Region const & local_region(l4_umword_t idx) const { return _local_regions[idx]; }
 
 			void                writable(RegionWritableType rw) { _row = rw; }
 			RegionWritableType  writable() const { return _row; }
@@ -220,7 +223,7 @@ namespace Romain
 			 * Set a value for the mapping established for a given combination
 			 * of Region and Instance.
 			 */
-			void set_local_region(unsigned idx, Romain::Region const & r)
+			void set_local_region(l4_umword_t idx, Romain::Region const & r)
 			{
 				_check(idx >= Romain::MAX_REPLICAS, "invalid instance");
 				_local_regions[idx] = r;
@@ -229,12 +232,12 @@ namespace Romain
 			//DS const &memory() const throw() { return _mem; }
 			l4_cap_idx_t memory() const throw()                 { return _cap; }
 			l4_cap_idx_t client_cap_idx() const throw()         { return _cap; }
-			DS const &   local_memory(unsigned idx) const throw()  { return _mem[idx]; }
-			void         local_memory(unsigned idx, DS const & m)  { _mem[idx] = m; }
+			DS const &   local_memory(l4_umword_t idx) const throw()  { return _mem[idx]; }
+			void         local_memory(l4_umword_t idx, DS const & m)  { _mem[idx] = m; }
 			l4_addr_t    offset() const throw()                 { return _offs; }
 			void         offset(l4_addr_t o)                    { _offs = o; }
 			l4_addr_t    is_ro() const throw()                  { return _flags & L4Re::Rm::Read_only; }
-			unsigned     flags() const throw()                  { return _flags; }
+			l4_umword_t     flags() const throw()                  { return _flags; }
 
 			bool         shared() const throw()                 { return _shared; }
 			void         shared(bool yn) { _shared = yn; }
@@ -260,27 +263,27 @@ namespace Romain
 				        22, /* 4 MB */
 				};
 
-				DEBUG() << "alignToAddressAndSize(" << std::hex << address
+				DEBUGf(Romain::Log::Memory) << "alignToAddressAndSize(" << std::hex << address
 				        << ", " << size << ")";
 
 				l4_addr_t min_align = MIN_ALIGNMENT;
 				if (size < (1 << MIN_ALIGNMENT)) {
 					min_align = l4util_bsr(size);
 				}
-				DEBUG() << "Minimum alignment: " << std::hex << min_align;
+				DEBUGf(Romain::Log::Memory) << "Minimum alignment: " << std::hex << min_align;
 
 				if (min_align > L4_SUPERPAGESHIFT) {
 					min_align = L4_SUPERPAGESHIFT;
 				}
-				DEBUG() << std::hex << address
+				DEBUGf(Romain::Log::Memory) << std::hex << address
 				        << " --> [max: super page] alignment: "
 				        << min_align;
 
 				_alignment             = min_align;
 				l4_umword_t align_mask = (1 << _alignment) - 1;
 				_align_diff            = address & align_mask;
-				DEBUG() << std::hex << address << " --> align diff =  "
-				        << align_diff();
+				DEBUGf(Romain::Log::Memory) << std::hex
+					   << address << " --> align diff =  " << align_diff();
 
 			}
 
@@ -291,10 +294,10 @@ namespace Romain
 			Region_handler_template operator + (long offset) throw()
 			{ Region_handler_template n = *this; n._offs += offset; return n; }
 
-			void unmap(l4_addr_t va, l4_addr_t ds_offs, unsigned long size) const throw()
+			void unmap(l4_addr_t va, l4_addr_t ds_offs, l4_umword_t size) const throw()
 			{ Ops::unmap(this, va, ds_offs, size); }
 
-			void free(l4_addr_t start, unsigned long size) const throw()
+			void free(l4_addr_t start, l4_umword_t size) const throw()
 			{ Ops::free(this, start, size); }
 
 			int map(l4_addr_t adr, Region const &r, bool writable, Map_result *result) const
@@ -315,9 +318,9 @@ namespace Romain
 			                l4_umword_t *result);
 
 			static void unmap(Region_handler const *h, l4_addr_t vaddr,
-			                  l4_addr_t offs, unsigned long size);
+			                  l4_addr_t offs, l4_umword_t size);
 
-			static void free(Region_handler const *h, l4_addr_t start, unsigned long size);
+			static void free(Region_handler const *h, l4_addr_t start, l4_umword_t size);
 
 			static void take(Region_handler const *h);
 			static void release(Region_handler const *h);
@@ -340,7 +343,7 @@ namespace Romain
 			typedef L4Re::Util::Region_map<Romain::Region_handler, Romain::Allocator> Base;
 			enum { Invalid_inst = ~0U };
 
-			void activate(unsigned inst)
+			void activate(l4_umword_t inst)
 			{
 				pthread_mutex_lock(&_mtx);
 				_check(_active_instance != Invalid_inst, "rm already used, lock!!!");
@@ -358,7 +361,7 @@ namespace Romain
 			 */
 			Region_map();
 
-			l4_addr_t remote_to_local(l4_addr_t remote, unsigned inst)
+			l4_addr_t remote_to_local(l4_addr_t remote, l4_umword_t inst)
 			{
 				Base::Node n = find(remote);
 
@@ -374,14 +377,15 @@ namespace Romain
 
 
 			bool copy_existing_mapping(Romain::Region_handler& r,
-			                           unsigned orig_id,
-			                           unsigned inst_id,
+			                           l4_umword_t orig_id,
+			                           l4_umword_t inst_id,
 			                           bool writepf = false) const
 			{
+				(void)writepf;
 				if (orig_id == inst_id) return true;
 
 				L4::Cap<L4Re::Dataspace> mem;
-				unsigned long size = r.local_region(orig_id).size();
+				l4_umword_t size = r.local_region(orig_id).size();
 
 				DEBUG() << "copy existing: " << std::hex << r.alignment()
 				        << " diff " << r.align_diff();
@@ -411,9 +415,9 @@ namespace Romain
 			 * Allocate a master-local dataspace object.
 			 */
 			static void
-			allocate_ds(L4::Cap<L4Re::Dataspace> *cap, unsigned size)
+			allocate_ds(L4::Cap<L4Re::Dataspace> *cap, l4_umword_t size)
 			{
-				unsigned long flags = 0;
+				l4_umword_t flags = 0;
 				if (size >= (L4_SUPERPAGESIZE >> 2)) { // use super pages from 1 MB...
 					flags |= L4Re::Mem_alloc::Super_pages;
 					flags |= L4Re::Mem_alloc::Continuous;
@@ -428,9 +432,9 @@ namespace Romain
 
 
 			static l4_addr_t
-			attach_aligned(L4::Cap<L4Re::Dataspace> const * ds, unsigned size,
-			               unsigned offs = 0, unsigned flags = 0,
-			               unsigned align = L4_PAGESHIFT, unsigned aligndiff = 0)
+			attach_aligned(L4::Cap<L4Re::Dataspace> const * ds, l4_umword_t size,
+			               l4_umword_t offs = 0, l4_umword_t flags = 0,
+			               l4_umword_t align = L4_PAGESHIFT, l4_umword_t aligndiff = 0)
 			{
 				l4_addr_t a           = 0;
 				l4_addr_t search_size = size + aligndiff;
@@ -463,10 +467,10 @@ namespace Romain
 			 * Allocate and attach a master-local dataspace object.
 			 */
 			static l4_addr_t
-			allocate_and_attach(L4::Cap<L4Re::Dataspace> *cap, unsigned size,
-				                unsigned offs = 0, unsigned flags = 0,
-				                unsigned align = L4_PAGESHIFT,
-				                unsigned aligndiff = 0)
+			allocate_and_attach(L4::Cap<L4Re::Dataspace> *cap, l4_umword_t size,
+				                l4_umword_t offs = 0, l4_umword_t flags = 0,
+				                l4_umword_t align = L4_PAGESHIFT,
+				                l4_umword_t aligndiff = 0)
 			{
 				Romain::Region_map::allocate_ds(cap, size);
 
@@ -480,10 +484,10 @@ namespace Romain
 			 * Check if a node already has a mapping to one of the replicas. If so,
 			 * take a shortcut mapping to the next one (determined by inst parameter).
 			 */
-			bool lazy_map_region(Romain::Region_map::Base::Node &n, unsigned inst, bool writepf=false);
+			bool lazy_map_region(Romain::Region_map::Base::Node &n, l4_umword_t inst, bool writepf=false);
 
 		private:
-			unsigned _active_instance;
+			l4_umword_t _active_instance;
 
 			/*
 			 * Determine the index of the first instance that already holds a
@@ -491,8 +495,8 @@ namespace Romain
 			 */
 			int find_existing_region(Romain::Region_map::Base::Node n) const
 			{
-				int ret;
-				for (ret = 0; ret < Romain::MAX_REPLICAS; ++ret) {
+				l4_mword_t ret;
+				for (ret = 0; ret < static_cast<l4_mword_t>(Romain::MAX_REPLICAS); ++ret) {
 					if (n->second.local_region(ret).start())
 						return ret;
 				}
@@ -504,15 +508,15 @@ namespace Romain
 			 * Every DS we attach to the client is also attached locally within
 			 * the master process.
 			 */
-			void *attach_locally(void* addr, unsigned long size, Romain::Region_handler *hdlr,
-			                     unsigned flags = None, unsigned char align=L4_PAGESHIFT);
+			void *attach_locally(void* addr, l4_umword_t size, Romain::Region_handler *hdlr,
+			                     l4_umword_t flags = None, l4_uint8_t align=L4_PAGESHIFT);
 
 
-			void *attach(void* addr, unsigned long size, Romain::Region_handler const &hdlr,
-			             unsigned flags = None, unsigned char align=L4_PAGESHIFT, bool shared = false);
+			void *attach(void* addr, l4_umword_t size, Romain::Region_handler const &hdlr,
+			             l4_umword_t flags = None, l4_uint8_t align=L4_PAGESHIFT, bool shared = false);
 
-			l4_addr_t attach_area(l4_addr_t addr, unsigned long size, unsigned flags = None,
-			                      unsigned char align = L4_PAGESHIFT) throw()
+			l4_addr_t attach_area(l4_addr_t addr, l4_umword_t size, l4_umword_t flags = None,
+			                      l4_uint8_t align = L4_PAGESHIFT) throw()
 			{
 				DEBUG() << "attach_area(" << std::hex << addr << ", " << size << ", " << flags << ")";
 				return Base::attach_area(addr, size, flags, align);
@@ -528,24 +532,25 @@ namespace Romain
 			Base::Node find(Base::Key_type const& k) const throw()
 			{
 				Base::Node n = Base::find(k);
-				DEBUG() << GREEN << "find(" << std::hex << k.start() << "): " << NOCOLOR
+				DEBUGf(Romain::Log::Memory) << GREEN << "find(" << std::hex << k.start() << "): " << NOCOLOR
 				        << "addr " << (n ? n->first.start() : 0xF00)
 				        << " memcap " << (n ? n->second.client_cap_idx() : 0xF00);
 				return n;
 			}
 
-			int detach(void* addr, unsigned long size, unsigned flags,
+			int detach(void* addr, l4_umword_t size, l4_umword_t flags,
                        L4Re::Util::Region* reg, Romain::Region_handler* h);
 
 			/*
 			 * Copy the content of all writable regions of instance 'from' to
 			 * the respective regions of instance 'to'.
 			 */
-			void replicate(unsigned from, unsigned to)
+			void replicate(l4_umword_t from, l4_umword_t to)
 			{
-				for (Base::Const_iterator i = begin(); i != end(); ++i) {
-					if (!i->second.is_ro()) {
-						unsigned size = i->first.end() - i->first.start() - 1;
+				for (auto i = begin(); i != end(); ++i) {
+					// if the region is writeable and is already mapped
+					if (!i->second.is_ro() && i->second.local_region(from).start() != 0) {
+						l4_umword_t size = i->first.end() - i->first.start() - 1;
 						memcpy((void*)i->second.local_region(to).start(),
 						       (void*)i->second.local_region(from).start(), size);
 					}
@@ -574,7 +579,7 @@ namespace Romain
 			enum { Have_find = true };
 
 			static int validate_ds(L4::Ipc::Snd_fpage const &ds_cap,
-			                       unsigned, L4::Cap<L4Re::Dataspace> *ds)
+			                       l4_umword_t, L4::Cap<L4Re::Dataspace> *ds)
 			{
 				/*
 				 * XXX  We need to check if actually a cap was received.

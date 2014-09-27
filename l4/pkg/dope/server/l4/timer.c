@@ -18,7 +18,6 @@
 #include <unistd.h>
 
 #include <l4/re/env.h>
-#include <l4/util/macros.h>
 
 #include "timer.h"
 

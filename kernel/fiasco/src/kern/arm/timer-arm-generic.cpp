@@ -13,11 +13,17 @@ private:
     CTL_ISTATUS  = 1 << 2,
   };
 
-  static void bsp_init();
+  static void bsp_init(Cpu_number);
+  static Unsigned32 frequency();
 
   static Mword _interval;
   static Mword _freq0;
 };
+
+// --------------------------------------------------------------------------
+INTERFACE [arm && arm_generic_timer && hyp]:
+
+EXTENSION class Timer { public: typedef Generic_timer::T<Generic_timer::Hyp> Gtimer; };
 
 // --------------------------------------------------------------------------
 INTERFACE [arm && arm_generic_timer && arm_em_tz]:
@@ -25,7 +31,7 @@ INTERFACE [arm && arm_generic_timer && arm_em_tz]:
 EXTENSION class Timer { public: typedef Generic_timer::T<Generic_timer::Physical> Gtimer; };
 
 // --------------------------------------------------------------------------
-INTERFACE [arm && arm_generic_timer && arm_em_ns]:
+INTERFACE [arm && arm_generic_timer && ((arm_em_ns && !hyp) || arm_em_std)]:
 
 EXTENSION class Timer { public: typedef Generic_timer::T<Generic_timer::Virtual> Gtimer; };
 
@@ -41,7 +47,9 @@ IMPLEMENTATION [arm && arm_generic_timer]:
 Mword Timer::_interval;
 Mword Timer::_freq0;
 
-PRIVATE static inline Unsigned32 Timer::frequency()
+IMPLEMENT_DEFAULT
+static inline
+Unsigned32 Timer::frequency()
 {
   Unsigned32 v;
   asm volatile ("mrc p15, 0, %0, c14, c0, 0": "=r" (v));
@@ -57,13 +65,14 @@ void Timer::init(Cpu_number cpu)
   if (!Cpu::cpus.cpu(cpu).has_generic_timer())
     panic("CPU does not support the ARM generic timer");
 
-  bsp_init();
+  bsp_init(cpu);
 
   if (cpu == Cpu_number::boot_cpu())
     {
       _freq0 = frequency();
-      _interval = _freq0 / Config::Scheduler_granularity;
-      printf("ARM generic timer: freq=%d interval=%d cnt=%lld\n", _freq0, _interval, Gtimer::counter());
+      _interval = (Unsigned64)_freq0 * Config::Scheduler_granularity / 1000000;
+      printf("ARM generic timer: freq=%ld interval=%ld cnt=%lld\n", _freq0, _interval, Gtimer::counter());
+      assert(_freq0);
     }
   else if (_freq0 != frequency())
     {
@@ -74,7 +83,8 @@ void Timer::init(Cpu_number cpu)
   Gtimer::setup_timer_access();
 
   // wait for timer to really start counting
-  while (Gtimer::counter() == 0)
+  Unsigned64 v = Gtimer::counter();
+  while (Gtimer::counter() == v)
     ;
 }
 
@@ -82,23 +92,8 @@ IMPLEMENT
 void
 Timer::enable()
 {
-  Unsigned64 cnt = Gtimer::counter();
-  Gtimer::compare(cnt + _interval);
+  Gtimer::compare(Gtimer::counter() + _interval);
   Gtimer::control(CTL_ENABLE);
-}
-
-static inline
-Unsigned64
-Timer::timer_to_us(Unsigned32 cr)
-{
-  return _freq0 * 1000000 / cr;
-}
-
-static inline
-Unsigned64
-Timer::us_to_timer(Unsigned64 us)
-{
-  return _freq0 * us / 1000000;
 }
 
 PUBLIC static inline

@@ -353,6 +353,7 @@ int register_pernet_gen_subsys(int *id, struct pernet_operations *ops)
 
 	mutex_lock(&net_mutex);
 again:
+#ifndef DDE_LINUX
 	rv = ida_get_new_above(&net_generic_ids, 1, id);
 	if (rv < 0) {
 		if (rv == -EAGAIN) {
@@ -364,6 +365,7 @@ again:
 	rv = register_pernet_operations(first_device, ops);
 	if (rv < 0)
 		ida_remove(&net_generic_ids, *id);
+#endif
 out:
 	mutex_unlock(&net_mutex);
 	return rv;
@@ -372,10 +374,12 @@ EXPORT_SYMBOL_GPL(register_pernet_gen_subsys);
 
 void unregister_pernet_gen_subsys(int id, struct pernet_operations *ops)
 {
+#ifndef DDE_LINUX
 	mutex_lock(&net_mutex);
 	unregister_pernet_operations(ops);
 	ida_remove(&net_generic_ids, id);
 	mutex_unlock(&net_mutex);
+#endif
 }
 EXPORT_SYMBOL_GPL(unregister_pernet_gen_subsys);
 
@@ -415,6 +419,7 @@ int register_pernet_gen_device(int *id, struct pernet_operations *ops)
 	int error;
 	mutex_lock(&net_mutex);
 again:
+#ifndef DDE_LINUX
 	error = ida_get_new_above(&net_generic_ids, 1, id);
 	if (error) {
 		if (error == -EAGAIN) {
@@ -428,6 +433,7 @@ again:
 		ida_remove(&net_generic_ids, *id);
 	else if (first_device == &pernet_list)
 		first_device = &ops->list;
+#endif
 out:
 	mutex_unlock(&net_mutex);
 	return error;
@@ -456,10 +462,12 @@ EXPORT_SYMBOL_GPL(unregister_pernet_device);
 void unregister_pernet_gen_device(int id, struct pernet_operations *ops)
 {
 	mutex_lock(&net_mutex);
+#ifndef DDE_LINUX
 	if (&ops->list == first_device)
 		first_device = first_device->next;
 	unregister_pernet_operations(ops);
 	ida_remove(&net_generic_ids, id);
+#endif
 	mutex_unlock(&net_mutex);
 }
 EXPORT_SYMBOL_GPL(unregister_pernet_gen_device);

@@ -199,6 +199,9 @@ public:
     return read<Unsigned8>(PEND + 8) | (static_cast<unsigned>(read<Unsigned8>(PEND + 12)) << 8);
   }
 
+  Mword mask23()
+  { return read<Mword>(MASK + offs(16)) | (read<Mword>(MASK + offs(24)) << 8); }
+
   Unsigned32 _wakeup;
 
 private:
@@ -261,11 +264,8 @@ public:
   Unsigned32 pending(unsigned cnr)
   {
     unsigned v = status(cnr) >> shift(cnr);
-    for (unsigned i = 0; i < 8; ++i)
-      if (v & (1 << i))
-	return (cnr * 8) + i;
-    // use __builtin_clz...
-
+    if (v)
+      return (cnr * 8) + __builtin_ctz(v);
     return No_pending;
   }
 
@@ -275,7 +275,7 @@ public:
       return Platform::gic_int() ? 54 : 16;
     if (Platform::is_4412())
       return 20;
-    if (Platform::is_5250())
+    if (Platform::is_5250() || Platform::is_5410())
       return 32;
     assert(0);
     return 0;
@@ -346,14 +346,14 @@ PUBLIC
 void
 Gpio_cascade_wu23_irq::handle(Upstream_irq const *u)
 {
-  unsigned mask = _wu_gpio->pending23();
+  Unsigned32 pending = (_wu_gpio->pending23() & ~_wu_gpio->mask23()) << 16;
   Upstream_irq ui(this, u);
-  for (unsigned p = 0; p < 16; ++p)
-    if ((1 << p) & mask)
-      {
-	_wu_gpio->irq(p + 16)->hit(&ui);
-	break;
-      }
+  while (pending)
+    {
+      unsigned p = __builtin_ctz(pending);
+      _wu_gpio->irq(p)->hit(&ui);
+      pending &= ~(1 << p);
+    }
 }
 
 class Gpio_cascade_xab_irq : public Irq_base
@@ -897,13 +897,13 @@ Mgr::Mgr()
   //  - part4: ext-int 0x700: 50
 
   static Chip_block socblock[] = {
-    { 160,                Pic::gic },
-    { 32 * 8,             _cc },
-    { 32,                 _wu_gc },
-    { _ei_gc1->nr_irqs(), _ei_gc1 },
-    { _ei_gc2->nr_irqs(), _ei_gc2 },
-    { _ei_gc3->nr_irqs(), _ei_gc3 },
-    { _ei_gc4->nr_irqs(), _ei_gc4 },
+    { Platform::is_5410() ? 256U : 160U, Pic::gic },
+    { 32 * 8,                            _cc },
+    { 32,                                _wu_gc },
+    { _ei_gc1->nr_irqs(),                _ei_gc1 },
+    { _ei_gc2->nr_irqs(),                _ei_gc2 },
+    { _ei_gc3->nr_irqs(),                _ei_gc3 },
+    { _ei_gc4->nr_irqs(),                _ei_gc4 },
   };
 
   _block = socblock;
@@ -919,9 +919,11 @@ PUBLIC
 void
 Mgr::set_cpu(Mword irqnum, Cpu_number cpu) const
 {
-  // this handles only the MCT_L[01] timers
+  // this handles only the MCT_L[0123] timers
   if (   irqnum == 152   // MCT_L0
-      || irqnum == 153)  // MCT_L1
+      || irqnum == 153   // MCT_L1
+      || irqnum == 154   // MCT_L2
+      || irqnum == 155)  // MCT_L3
     Pic::gic->set_cpu(irqnum, cpu);
   else
     WARNX(Warning, "IRQ%ld: ignoring CPU setting (%d).\n",

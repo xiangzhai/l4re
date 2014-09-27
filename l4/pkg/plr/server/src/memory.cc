@@ -13,6 +13,7 @@
 #include "app_loading"
 #include "locking.h"
 #include <l4/sys/kdebug.h>
+#include <pthread-l4.h>
 
 #define MSG() DEBUGf(Romain::Log::Memory)
 
@@ -30,7 +31,7 @@ int Romain::Region_ops::map(Region_handler const *h, l4_addr_t addr,
 }
 
 void Romain::Region_ops::unmap(Region_handler const *h, l4_addr_t vaddr,
-                               l4_addr_t offs, unsigned long size)
+                               l4_addr_t offs, l4_umword_t size)
 {
 	(void)h;
 	(void)vaddr;
@@ -40,7 +41,7 @@ void Romain::Region_ops::unmap(Region_handler const *h, l4_addr_t vaddr,
 }
 
 
-void Romain::Region_ops::free(Region_handler const *h, l4_addr_t start, unsigned long size)
+void Romain::Region_ops::free(Region_handler const *h, l4_addr_t start, l4_umword_t size)
 {
 	if ((h->flags() & L4Re::Rm::Reserved))
 		return;
@@ -80,7 +81,7 @@ Romain::Region_map::Region_map()
 	      << " entries.";
 
 	L4::Kip::Mem_desc *d = L4::Kip::Mem_desc::first(kip);
-	unsigned long count  = L4::Kip::Mem_desc::count(kip);
+	l4_umword_t count  = L4::Kip::Mem_desc::count(kip);
 
 	for (L4::Kip::Mem_desc *desc = d; desc < d + count; ++desc) {
 
@@ -127,7 +128,7 @@ Romain::Region_map::Region_map()
  * that the replica address as well as the master-local addresses of the copies
  * are aligned to the same offset within a minimally aligned region. The minimum
  * alignment is defined by the Region_handler()'s MIN_ALIGNMENT member (XXX and
- * should at some point become a configurable feature).
+ * should at some pol4_mword_t become a configurable feature).
  *
  * The layout looks like this:
  *
@@ -162,11 +163,11 @@ Romain::Region_map::Region_map()
  *  (B) and free the reserved area so that the remaining memory
  *  can again be freely used.
  */
-void *Romain::Region_map::attach_locally(void* addr, unsigned long size,
+void *Romain::Region_map::attach_locally(void* addr, l4_umword_t size,
                                          Romain::Region_handler *hdlr,
-                                         unsigned flags, unsigned char align)
+                                         l4_umword_t flags, l4_uint8_t align)
 {
-	long r; (void)addr;
+	(void)addr;
 	Romain::Region_handler::Dataspace const *ds = &hdlr->local_memory(0);
 	L4Re::Dataspace::Stats dsstat;
 	(*ds)->info(&dsstat);
@@ -177,7 +178,7 @@ void *Romain::Region_map::attach_locally(void* addr, unsigned long size,
 	      << ", addr = "     << addr
 	      << ", flags = "    << flags << " (" << dsstat.flags << ")"
 	      << ", size = "     << size
-	      << ", align = "    << (unsigned int)align
+	      << ", align = "    << (l4_umword_t)align
 	      << NOCOLOR;
 #endif
 
@@ -225,7 +226,7 @@ void *Romain::Region_map::attach_locally(void* addr, unsigned long size,
 
 	l4_addr_t page_base      = l4_trunc_page(hdlr->offset());
 	l4_addr_t offset_in_page = hdlr->offset() - page_base;
-	unsigned eff_size        = l4_round_page(size + offset_in_page);
+	l4_umword_t eff_size        = l4_round_page(size + offset_in_page);
 
 #if 1
 	MSG() << "  page_base " << (void*)page_base << ", offset " << std::hex << offset_in_page
@@ -272,7 +273,6 @@ void *Romain::Region_map::attach_locally(void* addr, unsigned long size,
 	                                                 hdlr->align_diff());
 
 	Romain::Region reg(a, a+eff_size - 1);
-	reg.touch_rw();
 
 	MSG() << "set_local_region(" << _active_instance << ", "
 		  << std::hex << reg.start() << ")";
@@ -280,9 +280,9 @@ void *Romain::Region_map::attach_locally(void* addr, unsigned long size,
 	return (void*)(a + offset_in_page);
 }
 
-void *Romain::Region_map::attach(void* addr, unsigned long size,
+void *Romain::Region_map::attach(void* addr, l4_umword_t size,
                                  Romain::Region_handler const &hdlr,
-                                 unsigned flags, unsigned char align, bool shared)
+                                 l4_umword_t flags, l4_uint8_t align, bool shared)
 {
 	void *ret = 0;
 
@@ -310,6 +310,8 @@ void *Romain::Region_map::attach(void* addr, unsigned long size,
 	    !(flags & L4Re::Rm::In_area) and
 	    (size > L4_SUPERPAGESIZE) and
 	    (align < L4_LOG2_SUPERPAGESIZE)) {
+		MSG() << "Forcing attach() with size " << std::hex << size
+		      << " to use superpage mappings.";
 		align = L4_LOG2_SUPERPAGESIZE;
 		size  = l4_round_size(size, L4_SUPERPAGESHIFT);
 	}
@@ -355,63 +357,146 @@ void *Romain::Region_map::attach(void* addr, unsigned long size,
 }
 
 
+enum {
+	NUM_DETACH = 32
+};
+pthread_t detacher;
+pthread_mutex_t det_mtx;
+l4_umword_t det_read, det_write;
+sem_t     detach_full, detach_empty;
 
-int Romain::Region_map::detach(void* /* IN */ addr, unsigned long /* IN */ size,
-                               unsigned /* IN */ flags,
-                               L4Re::Util::Region* /* OUT */ reg,
-                               Romain::Region_handler* /* OUT */ h)
+struct DetachJob
 {
-	/* First, do a lookup for the handler, because Base::Detach() will not always
-	 * return the handler node, but we need it for detach later.
-	 */
-	l4_addr_t srch = (l4_addr_t)addr;
-	Romain::Region_handler hd = Base::find(Region(srch, srch + size - 1))->second;
-	MSG() << "Client cap: " << std::hex << hd.client_cap_idx();
-	if (hd.client_cap_idx() == L4_INVALID_CAP) {
-		enter_kdebug("invalid cap!");
-	}
+	Romain::Region_handler rh;
+	l4_umword_t offset;
+	l4_umword_t size;
+} ;
 
-	MSG() << std::hex << "Base::detach(" << (l4_addr_t)addr << " " << size << " " << flags << ")";
-	MSG() << std::hex << find((l4_addr_t)addr)->second.client_cap_idx();
-	int ret = Base::detach(addr, size, flags, reg, h);
-	MSG() << std::hex << "Base::detach(): " << ret << " r.start: " << reg->start() << " " << reg->size();
+DetachJob handlers[NUM_DETACH];
 
-	/*
-	 * Iterate over replicas and detach() the replicas' mappings within
-	 * the master AS.
-	 */
-	for (unsigned idx = 0; idx < hd.local_region_count(); ++idx) {
-		if (hd.local_region(idx).start() == 0) {
+static void detach_region(DetachJob *dj)
+{
+	for (l4_umword_t idx = 0; idx < dj->rh.local_region_count(); ++idx) {
+		if (dj->rh.local_region(idx).start() == 0) {
 			continue;
 		}
 
-		MSG() << "[" << std::hex
-			  << hd.local_region(idx).start() << " - "
-			  << hd.local_region(idx).end() << "] ==> "
-			  << "[" << reg->start() << " - "
-			  << reg->end() << "]";
+		MSG() << "detaching [" << std::hex
+			  << dj->rh.local_region(idx).start() + dj->offset << " - "
+			  << dj->rh.local_region(idx).start() + dj->offset + dj->size
+			  << "]";
 
 		L4::Cap<L4Re::Dataspace> memcap;
-		int r = L4Re::Env::env()->rm()->detach(hd.local_region(idx).start(),
-		                                       hd.local_region(idx).size(),
+		l4_mword_t r = L4Re::Env::env()->rm()->detach(dj->rh.local_region(idx).start() + dj->offset,
+											   dj->size,
 											   &memcap, L4Re::This_task);
 		MSG() << "detached locally: " << r << " cap: " << std::hex << memcap.cap();
+		if (((r & L4Re::Rm::Detach_result_mask) == L4Re::Rm::Detached_ds) and
+			//(memcap.cap() != L4_INVALID_CAP) and
+			((memcap.cap() >> L4_CAP_SHIFT) < Romain::FIRST_REPLICA_CAP)) {
+			L4Re::Env::env()->mem_alloc()->free(memcap);
+		}
 
-		if (!hd.writable()) {
+		if (!dj->rh.writable()) {
 			/* For read-only regions, we only need to detach once */
 			break;
 		}
 	}
+}
+
+static void *detach_thread(void *arg)
+{
+	l4_debugger_set_object_name(pthread_getl4cap(pthread_self()), "romain::detacher");
+
+	while (1) {
+		sem_wait(&detach_full);
+
+		detach_region(&handlers[det_read]);
+
+		det_read++;
+		det_read %= NUM_DETACH;
+
+		sem_post(&detach_empty);
+	}
+
+	return 0;
+}
+
+
+int Romain::Region_map::detach(void* /* IN */ addr, l4_umword_t /* IN */ size,
+                               l4_umword_t /* IN */ flags,
+                               L4Re::Util::Region* /* OUT */ reg,
+                               Romain::Region_handler* /* OUT */ h)
+{
+	static bool thread_running = false;
+
+	if (!thread_running) {
+		det_read  = 0;
+		det_write = 0;
+		pthread_mutex_init(&det_mtx, 0);
+		sem_init(&detach_full, 0, 0);
+		sem_init(&detach_empty, 0, NUM_DETACH);
+
+		l4_mword_t r = pthread_create(&detacher, 0, detach_thread, 0);
+		_check(r != 0, "error creating detacher");
+
+		thread_running = true;
+	}
+	
+	//sem_wait(&detach_empty);
+		/* First, do a lookup for the handler, because Base::Detach() will not always
+		 * return the handler node, but we need it for detach later.
+		 */
+		l4_addr_t srch = (l4_addr_t)addr;
+		Node n = Base::find(Region(srch, srch + size - 1));
+
+		MSG() << "detaching... " << Region_map::print_mapping(n, 0);
+
+		handlers[det_write].rh = n->second;
+		if (handlers[det_write].rh.client_cap_idx() == L4_INVALID_CAP) {
+			enter_kdebug("invalid cap!");
+		}
+		handlers[det_write].offset = srch - n->first.start();
+		if (size <= n->first.size())
+			handlers[det_write].size   = size;
+		else
+			handlers[det_write].size   = n->first.size();
+		detach_region(&handlers[det_write]);
+	//det_write++;
+	//det_write %= NUM_DETACH;
+	//sem_post(&detach_full);
+
+	MSG() << std::hex << "Base::detach(" << (l4_addr_t)addr << " " << size << " " << flags << ")";
+	MSG() << std::hex << find((l4_addr_t)addr)->second.client_cap_idx();
+	l4_mword_t ret = Base::detach(addr, size, flags, reg, h);
+	MSG() << std::hex << "Base::detach(): " << ret << " r.start: " << reg->start() << " " << reg->size();
 
 	return ret;
 }
 
 
-bool Romain::Region_map::lazy_map_region(Romain::Region_map::Base::Node &n, unsigned inst, bool iswritepf)
+bool Romain::Region_map::lazy_map_region(Romain::Region_map::Base::Node &n, l4_umword_t inst, bool iswritepf)
 {
 	/* already mapped? */
-	if (n->second.local_region(inst).start())
+	if (n->second.local_region(inst).start()) {
+		/* If this mapping already exists, we don't need to
+		 * create a copy here. However, before serving the
+		 * very first page fault in this region, we have to
+		 * make sure that this memory is really paged into
+		 * the master's address space. Hence, we touch the
+		 * region here.
+		 */
+		if (n->second.is_ro()) {
+			l4_touch_ro((void*)n->second.local_region(inst).start(),
+			            n->second.local_region(inst).size());
+		} else {
+			l4_touch_rw((void*)n->second.local_region(inst).start(),
+			            n->second.local_region(inst).size());
+		}
+
+
 		return false;
+	}
 
 	MSG() << "start " <<  n->second.local_region(inst).start();
 	MSG() << "replica without yet established mapping.";
@@ -423,7 +508,7 @@ bool Romain::Region_map::lazy_map_region(Romain::Region_map::Base::Node &n, unsi
 	 * that already has this mapping. Therefore, we go and look for
 	 * one of those mappings to start from.
 	 */
-	int existing = find_existing_region(n);
+	l4_mword_t existing = find_existing_region(n);
 	_check(existing < 0, "no mapping???");
 	_check(existing > Romain::MAX_REPLICAS, "no mapping???");
 

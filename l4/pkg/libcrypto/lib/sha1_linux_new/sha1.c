@@ -17,7 +17,7 @@
 #else
 
 #define __LIBCRYPTO_INTERNAL__
-#include <l4/crypto/private/sha1_linux.h>
+#include "private/sha1_linux.h"
 #include "cryptohash.h"
 #define CONFIG_X86 1
 

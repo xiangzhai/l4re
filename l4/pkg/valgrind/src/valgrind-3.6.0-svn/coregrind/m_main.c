@@ -3303,6 +3303,9 @@ void _start_in_C_darwin ( UWord* pArgc )
 
 /* ---------------- Requirement 1 ---------------- */
 
+// Since we handle symbols different in uclibc we do not seem to need that
+// for linking.
+#if 0
 void* memcpy(void *dest, const void *src, SizeT n);
 void* memcpy(void *dest, const void *src, SizeT n) {
    return VG_(memcpy)(dest,src,n);
@@ -3311,6 +3314,7 @@ void* memset(void *s, int c, SizeT n);
 void* memset(void *s, int c, SizeT n) {
   return VG_(memset)(s,c,n);
 }
+#endif
 
 /* ---------------- Requirement 2 ---------------- */
 

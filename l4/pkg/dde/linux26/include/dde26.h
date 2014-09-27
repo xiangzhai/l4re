@@ -30,6 +30,11 @@ void l4dde26_init_locks(void);
  */
 void l4dde26_softirq_init(void);
 
+/** Initialize the first DDE process.
+ * \ingroup dde26
+ */
+void l4dde26_process_init(void);
+
 /** Initialize timer subsystem.
  * \ingroup dde26
  */

@@ -476,6 +476,7 @@ enum L4Re_events_ev
   L4RE_EV_PWR       = 0x16,
   L4RE_EV_FF_STATUS = 0x17,
   L4RE_EV_WINDOW    = 0x18,
+  L4RE_EV_PM        = 0x1e, // power management signals
   L4RE_EV_MAX       = 0x1f,
 };
 
@@ -484,6 +485,14 @@ enum L4Re_events_syn
   L4RE_SYN_REPORT    = 0,
   L4RE_SYN_CONFIG    = 1,
   L4RE_SYN_MT_REPORT = 2,
+
+  L4RE_SYN_STREAM_CFG    = 0x80, ///< cfg stream (L4Re specififc syn code)
+};
+
+enum L4Re_stream_cfg
+{
+  L4RE_SYN_STREAM_NEW   = 0,
+  L4RE_SYN_STREAM_CLOSE = 1,
 };
 
 enum L4Re_events_abs

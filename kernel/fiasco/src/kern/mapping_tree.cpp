@@ -530,31 +530,37 @@ Mapping_tree::check_integrity(Space *owner = (Space*)-1)
 {
   (void)owner;
 #ifndef NDEBUG
+  bool enter_ke = false;
   // Sanity checking
-  assert (// Either each entry is used
-          number_of_entries() == static_cast<unsigned>(_count) + _empty_count
-          // Or the last used entry is end tag
-          || mappings()[_count + _empty_count].is_end_tag());
+  if (// Either each entry is used
+      !(number_of_entries() == static_cast<unsigned>(_count) + _empty_count
+      // Or the last used entry is end tag
+        || mappings()[_count + _empty_count].is_end_tag()))
+    {
+      printf("mapdb consistency error: "
+             "%d == %d + %d || mappings()[%d + %d].is_end_tag()=%d\n",
+             number_of_entries(), static_cast<unsigned>(_count), _empty_count,
+             _count, _empty_count, mappings()[_count + _empty_count].is_end_tag());
+      enter_ke = true;
+    }
 
-  Mapping* m = mappings();
+  Mapping *m = mappings();
 
   if (!(m->is_end_tag()   // When the tree was copied to a new one
-        || (! m->unused()  // The first entry is never unused.
+        || (!m->unused()  // The first entry is never unused.
             && m->depth() == 0
             && (owner == (Space *)-1 || m->space() == owner))))
     {
       printf("mapdb corrupted: owner=%p\n"
              "  m=%p (end: %s depth: %d space: %p page: %lx)\n",
-             owner, m, m->is_end_tag()?"yes":"no", m->depth(), m->space(),
+             owner, m, m->is_end_tag() ? "yes" : "no", m->depth(), m->space(),
              cxx::int_value<Page>(m->page()));
-      kdb_ke("XXX");
+      enter_ke = true;
     }
 
-  unsigned
-    used = 0,
-    dead = 0;
+  unsigned used = 0, dead = 0;
 
-  while (m < end() && ! m->is_end_tag())
+  while (m < end() && !m->is_end_tag())
     {
       if (m->unused())
         dead++;
@@ -564,8 +570,19 @@ Mapping_tree::check_integrity(Space *owner = (Space*)-1)
       m++;
     }
 
-  assert_kdb (_count == used);
-  assert_kdb (_empty_count == dead);
+  if (enter_ke |= _count != used)
+    printf("mapdb: _count=%d != used=%d\n", _count, used);
+  if (enter_ke |= _empty_count != dead)
+    printf("mapdb: _empty_count=%d != dead=%d\n", _empty_count, dead);
+
+  if (enter_ke)
+    {
+      printf("mapdb:    from %p on CPU%d\n",
+             __builtin_return_address(0),
+             cxx::int_value<Cpu_number>(current_cpu()));
+      kdb_ke("mapdb");
+    }
+
 #endif // ! NDEBUG
 }
 

@@ -65,6 +65,7 @@ App_cpu_thread::bootstrap(Mword resume)
 
   Mem_unit::tlb_flush();
 
+  Cpu::cpus.current().set_present(1);
   Cpu::cpus.current().set_online(1);
 
   _tramp_mp_spinlock.set(1);
@@ -92,7 +93,10 @@ App_cpu_thread::bootstrap(Mword resume)
   cpu_lock.clear();
 
   if (!resume)
-    printf("CPU[%u]: goes to idle loop\n", cxx::int_value<Cpu_number>(current_cpu()));
+    {
+      Cpu::cpus.current().print_infos();
+      printf("CPU[%u]: goes to idle loop\n", cxx::int_value<Cpu_number>(current_cpu()));
+    }
 
   for (;;)
     idle_op();

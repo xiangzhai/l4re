@@ -4,10 +4,6 @@
 SUBSYSTEMS = JABI ABI DRIVERS KERNEL LIBK CXXLIB JDB \
 	     TCBOFFSET SYMBOLS VERSION GBLCFG MINILIBC
 
-ifeq ("$(CONFIG_GSTABS)","y")     
-  SUBSYSTEMS		+= LINES
-endif
-
 PREPROCESS_PARTS	+= arch $(CONFIG_ABI) 32bit $(CONFIG_XARCH)    \
 			   fpu jdb_thread_names iofp \
                            obj_space_phys abs_syscalls auto_map_kip \
@@ -81,7 +77,7 @@ KERNEL_EXTRA            += $(KERNEL_EXTRA-y)
 
 INTERFACES_KERNEL	:= string_buffer mem_region simpleio kernel_console panic warn \
 			   bitmap buddy_alloc koptions context_base \
-			   mem_layout per_cpu_data globals loader vhw     \
+			   mem_layout per_cpu_data pm globals loader vhw   \
 			   kip_init ipi queue_item queue cpu_mask rcupdate \
 			   boot_info config jdb_symbol jdb_util	          \
 			   tb_entry perf_cnt jdb_tbuf x86desc		  \
@@ -115,7 +111,7 @@ INTERFACES_KERNEL	:= string_buffer mem_region simpleio kernel_console panic warn
 			   startup libc_support                 \
 			   jdb_dbinfo jdb fb net \
 			   jdb_core jdb_module jdb_table         	  \
-			   jdb_thread_list jdb_input jdb_dump jdb_thread  \
+			   jdb_thread_list jdb_input jdb_input_task jdb_dump jdb_thread  \
 			   jdb_lines jdb_tcb jdb_prompt_module jdb_bt	  \
 			   jdb_mapdb jdb_ptab jdb_kern_info jdb_counters  \
 			   glibc_getchar jdb_trace jdb_trace_set	  \
@@ -138,7 +134,7 @@ INTERFACES_KERNEL	:= string_buffer mem_region simpleio kernel_console panic warn
 			   jdb_log jdb_factory scheduler \
                            platform_control_object    \
 			   jdb_scheduler jdb_sender_list            \
-			   jdb_disasm jdb_regex
+			   jdb_disasm jdb_regex jdb_report
 
 boot_info_IMPL		:= boot_info boot_info-ia32 boot_info-ux
 clock_IMPL              := clock clock-ia32
@@ -225,12 +221,6 @@ CXXSRC_TCBOFFSET	:= tcboffset.cc dump_tcboffsets.cc
 # SYMBOLS subsystem
 #
 SYMBOLS			:= Symbols
-
-#
-# LINES subsystem
-#
-LINES			:= Lines
-PROG_LINES		:= genlines
 
 #
 # VERSION subsystem

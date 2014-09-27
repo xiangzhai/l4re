@@ -9,51 +9,76 @@
 #pragma once
 
 #include "device.h"
+#include "event_source.h"
+#include "pm.h"
+#include "type_matcher.h"
+#include "hw_device_client.h"
 #include <l4/cxx/avl_map>
 
 #include <string>
 #include <vector>
+#include <l4/cxx/unique_ptr>
 
 namespace Hw {
 
 class Device_factory;
 class Device;
 
+/** \brief A device feature extends a generic device with some extra
+ *         functionality at runtime.
+ *
+ *  A device feature is an extension of a generic device, adding some device
+ *  specific or bus specific functionality.
+ *
+ *  Features are for example things like being an PCI device or an ACPI device
+ *  etc.
+ *
+ *  Each device can be extended with an arbitrary number of features.
+ */
 class Dev_feature
 {
 public:
-  virtual ~Dev_feature() {}
+  virtual ~Dev_feature() = 0;
   virtual bool match_cid(cxx::String const &) const { return false; }
   virtual void dump(int) const {}
+
+  virtual void setup(Hw::Device *) {}
+  virtual void setup_children(Hw::Device *) {}
+
+  virtual void pm_save_state(Hw::Device *) {}
+  virtual void pm_restore_state(Hw::Device *) {}
+
+  virtual void enable_notifications(Hw::Device *) {}
+  virtual void disable_notifications(Hw::Device *) {}
 };
 
-class Dev_if
+inline Dev_feature::~Dev_feature() {}
+
+/** \brief A feature manager can be called every time a matching feature is
+ *         added to a device.
+ *
+ * This class is not intended to be used directly, use Feature_manager instead.
+ *
+ * This base class is inherited by all feature managers that shall be tried
+ * whenever Device::add_feaure() is called.
+ */
+struct Feature_manager_base : Type_matcher<Feature_manager_base>
 {
-public:
-  virtual Device *host() const  = 0;
-  virtual ~Dev_if() {}
+  virtual bool do_match(Device *dev, Dev_feature *f) const = 0;
+  virtual ~Feature_manager_base() = 0;
+
+  Feature_manager_base(std::type_info const *type)
+  : Type_matcher<Feature_manager_base>(type) {}
 };
 
-class Discover_bus_if : public virtual Dev_if
-{
-public:
-  virtual void scan_bus() = 0;
-  virtual ~Discover_bus_if() {}
-};
+inline Feature_manager_base::~Feature_manager_base() {}
 
-
-class Discover_res_if
-{
-public:
-  virtual void discover_resources(Hw::Device *host) = 0;
-  virtual void setup_resources(Hw::Device *host) = 0;
-  virtual ~Discover_res_if() {}
-};
-
-
+/** \brief A generic hardware device.
+ */
 class Device :
   public Generic_device,
-  public Device_tree_mixin<Device>
+  public Device_tree_mixin<Device>,
+  public Pm
 {
 private:
   unsigned long _ref_cnt;
@@ -84,7 +109,7 @@ public:
     {
       struct
       {
-	char const *s, *e;
+        char const *s, *e;
       } str;
       l4_uint64_t integer;
     } val;
@@ -104,18 +129,15 @@ public:
   void dec_ref_count() { --_ref_cnt; }
 
   Device(l4_umword_t uid, l4_uint32_t adr)
-  : _ref_cnt(0), _uid(uid), _adr(adr), _sta(Disabled),
-    _discover_bus_if(0)
+  : _ref_cnt(0), _uid(uid), _adr(adr), _sta(Disabled)
   {}
 
   Device(l4_uint32_t adr)
-  : _ref_cnt(0), _uid((l4_umword_t)this), _adr(adr), _sta(Disabled),
-    _discover_bus_if(0)
+  : _ref_cnt(0), _uid((l4_umword_t)this), _adr(adr), _sta(Disabled)
   {}
 
   Device()
-  : _ref_cnt(0), _uid((l4_umword_t)this), _adr(~0), _sta(Disabled),
-    _discover_bus_if(0)
+  : _ref_cnt(0), _uid((l4_umword_t)this), _adr(~0), _sta(Disabled)
   {}
 
 
@@ -126,8 +148,6 @@ public:
   virtual int set_property(cxx::String const &prop, Prop_val const &val);
 
   bool resource_allocated(Resource const *r) const;
-
-  ~Device() {}
 
   Device *get_child_dev_adr(l4_uint32_t adr, bool create = false);
   Device *get_child_dev_uid(l4_umword_t uid, l4_uint32_t adr, bool create = false);
@@ -145,28 +165,30 @@ public:
 
   typedef std::vector<Dev_feature *> Feature_list;
   Feature_list const *features() const { return &_features; }
-  void add_feature(Dev_feature *f)
-  { _features.push_back(f); }
+  void add_feature(Dev_feature *f);
 
-  Discover_bus_if *discover_bus_if() const { return _discover_bus_if; }
-  void set_discover_bus_if(Discover_bus_if *discover_bus)
-  { _discover_bus_if = discover_bus; }
+  template<typename T>
+  T *find_feature()
+  {
+    for (Feature_list::const_iterator i = _features.begin();
+         i != _features.end();
+         ++i)
+      if (T *r = dynamic_cast<T*>(*i))
+        return r;
 
-  void add_resource_discoverer(Discover_res_if *dri)
-  { _resource_discovery_chain.push_back(dri); }
-
+    return 0;
+  }
 
   void plugin();
+  bool setup();
+  void setup_children();
+
+  int pm_init();
+  int pm_suspend();
+  int pm_resume();
 
   virtual void init();
-  virtual void discover_secondary_bus();
-
   Status status() const { return _sta; }
-
-
-  void discover_devices();
-  void discover_resources();
-  void setup_resources();
 
   void dump(int indent) const;
 
@@ -182,9 +204,25 @@ public:
 
   bool match_cid(cxx::String const &cid) const;
 
+  void add_client(Device_client *client);
+  void check_conflicts() const;
+
+  void notify(unsigned type, unsigned event, unsigned value);
+
+  Io::Event_source_infos const *get_event_infos() const
+  { return _event_source_infos.get(); }
+
+  Io::Event_source_infos *get_event_infos(bool alloc = false)
+  {
+    if (!alloc || _event_source_infos.get())
+      return _event_source_infos.get();
+
+    _event_source_infos = cxx::make_unique<Io::Event_source_infos>();
+    return _event_source_infos.get();
+  }
+
 private:
   typedef std::vector<std::string> Cid_list;
-  typedef std::vector<Discover_res_if *> Discover_res_list;
 
 protected:
   Status _sta;
@@ -194,11 +232,18 @@ private:
   std::string _hid;
   Cid_list _cid;
 
-  Discover_res_list _resource_discovery_chain;
-  Discover_bus_if *_discover_bus_if;
   Feature_list _features;
+  Device_client::Client_list _clients;
+  cxx::unique_ptr<Io::Event_source_infos> _event_source_infos;
 };
 
+
+/**
+ * \brief A generic factory for creating hardware device objects of a specific
+ *        type.
+ *
+ * \see Device_factory_t for more information.
+ */
 class Device_factory
 {
 public:
@@ -209,7 +254,7 @@ public:
 
 
   virtual Device *create() = 0;
-  virtual ~Device_factory() {}
+  virtual ~Device_factory() = 0;
 
 protected:
   typedef cxx::Avl_map<std::string, Device_factory *> Name_map;
@@ -221,14 +266,120 @@ protected:
   }
 };
 
-template< typename T >
+inline Device_factory::~Device_factory() {}
+
+
+/**
+ * \brief Template to fabricate a hardware device object of type \a HW_DEV.
+ */
+template< typename HW_DEV >
 class Device_factory_t : public Device_factory
 {
 public:
-  Device_factory_t(char const *name)
-  { register_factory(name, this); }
-  Device *create() { return new T(); }
-  virtual ~Device_factory_t() {}
+  /**
+   * \brief Create instantiate a factory for a given name.
+   *
+   * Those factories are used from the IO scripts to instantiate device nodes
+   * for a given device class.
+   */
+  Device_factory_t(char const *name) { register_factory(name, this); }
+
+  Device *create() { return new HW_DEV(); }
+};
+
+/**
+ * \brief Helper code for the Feature_manager.
+ */
+namespace __Feature_manager_helper {
+
+template<typename T>
+struct Tw { T *v; Tw() : v(0) {} };
+
+template<typename ...Features>
+struct Fm;
+
+template<typename F1, typename ...Features>
+struct Fm<F1, Features...> : Tw<F1>, Fm<Features...>
+{
+  typedef F1 First_feature;
+
+  template<typename F>
+  F *get() const { return Tw<F>::v; }
+
+  template<typename F>
+  void set(F *f) { Tw<F>::v = f; }
+
+  bool have_all() const
+  {
+    if (!Tw<F1>::v)
+      return false;
+
+    return Fm<Features...>::have_all();
+  }
+
+  template<typename G>
+  bool add(G *g)
+  {
+    if (Tw<F1>::v)
+      return Fm<Features...>::add(g);
+
+    if (F1 *x = dynamic_cast<F1 *>(g))
+      {
+        Tw<F1>::v = x;
+        return true;
+      }
+
+    return Fm<Features...>::add(g);
+  }
+};
+
+template<>
+struct Fm<>
+{
+  bool have_all() const { return true; }
+  template<typename G>
+  bool add(G *) { return false; }
+};
+
+}
+
+/**
+ * \brief A manager for a given combination of features (\a Features).
+ *
+ * To trigger an action for a specific set of features (\a Features) one needs
+ * to inherit from Feature_manager and provide a setup() method that gets
+ * called whenever a Device first has all of the features given in \a Features.
+ */
+template<typename ...Features>
+struct Feature_manager : Feature_manager_base
+{
+  /** \brief override this function with your action. */
+  virtual bool setup(Device *, Features *...) const = 0;
+
+  bool do_match(Device *dev, Dev_feature *_f) const
+  {
+    if (!_f || !dev)
+      return false;
+
+    __Feature_manager_helper::Fm<Features...> h;
+    if (!h.add(_f))
+      return false;
+
+    for (Device::Feature_list::const_iterator i = dev->features()->begin();
+         !h.have_all() && i != dev->features()->end();
+         ++i)
+      h.add(*i);
+
+    if (!h.have_all())
+      return false;
+
+    setup(dev, h.__Feature_manager_helper::Tw<Features>::v...);
+    return false;
+  }
+
+  Feature_manager()
+  : Feature_manager_base(&typeid(typename __Feature_manager_helper::Fm<Features...>::First_feature))
+  {}
 };
 
 

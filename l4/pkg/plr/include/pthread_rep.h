@@ -3,6 +3,9 @@
 #include <l4/sys/types.h>
 #include <l4/util/atomic.h>
 
+#define EXTERNAL_DETERMINISM 0
+#define INTERNAL_DETERMINISM 1
+
 struct spinlock
 {
 	unsigned int value;
@@ -54,28 +57,41 @@ enum {
 	lock_unlocking  = 0xAAAAAAAA,
 	lock_unowned    = 0xFFFFFFFF,
 
-	NUM_TRAMPOLINES = 32,
 	TRAMPOLINE_SIZE = 32,
-	NUM_LOCKS       = 64,
-	LOCK_INFO_ADDR  = 0xA000,
+	NUM_LOCKS       = 2048,
+	LOCK_INFO_ADDR  = 0x10000,
+	PRIV_INFO_ADDR  = 0x0E000,
+	LIP_CANARY      = 0xB8E7,
 };
 
+/*
+ * Per-replica private info.
+ *
+ * This is used to tell the replica about its ID. This ID is then later
+ * used to track which replicas already acquired the lock.
+ */
 typedef struct {
-  unsigned char trampolines[NUM_TRAMPOLINES * TRAMPOLINE_SIZE];
-  struct {
+	unsigned replica_id;
+} lip_priv_info;
+
+/*
+ * The globally shared LIP.
+ */
+typedef struct {
+  struct
+  {
+	  volatile l4_uint16_t canary;      // overwrite protection
+	  volatile l4_uint16_t acq_bitmap;  // per-replica bits to track who already acquired the lock
 	  volatile l4_addr_t lockdesc;    // corresponding pthread_mutex_t ptr
 	  volatile l4_addr_t owner;       // lock owner
 	  volatile l4_addr_t owner_epoch; // lock holder's epoch
-	  volatile l4_addr_t wait_count;  // count how many threads wait to acquire this lock
 	  volatile l4_addr_t acq_count;   // count how many threads acquired this lock
-	  volatile l4_addr_t wake_count;  // count how many threads should be unlocked
 	  volatile spinlock_t lock;       // internal: lock for this row
-  } locks[NUM_LOCKS];
+  }
+  locks[NUM_LOCKS];
   volatile l4_umword_t replica_count; // number of replicas running a.t.m.
 } lock_info;
 
-/* Compile-time assertion: lock_info must fit into a page) */
-static char __lock_info_size_valid[!!(sizeof(lock_info) <= L4_PAGESIZE)-1];
 
 static inline lock_info* get_lock_info(void)
 {
@@ -86,13 +102,23 @@ static inline lock_info* get_lock_info(void)
 	if (!init) {
 		init = 1;
 		lip.replica_count = 1;
-		memset(&lip.trampolines, 0, NUM_TRAMPOLINES * TRAMPOLINE_SIZE);
 		lip.locks[0].owner    = 0xDEADBEEF;
 		lip.locks[0].lockdesc = 0xFAFAFAFA;
 	}
 	__lip_address = &lip;
 #endif
 	return __lip_address;
+}
+
+
+static unsigned get_replica_number(void)
+{
+#if PT_SOLO
+	// only one replica in solo mode
+	return 0;
+#else
+	return ((lip_priv_info *)PRIV_INFO_ADDR)->replica_id;
+#endif
 }
 
 
@@ -111,6 +137,10 @@ static inline void unlock_li(volatile lock_info* li, unsigned idx)
 	li->locks[idx].lock.value = 0;
 }
 
+/* Shortcuts... */
+#define ACQ(li, idx)         lock_li(  (li), idx)
+#define REL(li, idx)         unlock_li((li), idx)
+#define LOCK_ELEM(li, idx)   (li)->locks[idx]
 
 static char const *
 __attribute__((used))

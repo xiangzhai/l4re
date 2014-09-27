@@ -9,7 +9,9 @@
 #pragma once
 
 #include <l4/re/util/object_registry>
+#include <l4/cxx/ipc_timeout_queue>
 
 extern L4Re::Util::Object_registry *registry;
+extern L4::Ipc_svr::Timeout_queue *timeouts;
 extern L4::Cap<void> rcv_cap;
 int server_loop();

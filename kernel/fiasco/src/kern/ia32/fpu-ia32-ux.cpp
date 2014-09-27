@@ -138,7 +138,7 @@ Fpu::init(Cpu_number cpu, bool resume)
       Cpu::cpus.cpu(cpu).update_features_info();
 
       Unsigned32 eax, ecx, edx;
-      Cpu::cpus.cpu(cpu).cpuid_0xd(0, &eax, &cpu_size, &ecx, &edx);
+      Cpu::cpus.cpu(cpu).cpuid(0xd, 0, &eax, &cpu_size, &ecx, &edx);
       cpu_align = 64;
       f._variant = Variant_xsave;
     }

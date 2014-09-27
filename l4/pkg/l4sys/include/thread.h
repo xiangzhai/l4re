@@ -347,7 +347,7 @@ l4_thread_switch_u(l4_cap_idx_t to_thread, l4_utcb_t *utcb) L4_NOTHROW;
 
 
 /**
- * \brief Get consumed timed of thread in µs.
+ * \brief Get consumed time of thread in µs.
  * \ingroup l4_thread_api
  * \param thread Thread to get the consumed time from.
  *

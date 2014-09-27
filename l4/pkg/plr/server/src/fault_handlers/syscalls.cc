@@ -31,7 +31,7 @@
 
 DEFINE_EMPTY_STARTUP(SyscallObserver)
 
-static unsigned long num_syscalls;
+static l4_umword_t num_syscalls;
 
 
 void Romain::SyscallObserver::status() const
@@ -63,17 +63,23 @@ Romain::SyscallObserver::notify(Romain::App_instance *i,
 
 	/* SYSENTER / INT30 */
 	if (t->vcpu()->r()->ip == Syscall_magic_address) {
+#if BENCHMARKING
+	unsigned long long t1, t2;
+	t1 = l4_rdtsc();
+#endif
 		++num_syscalls;
 
 		l4_msgtag_t *tag = reinterpret_cast<l4_msgtag_t*>(&t->vcpu()->r()->ax);
 		MSG() << "SYSENTER(" << tg->name << ") tag = " << std::hex << tag->label();
 
-		Measurements::GenericEvent* ev = Romain::_the_instance_manager->logbuf()->next();
-		ev->header.tsc     = Romain::_the_instance_manager->logbuf()->getTime(Log::logLocalTSC);
+#if EVENT_LOGGING
+		Measurements::GenericEvent* ev = Romain::globalLogBuf->next();
+		ev->header.tsc     = Romain::globalLogBuf->getTime(Log::logLocalTSC);
 		ev->header.vcpu    = (l4_uint32_t)t->vcpu();
 		ev->header.type    = Measurements::Syscall;
 		ev->data.sys.eip   = t->vcpu()->r()->bx;
 		ev->data.sys.label = tag->label();
+#endif
 
 		/*
 		 * Fiasco-specific:
@@ -147,15 +153,17 @@ Romain::SyscallObserver::notify(Romain::App_instance *i,
 					       << YELLOW << tv.tv_sec << "." << tv.tv_usec
 					       << NOCOLOR;
 
-					Measurements::GenericEvent* ev = Romain::_the_instance_manager->logbuf()->next();
-					ev->header.tsc                 = Romain::_the_instance_manager->logbuf()->getTime(Log::logLocalTSC);
+#if EVENT_LOGGING
+					Measurements::GenericEvent* ev = Romain::globalLogBuf->next();
+					ev->header.tsc                 = Romain::globalLogBuf->getTime(Log::logLocalTSC);
 					ev->header.vcpu                = (l4_uint32_t)t->vcpu();
 					ev->header.type                = Measurements::Thread_stop;
+#endif
 
 					Romain::_the_instance_manager->show_stats();
 					
-					if (0) enter_kdebug("*#^");
-					else l4_sleep_forever();
+					if (REBOOT_ON_EXIT) enter_kdebug("*#^");
+					else exit(0);
 
 					nullhandler.proxy_syscall(i, t, tg, a);
 					retval = Romain::Observer::Replicatable;
@@ -182,8 +190,20 @@ Romain::SyscallObserver::notify(Romain::App_instance *i,
 		t->vcpu()->r()->ip = ebx_pre;
 		t->vcpu()->r()->sp = ebp_pre;
 
-	} else if (t->vcpu()->r()->err == 0x152) { // INT $42
-		INFO() << "[" << std::hex << (unsigned)t->vcpu() <<  "] INT 42 ("
+#if BENCHMARKING
+	t2 = l4_rdtsc();
+	t->count_syscalls(t2-t1);
+#endif
+	} else if (t->vcpu()->r()->err == 0x192) {
+		// INT 0x32 - debug syste call. We currently ignore it.
+		t->vcpu()->r()->ip += 2;
+		retval = Romain::Observer::Replicatable;
+	} else if (t->vcpu()->r()->err == 0x148) { // INT $41 -- NOOP syscall
+		t->vcpu()->r()->ip += 2;
+		Romain::Log::logFlags = Romain::Log::All;
+		retval = Romain::Observer::Replicatable;
+	} else if (t->vcpu()->r()->err == 0x152) { // INT $42 -- enable logging
+		INFO() << "[" << std::hex << (l4_umword_t)t->vcpu() <<  "] INT 42 ("
 			   << t->vcpu()->r()->ip << ")";
 		t->vcpu()->print_state();
 		t->vcpu()->r()->ip += 2;
@@ -192,7 +212,6 @@ Romain::SyscallObserver::notify(Romain::App_instance *i,
 	} else {
 		t->vcpu()->print_state();
 		INFO() << "err = " << std::hex << t->vcpu()->r()->err;
-		MSG() << "GPF";
 		enter_kdebug("GPF in replica");
 	}
 
@@ -209,7 +228,7 @@ void Romain::SyscallHandler::proxy_syscall(Romain::App_instance *,
 
 	l4_utcb_t *addr = reinterpret_cast<l4_utcb_t*>(t->remote_utcb());
 	l4_utcb_t *cur_utcb = l4_utcb();
-	MSGt(t) << "UTCB @ " << std::hex << (unsigned)addr;
+	MSGt(t) << "UTCB @ " << std::hex << (l4_umword_t)addr;
 	_check((l4_addr_t)addr == ~0UL, "remote utcb ptr??");
 
 	/*
@@ -220,7 +239,7 @@ void Romain::SyscallHandler::proxy_syscall(Romain::App_instance *,
 	store_utcb((char*)addr, (char*)cur_utcb);
 
 	//t->print_vcpu_state();
-	//Romain::dump_mem((unsigned*)addr, 40);
+	//Romain::dump_mem((l4_umword_t*)addr, 40);
 
 	/* Perform Fiasco system call */
 	asm volatile (L4_ENTER_KERNEL
@@ -246,7 +265,7 @@ void Romain::SyscallHandler::proxy_syscall(Romain::App_instance *,
 	store_utcb(backup_utcb, (char*)cur_utcb);
 
 	//t->print_vcpu_state();
-	//Romain::dump_mem((unsigned*)addr, 40);
+	//Romain::dump_mem((l4_umword_t*)addr, 40);
 	//enter_kdebug("done syscall");
 }
 
@@ -260,11 +279,11 @@ Romain::RegionManagingHandler::handle(Romain::App_instance* i,
 	MSGt(t) << "RM PROTOCOL";
 
 	l4_utcb_t *utcb = reinterpret_cast<l4_utcb_t*>(t->remote_utcb());
-	MSGt(t) << "UTCB @ " << std::hex << (unsigned)utcb;
+	MSGt(t) << "UTCB @ " << std::hex << (l4_umword_t)utcb;
 	_check((l4_addr_t)utcb == ~0UL, "remote utcb ptr??");
 
 	//t->print_vcpu_state();
-	//Romain::dump_mem((unsigned*)utcb, 40);
+	//Romain::dump_mem((l4_umword_t*)utcb, 40, 4);
 
 	{
 		Romain::Rm_guard r(a->rm(), i->id());
@@ -274,7 +293,7 @@ Romain::RegionManagingHandler::handle(Romain::App_instance* i,
 	}
 
 	//t->print_vcpu_state();
-	//Romain::dump_mem((unsigned*)utcb, 40);
+	//Romain::dump_mem((l4_umword_t*)utcb, 40);
 
 	return Romain::Observer::Replicatable;
 }
@@ -288,11 +307,11 @@ Romain::ThreadHandler::handle(Romain::App_instance *i,
 {
 	MSGt(t) << "Thread system call";
 	l4_utcb_t *utcb = reinterpret_cast<l4_utcb_t*>(t->remote_utcb());
-	MSGt(t) << "UTCB @ " << std::hex << (unsigned)utcb;
+	MSGt(t) << "UTCB @ " << std::hex << (l4_umword_t)utcb;
 	_check((l4_addr_t)utcb == ~0UL, "remote utcb ptr??");
 
 	//t->print_vcpu_state();
-	//Romain::dump_mem((unsigned*)utcb, 40);
+	//Romain::dump_mem((l4_umword_t*)utcb, 40);
 
 	l4_umword_t op   = l4_utcb_mr_u(utcb)->mr[0] & L4_THREAD_OPCODE_MASK;
 	l4_umword_t dest = t->vcpu()->r()->dx & L4_CAP_MASK;
@@ -337,11 +356,8 @@ Romain::ThreadHandler::handle(Romain::App_instance *i,
 		case L4_THREAD_X86_GDT_OP:
 			group->gdt(t, utcb);
 			break;
-		case L4_THREAD_AMD64_SET_SEGMENT_BASE_OP:
-			enter_kdebug("THREAD: set segment base amd64");
-			break;
 		default:
-			ERROR() << "unknown thread op: " << std::hex << op;
+			ERROR() << "unknown thread op: " << std::hex << op << "\n";
 			break;
 	}
 
@@ -375,7 +391,7 @@ Romain::SyscallObserver::handle_task(Romain::App_instance* i,
 			break;
 		default:
 			MSGt(t) << "Task system call";
-			MSGt(t) << "UTCB @ " << std::hex << (unsigned)utcb << " op: " << op
+			MSGt(t) << "UTCB @ " << std::hex << (l4_umword_t)utcb << " op: " << op
 				  << " cap " << (t->vcpu()->r()->dx & ~0xF) << " " << L4RE_THIS_TASK_CAP;
 			t->print_vcpu_state();
 			enter_kdebug("unknown task op?");
@@ -394,10 +410,10 @@ Romain::Factory::handle(Romain::App_instance* inst,
 {
 	MSGt(t) << "Factory system call";
 	l4_utcb_t *utcb = reinterpret_cast<l4_utcb_t*>(t->remote_utcb());
-	MSGt(t) << "UTCB @ " << std::hex << (unsigned)utcb;
+	MSGt(t) << "UTCB @ " << std::hex << (l4_umword_t)utcb;
 	_check((l4_addr_t)utcb == ~0UL, "remote utcb ptr??");
 
-	l4_umword_t obj = l4_utcb_mr_u(utcb)->mr[0];
+	l4_mword_t obj = l4_utcb_mr_u(utcb)->mr[0];
 	l4_umword_t cap = l4_utcb_br_u(utcb)->br[0] & ~L4_RCV_ITEM_SINGLE_CAP;
 	MSGt(t) << std::hex << L4_PROTO_THREAD;
 	MSGt(t) << "object type: " << std::hex << obj
@@ -413,8 +429,10 @@ Romain::Factory::handle(Romain::App_instance* inst,
 			return Romain::Observer::Replicatable;
 
 		case L4Re::Protocol::Dataspace:
+			{
 			SyscallHandler::proxy_syscall(inst, t, tg, am);
 			return Romain::Observer::Replicatable;
+			}
 
 		default:
 			break;
@@ -455,9 +473,9 @@ Romain::IrqHandler::handle(Romain::App_instance* inst,
                            Romain::App_model* am)
 {
 	l4_utcb_t *utcb = reinterpret_cast<l4_utcb_t*>(t->remote_utcb());
-	unsigned op     = l4_utcb_mr_u(utcb)->mr[0];
-	unsigned label  = l4_utcb_mr_u(utcb)->mr[1];
-	unsigned cap    = t->vcpu()->r()->dx & L4_CAP_MASK;
+	l4_umword_t op     = l4_utcb_mr_u(utcb)->mr[0];
+	l4_umword_t label  = l4_utcb_mr_u(utcb)->mr[1];
+	l4_umword_t cap    = t->vcpu()->r()->dx & L4_CAP_MASK;
 
 	L4::Cap<L4::Irq> irq(cap);
 
@@ -482,7 +500,7 @@ Romain::IrqHandler::handle(Romain::App_instance* inst,
 				l4_msgtag_t ret;
 
 				if (!group) {
-					ERROR() << "Unimplemented: Attaching someone else but myself!";
+					ERROR() << "Unimplemented: Attaching someone else but myself!\n";
 					enter_kdebug();
 				}
 

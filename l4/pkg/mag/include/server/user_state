@@ -104,6 +104,10 @@ public:
 inline
 View_proxy::View_proxy(User_state *ust)
 : _v(0), _pn(&ust->_view_proxies), _n(ust->_view_proxies)
-{ ust->_view_proxies = this; }
+{
+  ust->_view_proxies = this;
+  if (_n)
+    _n->_pn = &_n;
+}
 
 }

@@ -75,7 +75,6 @@
 # define SET_TSC_CTL(a)		(-EINVAL)
 #endif
 
-#ifndef DDE_LINUX
 /*
  * this is where the system-wide overflow UID and GID are defined, for
  * architectures that now have 32-bit UID/GID but didn't in the past
@@ -100,6 +99,7 @@ int fs_overflowgid = DEFAULT_FS_OVERFLOWUID;
 EXPORT_SYMBOL(fs_overflowuid);
 EXPORT_SYMBOL(fs_overflowgid);
 
+#ifndef DDE_LINUX
 /*
  * this indicates whether you can reboot with ctrl-alt-del: the default is yes
  */
@@ -1377,22 +1377,29 @@ SYSCALL_DEFINE2(setgroups, int, gidsetsize, gid_t __user *, grouplist)
 
 	return retval;
 }
+#endif  /* !DDE_LINUX */
 
 /*
  * Check whether we're fsgid/egid or in the supplemental group..
  */
 int in_group_p(gid_t grp)
 {
+#ifndef DDE_LINUX
 	const struct cred *cred = current_cred();
 	int retval = 1;
 
 	if (grp != cred->fsgid)
 		retval = groups_search(cred->group_info, grp);
 	return retval;
+#else
+        WARN_UNIMPL;
+        return 0;
+#endif  /* !DDE_LINUX */
 }
 
 EXPORT_SYMBOL(in_group_p);
 
+#ifndef DDE_LINUX
 int in_egroup_p(gid_t grp)
 {
 	const struct cred *cred = current_cred();

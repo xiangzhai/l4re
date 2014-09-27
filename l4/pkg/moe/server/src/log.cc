@@ -63,7 +63,7 @@ void Pbuf::checknflush(int n)
       _p = x - _b + 1;
       flush();
       if (rem)
-	memmove(_b, x + 1, rem);
+        memmove(_b, x + 1, rem);
       _p = rem;
     }
   else
@@ -114,52 +114,52 @@ Moe::Log::dispatch(l4_umword_t, L4::Ipc::Iostream &ios)
 
   static Pbuf ob;
 
-  ios >> L4::Ipc::Buf_cp_in<char>(msg, len_msg);
+  ios >> L4::Ipc::buf_cp_in(msg, len_msg);
 
   while (len_msg > 0 && msg[0])
     {
       if (color())
-	ob.printf("\033[%s3%dm", (color() & 8) ? "01;" : "", (color() & 7));
+        ob.printf("\033[%s3%dm", (color() & 8) ? "01;" : "", (color() & 7));
       else
-	ob.printf("\033[0m");
+        ob.printf("\033[0m");
 
       if (last_log != this)
-	{
-	  if (last_log != 0)
-	    ob.printf("\n");
+        {
+          if (last_log != 0)
+            ob.printf("\n");
 
-	  ob.outnstring(_tag, cxx::min<unsigned long>(_l, Max_tag));
-	  if (_l < Max_tag)
-	    ob.outnstring("             ", Max_tag-_l);
+          ob.outnstring(_tag, cxx::min<unsigned long>(_l, Max_tag));
+          if (_l < Max_tag)
+            ob.outnstring("             ", Max_tag-_l);
 
-	  if (_in_line)
-	    ob.printf(": ");
-	  else
-	    ob.printf("| ");
-	}
+          if (_in_line)
+            ob.printf(": ");
+          else
+            ob.printf("| ");
+        }
 
       long i;
       for (i = 0; i < (long)len_msg; ++i)
-	if (msg[i] == '\n' || msg[i] == 0)
-	  break;
+        if (msg[i] == '\n' || msg[i] == 0)
+          break;
 
       ob.outnstring(msg, i);
 
       if (i < (long)len_msg && msg[i] == '\n')
-	{
-	  if (color())
-	    ob.printf("\033[0m\n");
-	  else
-	    ob.printf("\n");
-	  _in_line = false;
-	  last_log = 0;
-	  ++i;
-	}
+        {
+          if (color())
+            ob.printf("\033[0m\n");
+          else
+            ob.printf("\n");
+          _in_line = false;
+          last_log = 0;
+          ++i;
+        }
       else
-	{
-	  last_log = this;
-	  _in_line = true;
-	}
+        {
+          last_log = this;
+          _in_line = true;
+        }
 
       msg += i;
       len_msg -= i;

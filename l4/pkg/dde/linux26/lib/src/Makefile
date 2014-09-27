@@ -22,11 +22,14 @@ TARGET_DDE_CHAR  = libdde-linux26_char.a
 
 #ifeq ($(CONFIG_DDE26_BLOCK),y)
 TARGET_DDE_BLOCK = libdde-linux26_block.a
+TARGET_DDE_PCI = libdde-linux26_pci.a
 #endif
 
 ifeq ($(CONFIG_DDE26_SOUND),y)
 TARGET_DDE_SOUND = libdde-linux26_sound.a
 endif
+
+TARGET_DDE_FS = libdde-linux26_fs.a
 
 DDE_SYSTEMS = x86 arm
 
@@ -41,14 +44,16 @@ DEFINES += -D__LINUX_ARM_ARCH__=6
 endif
 
 PC_FILENAME = dde-linux26
-PC_FILENAMES                 := $(PC_FILENAME) $(PC_FILENAME)_net $(PC_FILENAME)_block $(PC_FILENAME)_char
+PC_FILENAMES                 := $(PC_FILENAME) $(PC_FILENAME)_net $(PC_FILENAME)_block $(PC_FILENAME)_char $(PC_FILENAME)_fs $(PC_FILENAME)_pci
 PC_LIBS_$(PC_FILENAME)       := $(patsubst lib%.a,-l%,$(TARGET_DDE))
 PC_LIBS_$(PC_FILENAME)_net   := $(patsubst lib%.a,-l%,$(TARGET_DDE_NET))
 PC_LIBS_$(PC_FILENAME)_block := $(patsubst lib%.a,-l%,$(TARGET_DDE_BLOCK))
+PC_LIBS_$(PC_FILENAME)_pci   := $(patsubst lib%.a,-l%,$(TARGET_DDE_PCI))
 PC_LIBS_$(PC_FILENAME)_sound := $(patsubst lib%.a,-l%,$(TARGET_DDE_SOUND))
 PC_LIBS_$(PC_FILENAME)_char  := $(patsubst lib%.a,-l%,$(TARGET_DDE_CHAR))
+PC_LIBS_$(PC_FILENAME)_fs := $(patsubst lib%.a,-l%,$(TARGET_DDE_FS))
 
-TARGET     = $(TARGET_DDE) $(TARGET_DDE_NET) $(TARGET_DDE_BLOCK) $(TARGET_DDE_SOUND) $(TARGET_DDE_CHAR)
+TARGET     = $(TARGET_DDE) $(TARGET_DDE_NET) $(TARGET_DDE_BLOCK) $(TARGET_DDE_SOUND) $(TARGET_DDE_CHAR) $(TARGET_DDE_FS) $(TARGET_DDE_PCI)
 LINK_INCR  = $(TARGET_DDE) $(TARGET_DDE_BLOCK)
 LINK_INCR_ONLYGLOBSYMFILE_$(TARGET_DDE) = $(SRC_DIR)/global-symbols.all \
                                           $(SRC_DIR)/global-symbols.$(ARCH)
@@ -65,10 +70,10 @@ PRIVATE_INCDIR += $(CONTRIB)/drivers/pci $(PKGDIR)/linux26/lib/src/arch/l4 \
 ##################################################################
 # Sources for libdde_linux.a                                     #
 ##################################################################
-SRC_DDE = cli_sti.c fs.c hw-helpers.c init_task.c init.c pci.c power.c \
+SRC_DDE = cli_sti.c fs.c hw-helpers.c init_task.c init.c power.c \
           process.c res.c sched.c signal.c smp.c softirq.c timer.c \
           page_alloc.c kmem_cache.c kmalloc.c irq.c param.c \
-          vmalloc.c vmstat.c mm-helper.c
+          vmalloc.c vmstat.c mm-helper.c dummy.c
 
 # our implementation
 SRC_C_$(TARGET_DDE) = $(addprefix arch/l4/, $(SRC_DDE))
@@ -78,6 +83,7 @@ SRC_S_$(TARGET_DDE) += $(ARCH_DIR)/lib/semaphore_32.S
 SRC_C_$(TARGET_DDE) += lib/rwsem.c
 SRC_C_$(TARGET_DDE) += $(ARCH_DIR)/kernel/pci-dma.c
 SRC_C_$(TARGET_DDE) += $(ARCH_DIR)/kernel/pci-nommu.c
+SRC_C_$(TARGET_DDE) += $(ARCH_DIR)/lib/string_32.c
 SRC_S_$(TARGET_DDE_NET) += $(ARCH_DIR)/lib/checksum_32.S
 endif
 
@@ -111,6 +117,7 @@ SRC_C_$(TARGET_DDE) += \
                           kernel/exit.c \
                           kernel/kthread.c \
                           kernel/mutex.c \
+                          kernel/rcuclassic.c \
                           kernel/notifier.c \
                           kernel/resource.c \
                           kernel/rwsem.c \
@@ -118,6 +125,7 @@ SRC_C_$(TARGET_DDE) += \
                           kernel/semaphore.c \
                           kernel/sys.c \
                           kernel/time.c \
+                          kernel/time/timekeeping.c \
                           kernel/timer.c \
                           kernel/wait.c \
                           kernel/workqueue.c \
@@ -126,6 +134,7 @@ SRC_C_$(TARGET_DDE) += \
                           lib/crc32.c \
                           lib/ctype.c \
                           lib/cpumask.c \
+                          lib/dec_and_lock.c \
                           lib/find_next_bit.c \
                           lib/hexdump.c \
                           lib/idr.c \
@@ -139,6 +148,7 @@ SRC_C_$(TARGET_DDE) += \
                           lib/parser.c \
                           lib/proportions.c \
                           lib/radix-tree.c \
+                          lib/rbtree.c \
                           lib/scatterlist.c \
                           lib/sha1.c \
                           lib/string.c \
@@ -158,16 +168,7 @@ SRC_C_$(TARGET_DDE) += \
                           drivers/base/init.c \
                           drivers/base/map.c \
                           drivers/base/platform.c \
-                          drivers/base/sys.c \
-                          drivers/pci/access.c \
-                          drivers/pci/bus.c \
-                          drivers/pci/hotplug-pci.c \
-                          drivers/pci/pci.c \
-                          drivers/pci/pci-driver.c \
-                          drivers/pci/probe.c \
-                          drivers/pci/search.c \
-                          drivers/pci/setup-bus.c \
-                          drivers/pci/setup-res.c
+                          drivers/base/sys.c
 
 ##################################################################
 # Sources for libdde_linux_net.a                                 #
@@ -206,34 +207,86 @@ SRC_C_$(TARGET_DDE_BLOCK) += \
                                 block/blk-core.c      \
                                 block/blk-exec.c      \
                                 block/blk-ioc.c       \
-				block/blk-map.c	      \
+                                block/blk-map.c              \
                                 block/blk-merge.c      \
                                 block/blk-settings.c      \
                                 block/blk-softirq.c \
                                 block/blk-sysfs.c      \
                                 block/blk-tag.c      \
                                 block/blk-timeout.c      \
-				block/cmd-filter.c    \
+                                block/cmd-filter.c    \
                                 block/elevator.c      \
                                 block/genhd.c         \
                                 block/noop-iosched.c  \
                                 block/ioctl.c         \
                                 block/scsi_ioctl.c    \
-				lib/bcd.c             \
+                                lib/hexdump.c          \
+                                lib/bcd.c             \
                                 mm/backing-dev.c      \
                                 mm/bounce.c           \
                                 mm/page-writeback.c   \
-				mm/filemap.c	      \
+                                mm/filemap.c              \
                                 fs/bio.c              \
                                 fs/block_dev.c        \
                                 fs/buffer.c           \
-                                fs/filesystems.c
+                                fs/filesystems.c      \
+                                fs/inode.c               \
+                                fs/partitions/check.c
+
+#XXX lib/vsprintf.c is already declared in TARGET_DDE. Don't understand why
+# should it be declared in TARGET_DDE_BLOCK
+
+ifeq ($(ARCH), x86)
+SRC_C_$(TARGET_DDE_BLOCK) += \
+                                fs/partitions/msdos.c
+endif
+
 ##################################################################
 # Sources for libdde_linux_char.a                                #
 ##################################################################
 SRC_C_$(TARGET_DDE_CHAR) += \
                                 arch/l4/inodes.c      \
                                 fs/char_dev.c
+
+##################################################################
+# Sources for libdde_linux_pci.a                                 #
+##################################################################
+SRC_C_$(TARGET_DDE_PCI) +=  \
+                          arch/l4/pci.c \
+                          drivers/pci/access.c \
+                          drivers/pci/bus.c \
+                          drivers/pci/hotplug-pci.c \
+                          drivers/pci/pci.c \
+                          drivers/pci/pci-driver.c \
+                          drivers/pci/probe.c \
+                          drivers/pci/search.c \
+                          drivers/pci/setup-bus.c \
+                          drivers/pci/setup-res.c
+
+
+##################################################################
+# Sources for libdde_linux_fs.a                                  #
+##################################################################
+SRC_C_$(TARGET_DDE_FS) += \
+                                fs/attr.c \
+                                fs/bad_inode.c \
+                                fs/dcache.c \
+                                fs/libfs.c \
+                                fs/mpage.c \
+                                fs/namei.c \
+                                fs/namespace.c \
+                                fs/open.c \
+                                fs/read_write.c \
+                                fs/super.c \
+                                fs/splice.c \
+                                fs/stat.c
+
+#                                fs/fs-writeback.c
+#                                fs/direct-io.c
+
+# # Warning! Following files are also included in _DDE_BLOCK
+# SRC_C_$(TARGET_DDE_FS) += \
+#                                 fs/block_dev.c
 
 ##################################################################
 # DDE specific build rules                                       #

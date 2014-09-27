@@ -58,7 +58,7 @@ Jdb_bp::global_breakpoints()
   return 1;
 }
 
-static 
+static
 int
 Jdb_bp::set_debug_address_register(int num, Mword addr, Mword len,
 				   Breakpoint::Mode mode, Space *)
@@ -142,7 +142,7 @@ Jdb_bp::test_other(String_buffer *buf)
   return 1;
 }
 
-/** @return 0 if only breakpoints were logged and jdb should not be entered */
+/** @return 1 if only breakpoints were logged and jdb should not be entered */
 IMPLEMENT
 int
 Jdb_bp::test_log_only()
@@ -174,4 +174,3 @@ Jdb_bp::init_arch()
   Jdb::bp_test_sstep    = test_sstep;
   Jdb::bp_test_other    = test_other;
 }
-

@@ -25,6 +25,7 @@
 //#include "app_loading"
 #include "fault_observers"
 #include "cpuid.h"
+#include "watchdog.h"
 
 #include <vector>
 #include <cstdio>
@@ -59,13 +60,30 @@ namespace Romain
 		protected:
 		std::vector<CPU_id> _fiasco_cpus;
 
+		static l4_umword_t fiasco_count_online_cpus()
+		{
+			l4_umword_t ret = 0, max = 0;
+			l4_sched_cpu_set_t cpus;
+			chksys(L4Re::Env::env()->scheduler()->info(&max, &cpus), "CPU count failed");
+
+			if (max > 31) {
+				enter_kdebug("MAX > 31");
+			}
+			for (unsigned i = 0; i < max; ++i) {
+				if (cpus.map & (1 << i))
+					ret += (1 << cpus.granularity);
+			}
+			return ret;
+		}
+
 		static void* topology_scanner(void* data)
 		{
 			l4_debugger_set_object_name(pthread_getl4cap(pthread_self()), "romain::topscan");
 
-			for (unsigned cpu = 0; cpu < CPUID::num_cpus(); ++cpu) {
+			for (l4_umword_t cpu = 0; cpu < fiasco_count_online_cpus(); ++cpu) {
 				Romain::LogicalCPUMap *m = reinterpret_cast<Romain::LogicalCPUMap*>(data);
 
+				//INFO() << "CPU " << cpu;
 				L4::Cap<L4::Thread> thread(pthread_getl4cap(pthread_self()));
 				l4_sched_param_t sp = l4_sched_param(2);
 				sp.affinity = l4_sched_cpu_set(cpu, 0);
@@ -79,18 +97,12 @@ namespace Romain
 
 		void scan_topology()
 		{
-			/* Check if we can perform a topology query. */
-			if (CPUID::max_cpuid() < CPUID::TOPOLOGY) {
-				INFO() << "CPU does not provide topology information";
-				return;
-			}
-
 			pthread_t p;
-			int ret = pthread_create(&p, 0, Romain::LogicalCPUMap::topology_scanner, this);
+			l4_mword_t ret = pthread_create(&p, 0, Romain::LogicalCPUMap::topology_scanner, this);
 			_check(ret != 0, "error creating topology scanner");
 			ret = pthread_join(p, 0);
 
-			for (unsigned i = CPUID::num_cpus(); i < MAX_CPUS; ++i) {
+			for (l4_umword_t i = fiasco_count_online_cpus(); i < MAX_CPUS; ++i) {
 				_fiasco_cpus[i].apic_id = 0xDEADBEEF;
 			}
 
@@ -102,7 +114,7 @@ namespace Romain
 		{
 			INFO() << "Virtual to Fiasco CPU map";
 
-			for (unsigned i = 0; i < CPUID::num_cpus(); ++i) {
+			for (l4_umword_t i = 0; i < fiasco_count_online_cpus(); ++i) {
 				INFO() << "virt# " << i << " fiasco# " << _fiasco_cpus[i].fiasco_id
 				       << " apic# " << std::hex << _fiasco_cpus[i].apic_id;
 			}
@@ -113,14 +125,30 @@ namespace Romain
 				: _fiasco_cpus(MAX_CPUS)
 			{
 				/* Default: identity mapping if nothing else works */
-				for (unsigned i = 0; i < MAX_CPUS; ++i) {
+				for (l4_umword_t i = 0; i < MAX_CPUS; ++i) {
 					_fiasco_cpus[i].fiasco_id = i;
 					_fiasco_cpus[i].apic_id   = i;
 				}
 
-				if (CPUID::have_cpuid()) {
+				if (CPUID::have_cpuid() and
+				    (CPUID::max_cpuid() >= CPUID::TOPOLOGY)) {
+
 					scan_topology();
-					std::sort(_fiasco_cpus.begin(), _fiasco_cpus.end(), CPU_id::comp_apic);
+					auto f_it = _fiasco_cpus.begin();
+					while ((*f_it).apic_id != 0xdeadbeef)
+						++f_it;
+					std::sort(_fiasco_cpus.begin(), f_it, CPU_id::comp_apic);
+					// If Fiasco-CPU ID 0 is in the second half, reverse the order to
+					// have the CPU0-Socket first
+					// XXX Hack! This requires real socket knowledge.
+					l4_umword_t logical0;
+					for (logical0 = 0; logical0 < MAX_CPUS; ++logical0) {
+						if (_fiasco_cpus[logical0].fiasco_id == 0)
+							break;
+					}
+					if (logical0 >= CPUID::num_cpus() / 2) {
+						std::reverse(_fiasco_cpus.begin(), f_it);
+					}
 					print_map();
 				}
 
@@ -128,7 +156,7 @@ namespace Romain
 
 			}
 
-			unsigned logicalToCPU(unsigned log)
+			l4_umword_t logicalToCPU(l4_umword_t log)
 			{
 				INFO() << log << " -> " << _fiasco_cpus[log].fiasco_id;
 				return _fiasco_cpus[log].fiasco_id;
@@ -147,25 +175,31 @@ namespace Romain
 
 			Romain::Observer *_observer_list[Romain::MAX_OBSERVERS]; // exception observer list
 			//Romain::RedundancyCallback *_callback;                 // the callback for redundancy checking
-			unsigned _num_observers;
+			l4_umword_t _num_observers;
 			
 			char const *_name;        // app name
-			unsigned    _num_inst;    // number of instances to run
+			l4_umword_t    _num_inst;    // number of instances to run
 			l4_umword_t _num_cpu;     // number of available CPUs
 
 			l4_addr_t _init_eip;      // initial EIP (from ELF)
 			l4_addr_t _init_esp;      // initial ESP (from ELF)
-			unsigned _gdt_min;        // start of GDT entries
+			l4_umword_t _gdt_min;        // start of GDT entries
 
-			unsigned     _argc;       // client argc
+			l4_umword_t     _argc;       // client argc
 			char const **_argv;       // argv of the client
-
-			Measurements::EventBuf *_logBuf;
 
 #if SPLIT_HANDLING
 			pthread_t _split_handler; // resilient core handler thread
 #endif // SPLIT_HANDLING
 
+#if WATCHDOG
+			bool  _watchdog_enable;
+			int   _watchdog_timeout;
+
+			Romain::Watchdog::SynchronizationMode _watchdog_mode;
+
+			Romain::Watchdog* _watchdog;
+#endif
 
 			/*
 			 * Prepare handler stack by pushing 3 values:
@@ -183,10 +217,11 @@ namespace Romain
 			void configure_logflags(char *flags);
 			void configure_fault_observers();
 			void configure_redundancy();
-			void configure_logbuf(int size);
+			void configure_logbuf(l4_mword_t size);
+			void configure_watchdog();
 
 		public:
-			InstanceManager(unsigned argc, char const **argv, unsigned num_instances = 1);
+			InstanceManager(l4_umword_t argc, char const **argv, l4_umword_t num_instances = 1);
 
 
 			/*
@@ -198,14 +233,15 @@ namespace Romain
 			 * Create a single replica thread along with
 			 * its VCPU handler stack
 			 */
-			Romain::App_thread* create_thread(l4_umword_t eip, l4_umword_t esp, unsigned inst, Romain::Thread_group *group);
+			Romain::App_thread* create_thread(l4_umword_t eip, l4_umword_t esp,
+											  l4_umword_t inst, Romain::Thread_group *group);
 
 			/*
 			 * Create a group of replica threads, e.g., all replicas
 			 * of a single original thread
 			 */
 			Romain::Thread_group* create_thread_group(l4_umword_t eip, l4_umword_t esp,
-													  std::string, unsigned cap, unsigned uid);
+													  std::string, l4_umword_t cap, l4_umword_t uid);
 
 			/*
 			 * Setup the VCPU handler stack.
@@ -228,7 +264,9 @@ namespace Romain
 				_observer_list[_num_observers++] = ob;
 			}
 
-
+#if WATCHDOG
+			Romain::Watchdog* watchdog() { return _watchdog; }
+#endif
 #if 0
 			Romain::RedundancyCallback *redundancy() const { return _callback; }
 
@@ -248,7 +286,7 @@ namespace Romain
 				//     -> for now, we assume that observers are not added/removed
 				//        at runtime. otherwise we'd use sth. like an r/w lock with
 				//        reader prioritization??
-				for (unsigned idx = 0; idx < _num_observers; ++idx) {
+				for (l4_umword_t idx = 0; idx < _num_observers; ++idx) {
 					DEBUG() << "[" << i->id() << "] startup notifying: " << _observer_list[idx]->name();
 					_observer_list[idx]->startup_notify(i,t,tg,a);
 				}
@@ -271,7 +309,7 @@ namespace Romain
 				//     -> for now, we assume that observers are not added/removed
 				//        at runtime. otherwise we'd use sth. like an r/w lock with
 				//        reader prioritization??
-				for (unsigned idx = 0; idx < _num_observers; ++idx) {
+				for (l4_umword_t idx = 0; idx < _num_observers; ++idx) {
 					//DEBUG() << "[" << i->id() << "] notifying: " << _observer_list[idx]->name();
 					v = _observer_list[idx]->notify(i,t,tg,a);
 					switch(v) {
@@ -289,28 +327,39 @@ namespace Romain
 
 			void query_observer_status()
 			{
-				for (unsigned idx = 0; idx < _num_observers; ++idx) {
+				for (l4_umword_t idx = 0; idx < _num_observers; ++idx) {
 					//INFO() << "querying: " << _observer_list[idx]->name();
 					_observer_list[idx]->status();
 				}
 			}
 
 
-			unsigned instance_count() const { return _num_inst; }
+			l4_umword_t instance_count() const { return _num_inst; }
 
-			Measurements::EventBuf* logbuf() { return _logBuf; }
 			void logdump();
 
 			void show_stats()
 			{
+				INFO() << BOLD_PURPLE << "Halting threads..." << NOCOLOR;
 				for (auto it = _threadgroups.begin(); it != _threadgroups.end(); ++it) {
 					(*it)->halt();
 				}
+
+				INFO() << BOLD_PURPLE << "-------- Observer statistics -------" << NOCOLOR;
 				query_observer_status();
+
+				INFO() << BOLD_PURPLE << "-------- Replica statistics --------" << NOCOLOR;
+				for (auto tg : _threadgroups) {
+					INFO() << "Stats for thread group '" << tg->name << "'";
+					for (auto t : tg->threads) {
+						t->print_stats();
+					}
+				}
+
 				logdump();
 			}
 
-			Romain::App_instance* instance(unsigned idx)
+			Romain::App_instance* instance(l4_umword_t idx)
 			{ return _instances[idx]; }
 
 			static void VCPU_handler(Romain::InstanceManager *m, Romain::App_instance *i, Romain::App_thread *t, Romain::Thread_group* tg, Romain::App_model *a);

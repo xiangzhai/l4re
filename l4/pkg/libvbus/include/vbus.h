@@ -19,6 +19,11 @@ enum {
   L4VBUS_ROOT_BUS = 0,
 };
 
+/**
+ * \defgroup l4vbus_module L4 V-BUS functions
+ * \{
+ */
+
 __BEGIN_DECLS
 
 /**
@@ -31,7 +36,7 @@ __BEGIN_DECLS
  * \param  depth        Depth to look for
  * \retval devinfo      Device information structure (might be NULL)
  *
- * \return 0 on succes, else failure
+ * \return 0 on success, else failure
  */
 int L4_CV
 l4vbus_get_device_by_hid(l4_cap_idx_t vbus, l4vbus_device_handle_t parent,
@@ -48,7 +53,7 @@ l4vbus_get_device_by_hid(l4_cap_idx_t vbus, l4vbus_device_handle_t parent,
  * \param  depth        Depth to look for
  * \retval devinfo      device information (might be NULL)
  *
- * \return 0 on succes, else failure
+ * \return 0 on success, else failure
  */
 int L4_CV
 l4vbus_get_next_device(l4_cap_idx_t vbus, l4vbus_device_handle_t parent,
@@ -64,11 +69,41 @@ l4vbus_get_next_device(l4_cap_idx_t vbus, l4vbus_device_handle_t parent,
  *                      available in the devinfo from get device functions.
  * \retval res          Descriptor of the resource
  *
- * \return 0 on succes, else failure
+ * \return 0 on success, else failure
  */
 int L4_CV
 l4vbus_get_resource(l4_cap_idx_t vbus, l4vbus_device_handle_t dev,
                     int res_idx, l4vbus_resource_t *res);
+
+
+/**
+ * \brief Check if the given device has a compatibility ID (CID) or HID that
+ *        matches \a cid.
+ *
+ * \param  vbus V-BUS capability
+ * \param  dev  device handle for which the CID shall be tested
+ * \param  cid  the compatibility ID to test
+ * \return 1 when the given ID (\a cid) matches the given device (\a dev),
+ *         0 when the given ID does not match,
+ *         <0 on error.
+ */
+int L4_CV
+l4vbus_is_compatible(l4_cap_idx_t vbus, l4vbus_device_handle_t dev,
+                     char const *cid);
+
+/**
+ * \brief Get the HID (hardware identifier) if a device
+ *
+ * \param  vbus         Capability of the system bus
+ * \param  dev          Handle of the device
+ * \param  hid          Pointer to a buffer for the HID string
+ * \param  max_len      The size of the buffer (\a hid)
+ *
+ * \return the length of the HID string on success, else failure
+ */
+int L4_CV
+l4vbus_get_hid(l4_cap_idx_t vbus, l4vbus_device_handle_t dev, char *hid,
+               unsigned long max_len);
 
 /**
  * \brief Request a resource of a specific type
@@ -77,7 +112,7 @@ l4vbus_get_resource(l4_cap_idx_t vbus, l4vbus_device_handle_t dev,
  * \param  res          Descriptor of the resource
  * \param  flags        Optional flags
  *
- * \return 0 on succes, else failure
+ * \return 0 on success, else failure
  *
  * If any resource is found that contains the requested
  * type and addresses this resource is returned.
@@ -85,7 +120,7 @@ l4vbus_get_resource(l4_cap_idx_t vbus, l4vbus_device_handle_t dev,
  * Flags are only relevant to control the memory caching.
  * If io-memory is requested.
  *
- * \return 0 on succes, else failure
+ * \return 0 on success, else failure
  */
 int L4_CV
 l4vbus_request_resource(l4_cap_idx_t vbus, l4vbus_resource_t *res,
@@ -97,7 +132,7 @@ l4vbus_request_resource(l4_cap_idx_t vbus, l4vbus_resource_t *res,
  * \param  vbus         Capability of the system bus.
  * \param  res          Descriptor of the resource.
  *
- * \return 0 on succes, else failure
+ * \return 0 on success, else failure
  */
 int L4_CV
 l4vbus_release_resource(l4_cap_idx_t vbus, l4vbus_resource_t *res);
@@ -109,10 +144,12 @@ l4vbus_release_resource(l4_cap_idx_t vbus, l4vbus_resource_t *res);
  * \param  icu          ICU device handle.
  * \param  cap          Capability slot for the capability.
  *
- * \return 0 on succes, else failure
+ * \return 0 on success, else failure
  */
 int L4_CV
 l4vbus_vicu_get_cap(l4_cap_idx_t vbus, l4vbus_device_handle_t icu,
                     l4_cap_idx_t cap);
 
 __END_DECLS
+
+/** \} */

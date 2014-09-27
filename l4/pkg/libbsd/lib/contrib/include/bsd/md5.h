@@ -25,8 +25,7 @@ typedef struct MD5Context {
 	u_int8_t buffer[MD5_BLOCK_LENGTH];	/* input buffer */
 } MD5_CTX;
 
-//l4/ why sys/cdefs? / #include <sys/cdefs.h>
-#include <bsd/cdefs.h>
+#include <sys/cdefs.h>
 
 __BEGIN_DECLS
 void	 MD5Init(MD5_CTX *);

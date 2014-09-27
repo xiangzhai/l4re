@@ -12,24 +12,21 @@ INTERFACE [mp]:
 
 struct Per_cpu_ctor_data
 {
-  typedef void (*Func)(void *, Cpu_number, bool);
+  typedef void (*Func)(void *, Cpu_number);
 
-  void exec(Cpu_number cpu, bool resume) const
+  void exec(Cpu_number cpu) const
   {
-    if (!resume || (_func & 1))
-      reinterpret_cast<Func>(_func & ~1UL)(_base, cpu, resume);
+    _func(_base, cpu);
   }
 
   Per_cpu_ctor_data() = default;
-  Per_cpu_ctor_data(Func ctor, void *base, bool on_resume)
-  : _func(reinterpret_cast<Mword>(ctor) | (on_resume ? 1 : 0)), _base(base)
-  {
-    assert (!(reinterpret_cast<Mword>(ctor) & 1));
-  }
+  Per_cpu_ctor_data(Func ctor, void *base)
+  : _func(ctor), _base(base)
+  {}
 
 
 private:
-  Mword _func;
+  Func _func;
   void *_base;
 };
 
@@ -60,13 +57,11 @@ class Per_cpu_data
 {
 public:
   static void init_ctors();
-  static void run_ctors(Cpu_number cpu, bool resume = false);
-  static void run_late_ctors(Cpu_number cpu, bool resume = false);
+  static void run_ctors(Cpu_number cpu);
+  static void run_late_ctors(Cpu_number cpu);
   static bool valid(Cpu_number cpu);
 
   enum With_cpu_num { Cpu_num };
-  enum Call_on_resume { On_resume };
-
 };
 
 template< typename T > class Per_cpu_ptr;
@@ -86,7 +81,6 @@ public:
 
   Per_cpu();
   explicit Per_cpu(With_cpu_num);
-  explicit Per_cpu(Call_on_resume);
 
   template<typename TEST>
   Cpu_number find_cpu(TEST const &test) const
@@ -162,11 +156,6 @@ template< typename T >
 Per_cpu<T>::Per_cpu(With_cpu_num) : _d(Cpu_number::boot_cpu())
 {}
 
-IMPLEMENT
-template< typename T >
-Per_cpu<T>::Per_cpu(Call_on_resume) : _d(Cpu_number::boot_cpu())
-{}
-
 IMPLEMENT inline
 template< typename T >
 T &Per_cpu_ptr<T>::cpu(Cpu_number) { return *_p; }
@@ -180,7 +169,7 @@ Per_cpu_data::init_ctors()
 
 IMPLEMENT inline
 void
-Per_cpu_data::run_ctors(Cpu_number, bool)
+Per_cpu_data::run_ctors(Cpu_number)
 {
   extern ctor_function_t __PER_CPU_INIT_ARRAY_START__[];
   extern ctor_function_t __PER_CPU_INIT_ARRAY_END__[];
@@ -193,7 +182,7 @@ Per_cpu_data::run_ctors(Cpu_number, bool)
 
 IMPLEMENT inline
 void
-Per_cpu_data::run_late_ctors(Cpu_number, bool)
+Per_cpu_data::run_late_ctors(Cpu_number)
 {
   extern ctor_function_t __PER_CPU_LATE_INIT_ARRAY_START__[];
   extern ctor_function_t __PER_CPU_LATE_INIT_ARRAY_END__[];
@@ -222,7 +211,7 @@ private:
 
   struct Ctor_vector
   {
-    void push_back(Ctor::Func func, void *base, bool on_resume);
+    void push_back(Ctor::Func func, void *base);
     unsigned len() const { return _len; }
     Ctor const &operator [] (unsigned idx) const
     {
@@ -257,7 +246,7 @@ Per_cpu_data::Ctor_vector Per_cpu_data::ctors;
 
 IMPLEMENT
 void
-Per_cpu_data::Ctor_vector::push_back(Ctor::Func func, void *base, bool on_resume)
+Per_cpu_data::Ctor_vector::push_back(Ctor::Func func, void *base)
 {
   extern Ctor _per_cpu_ctor_data_start[];
   extern Ctor _per_cpu_ctor_data_end[];
@@ -265,7 +254,7 @@ Per_cpu_data::Ctor_vector::push_back(Ctor::Func func, void *base, bool on_resume
   if (_per_cpu_ctor_data_start + _len >= _per_cpu_ctor_data_end)
     panic("out of per_cpu_ctor_space");
 
-  _per_cpu_ctor_data_start[_len++] = Ctor(func, base, on_resume);
+  _per_cpu_ctor_data_start[_len++] = Ctor(func, base);
 }
 
 
@@ -287,7 +276,7 @@ template< typename T >
 Per_cpu<T>::Per_cpu()
 {
   //printf("  Per_cpu<T>() [this=%p])\n", this);
-  ctors.push_back(&ctor_wo_arg, this, false);
+  ctors.push_back(&ctor_wo_arg, this);
 }
 
 IMPLEMENT
@@ -295,20 +284,12 @@ template< typename T >
 Per_cpu<T>::Per_cpu(With_cpu_num) : _d(Cpu_number::boot_cpu())
 {
   //printf("  Per_cpu<T>(bool) [this=%p])\n", this);
-  ctors.push_back(&ctor_w_arg, this, false);
-}
-
-IMPLEMENT
-template< typename T >
-Per_cpu<T>::Per_cpu(Call_on_resume) : _d(Cpu_number::boot_cpu(), false)
-{
-  //printf("  Per_cpu<T>(bool) [this=%p])\n", this);
-  ctors.push_back(&ctor_w_resume_arg, this, true);
+  ctors.push_back(&ctor_w_arg, this);
 }
 
 PRIVATE static
 template< typename T >
-void Per_cpu<T>::ctor_wo_arg(void *obj, Cpu_number cpu, bool)
+void Per_cpu<T>::ctor_wo_arg(void *obj, Cpu_number cpu)
 {
   //printf("Per_cpu<T>::ctor_wo_arg(obj=%p, cpu=%u -> %p)\n", obj, cpu, &(reinterpret_cast<Per_cpu<T>*>(obj)->cpu(cpu)));
   new (&reinterpret_cast<Per_cpu<T>*>(obj)->cpu(cpu)) T;
@@ -316,18 +297,10 @@ void Per_cpu<T>::ctor_wo_arg(void *obj, Cpu_number cpu, bool)
 
 PRIVATE static
 template< typename T >
-void Per_cpu<T>::ctor_w_arg(void *obj, Cpu_number cpu, bool)
+void Per_cpu<T>::ctor_w_arg(void *obj, Cpu_number cpu)
 {
   //printf("Per_cpu<T>::ctor_w_arg(obj=%p, cpu=%u -> %p)\n", obj, cpu, &reinterpret_cast<Per_cpu<T>*>(obj)->cpu(cpu));
   new (&reinterpret_cast<Per_cpu<T>*>(obj)->cpu(cpu)) T(cpu);
-}
-
-PRIVATE static
-template< typename T >
-void Per_cpu<T>::ctor_w_resume_arg(void *obj, Cpu_number cpu, bool resume)
-{
-  //printf("Per_cpu<T>::ctor_w_arg(obj=%p, cpu=%u -> %p)\n", obj, cpu, &reinterpret_cast<Per_cpu<T>*>(obj)->cpu(cpu));
-  new (&reinterpret_cast<Per_cpu<T>*>(obj)->cpu(cpu)) T(cpu, resume);
 }
 
 IMPLEMENT inline
@@ -345,7 +318,7 @@ Per_cpu_data::init_ctors()
 
 IMPLEMENT inline
 void
-Per_cpu_data::run_ctors(Cpu_number cpu, bool resume)
+Per_cpu_data::run_ctors(Cpu_number cpu)
 {
   extern ctor_function_t __PER_CPU_INIT_ARRAY_START__[];
   extern ctor_function_t __PER_CPU_INIT_ARRAY_END__[];
@@ -353,8 +326,6 @@ Per_cpu_data::run_ctors(Cpu_number cpu, bool resume)
   extern ctor_function_t __PER_CPU_CTORS_END__[];
   if (cpu == Cpu_number::boot_cpu())
     {
-      if (resume)
-        panic("ERROR: resuming of boot CPU not supported\n");
       run_ctor_functions(__PER_CPU_INIT_ARRAY_START__, __PER_CPU_INIT_ARRAY_END__);
       run_ctor_functions(__PER_CPU_CTORS_LIST__, __PER_CPU_CTORS_END__);
       late_ctor_start = ctors.len();
@@ -362,12 +333,12 @@ Per_cpu_data::run_ctors(Cpu_number cpu, bool resume)
     }
 
   for (unsigned i = 0; i < late_ctor_start; ++i)
-    ctors[i].exec(cpu, resume);
+    ctors[i].exec(cpu);
 }
 
 IMPLEMENT inline
 void
-Per_cpu_data::run_late_ctors(Cpu_number cpu, bool resume)
+Per_cpu_data::run_late_ctors(Cpu_number cpu)
 {
   extern ctor_function_t __PER_CPU_LATE_INIT_ARRAY_START__[];
   extern ctor_function_t __PER_CPU_LATE_INIT_ARRAY_END__[];
@@ -375,8 +346,6 @@ Per_cpu_data::run_late_ctors(Cpu_number cpu, bool resume)
   extern ctor_function_t __PER_CPU_LATE_CTORS_END__[];
   if (cpu == Cpu_number::boot_cpu())
     {
-      if (resume)
-        panic("ERROR: resuming of boot CPU not supported\n");
       run_ctor_functions(__PER_CPU_LATE_INIT_ARRAY_START__, __PER_CPU_LATE_INIT_ARRAY_END__);
       run_ctor_functions(__PER_CPU_LATE_CTORS_LIST__, __PER_CPU_LATE_CTORS_END__);
       return;
@@ -384,5 +353,15 @@ Per_cpu_data::run_late_ctors(Cpu_number cpu, bool resume)
 
   unsigned c = ctors.len();
   for (unsigned i = late_ctor_start; i < c; ++i)
-    ctors[i].exec(cpu, resume);
+    ctors[i].exec(cpu);
+}
+
+//---------------------------------------------------------------------------
+IMPLEMENTATION [mp && debug]:
+
+PUBLIC static
+long
+Per_cpu_data::offset(Cpu_number cpu)
+{
+  return _offsets[cpu];
 }

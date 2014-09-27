@@ -181,27 +181,27 @@ static int tsc_irq_func(void)
 	  printf("[TSC] Error: Receive irq failed\n");
 	  continue;
 	}
-   
+
       if (!tsc_handler)
 	continue;
-      
+
       create_motion_event();
       // generate touch start event;
       Input_event ev = { L4RE_EV_KEY, L4RE_BTN_LEFT, 1 };
       tsc_handler(ev, tsc_priv);
-      
+
       int pen_up = 0;
-      if (l4vbus_gpio_read(vbus, gpio_handle, irq, &pen_up))
+      if ((pen_up = l4vbus_gpio_get(vbus, gpio_handle, irq)) < 0)
 	return -6;
       while (!pen_up)
 	{
 	  create_motion_event();
 	  l4_usleep(2);
-	  
-	  if (l4vbus_gpio_read(vbus, gpio_handle, irq, &pen_up))
+
+	  if ((pen_up = l4vbus_gpio_get(vbus, gpio_handle, irq)) < 0)
 	    return -6;
 	}
-      
+
       // generate touch end event;
       Input_event ev2 = { L4RE_EV_KEY, L4RE_BTN_LEFT, 0 };
       tsc_handler(ev2, tsc_priv);

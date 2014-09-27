@@ -49,3 +49,11 @@ Timer_tick::ack()
   Timer::acknowledge();
   Irq_base::ack();
 }
+
+// ------------------------------------------------------------------------
+IMPLEMENTATION [debug]:
+
+IMPLEMENT
+Timer_tick *
+Timer_tick::boot_cpu_timer_tick()
+{ return _glbl_timer; }

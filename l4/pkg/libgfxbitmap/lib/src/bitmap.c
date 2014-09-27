@@ -21,7 +21,9 @@
 
 #include <l4/libgfxbitmap/bitmap.h>
 
+#ifdef ARCH_x86
 static int use_fastmemcpy;
+#endif
 
 #define OFFSET(x, y, ptr, bytepp) ptr += (y) * bwidth + (x) * (bytepp);
 

@@ -35,9 +35,10 @@
 .Nm fgetln
 .Nd get a line from a stream
 .Sh LIBRARY
-.Lb libc
+.ds str-Lb-libbsd Utility functions from BSD systems (libbsd, \-lbsd)
+.Lb libbsd
 .Sh SYNOPSIS
-.In stdio.h
+.In bsd/stdio.h
 .Ft char *
 .Fn fgetln "FILE *stream" "size_t *len"
 .Sh DESCRIPTION
@@ -54,7 +55,7 @@ character.
 The length of the line, including the final newline,
 is stored in the memory location to which
 .Fa len
-points.
+points and is guaranteed to be greater than 0 upon successful completion.
 (Note, however, that if the line is the last
 in a file that does not end in a newline,
 the returned text will not contain a newline.)

@@ -22,7 +22,8 @@ Kernel_thread::bootstrap_arch()
 //--------------------------------------------------------------------------
 IMPLEMENTATION [!mp]:
 
-static void inline
+PUBLIC
+static inline void
 Kernel_thread::boot_app_cpus()
 {}
 
@@ -36,6 +37,7 @@ IMPLEMENTATION [mp]:
 #include "paging.h"
 #include <cstdio>
 
+PUBLIC
 static void
 Kernel_thread::boot_app_cpus()
 {
@@ -48,6 +50,7 @@ Kernel_thread::boot_app_cpus()
   extern volatile Mword _tramp_mp_startup_dcr;
   extern volatile Mword _tramp_mp_startup_ttbcr;
   extern volatile Mword _tramp_mp_startup_mair0;
+  extern volatile Mword _tramp_mp_startup_mair1;
 
   if (Scu::Available)
     {
@@ -60,7 +63,8 @@ Kernel_thread::boot_app_cpus()
   _tramp_mp_startup_pdbr
     = Kmem_space::kdir()->virt_to_phys((Address)Kmem_space::kdir()) | Page::Ttbr_bits;
   _tramp_mp_startup_ttbcr   = Page::Ttbcr_bits;
-  _tramp_mp_startup_mair0   = Page::Mair0_bits;
+  _tramp_mp_startup_mair0   = Page::Mair0_prrr_bits;
+  _tramp_mp_startup_mair1   = Page::Mair1_nmrr_bits;
   _tramp_mp_startup_dcr     = 0x55555555;
 
   __asm__ __volatile__ ("" : : : "memory");

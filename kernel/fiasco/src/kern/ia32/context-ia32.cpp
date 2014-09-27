@@ -1,3 +1,16 @@
+INTERFACE [!ux]:
+
+#include "x86desc.h"
+
+EXTENSION class Context
+{
+protected:
+  enum { Gdt_user_entries = 4 };
+  Gdt_entry	_gdt_user_entries[Gdt_user_entries+1];
+  Unsigned32	_es, _fs, _gs;
+};
+
+
 IMPLEMENTATION [ia32,amd64,ux]:
 
 #include <cassert>
@@ -66,3 +79,22 @@ Context::store_segments()
   _fs = Cpu::get_fs();
   _gs = Cpu::get_gs();
 }
+
+//--------------------------------------------------------------------
+IMPLEMENTATION[ia32 || amd64]:
+
+#include "cpu.h"
+#include "gdt.h"
+
+PROTECTED inline NEEDS ["cpu.h", "gdt.h"]
+void
+Context::load_gdt_user_entries(Context * /*old*/ = 0)
+{
+  Gdt &gdt = *Cpu::cpus.current().get_gdt();
+  for (unsigned i = 0; i < Gdt_user_entries; ++i)
+    gdt[(Gdt::gdt_user_entry1 / 8) + i] = _gdt_user_entries[i];
+
+  gdt[Gdt::gdt_utcb/8] = _gdt_user_entries[Gdt_user_entries];
+}
+
+

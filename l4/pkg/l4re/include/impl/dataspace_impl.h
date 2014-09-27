@@ -69,7 +69,7 @@ Dataspace::map_region(l4_addr_t offset, unsigned long flags,
       order_mapped = order
         = l4_fpage_max_order(order, min_addr, min_addr, max_addr, min_addr);
       err = __map(offset, &order_mapped, flags, min_addr);
-      if (EXPECT_FALSE(err < 0))
+      if (L4_UNLIKELY(err < 0))
 	return err;
 
       if (order > order_mapped)
@@ -110,7 +110,7 @@ Dataspace::clear(unsigned long offset, unsigned long size) const throw()
   L4::Ipc::Iostream io(l4_utcb());
   io << L4::Opcode(Dataspace_::Clear) << offset << size;
   long err = l4_error(io.call(cap(), L4Re::Protocol::Dataspace));
-  if (EXPECT_FALSE(err < 0))
+  if (L4_UNLIKELY(err < 0))
     return err;
 
   long sz;
@@ -124,7 +124,7 @@ Dataspace::info(Stats *stats) const throw()
   L4::Ipc::Iostream io(l4_utcb());
   io << L4::Opcode(Dataspace_::Stats);
   long err = l4_error(io.call(cap(), L4Re::Protocol::Dataspace));
-  if (EXPECT_FALSE(err < 0))
+  if (L4_UNLIKELY(err < 0))
     return err;
 
   io >> *stats;
@@ -166,7 +166,7 @@ Dataspace::phys(l4_addr_t offset, l4_addr_t &phys_addr, l4_size_t &phys_size) co
   L4::Ipc::Iostream io(l4_utcb());
   io << L4::Opcode(Dataspace_::Phys) << offset;
   long err = l4_error(io.call(cap(), L4Re::Protocol::Dataspace));
-  if (EXPECT_FALSE(err < 0))
+  if (L4_UNLIKELY(err < 0))
     return err;
 
   io >> phys_addr >> phys_size;

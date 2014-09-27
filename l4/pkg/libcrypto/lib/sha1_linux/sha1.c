@@ -36,7 +36,7 @@
 #include <string.h>
 
 #define __LIBCRYPTO_INTERNAL__
-#include <l4/crypto/sha1.h>
+#include "sha1.h"
 
 #endif /* BUILD_FOR_L4 */
 

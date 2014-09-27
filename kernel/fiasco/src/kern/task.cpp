@@ -80,7 +80,7 @@ Task::resume_vcpu(Context *ctxt, Vcpu_state *vcpu, bool user_mode)
 
   assert_kdb(cpu_lock.test());
 
-  ts.sanitize_user_state();
+  ctxt->sanitize_user_state(&ts);
 
   // FIXME: UX is currently broken
   /* UX:ctxt->vcpu_resume_user_arch(); */
@@ -89,6 +89,8 @@ Task::resume_vcpu(Context *ctxt, Vcpu_state *vcpu, bool user_mode)
       ctxt->state_add_dirty(Thread_vcpu_user);
       vcpu->state |= Vcpu_state::F_traps | Vcpu_state::F_exceptions
                      | Vcpu_state::F_debug_exc;
+
+      ctxt->vcpu_pv_switch_to_user(vcpu, true);
     }
 
   ctxt->space_ref()->user_mode(user_mode);
@@ -323,7 +325,8 @@ Task::create(Ram_quota *quota, L4_fpage const &utcb_area)
   if (!a->initialize())
     return 0;
 
-  a->sync_kernel();
+  if (a->sync_kernel() < 0)
+    return 0;
 
   if (utcb_area.is_valid())
     {
@@ -594,7 +597,7 @@ private:
     Mword mask;
     Mword fpage;
     void print(String_buffer *buf) const;
-  } __attribute__((packed));
+  };
 
 };
 

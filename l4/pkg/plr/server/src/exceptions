@@ -24,13 +24,13 @@ class Romain_error : public L4::Base_exception
 
 	protected:
 		char _func[data_size];
-		unsigned _line;
+		l4_umword_t _line;
 
 	public:
-		Romain_error(char const *func, unsigned line)
+		Romain_error(char const *func, l4_umword_t line)
 			: _line(line)
 		{
-			snprintf(_func, data_size, "At \033[34m%s:%d\033[0m: ", func, line);
+			snprintf(_func, data_size, "At \033[34m%s:%ld\033[0m: ", func, line);
 			_func[data_size-1] = 0;
 		}
 
@@ -46,11 +46,11 @@ class Romain_error : public L4::Base_exception
 	do { \
 		if (cond) { \
 			void *pc[10]; \
-			int cnt; \
-			ERROR() << __FILE__ << " " << __func__ << " " << message; \
+			l4_mword_t cnt; \
+			ERROR() << __FILE__ << " " << __func__ << " " << message << "\n"; \
 			cnt = l4util_backtrace(pc, 10); \
-			for (int i = 0; i < cnt; ++i) { \
-				ERROR() << std::hex << l4_umword_t(pc[i]); \
+			for (l4_mword_t i = 0; i < cnt; ++i) { \
+				ERROR() << std::hex << l4_umword_t(pc[i]) << "\n"; \
 			} \
 			enter_kdebug(message); \
 		} \
@@ -66,7 +66,7 @@ class Argument_error : public Romain_error
 	char _data[Romain_error::data_size*2];
 
 	public:
-		Argument_error(char const *func, unsigned line, char const *msg)
+		Argument_error(char const *func, l4_umword_t line, char const *msg)
 			: Romain_error(func, line)
 		{
 			snprintf(_data, sizeof(_data), "%s%s\n", _func, msg);

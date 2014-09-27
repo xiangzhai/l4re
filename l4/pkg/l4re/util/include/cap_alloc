@@ -136,8 +136,8 @@ public:
  *        unmap of the capability selector.
  * \param T the type of the object that is referred by the capability.
  *
- * This kind of automatic capability is useful for capabilities with
- * that shall have a lifetime that is strictly coupled to one C++ scope.
+ * This kind of automatic capability is useful for capabilities that
+ * shall have a lifetime that is strictly coupled to one C++ scope.
  *
  * Usage:
  * \code

@@ -592,21 +592,13 @@ Jdb_thread_list::action(int cmd, void *&argbuf, char const *&fmt, int &)
     }
   else if (cmd == 1)
     {
-      Console *gzip = Kconsole::console()->find_console(Console::GZIP);
-      if (gzip)
-	{
-	  Thread *t = Jdb::get_current_active();
-	  gzip->state(gzip->state() | Console::OUTENABLED);
-	  long_output = 1;
-	  Jdb_thread_list::init('p', t);
-	  Jdb_thread_list::set_start(t);
-	  Jdb_thread_list::goto_home();
-	  Jdb_thread_list::complete_show(list_threads_show_thread);
-	  long_output = 0;
-	  gzip->state(gzip->state() & ~Console::OUTENABLED);
-	}
-      else
-	puts(" gzip module not available");
+      Thread *t = Jdb::get_current_active();
+      long_output = 1;
+      Jdb_thread_list::init(subcmd == 'r' ? 'r' : 'p', t);
+      Jdb_thread_list::set_start(t);
+      Jdb_thread_list::goto_home();
+      Jdb_thread_list::complete_show(list_threads_show_thread);
+      long_output = 0;
     }
 
   return NOTHING;
@@ -614,10 +606,9 @@ Jdb_thread_list::action(int cmd, void *&argbuf, char const *&fmt, int &)
 
 PRIVATE static inline
 void
-Jdb_thread_list::print_thread_name(Kobject_common const * o)
+Jdb_thread_list::print_thread_name(Kobject_common const * o, unsigned len)
 {
   Jdb_kobject_name *nx = Jdb_kobject_extension::find_extension<Jdb_kobject_name>(o);
-  unsigned len = 15;
 
   if (nx)
     {
@@ -633,28 +624,31 @@ Jdb_thread_list::list_threads_show_thread(Thread *t)
 {
   char to[24];
   int  waiting_for = 0;
+  unsigned plen = 0;
 
   *to = '\0';
 
   Kconsole::console()->getchar_chance();
 
   Jdb_kobject::print_uid(t, 5);
+  plen += 5;
 
-  printf(" %3u", cxx::int_value<Cpu_number>(t->home_cpu()));
+  plen += printf(" %3u", cxx::int_value<Cpu_number>(t->home_cpu()));
 
   if (t->home_cpu() != t->get_current_cpu())
-    printf(":%-3u ", cxx::int_value<Cpu_number>(t->get_current_cpu()));
+    plen += printf(":%-3u ", cxx::int_value<Cpu_number>(t->get_current_cpu()));
   else
-    printf("     ");
+    plen += printf("     ");
 
-  print_thread_name(t);
+  print_thread_name(t, 15);
+  plen += 15;
 
-  printf("  %2lx ", get_prio(t));
+  plen += printf("  %2lx ", get_prio(t));
 
   if (get_space_dbgid(t) == ~0L)
-    printf(" ----- ");
+    plen += printf(" ----- ");
   else
-    printf(" %5lx ", get_space_dbgid(t));
+    plen += printf(" %5lx ", get_space_dbgid(t));
 
   if (Jdb_thread::has_partner(t))
     {
@@ -669,6 +663,7 @@ Jdb_thread_list::list_threads_show_thread(Thread *t)
     }
   else
     putstr("      ");
+  plen += 6;
 
   if (waiting_for)
     {
@@ -694,7 +689,7 @@ Jdb_thread_list::list_threads_show_thread(Thread *t)
 	}
     }
 
-  printf("%-6s", to);
+  plen += printf("%-6s", to);
 
   if (long_output)
     {
@@ -713,11 +708,11 @@ Jdb_thread_list::list_threads_show_thread(Thread *t)
 	    if (*c != '5')
 	      break;
 
-	  printf("(%4ld) ", stack_depth - sizeof (Thread));
-	  Jdb_thread::print_state_long(t, 23);
+	  plen += printf("(%4ld) ", stack_depth - sizeof (Thread));
 	}
-      else
-	Jdb_thread::print_state_long(t, 30);
+
+      if (Jdb_screen::width() > plen)
+	Jdb_thread::print_state_long(t, Jdb_screen::width() - plen);
       putstr("\033[K\n");
     }
 }
@@ -861,7 +856,7 @@ Jdb_thread_list::cmds() const
   static Cmd cs[] =
     {
 	{ 0, "l", "list", "%C", "l{r|p}\tshow ready/present list", &subcmd },
-        { 1, "lgzip", "", "", 0 /* invisible */, 0 },
+        { 1, "", "threadlist", "%C", 0 /* invisible */, &subcmd },
     };
 
   return cs;

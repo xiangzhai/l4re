@@ -1,5 +1,5 @@
 /*
- * Copyright © 2004, 2005, 2006 Guillem Jover
+ * Copyright © 2004, 2005, 2006 Guillem Jover <guillem@hadrons.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,15 +31,14 @@
  * Include all bsd compat headers.
  */
 
-#include <bsd/cdefs.h>
+#include <bsd/sys/cdefs.h>
+#include <bsd/sys/queue.h>
+#include <bsd/sys/tree.h>
+#include <bsd/netinet/ip_icmp.h>
 #include <bsd/stdlib.h>
 #include <bsd/string.h>
 #include <bsd/err.h>
 #include <bsd/getopt.h>
-#include <bsd/random.h>
 #include <bsd/md5.h>
-#include <bsd/queue.h>
-#include <bsd/ip_icmp.h>
-#include <time.h>
 
 #endif

@@ -43,12 +43,13 @@
 
 using namespace Mag_server;
 
-static Core_api_impl *_core_api;
 extern char const _binary_mag_lua_start[];
 extern char const _binary_mag_lua_end[];
 extern char const _binary_default_tff_start[];
 
 namespace Mag_server {
+
+Core_api_impl *core_api;
 
 class Plugin_manager
 {
@@ -131,9 +132,9 @@ public:
     if (to <= l4_kip_clock(l4re_kip())
 	&& reply_mode == L4::Ipc_svr::Reply_separate)
     {
-      poll_input(_core_api);
-      _core_api->user_state()->vstack()->flush();
-      _core_api->tick();
+      poll_input(core_api);
+      core_api->user_state()->vstack()->flush();
+      core_api->tick();
       to += 40000;
       while (to - 10000 < l4_kip_clock(l4re_kip()))
 	to += 20000;
@@ -228,7 +229,7 @@ static const luaL_Reg libs[] =
   { LUA_STRLIBNAME, luaopen_string },
   {LUA_LOADLIBNAME, luaopen_package},
   {LUA_DBLIBNAME, luaopen_debug},
-  {LUA_DBLIBNAME, luaopen_table},
+  {LUA_TABLIBNAME, luaopen_table},
   { NULL, NULL }
 };
 
@@ -314,6 +315,7 @@ int run(int argc, char const *argv[])
   static View_stack vstack(screen, screen_view, &bg, &label_font);
   static User_state user_state(lua, &vstack, cursor);
   static Core_api_impl core_api(&registry, lua, &user_state, rcv_cap, fb, &label_font);
+  Mag_server::core_api = &core_api;
 
   int err;
   if ((err = luaL_loadbuffer(lua, _binary_mag_lua_start, _binary_mag_lua_end - _binary_mag_lua_start, "@mag.lua")))
@@ -345,8 +347,6 @@ int run(int argc, char const *argv[])
       if (load_lua_plugin(&core_api, argv[i]) == 1)
         load_so_plugin(&core_api, argv[i]);
     }
-
-  _core_api = &core_api;
 
   server.loop(&registry);
 

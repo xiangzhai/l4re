@@ -43,9 +43,9 @@ class Flipper : public Emulator_base
 	protected:
 		l4_addr_t       _flip_eip; // stores the original EIP that was flipped
 		Romain::App_model *_am;
-		unsigned        _when;		// XXX
-		unsigned        _hitcount;	// XXX
-		unsigned        _interval;	// XXX
+		l4_umword_t        _when;		// XXX
+		l4_umword_t        _hitcount;	// XXX
+		l4_umword_t        _interval;	// XXX
 		bool            _repeat;	// XXX
 
 	public:
@@ -93,7 +93,7 @@ class AsmJitUser
 			MAP(AH, ah); MAP(BH, bh); MAP(CH, ch); MAP(DH, dh);
 			MAP(AL, al); MAP(BL, bl); MAP(CL, cl); MAP(DL, dl);
 			default:
-				ERROR() << "I don't know a mapping for " << (unsigned)t << " yet.";
+				ERROR() << "I don't know a mapping for " << (l4_umword_t)t << " yet.\n";
 				enter_kdebug("mapping");
 				break;
 		}
@@ -101,16 +101,16 @@ class AsmJitUser
 #undef MAP
 	}
 
-	void disassemble_mem(l4_addr_t start, l4_addr_t remote, unsigned size)
+	void disassemble_mem(l4_addr_t start, l4_addr_t remote, l4_umword_t size)
 	{
-		unsigned count = 0;
+		l4_umword_t count = 0;
 		while (count < size)
 			count += Romain::InstructionPrinter(start + count, remote + count).ilen();
 	}
 
 	void flip_bit_in_register(AsmJit::Assembler& as, AsmJit::GPReg& reg)
 	{
-		unsigned i = random() % 32;
+		l4_umword_t i = random() % 32;
 		as.xor_(reg, (1 << i));
 	}
 
@@ -120,7 +120,7 @@ class AsmJitUser
 		as.int3(); // last instruction is an INT3 which will trigger the replica
 		           // to return to the master
 		void *ptr    = as.make();
-		unsigned len = as.getOffset();
+		l4_umword_t len = as.getOffset();
 		MSG() << "Created asm code @ " << ptr << ", size is " << len << " bytes";
 		_check(!ptr, "code generation failed");
 		Romain::dump_mem(ptr, len);
@@ -148,8 +148,9 @@ FUNC1(Negate, neg);
 		                 AsmJit::GPReg& op2) { \
 			as.op(op1, op2); } \
 		void operator()  (AsmJit::Assembler& as, AsmJit::GPReg& op1, \
-						  unsigned imm) { \
-			as.op(op1, imm); } }
+						  l4_umword_t imm) { \
+			as.op(op1, imm); } \
+	};
 
 FUNC2(Addition, add);
 FUNC2(Subtraction, sub);
@@ -172,10 +173,10 @@ template <typename FN>
 void BinaryOperation(ud_t ud, AsmJit::Assembler& as)
 {
 	AsmJit::GPReg op1, op2;
-	int imm = 0;
-	MSG() << "BinaryOp " << (unsigned)ud.operand[0].type
-		<< " " << (unsigned)ud.operand[1].type
-		<< " " << (unsigned)UD_OP_CONST;
+	l4_mword_t imm = 0;
+	MSG() << "BinaryOp " << (l4_umword_t)ud.operand[0].type
+		<< " " << (l4_umword_t)ud.operand[1].type
+		<< " " << (l4_umword_t)UD_OP_CONST;
 
 	_check(ud.operand[0].type != UD_OP_REG, "1st op must be reg");
 	_check(ud.operand[0].scale != 0, "scaling in reg??");
@@ -191,7 +192,7 @@ void BinaryOperation(ud_t ud, AsmJit::Assembler& as)
 		FN()(as, op1, op2);
 	} else if ((ud.operand[1].type == UD_OP_IMM) ||
 	           (ud.operand[1].type == UD_OP_CONST)) {
-		MSG() << "op size " << (int)ud.operand[1].size;
+		MSG() << "op size " << (l4_mword_t)ud.operand[1].size;
 		switch(ud.operand[1].size) {
 			case  8: imm = ud.operand[1].lval.sbyte; break;
 			case 16: imm = ud.operand[1].lval.sword; break;
@@ -243,8 +244,8 @@ class GPRFlipEmulator : public Flipper
 		return MAX_REG;
 	}
  
- 	unsigned _target_reg;
- 	unsigned _target_bit;
+ 	l4_umword_t _target_reg;
+ 	l4_umword_t _target_bit;
 
 	public:
 		GPRFlipEmulator(L4vcpu::Vcpu *vcpu,
@@ -260,7 +261,7 @@ class GPRFlipEmulator : public Flipper
 					<< ") BIT: " << _target_bit;
 		}
 
-		void flip_reg(unsigned reg, unsigned bit)
+		void flip_reg(l4_umword_t reg, l4_umword_t bit)
 		{
         #define FLIP(pos) \
 			case pos: _vcpu->r()->pos ^= (1 << bit); break;
@@ -274,9 +275,9 @@ class GPRFlipEmulator : public Flipper
 
 		virtual bool flip()
 		{
-			unsigned reg = (_target_reg == MAX_REG) ?
+			l4_umword_t reg = (_target_reg == MAX_REG) ?
 				random() % MAX_REG : _target_reg;
-			unsigned bit = (_target_bit == -1) ?
+			l4_umword_t bit = (_target_bit == -1) ?
 				random() % 32 : _target_bit;
 
 			MSG() << "selected (register, bit): (" << reg_to_str((targetRegs)reg)
@@ -312,7 +313,7 @@ public:
 
 	virtual bool flip()
 		{
-			unsigned len = ilen();
+			l4_umword_t len = ilen();
 			len *= 8; // bits
 
 			_flip_bit  = random() % len;
@@ -337,14 +338,14 @@ public:
 			l4_addr_t bit   = _flip_bit;
 			MSG() << std::hex << "-1- addr: " << start;
 			MSG() << std::hex << "-2- bit:  " << bit;
-			unsigned byte = bit >> 3;
+			l4_umword_t byte = bit >> 3;
 
 			start += byte;
 			bit &= 0x7;
 
 			MSG() << std::hex << "-3- flip byte: " << start;
 			MSG() << std::hex << "-4- flip bit: " << bit;
-			*(unsigned char*)start ^= (1 << bit);
+			*(l4_uint8_t*)start ^= (1 << bit);
 		}
 };
 
@@ -373,7 +374,7 @@ class ALUFlipEmulator : public Flipper,
 	ALUError      _mode;   // the selected ALU error mode
 	ud_operand_t  _target; // flip output: determined target
 
-	bool mnemonic_supported(unsigned mnemonic)
+	bool mnemonic_supported(l4_umword_t mnemonic)
 	{
 		switch(mnemonic) {
 			case UD_Iinc: case UD_Idec: case UD_Iadd: case UD_Isub:
@@ -394,7 +395,7 @@ class ALUFlipEmulator : public Flipper,
 		_mode = e_flip_instr; //(ALUError)(random() % 3);
 
 		if (!mnemonic_supported(_ud.mnemonic)) {
-			ERROR() << "Mnemonic " << _ud.mnemonic << " not yet supported.";
+			ERROR() << "Mnemonic " << _ud.mnemonic << " not yet supported.\n";
 			enter_kdebug("mnemonic");
 		}
 	}
@@ -421,7 +422,7 @@ class ALUFlipEmulator : public Flipper,
 	 */
 	virtual void revert()
 	{
-		unsigned bit = random() % 32;
+		l4_umword_t bit = random() % 32;
 
 		if (_mode == e_flip_output) {
 			MSG() << "flipping " << bit;
@@ -442,7 +443,7 @@ class ALUFlipEmulator : public Flipper,
 				case UD_R_EDI:
 					_vcpu->r()->di ^= (1 << bit); break;
 				default:
-					ERROR() << "unhandled flip reg: " << _target.base;
+					ERROR() << "unhandled flip reg: " << _target.base << "\n";
 					enter_kdebug();
 			}
 		}
@@ -459,7 +460,7 @@ class ALUFlipEmulator : public Flipper,
 	
 	void flip_instruction()
 	{
-		int r;
+		l4_mword_t r;
 		AsmJit::Assembler as;
 
 		if (_ud.operand[1].type == UD_NONE) { // single operand
@@ -494,7 +495,7 @@ class ALUFlipEmulator : public Flipper,
 	{
 		ud_operand_t o, p;
 		AsmJit::Assembler as;
-		unsigned bit = random() % 32;
+		l4_umword_t bit = random() % 32;
 
 		/*
 		 * Step 1: Determine operand.
@@ -502,7 +503,7 @@ class ALUFlipEmulator : public Flipper,
 		if (_ud.operand[1].type == UD_NONE) { // single operand
 			o     = _ud.operand[0];
 		} else {
-			int i = random() % 2;
+			l4_mword_t i = random() % 2;
 			o     = _ud.operand[i];
 			p     = _ud.operand[1-i]; // the other reg
 		}
@@ -525,7 +526,7 @@ class ALUFlipEmulator : public Flipper,
 				default: scratch = AsmJit::eax; break;
 			}
 
-			unsigned value = o.lval.udword;
+			l4_umword_t value = o.lval.udword;
 			as.push(scratch);       // push scratch to stack
 			as.mov(scratch, value); // mov to scratch register
 			                        // now calculate
@@ -588,12 +589,12 @@ class ALUFlipEmulator : public Flipper,
 class RATFlipEmulator : public Flipper
 {
 	ud_type  which;   // which operand is flipped
-	unsigned scratch; // temp storage
-	unsigned target;  // which target reg to use
+	l4_umword_t scratch; // temp storage
+	l4_umword_t target;  // which target reg to use
 
 	l4_umword_t randomize()
 	{
-		unsigned x = random() % 10;
+		l4_umword_t x = random() % 10;
 		if (x == 1) { // 10% chose real register
 			x = random() % 8 + 1;
 			switch(x) {
@@ -620,14 +621,14 @@ class RATFlipEmulator : public Flipper
 		: Flipper(vcpu, am, inst),
 	      which(UD_NONE), scratch(0), target(0)
 	{
-		unsigned opcount     = 0;
-		unsigned operands[4] = { ~0U, ~0U, ~0U, ~0U };
+		l4_umword_t opcount     = 0;
+		l4_umword_t operands[4] = { ~0U, ~0U, ~0U, ~0U };
 		enum { 
 			RAT_IDX_MASK   = 0x0FF,
 			RAT_IDX_OFFSET = 0x100
 		};
 
-		for (unsigned i = 0; i < UD_MAX_OPERANDS; ++i) {
+		for (l4_umword_t i = 0; i < UD_MAX_OPERANDS; ++i) {
 			/*
 			 * Case 1: operand is a register
 			 */
@@ -651,7 +652,7 @@ class RATFlipEmulator : public Flipper
 			}
 		}
 
-		unsigned rnd = opcount ? random() % opcount : 0;
+		l4_umword_t rnd = opcount ? random() % opcount : 0;
 		
 		if (operands[rnd] > RAT_IDX_OFFSET) {
 			which = _ud.operand[operands[rnd] - RAT_IDX_OFFSET].index;
@@ -710,7 +711,7 @@ class MemFlipEmulator : public Flipper,
 
 	virtual bool flip()
 	{
-		unsigned i = 0;
+		l4_umword_t i = 0;
 		for ( ; i < UD_MAX_OPERANDS; ++i) {
 			if (_ud.operand[i].type == UD_OP_MEM)
 				break;
@@ -719,15 +720,15 @@ class MemFlipEmulator : public Flipper,
 		MSG() << "Mem operand is #" << i;
 		MSG() << "     base " << std::setw(2) << _ud.operand[i].base;
 		MSG() << "    index " << std::setw(2) << _ud.operand[i].index;
-		MSG() << "    scale " << std::setw(2) << (int)_ud.operand[i].scale;
-		MSG() << "     offs " << std::setw(2) << (int)_ud.operand[i].offset;
-		MSG() << "     lval " << std::setw(8) << std::hex << (int)_ud.operand[i].lval.sdword;
+		MSG() << "    scale " << std::setw(2) << (l4_mword_t)_ud.operand[i].scale;
+		MSG() << "     offs " << std::setw(2) << (l4_mword_t)_ud.operand[i].offset;
+		MSG() << "     lval " << std::setw(8) << std::hex << (l4_mword_t)_ud.operand[i].lval.sdword;
 
 		l4_umword_t addr = 0;
 		if (_ud.operand[i].base != 0)
 			addr += register_to_value(_ud.operand[i].base);
 		if (_ud.operand[i].index != 0)
-			addr += (register_to_value(_ud.operand[i].index) << (unsigned)_ud.operand[i].scale);
+			addr += (register_to_value(_ud.operand[i].index) << (l4_umword_t)_ud.operand[i].scale);
 		switch(_ud.operand[i].offset) {
 			case 0:  break;
 			case 8:  addr += _ud.operand[i].lval.sbyte; break;
@@ -737,7 +738,7 @@ class MemFlipEmulator : public Flipper,
 		}
 
 		MSG() << "target addr: " << std::hex << addr << " ("
-		      << *(unsigned*)_translator->translate(addr) << ")";
+		      << *(l4_umword_t*)_translator->translate(addr) << ")";
 
 		AsmJit::Assembler as;
 		ud_operand_t &udreg = _ud.operand[0];
@@ -804,7 +805,7 @@ class SWIFIPriv : public Romain::SWIFIObserver
 
 	Flipper    * _flipper;
 
-	unsigned     _alu_mode;   // 0 - flip instr, 1 - flip input, 2 - flip output
+	l4_umword_t     _alu_mode;   // 0 - flip instr, 1 - flip input, 2 - flip output
 
 	void flipper_trap1(Romain::App_thread* t);
 	void flipper_trap3(Romain::App_thread* t, bool want_stepping = true);
@@ -819,7 +820,7 @@ class SWIFIPriv : public Romain::SWIFIObserver
 		}
 	}
 
-	unsigned decode_insn(l4_addr_t local, l4_addr_t remote, ud_t *ud);
+	l4_umword_t decode_insn(l4_addr_t local, l4_addr_t remote, ud_t *ud);
 
 	public:
 		SWIFIPriv();

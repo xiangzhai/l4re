@@ -47,7 +47,7 @@ startup_system2()
   // Initialize cpu-local data management and run constructors for CPU 0
   Per_cpu_data::init_ctors();
   Per_cpu_data_alloc::alloc(Cpu_number::boot_cpu());
-  Per_cpu_data::run_ctors(Cpu_number::boot_cpu(), false);
+  Per_cpu_data::run_ctors(Cpu_number::boot_cpu());
 
   Mem_space::init_page_sizes();
   Kmem::init_mmu(*Cpu::boot_cpu());

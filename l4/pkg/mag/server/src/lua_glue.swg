@@ -41,17 +41,42 @@
 
 
 %{
+#include <l4/mag/server/plugin>
 #include <l4/mag/server/hid_report>
 #include <l4/mag/server/valuator>
 #include <l4/mag/server/user_state>
 #include <l4/mag/server/input_source>
+#include <l4/mag/server/session>
 #include "axis_buf.h"
 
 namespace Mag_server {
 extern Mag_server::User_state *user_state;
+extern Core_api *core_api;
 }
 
 int luaopen_Mag(lua_State*);
+
+static int lua_session_iterator(lua_State *L)
+{
+  using Mag_server::Session;
+
+  int b = lua_upvalueindex(1);
+  int e = lua_upvalueindex(2);
+  Session *bs, *es;
+  if (!lua_isuserdata(L, b) || !lua_isuserdata(L, e)
+      || SWIG_ConvertPtr(L, b, (void**)&bs, SWIGTYPE_p_Mag_server__Session, 0) == -1
+      || SWIG_ConvertPtr(L, e, (void**)&es, SWIGTYPE_p_Mag_server__Session, 0) == -1)
+    return 0;
+
+  if (bs == es)
+    return 0;
+
+  lua_pushvalue(L, b);
+  bs = static_cast<Session*>(cxx::D_list_item_policy::next(bs));
+  SWIG_NewPointerObj(L, bs, SWIGTYPE_p_Mag_server__Session, 0);
+  lua_replace(L, b);
+  return 1;
+}
 
 %}
 
@@ -72,8 +97,27 @@ int luaopen_Mag(lua_State*);
 #define L4_EXPORT
 #define L4_KOBJECT(x)
 
+%nodefaultctor;
+%nodefaultdtor;
+
+%ignore Mag_server::Session::Property_handler;
+%ignore cxx::String;
+%ignore Mag_server::Session_list;
+%ignore cxx::D_list<Mag_server::Session>;
+%ignore Mag_server::Session::set_label_prop;
+%ignore Mag_server::Session::set_color_prop;
+%ignore Mag_server::Session::color;
+%ignore Mag_server::Session::set_notifier;
+%ignore Mag_server::Session::background;
+
+%include <server/session>
+
+%clearnodefaultctor;
+%clearnodefaultdtor;
+
 %include <server/mode>
 %include <server/valuator>
+
 %apply unsigned *OUTPUT { unsigned *bus, unsigned *vendor, unsigned *product, unsigned *version };
 %include <l4re/include/event>
 %clear unsigned *bus, unsigned *vendor, unsigned *product, unsigned *version;
@@ -287,6 +331,28 @@ public:
   }
   %typemap(in) l4_umword_t id = ORIG_l4_umword_t;
 };
+
+namespace Mag_server {
+%typemap(out) Session_list * {
+    SWIG_NewPointerObj(L, *($1->begin()), SWIGTYPE_p_Mag_server__Session, 0);
+    SWIG_NewPointerObj(L, *($1->end()), SWIGTYPE_p_Mag_server__Session, 0);
+    lua_pushcclosure(L, &lua_session_iterator, 2);
+    return 1;
+}
+
+%nodefaultctor Core_api;
+%nodefaultdtor Core_api;
+class Core_api
+{
+public:
+  Session_list *sessions() const;
+};
+
+%immutable;
+extern Core_api *core_api;
+%mutable;
+
+}
 %clearnodefaultctor;
 
 %extend L4Re::Event_stream_info
@@ -307,5 +373,4 @@ static Mag_server::User_state *get_user_state()
   return Mag_server::user_state;
 }
 %}
-
 

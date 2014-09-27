@@ -22,10 +22,6 @@ REQUIRES_LIBS += $(STATIC_PLUGINS)
 #LDFLAGS += --export-dynamic
 
 CPPFLAGS += -fvisibility=hidden
-ifneq ($(SRC_DIR),)
-all:: $(SRC_DIR)/lua_glue.swg.h
-
-endif
 
 include $(L4DIR)/mk/prog.mk
 
@@ -42,24 +38,31 @@ include $(L4DIR)/mk/prog.mk
 #	  sed '1s/^/char $(symbol_name)_start[] __attribute__((aligned (4))) = {/;$$s/,$$/};/;$$a\' |\
 #	    $(CC) -x c -o $@ -c -
 
+# regenerate shipped files
+ifneq ($(REGEN_FILES),)
+all:: $(SRC_DIR)/lua_glue.swg.h $(SRC_DIR)/lua_glue.swg.cc
+
+SWIG_RM_EXT_C ?= $(L4DIR)/tool/bin/swig-rm-extern-c.pl
+SWIG          ?= swig
+
 %.swg:
 
 $(SRC_DIR)/%.swg.cc: $(SRC_DIR)/%.swg.c_cc $(SRC_DIR)/Makefile
 	@$(GEN_MESSAGE)
-	$(VERBOSE)$(PKGDIR)/swig/rm-extern-c.pl $< >$@
+	$(VERBOSE)$(SWIG_RM_EXT_C) $< >$@
 
 $(SRC_DIR)/%.swg.h: $(SRC_DIR)/%.swg.c_h
 	@$(GEN_MESSAGE)
-	$(VERBOSE)$(PKGDIR)/swig/rm-extern-c.pl $< >$@
+	$(VERBOSE)$(SWIG_RM_EXT_C) $< >$@
 
 SWIG_INCDIR:=-I$(SRC_DIR) -I$(SRC_DIR)/../../include -I$(L4DIR)/pkg
 
 $(SRC_DIR)/%.swg.c_cc: $(SRC_DIR)/%.swg $(SRC_DIR)/Makefile
 	@$(GEN_MESSAGE)
-	$(VERBOSE)swig $(SWIG_INCDIR) -c++ -lua -small -o $@ $<
+	$(VERBOSE)$(SWIG) $(SWIG_INCDIR) -c++ -small -lua -o $@ $<
 
 $(SRC_DIR)/%.swg.c_h:
-	pwd
 	@$(GEN_MESSAGE)
-	$(VERBOSE)swig $(SWIG_INCDIR) -c++ -lua -small -external-runtime $@
+	$(VERBOSE)$(SWIG) $(SWIG_INCDIR) -c++ -small -lua -external-runtime $@
 
+endif

@@ -2,27 +2,39 @@
 -- exported functions used by the mag logic
 -------------------------------------------------
 
+
 Mag.user_state = Mag.get_user_state();
 
 -- handle an incoming event
 function handle_event(ev)
   -- 1: type, 2: code, 3: value, 4: time, 5: device_id, 6: source
+  local l4re_syn_stream_cfg = (ev[1] == 0 and ev[2] == 0x80);
+  local l4re_close_stream = l4re_syn_stream_cfg and ev[3] == 1;
   local source = ev[6];
   local stream = ev[5];
   local ddh = Mag.sources[source];
   if not ddh then
+    if (l4re_close_stream) then
+      return
+    end
     Mag.sources[source] = {};
     ddh =  Mag.sources[source];
   end
 
   local dh = ddh[stream];
   if not dh then
+    if l4re_close_stream then
+      return
+    end
     dh = Mag.create_input_device(source, stream);
   end
 
   -- print ("EV: ", ev[1], ev[2], ev[3], ev[4], ev[5], ev[6]);
   -- print(string.format("src=[%s:%s]: type=%x code=%x val=%x (time=%d)", tostring(ev[6]), tostring(ev[5]), ev[1], ev[2], ev[3], ev[4]));
-  return dh:process_event(ev);
+  dh:process_event(ev);
+  if l4re_close_stream then
+    dh:delete();
+  end
 end
 
 -- mag requests infos about a specific input event stream
@@ -50,7 +62,20 @@ end
 -------------------------------------------------
 -- The internals of our event handling module
 -------------------------------------------------
-module("Mag", package.seeall)
+Mag.Mag = Mag;
+Mag._G = _G;
+local globals = _G;
+local Mag_mt = getmetatable(Mag);
+local orig_Mag_index = Mag_mt.__index;
+local function Mag_index(table, key)
+  local o = orig_Mag_index(table, key);
+  if (not o) then
+    o = globals[key];
+  end
+  return o;
+end
+Mag_mt.__index = Mag_index;
+setfenv(1, Mag);
 
 -- mag will initialize the variable 'user_state' to refer to
 -- mag's user state object.
@@ -613,6 +638,11 @@ function Input_device:process_event(ev)
     r:sync(ev[4]);
     self:process(r);
     r:clear();
+  elseif t == 0 and c == 0x80 then -- l4re syn cfg
+    r:clear();
+    for s in Mag.core_api:sessions() do
+      s:put_event(self.global_id, t, c, ev[3], ev[4]);
+    end
   end
 end
 
@@ -1213,6 +1243,15 @@ function Input_device:find_device_type()
       end
     end
   end
+end
+
+function Input_device:delete()
+  streams[self.global_id] = nil;
+  sources[self.source][self.stream] = nil;
+  print (string.format([==[Input: remove device (src='%s' stream='%s')]==],
+                       tostring(self.source), tostring(self.stream)));
+  self = nil;
+  collectgarbage();
 end
 
 

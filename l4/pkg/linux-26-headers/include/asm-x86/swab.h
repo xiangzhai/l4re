@@ -4,14 +4,14 @@
 #include <linux/types.h>
 
 
-static __inline__ __u32 __arch_swab32(__u32 val)
+static __inline__  __u32 __arch_swab32(__u32 val)
 {
 	__asm__("bswapl %0" : "=r" (val) : "0" (val));
 	return val;
 }
 #define __arch_swab32 __arch_swab32
 
-static __inline__ __u64 __arch_swab64(__u64 val)
+static __inline__  __u64 __arch_swab64(__u64 val)
 {
 #ifdef __i386__
 	union {

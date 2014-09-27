@@ -499,6 +499,7 @@ get_dirty_limits(unsigned long *pbackground, unsigned long *pdirty,
  */
 static void balance_dirty_pages(struct address_space *mapping)
 {
+#ifndef DDE_LINUX
 	long nr_reclaimable, bdi_nr_reclaimable;
 	long nr_writeback, bdi_nr_writeback;
 	unsigned long background_thresh;
@@ -602,6 +603,9 @@ static void balance_dirty_pages(struct address_space *mapping)
 					  + global_page_state(NR_UNSTABLE_NFS)
 					  > background_thresh)))
 		pdflush_operation(background_writeout, 0);
+#else  /* DDE_LINUX */
+        WARN_UNIMPL;
+#endif  /* !DDE_LINUX */
 }
 
 void set_page_dirty_balance(struct page *page, int page_mkwrite)
@@ -945,6 +949,7 @@ int write_cache_pages(struct address_space *mapping,
 		      struct writeback_control *wbc, writepage_t writepage,
 		      void *data)
 {
+#ifndef DDE_LINUX
 	struct backing_dev_info *bdi = mapping->backing_dev_info;
 	int ret = 0;
 	int done = 0;
@@ -1109,6 +1114,10 @@ continue_unlock:
 	}
 
 	return ret;
+#else  /* DDE_LINUX */
+        WARN_UNIMPL;
+        return 0;
+#endif  /* !DDE_LINUX */
 }
 EXPORT_SYMBOL(write_cache_pages);
 
@@ -1271,6 +1280,7 @@ int redirty_page_for_writepage(struct writeback_control *wbc, struct page *page)
 	return __set_page_dirty_nobuffers(page);
 }
 EXPORT_SYMBOL(redirty_page_for_writepage);
+#endif  /* !DDE_LINUX */
 
 /*
  * If the mapping doesn't provide a set_page_dirty a_op, then
@@ -1278,6 +1288,7 @@ EXPORT_SYMBOL(redirty_page_for_writepage);
  */
 int set_page_dirty(struct page *page)
 {
+#ifndef DDE_LINUX
 	struct address_space *mapping = page_mapping(page);
 
 	if (likely(mapping)) {
@@ -1292,10 +1303,14 @@ int set_page_dirty(struct page *page)
 		if (!TestSetPageDirty(page))
 			return 1;
 	}
+#else  /* DDE_LINUX */
+        WARN_UNIMPL;
+#endif  /* !DDE_LINUX */
 	return 0;
 }
 EXPORT_SYMBOL(set_page_dirty);
 
+#ifndef DDE_LINUX
 /*
  * set_page_dirty() is racy if the caller has no reference against
  * page->mapping->host, and if the page is unlocked.  This is because another
@@ -1316,7 +1331,7 @@ int set_page_dirty_lock(struct page *page)
 	return ret;
 }
 EXPORT_SYMBOL(set_page_dirty_lock);
-#endif
+#endif  /* !DDE_LINUX */
 
 /*
  * Clear a page's dirty flag, while caring for dirty memory accounting.

@@ -1,6 +1,6 @@
 PKGDIR	?= ..
 L4DIR	?= $(PKGDIR)/../..
 
-TARGET = $(wildcard [a-z]*)
+TARGET = libpthread_romain libuu libevbuf_c
 
 include $(L4DIR)/mk/subdir.mk

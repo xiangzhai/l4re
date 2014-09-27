@@ -12,6 +12,15 @@
 #include <cassert>
 #include <set>
 
+std::string
+Generic_device::get_full_path() const
+{
+  if (!parent())
+    return std::string("/") + name();
+
+  return parent()->get_full_path() + "/" + name();
+}
+
 
 bool
 Generic_device::alloc_child_resource(Resource *r, Device *cld)
@@ -115,7 +124,7 @@ Device::request_child_resources()
 }
 
 
-// sortet set of resource, device pairs
+// sorted set of (resource, device) pairs
 namespace {
 
 struct Res_dev
@@ -159,10 +168,13 @@ Device::allocate_pending_resources()
 
       if (p->resource_allocated(*r))
 	continue;
-#if 0
-      printf("unallocated resource: ");
-      r->dump();
-#endif
+
+      if (0)
+        {
+          printf("unallocated resource: %s ", typeid(**r).name());
+          (*r)->dump(0);
+        }
+
       to_allocate.insert(Res_dev(*r, this));
     }
 
@@ -193,10 +205,13 @@ Device::allocate_pending_child_resources()
 
 	  if (resource_allocated(*r))
 	    continue;
-#if 0
-	  printf("unallocated resource: ");
-	  r->dump();
-#endif
+
+          if (0)
+            {
+              printf("unallocated resource: %s ", typeid(**r).name());
+              (*r)->dump();
+            }
+
 	  to_allocate.insert(Res_dev(*r, *dev));
 	}
     }

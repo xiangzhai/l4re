@@ -2,8 +2,6 @@
 #ifndef __L4RE_HELPER_H
 #define __L4RE_HELPER_H
 
-#include <l4/util/macros.h>
-
 #include "pub_core_debuglog.h"
 #include "pub_tool_libcprint.h"
 #include "pub_tool_aspacemgr.h"

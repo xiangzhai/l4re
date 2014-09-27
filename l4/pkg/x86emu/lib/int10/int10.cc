@@ -27,18 +27,55 @@
 #include <l4/re/namespace>
 #include <l4/re/dataspace>
 #include <l4/util/mb_info.h>
-#include <l4/util/macros.h>
 #include <l4/sys/err.h>
 #include <l4/io/io.h>
 #include <l4/vbus/vbus.h>
 #include <l4/vbus/vbus_types.h>
 #include <l4/vbus/vbus_pci.h>
+#include <l4/cxx/hlist>
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 
 #include <l4/x86emu/int10.h>
+
+#include <l4/libedid/edid.h>
+
+namespace {
+struct ioport_res : public cxx::H_list_item
+{
+  ioport_res(l4_uint16_t start, l4_uint16_t end)
+  : start(start), end(end)
+  {
+    _list.push_front(this);
+  }
+
+  unsigned short start, end;
+  bool warned;
+  typedef cxx::H_list_bss<ioport_res> List;
+  static List _list;
+
+  static bool port_is_avail(unsigned port, unsigned size);
+};
+
+ioport_res::List ioport_res::_list;
+
+bool
+ioport_res::port_is_avail(unsigned port, unsigned size)
+{
+  for (List::Const_iterator i = _list.begin(); i != _list.end(); ++i)
+    if (i->start <= port && port + size - 1 <= i->end)
+      return true;
+  return false;
+}
+}
+
+static void
+port_request_cb(l4vbus_resource_t const *r)
+{
+  new ioport_res(r->start, r->end);
+}
 
 enum {
   Dbg_io  = 0,
@@ -110,6 +147,15 @@ static int do_pcicfg(unsigned long addr, u32 *val32, int size, int out)
   return 1;
 }
 
+static void
+port_message(unsigned port, unsigned size, u32 value,
+             const char *insn_tag, const char *add_tag = "")
+{
+  static char const *const ws[4] =  { "b", "w", "X", "l" };
+  printf("%04x:%04x %s%s %x -> %lx%s\n", M.x86.R_CS, M.x86.R_IP,
+         insn_tag, ws[size - 1], port, (unsigned long)value, add_tag);
+}
+
 template< typename W >
 static W X86API
 port_in(X86EMU_pioAddr addr)
@@ -117,6 +163,12 @@ port_in(X86EMU_pioAddr addr)
   u32 r;
   if (do_pcicfg(addr, &r, sizeof(W) * 8, 0))
     return r;
+
+  if (!ioport_res::port_is_avail(addr, sizeof(W)))
+    {
+      port_message(addr, sizeof(W), r, "in", " ignored");
+      return 0;
+    }
 
   switch (sizeof(W))
     {
@@ -127,12 +179,8 @@ port_in(X86EMU_pioAddr addr)
     }
 
   if (Dbg_io)
-    {
-      static char const *const ws[4] =  { "b", "w", "X", "l" };
-      printf("%04x:%04x in%s %x -> %lx\n", M.x86.R_CS, M.x86.R_IP,
-             ws[sizeof(W)-1], addr, (unsigned long)r);
-      //l4_sleep(10);
-    }
+    port_message(addr, sizeof(W), r, "in");
+
   return r;
 }
 
@@ -145,13 +193,15 @@ port_out(X86EMU_pioAddr addr, W val)
   if (do_pcicfg(addr, &r, sizeof(W) * 8, 1))
     return;
 
-  if (Dbg_io)
+  if (!ioport_res::port_is_avail(addr, sizeof(W)))
     {
-      static char const *const ws[4] =  { "b", "w", "X", "l" };
-      printf("%04x:%04x out%s %x -> %lx\n", M.x86.R_CS, M.x86.R_IP,
-             ws[sizeof(W)-1], addr, (unsigned long)r);
-      //l4_sleep(10);
+      port_message(addr, sizeof(W), r, "out", " ignored");
+      return;
     }
+
+  if (Dbg_io)
+    port_message(addr, sizeof(W), r, "out");
+
 
   switch (sizeof(W))
     {
@@ -229,7 +279,6 @@ enum Function
   VBE_ddc           = 0x4f15,
 };
 
-
 static int
 x86emu_int10_init(void)
 {
@@ -263,7 +312,7 @@ x86emu_int10_init(void)
   X86EMU_setupMemFuncs(&my_memFuncs);
   M.x86.debug = 0 /*| DEBUG_DECODE_F*/;
 
-  l4io_request_all_ioports();
+  l4io_request_all_ioports(port_request_cb);
 
   /* Reserve region for physical memory 0x00000...0xfffff. Make sure that we
    * can unmap it using one single l4_fpage_unmap (alignment). */
@@ -445,60 +494,23 @@ x86emu_int10_read_ddc(unsigned *xres, unsigned *yres)
       return -L4_EINVAL;
     }
 
-  const char *edid_ptr = (char *)(v_page[1] + 0x100);
+  const unsigned char *edid = (const unsigned char *)(v_page[1] + 0x100);
 
-  printf("EDID Version 0x%x, Revision 0x%x\n", edid_ptr[18], edid_ptr[19]);
-  printf("   %d extension blocks\n", edid_ptr[126]);
+  printf("EDID Version %u.%u\n", libedid_version(edid), libedid_revision(edid));
+  printf("   %u extension blocks\n", libedid_num_ext_blocks(edid));
 
   // dump EDID block (debugging)
-  for (int i = 0; i < 128; i += 4)
-    printf("[%03d] %02x %02x %02x %02x\n", i, edid_ptr[i] & 0xff, edid_ptr[i+1] & 0xff,
-           edid_ptr[i+2] & 0xff, edid_ptr[i+3] & 0xff);
+  if (1)
+    libedid_dump(edid);
 
-  // extract manufacturer ID, 2 bytes at offset 0x8
-  const char *m_id = edid_ptr + 0x8;
-  char id[4];
-  id[0] = ((m_id[0] & 0x7c) >> 2) + '@';
-  id[1] = (((m_id[0] & 0x2) << 3) | ((m_id[1] & 0xe0) >> 5)) + '@';
-  id[2] = (m_id[1] & 0x1f) + '@';
-  id[3] = 0;
-
+  // read manufacturer ID
+  unsigned char id[4];
+  libedid_pnp_id(edid, id);
   printf("PNP ID=%s\n", id);
 
-  // show standard timings
-  const char *st = edid_ptr + 0x26;
-  unsigned hpx = 0, vpx = 0;
-  while (st[0] != 0)
-    {
-      hpx = ((st[0] & 0xff) + 31) * 8;
-      switch (((st[1] & 0xC0) >> 6))
-        {
-      case 0: // 16:10
-        vpx = hpx * 10 / 16;
-        break;
-      case 1: // 4:3
-        vpx = hpx * 3 / 4;
-        break;
-      case 2: // 5:4
-        vpx = hpx * 4 / 5;
-        break;
-      case 3: // 16:9
-        vpx = hpx * 9 / 16;
-        break;
-        }
-      printf("%dx%d (AR=%d)\n", hpx, vpx, (st[1] & 0xc) >> 6);
-      st += 2;
-    }
+  libedid_prefered_resolution(edid, xres, yres);
 
-  // prefered display mode, at offset 0x36, 18 byte descriptor
-  const char *p_mode = edid_ptr + 0x36;
-  hpx = (p_mode[2] & 0xff) | ((p_mode[4] & 0xf0) << 4);
-  vpx = (p_mode[5] & 0xff) | ((p_mode[7] & 0xf0) << 4);
-
-  printf("Prefered mode: %dx%d\n", hpx, vpx);
-
-  *xres = hpx;
-  *yres = vpx;
+  printf("Prefered mode: %ux%u\n", *xres, *yres);
 
   return 0;
 }
@@ -506,7 +518,7 @@ x86emu_int10_read_ddc(unsigned *xres, unsigned *yres)
 static
 bool is_better_than(l4util_mb_vbe_mode_t *best, l4util_mb_vbe_mode_t *mode)
 {
-  if (!best)
+  if (best->x_resolution == 0)
     return true;
 
   // the bigger the better
@@ -523,8 +535,8 @@ bool is_better_than(l4util_mb_vbe_mode_t *best, l4util_mb_vbe_mode_t *mode)
 }
 
 int
-x86emu_int10_set_vbemode(int mode, l4util_mb_vbe_ctrl_t **ctrl_info,
-			 l4util_mb_vbe_mode_t **mode_info)
+x86emu_int10_set_vbemode(int mode, l4util_mb_vbe_ctrl_t *ctrl_info,
+			 l4util_mb_vbe_mode_t *mode_info)
 {
   int error;
 
@@ -542,14 +554,14 @@ x86emu_int10_set_vbemode(int mode, l4util_mb_vbe_ctrl_t **ctrl_info,
       return -L4_EINVAL;
     }
 
-  *ctrl_info = (l4util_mb_vbe_ctrl_t*)(v_page[1] + 0x100);
-  const char *oem_string = (const char *)far_to_addr((*ctrl_info)->oem_string);
+  *ctrl_info = *(l4util_mb_vbe_ctrl_t*)(v_page[1] + 0x100);
+  const char *oem_string = (const char *)far_to_addr(ctrl_info->oem_string);
   printf("Found VESA BIOS version %d.%d\n"
          "OEM %s\n",
-         (int)((*ctrl_info)->version >> 8),
-         (int)((*ctrl_info)->version &  0xFF),
-         (*ctrl_info)->oem_string ? oem_string : "[unknown]");
-  if ((*ctrl_info)->version < 0x0200)
+         (int)(ctrl_info->version >> 8),
+         (int)(ctrl_info->version &  0xFF),
+         ctrl_info->oem_string ? oem_string : "[unknown]");
+  if (ctrl_info->version < 0x0200)
     {
       printf("VESA BIOS 2.0 or later required.\n");
       return -L4_EINVAL;
@@ -564,12 +576,13 @@ x86emu_int10_set_vbemode(int mode, l4util_mb_vbe_ctrl_t **ctrl_info,
       unsigned pref_x = 0, pref_y = 0;
 
       printf("Scanning for 'best' possible mode:\n");
-      l4_uint16_t *mode_list = (l4_uint16_t *)far_to_addr((*ctrl_info)->video_mode);
+      l4_uint16_t *mode_list = (l4_uint16_t *)far_to_addr(ctrl_info->video_mode);
 
       if ((res = x86emu_int10_read_ddc(&pref_x, &pref_y)) < 0)
         printf("EDID not available (%d), finding best possible mode ...\n", res);
 
-      l4util_mb_vbe_mode_t *best_mode = 0;
+      l4util_mb_vbe_mode_t best_mode;
+      best_mode.x_resolution = 0;
 
       for (; *mode_list != 0xffff; ++mode_list)
         {
@@ -582,9 +595,9 @@ x86emu_int10_set_vbemode(int mode, l4util_mb_vbe_ctrl_t **ctrl_info,
           if (pref_x > 0)
             {
               if (   m->x_resolution <= pref_x && m->y_resolution <= pref_y
-                  && is_better_than(best_mode, m))
+                  && is_better_than(&best_mode, m))
                 {
-                  best_mode = m;
+                  best_mode = *m;
                   mode = *mode_list;
                 }
             }
@@ -592,7 +605,7 @@ x86emu_int10_set_vbemode(int mode, l4util_mb_vbe_ctrl_t **ctrl_info,
             {
               max_val = m->x_resolution;
               mode = *mode_list;
-              best_mode = m;
+              best_mode = *m;
             }
         }
       if (mode == ~0)
@@ -605,15 +618,20 @@ x86emu_int10_set_vbemode(int mode, l4util_mb_vbe_ctrl_t **ctrl_info,
       printf("To force a specific setting use a '-m <mode>' option.\n");
       *mode_info = best_mode;
     }
-  else if (!(*mode_info = get_mode_info(mode)))
+  else
     {
-      printf("Mode %x not supported\n", mode);
-      printf("List of supported graphics modes:\n");
-      l4_uint16_t *mode_list = (l4_uint16_t *)far_to_addr((*ctrl_info)->video_mode);
-      for (; *mode_list != 0xffff; ++mode_list)
-        dump_mode(*mode_list, get_mode_info(*mode_list));
+      l4util_mb_vbe_mode_t *mi = get_mode_info(mode);
+      if (!mi)
+        {
+          printf("Mode %x not supported\n", mode);
+          printf("List of supported graphics modes:\n");
+          l4_uint16_t *mode_list = (l4_uint16_t *)far_to_addr(ctrl_info->video_mode);
+          for (; *mode_list != 0xffff; ++mode_list)
+            dump_mode(*mode_list, get_mode_info(*mode_list));
 
-      return -L4_EINVAL;
+          return -L4_EINVAL;
+        }
+      *mode_info = *mi;
     }
 
   /* Switch mode. */

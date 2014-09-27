@@ -15,25 +15,9 @@ CONFIG_FILE	:= $(TEMPLDIR)/globalconfig.out
 TEST_TEMPLATES	:= $(patsubst $(CONFIG_FILE).%,%,$(wildcard $(CONFIG_FILE).*))
 TEST_TEMPLATES  := $(if $(TEMPLATE_FILTER),$(filter $(TEMPLATE_FILTER),$(TEST_TEMPLATES)),$(TEST_TEMPLATES))
 DFL_TEMPLATE	:= ia32-1
-PL		?= 1
 
-getdir 		= $(shell						\
-		    bd="$(1)";						\
-		    if [ "$${bd\#/}" = "$$bd" -a			\
-		         "$${bd\#*..}" = "$$bd" ]; then			\
-		      relp="..";					\
-		      while [ "$${bd\#*/}" != "$$bd" ]; do		\
-		        relp="$$relp/..";				\
-			bd="$${bd\#*/}";				\
-		      done;						\
-		      echo "$$relp";					\
-		    else						\
-		      pwd;						\
-		    fi							\
-		  )
-
-buildmakefile = mkdir -p "$(1)";                                         \
-		perl -p -i -e '$$s = "$(CURDIR)/src"; s/\@SRCDIR\@/$$s/' \
+buildmakefile = mkdir -p "$(1)";                                        \
+		perl -p -e '$$s = "$(CURDIR)/src"; s/\@SRCDIR\@/$$s/'   \
 			< $(MAKEFILETEMPL) > $(1)/Makefile
 
 ifneq ($(strip $(B)),)
@@ -76,11 +60,12 @@ this:
 	rm -rf $$bdir;						      \
 	$(call buildmakefile,T-$(DFLBUILDDIR)-$(T));		      \
 	cp $(TEMPLDIR)/globalconfig.out.$(T) $$bdir/globalconfig.out; \
+	$(MAKE) -C $$bdir olddefconfig;                               \
 	$(MAKE) -C $$bdir
 endif
 
 $(DFLBUILDDIR): fiasco.builddir.create
-	$(MAKE) -C $@ -j$(PL)
+	$(MAKE) -C $@
 
 all:	fiasco man
 
@@ -99,13 +84,14 @@ fiasco.builddir.create:
 	[ -f $(DFLBUILDDIR)/globalconfig.out ] || {		 \
 		cp  $(TEMPLDIR)/globalconfig.out.$(DFL_TEMPLATE) \
 			$(DFLBUILDDIR)/globalconfig.out;	 \
+		$(MAKE) -C $(DFLBUILDDIR) olddefconfig;	         \
 	}
 
 config $(filter config %config,$(MAKECMDGOALS)): fiasco.builddir.create
 	$(MAKE) -C $(DFLBUILDDIR) $@
 
 fiasco: fiasco.builddir.create
-	$(MAKE) -C $(DFLBUILDDIR) -j$(PL)
+	$(MAKE) -C $(DFLBUILDDIR)
 
 checkallseq:
 	@error=0;						      \
@@ -115,7 +101,7 @@ checkallseq:
 		$(call buildmakefile,$(ALLBUILDDIR)/$$X);	      \
 		cp $(TEMPLDIR)/globalconfig.out.$$X		      \
 		   $(ALLBUILDDIR)/$$X/globalconfig.out;		      \
-		if $(MAKE) -C $(ALLBUILDDIR)/$$X -j$(PL); then	      \
+		if $(MAKE) -C $(ALLBUILDDIR)/$$X; then	              \
 			[ -z "$(KEEP_BUILD_DIRS)" ] &&		      \
 			   $(RM) -r $(ALLBUILDDIR)/$$X;		      \
 		else						      \
@@ -152,8 +138,9 @@ $(addprefix $(ALLBUILDDIR)/,$(TEST_TEMPLATES)):
 	$(call buildmakefile,$@)
 	cp $(TEMPLDIR)/globalconfig.out.$(patsubst $(ALLBUILDDIR)/%,%,$@)     \
 	   $@/globalconfig.out
-	$(MAKE) -C $@ 2>&1 | tee $@/build.log;                                \
-	if [ $${PIPESTATUS[0]} = 0 ];                                         \
+	$(MAKE) -C $@ olddefconfig 2>&1 | tee -a $@/build.log
+	$(MAKE) -C $@ 2>&1 | tee -a $@/build.log;                             \
+	if [ $${PIPESTATUS[0]} = 0 -o -e $@/buildcheck.ignore ];              \
 	then [ -z "$(KEEP_BUILD_DIRS)" ] && $(RM) -r $@;                      \
 	else echo $${PIPESTATUS[0]} > $@/build.failed; fi; true
 
@@ -243,6 +230,13 @@ randcheckstatloop:
 	  $(MAKE) --no-print-directory randcheckstat; \
 	  sleep 5; \
 	done
+
+remotemake:
+	@r=$(word 1,$(REMOTEOPTS)); h=$${r%:*}; p=$${r#*:};                           \
+	ssh $$h mkdir -p $$p;                                                         \
+	rsync -aP Makefile src tool $$r;                                              \
+	ssh $$h "cd $$p && make $(wordlist 2,$(words $(REMOTEOPTS)),$(REMOTEOPTS))";  \
+	echo "Returned from $$r."
 
 help:
 	@echo

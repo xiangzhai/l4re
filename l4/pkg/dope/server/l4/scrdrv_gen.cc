@@ -22,13 +22,13 @@
  */
 
 #include <l4/sys/kdebug.h>
-#include <l4/util/macros.h>
 #include <l4/sys/cache.h>
 #include <l4/re/c/util/video/goos_fb.h>
 #include <l4/util/util.h>
 
 #include <cstdio>
 #include <cstdlib>
+#include <pthread.h>
 
 #include "dopestd.h"
 #include "scrdrv.h"

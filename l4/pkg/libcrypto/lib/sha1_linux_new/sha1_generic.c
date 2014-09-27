@@ -32,8 +32,7 @@
 #include <string.h>
 
 #define __LIBCRYPTO_INTERNAL__
-#include <l4/crypto/sha1.h>
-//#include "crypto/internal/hash.h"
+#include "sha1.h"
 #include "cryptohash.h"
 
 #endif

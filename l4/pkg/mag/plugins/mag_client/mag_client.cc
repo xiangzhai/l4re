@@ -107,6 +107,8 @@ public:
   Mag_goos(Core_api const *core);
 
   void put_event(Hid_report *e, bool trigger);
+  void put_event(l4_umword_t stream, int type, int code, int value,
+                 l4_uint64_t time);
   int dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios);
 
   L4::Cap<void> rcv_cap() const { return _core->rcv_cap(); }
@@ -695,6 +697,20 @@ Mag_goos::put_event(Hid_report *e, bool _trigger)
 {
   if (post_hid_report(e, _events, Axis_xfrm_noop()) && _trigger)
     _ev_irq.trigger();
+}
+
+void
+Mag_goos::put_event(l4_umword_t stream, int type, int code, int value,
+                    l4_uint64_t time)
+{
+  L4Re::Event_buffer::Event e;
+  e.time = time;
+  e.payload.stream_id = stream;
+  e.payload.type = type;
+  e.payload.code = code;
+  e.payload.value = value;
+  _events.put(e);
+  _ev_irq.trigger();
 }
 
 

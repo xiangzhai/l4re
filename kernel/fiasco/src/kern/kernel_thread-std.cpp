@@ -82,10 +82,9 @@ Kernel_thread::init_workload()
   sigma0_thread->inc_ref();
   check (map(sigma0_thread, sigma0, sigma0, C_thread, 0));
 
-  Address sp = init_workload_s0_stack();
   check (sigma0_thread->control(Thread_ptr(Thread_ptr::Null), Thread_ptr(Thread_ptr::Null)) == 0);
   check (sigma0_thread->bind(sigma0, User<Utcb>::Ptr((Utcb*)Mem_layout::Utcb_addr)));
-  check (sigma0_thread->ex_regs(Kip::k()->sigma0_ip, sp));
+  check (sigma0_thread->ex_regs(Kip::k()->sigma0_ip, 0));
 
   //
   // create the boot task
@@ -111,7 +110,7 @@ Kernel_thread::init_workload()
 
   check (boot_thread->control(Thread_ptr(C_pager), Thread_ptr(Thread_ptr::Null)) == 0);
   check (boot_thread->bind(boot_task, User<Utcb>::Ptr((Utcb*)Mem_layout::Utcb_addr)));
-  check (boot_thread->ex_regs(Kip::k()->root_ip, Kip::k()->root_sp));
+  check (boot_thread->ex_regs(Kip::k()->root_ip, 0));
 
   Ipc_gate *s0_b_gate = Ipc_gate::create(Ram_quota::root, sigma0_thread, 4 << 4);
 
@@ -132,24 +131,4 @@ Kernel_thread::init_workload()
 
   boot_thread->activate();
 }
-
-IMPLEMENTATION [ia32,amd64]:
-
-PRIVATE inline
-Address
-Kernel_thread::init_workload_s0_stack()
-{
-  // push address of kernel info page to sigma0's stack
-  Address sp = Kip::k()->sigma0_sp - sizeof(Mword);
-  // assume we run in kdir 1:1 mapping
-  *reinterpret_cast<Address*>(sp) = Kmem::virt_to_phys(Kip::k());
-  return sp;
-}
-
-IMPLEMENTATION [ux,arm,ppc32,sparc]:
-
-PRIVATE inline
-Address
-Kernel_thread::init_workload_s0_stack()
-{ return Kip::k()->sigma0_sp; }
 

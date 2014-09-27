@@ -113,7 +113,7 @@ L4_CV int l4ankh_prepare_recv(l4_cap_idx_t owner) L4_NOTHROW
 
 L4_CV int l4ankh_recv_blocking(char *buffer, unsigned *size) L4_NOTHROW
 {
-	if (EXPECT_FALSE(!buffer || !size))
+	if (L4_UNLIKELY(!buffer || !size))
 		return -L4_EINVAL;
 
 	int err;
@@ -129,7 +129,7 @@ L4_CV int l4ankh_recv_blocking(char *buffer, unsigned *size) L4_NOTHROW
 
 L4_CV int l4ankh_recv_nonblocking(char *buffer, unsigned *size) L4_NOTHROW
 {
-	if (EXPECT_FALSE(!buffer || !size))
+	if (L4_UNLIKELY(!buffer || !size))
 		return -L4_EINVAL;
 
 	int err;

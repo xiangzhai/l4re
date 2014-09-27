@@ -1,6 +1,8 @@
 INTERFACE [vmx]:
 
 #include "per_cpu_data.h"
+#include "pm.h"
+
 #include <cassert>
 #include <cstdio>
 #include <cstring>
@@ -168,7 +170,7 @@ struct Vmx_user_info
 
 INTERFACE:
 
-class Vmx
+class Vmx : public Pm_object
 {
 public:
   enum Vmcs_fields
@@ -216,6 +218,7 @@ public:
 
     F_host_sysenter_cs   = 0x4c00,
 
+    F_guest_cr3          = 0x6802,
     F_sw_guest_cr2       = 0x683e,
 
 
@@ -480,12 +483,68 @@ Vmx::vmwrite(Mword field, T value)
     asm volatile("vmwrite %0, %1" : : "r" ((Unsigned64)value >> 32), "r" (field + 1));
 }
 
+PRIVATE
+bool
+Vmx::handle_bios_lock()
+{
+  enum
+  {
+    Feature_control_lock            = 1 << 0,
+    Feature_control_vmx_outside_SMX = 1 << 2,
+  };
+
+  Unsigned64 feature = Cpu::rdmsr(MSR_IA32_FEATURE_CONTROL);
+
+  if (feature & Feature_control_lock)
+    {
+      if (!(feature & Feature_control_vmx_outside_SMX))
+        return false;
+    }
+  else
+    Cpu::wrmsr(feature | Feature_control_vmx_outside_SMX | Feature_control_lock,
+               MSR_IA32_FEATURE_CONTROL);
+  return true;
+}
+
+PUBLIC
+void
+Vmx::pm_on_resume(Cpu_number)
+{
+  check (handle_bios_lock());
+
+  // enable vmx operation
+  asm volatile("vmxon %0" : :"m"(_vmxon_base_pa):);
+
+  Mword eflags;
+  // make kernel vmcs current
+  asm volatile("vmptrld %1 \n\t"
+	       "pushf      \n\t"
+	       "pop %0     \n\t" : "=r"(eflags) : "m"(_kernel_vmcs_pa):);
+
+  // FIXME: MUST NOT PANIC ON CPU HOTPLUG
+  if (eflags & 0x41)
+    panic("VMX: vmptrld: VMFailInvalid, vmcs pointer not valid\n");
+
+}
+
+PUBLIC
+void
+Vmx::pm_on_suspend(Cpu_number)
+{
+  Mword eflags;
+  asm volatile("vmclear %1 \n\t"
+	       "pushf      \n\t"
+	       "pop %0     \n\t" : "=r"(eflags) : "m"(_kernel_vmcs_pa):);
+  if (eflags & 0x41)
+    WARN("VMX: vmclear: vmcs pointer not valid\n");
+}
+
 PUBLIC
 Vmx::Vmx(Cpu_number cpu)
   : _vmx_enabled(false), _has_vpid(false)
 {
   Cpu &c = Cpu::cpus.cpu(cpu);
-  if (!c.vmx())
+  if (!c.online() || !c.vmx())
     {
       if (cpu == Cpu_number::boot_cpu())
         WARNX(Info, "VMX: Not supported\n");
@@ -493,31 +552,15 @@ Vmx::Vmx(Cpu_number cpu)
     }
 
   // check whether vmx is enabled by BIOS
-  Unsigned64 feature = 0;
-  feature = Cpu::rdmsr(MSR_IA32_FEATURE_CONTROL);
-
-  enum
-  {
-    Msr_ia32_feature_control_lock            = 1 << 0,
-    Msr_ia32_feature_control_vmx_inside_SMX  = 1 << 1,
-    Msr_ia32_feature_control_vmx_outside_SMX = 1 << 2,
-  };
-
-  if (feature & Msr_ia32_feature_control_lock)
+  if (!handle_bios_lock())
     {
-      if (!(feature & Msr_ia32_feature_control_vmx_outside_SMX))
-	{
-	  if (cpu == Cpu_number::boot_cpu())
-            WARNX(Info, "VMX: CPU has VMX support but it is disabled\n");
-	  return;
-	}
+      if (cpu == Cpu_number::boot_cpu())
+        WARNX(Info, "VMX: CPU has VMX support but it is disabled\n");
+      return;
     }
-  else
-    c.wrmsr(feature | Msr_ia32_feature_control_vmx_outside_SMX | Msr_ia32_feature_control_lock,
-            MSR_IA32_FEATURE_CONTROL);
 
   if (cpu == Cpu_number::boot_cpu())
-    WARNX(Info, "VMX: Enabled\n");
+    printf("VMX: enabled\n");
 
   info.init();
 
@@ -525,9 +568,9 @@ Vmx::Vmx(Cpu_number cpu)
   if (cpu == Cpu_number::boot_cpu())
     {
       if (info.procbased_ctls2.allowed(PRB2_enable_ept))
-        WARNX(Info, "VMX:  EPT supported\n");
+        printf("VMX: EPT supported\n");
       else
-        WARNX(Info, "VMX:  No EPT available\n");
+        printf("VMX: EPT not available\n");
     }
 
   // check for vpid support
@@ -576,7 +619,7 @@ Vmx::Vmx(Cpu_number cpu)
   _vmx_enabled = true;
 
   if (cpu == Cpu_number::boot_cpu())
-    WARNX(Info, "VMX: initialized\n");
+    printf("VMX: initialized\n");
 
   Mword eflags;
   asm volatile("vmclear %1 \n\t"
@@ -595,6 +638,8 @@ Vmx::Vmx(Cpu_number cpu)
   if (eflags & 0x41)
     panic("VMX: vmptrld: VMFailInvalid, vmcs pointer not valid\n");
 
+  Pm_object::register_pm(cpu);
+
   extern char entry_sys_fast_ipc_c[];
   extern char vm_vmx_exit_vec[];
 
@@ -602,6 +647,10 @@ Vmx::Vmx(Cpu_number cpu)
   vmwrite(F_host_cs_selector, GDT_CODE_KERNEL);
   vmwrite(F_host_ss_selector, GDT_DATA_KERNEL);
   vmwrite(F_host_ds_selector, GDT_DATA_KERNEL);
+
+  /* set FS and GS to unusable in the host state */
+  vmwrite(F_host_fs_selector, 0);
+  vmwrite(F_host_gs_selector, 0);
 
   Unsigned16 tr = c.get_tr();
   vmwrite(F_host_tr_selector, tr);

@@ -40,4 +40,3 @@ My_interface::get_shared_buffer(L4::Cap<L4Re::Dataspace> ds, L4::Cap<L4::Irq> ir
 
   return l4_error(s.call(cap()));
 }
-

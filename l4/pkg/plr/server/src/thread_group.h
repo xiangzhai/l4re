@@ -27,6 +27,10 @@ namespace Romain
 
 class RedundancyCallback;
 	
+#if WATCHDOG
+class Watchdog;
+#endif
+	
 struct Thread_group;
 
 /*
@@ -109,7 +113,7 @@ struct GateAgent
 	}
 
 
-	GateAgent(unsigned cap_idx, Romain::Thread_group *tg)
+	GateAgent(l4_umword_t cap_idx, Romain::Thread_group *tg)
 		: owner_group(tg), current_client(0)
 	{
 		DEBUG() << BOLD_RED << "GateAgent" << NOCOLOR;
@@ -118,7 +122,7 @@ struct GateAgent
 		/*
 		 * launch listener thread
 		 */
-		int err         = pthread_create(&listener, 0,
+		l4_mword_t err  = pthread_create(&listener, 0,
 		                                 listener_function, (void*)this);
 		_check(err != 0, "error creating listener thread");
 		l4_thread_yield();
@@ -172,7 +176,7 @@ struct GateAgent
  */
 struct Thread_group
 {
-	Thread_group(std::string n, unsigned cap_idx, unsigned u)
+	Thread_group(std::string n, l4_umword_t cap_idx, l4_umword_t u)
 		: threads(), name(n), uid(u), stopped(true)
 	{
 		DEBUG() << BOLD_RED << "Thread_group " << NOCOLOR << std::hex << cap_idx;
@@ -187,7 +191,7 @@ struct Thread_group
 
 	/* DBG: group name, unique ID */
 	std::string name;
-	unsigned uid;
+	l4_umword_t uid;
 
 	/* The group's gate agent. Docs, see there. */
 	GateAgent* gateagent;
@@ -214,6 +218,11 @@ struct Thread_group
 	void set_redundancy_callback(Romain::RedundancyCallback* cb)
 	{ redundancyCB = cb; }
 	
+#if WATCHDOG
+	Romain::Watchdog *watchdog;
+	void set_watchdog(Romain::Watchdog *w)
+	{ watchdog = w; }
+#endif
 
 	void add_replica(App_thread *a)
 	{
@@ -240,7 +249,7 @@ struct Thread_group
 	{
 		stopped = false;
 
-		for (unsigned i = 0; i < threads.size(); ++i) {
+		for (l4_umword_t i = 0; i < threads.size(); ++i) {
 			sem_post(&activation_sem);
 		}
 	}
@@ -256,7 +265,7 @@ struct Thread_group
 	}
 
 
-	Romain::App_thread* get(unsigned number)
+	Romain::App_thread* get(l4_umword_t number)
 	{
 		_check(number < threads.size(), "invalid thread instance requested");
 		return threads[number];
@@ -270,7 +279,7 @@ struct Thread_group
 	 * Check if thread_control() was called with parameters
 	 * we don't support yet.
 	 */
-	void sanity_check_control(unsigned flags, l4_utcb_t *utcb);
+	void sanity_check_control(l4_umword_t flags, l4_utcb_t *utcb);
 	void control(Romain::App_thread *t, l4_utcb_t *utcb, Romain::App_model* am);
 
 	void gdt(Romain::App_thread *t, l4_utcb_t *utcb);

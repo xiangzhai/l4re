@@ -15,9 +15,9 @@
 #ifndef __CRYPTO_CBC_H
 #define __CRYPTO_CBC_H
 
-#include <l4/sys/compiler.h>
+#include "private/misc.h"
 
-EXTERN_C_BEGIN
+CRYPTO_EXTERN_C_BEGIN
 
 #include "private/cipher.h"
 
@@ -34,7 +34,7 @@ void crypto_cbc_decrypt(crypto_cipher_decrypt_fn_t decrypt,
                         const char *in, char *out, const char *iv,
                         unsigned int len);
 
-EXTERN_C_END
+CRYPTO_EXTERN_C_END
 
 #endif /* __CRYPTO_CBC_H */
 

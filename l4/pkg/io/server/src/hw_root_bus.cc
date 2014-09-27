@@ -13,6 +13,8 @@
 #include "hw_root_bus.h"
 #include "phys_space.h"
 #include "resource.h"
+#include "pm.h"
+#include "server.h"
 
 namespace {
 
@@ -115,7 +117,7 @@ Root_mmio_rs::alloc(Resource *parent, Device *, Resource *child, Device *,
 namespace Hw {
 
 Root_bus::Root_bus(char const *name)
-: Hw::Device(), _name(name)
+: Hw::Device(), _name(name), _pm(0)
 {
   // add root resource for IRQs
   Root_resource *r = new Root_resource(Resource::Irq_res, new Root_irq_rs());
@@ -135,6 +137,26 @@ Root_bus::Root_bus(char const *name)
   // add root resource for IO ports
   r = new Root_resource(Resource::Io_res, new Root_io_rs());
   add_resource(r);
+}
+
+/**
+ * \pre supports_pm() must be true
+ */
+void
+Root_bus::suspend()
+{
+  int res;
+  if ((res = ::Pm::pm_suspend_all()) < 0)
+    {
+      d_printf(DBG_ERR, "error: pm_suspend_all_failed: %d\n", res);
+      ::Pm::pm_resume_all();
+      return;
+    }
+
+  _pm->suspend();
+
+  if ((res = ::Pm::pm_resume_all()) < 0)
+    d_printf(DBG_ERR, "error: pm_resume_all failed: %d\n", res);
 }
 
 }

@@ -23,14 +23,16 @@ class Event:
     THREAD_STOP_TYPE = 7
     LOCKING_TYPE = 8
     SHMLOCKING_TYPE = 9
-    BARNES_TYPE = 10
+    MAP_TYPE = 10
+    BARNES_TYPE = 11
 
     @staticmethod
     def eventname(event):
         """Get name for event type"""
         syscall_names = ["INV", "SYS", "PF",
                          "SWIFI", "FOO", "TRAP",
-                         "START", "STOP", "LOCK", "SHML"]
+                         "START", "STOP", "LOCK", "SHML",
+                         "MAP", "BARNES"]
         return syscall_names[event]
 
     def __init__(self, time=0, typ=0, utcb=0, uid=None):
@@ -91,7 +93,7 @@ class PagefaultEvent(Event):
         res = Event.__repr__(self)
         if (self.writepf):
             res += " w"
-        res += "r pf @ %08x -> %08x" % (self.local, self.remote)
+        res += "r pf @ %08x" % (self.pfa)
         return res
 
     def pretty(self):
@@ -100,7 +102,7 @@ class PagefaultEvent(Event):
             res += ["wr pf @ 0x%x" % self.pfa]
         else:
             res += ["r pf @ 0x%x" % self.pfa]
-        res += ["%x -> %x" % (self.local, self.remote)]
+        #res += ["%x -> %x" % (self.local, self.remote)]
         return res
 
 
@@ -164,14 +166,17 @@ class ThreadStartEvent(Event):
 
     def __init__(self, raw, time=0, utcb=0, uid=None):
         Event.__init__(self, time, Event.THREAD_START_TYPE, utcb, uid)
+        (self.EIP, ) = struct.unpack_from("L", raw[Event.HEADSIZE:])
 
     def __repr__(self):
         res = Event.__repr__(self)
         res += "Thread::Start"
+        res += str(hex(self.EIP))
         return res
 
     def pretty(self):
-        return ["Thread::Start"]
+        return ["\033[35mThread::Start\033[0m",
+               ("EIP 0x%lx" % self.EIP)]
 
 
 class ThreadStopEvent(Event):
@@ -240,6 +245,31 @@ class SHMLockingEvent(Event):
             return ["\033[34;1m==========\033[0m", st1, st2, st3]
         if self.evtype == 5:
             return [st1, st3, "\033[34m==========\033[0m"]
+
+        return [st1, st2]
+
+
+class MapEvent(Event):
+    """Memory map/unmap event"""
+    def __init__(self, raw, time=0, utcb=0, uid=None):
+        Event.__init__(self, time, Event.MAP_TYPE, utcb, uid)
+        (self.local, self.remote, self.size, self.unmap) = \
+            struct.unpack_from("IIIB", raw[Event.HEADSIZE:])
+
+    def __repr__(self):
+        res = Event.__repr__(self)
+        if (self.unmap != 0):
+            res += "un"
+        res += "map(%x,%x,%x)" % (self.local, self.remote, self.size)
+        return res
+
+    def pretty(self):
+        if (self.unmap == 0):
+            st1 = "map sz "
+        else: 
+            st1 = "unmap sz "
+        st1 += ("shift %x" % (self.size))
+        st2 = "%08x -> %08x" % (self.local, self.remote)
 
         return [st1, st2]
 

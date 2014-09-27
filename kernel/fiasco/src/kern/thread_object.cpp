@@ -246,8 +246,6 @@ Thread_object::sys_vcpu_resume(L4_msg_tag const &tag, Utcb *utcb)
 	  else
             sp = vcpu->_ts.sp();
 
-          arch_load_vcpu_kern_state(vcpu, true);
-
 	  LOG_TRACE("VCPU events", "vcpu", this, Vcpu_log,
 	      l->type = 4;
 	      l->state = vcpu->state;
@@ -274,7 +272,7 @@ Thread_object::sys_vcpu_resume(L4_msg_tag const &tag, Utcb *utcb)
       if (!(vcpu->state & Vcpu_state::F_fpu_enabled))
 	{
 	  state_add_dirty(Thread_vcpu_fpu_disabled);
-	  Fpu::disable();
+	  Fpu::fpu.current().disable();
 	}
       else
         state_del_dirty(Thread_vcpu_fpu_disabled);
@@ -372,7 +370,7 @@ PRIVATE inline NOEXPORT
 L4_msg_tag
 Thread_object::sys_control(L4_fpage::Rights rights, L4_msg_tag const &tag, Utcb *utcb)
 {
-  if (EXPECT_FALSE(!(rights & L4_fpage::Rights::W())))
+  if (EXPECT_FALSE(!(rights & L4_fpage::Rights::CS())))
     return commit_result(-L4_err::EPerm);
 
   if (EXPECT_FALSE(tag.words() < 6))
@@ -446,11 +444,12 @@ Thread_object::sys_control(L4_fpage::Rights rights, L4_msg_tag const &tag, Utcb 
 	del_state |= Thread_alien;
     }
 
-  if (del_state || add_state)
-    drq_state_change(~del_state, add_state);
-
   utcb->values[1] = _old_pager;
   utcb->values[2] = _old_exc_handler;
+
+  if (del_state || add_state)
+    if (xcpu_state_change(~del_state, add_state, true))
+      current()->switch_to_locked(this);
 
   return commit_result(0, 3);
 }
@@ -477,6 +476,8 @@ Thread_object::sys_vcpu_control(L4_fpage::Rights, L4_msg_tag const &tag,
       Mword size = sizeof(Vcpu_state);
       if (utcb->values[0] & 0x10000)
         {
+          if (!arch_ext_vcpu_enabled())
+            return commit_result(-L4_err::ENosys);
           size = Config::PAGE_SIZE;
           add_state |= Thread_ext_vcpu_enabled;
         }
@@ -505,7 +506,8 @@ Thread_object::sys_vcpu_control(L4_fpage::Rights, L4_msg_tag const &tag,
     }
   */
 
-  drq_state_change(~del_state, add_state);
+  if (xcpu_state_change(~del_state, add_state, true))
+    current()->switch_to_locked(this);
 
   return commit_result(0);
 }
@@ -565,7 +567,7 @@ Thread_object::ex_regs(Address ip, Address sp,
   return true;
 }
 
-PUBLIC inline
+PRIVATE inline NOEXPORT
 L4_msg_tag
 Thread_object::ex_regs(Utcb *utcb)
 {
@@ -610,7 +612,7 @@ Thread_object::sys_ex_regs(L4_msg_tag const &tag, Utcb *utcb)
   Remote_syscall params;
   params.thread = current_thread();
 
-  drq(handle_remote_ex_regs, &params, 0, Drq::Any_ctxt);
+  drq(handle_remote_ex_regs, &params, Drq::Any_ctxt);
   return params.result;
 }
 
@@ -632,7 +634,7 @@ Thread_object::sys_thread_switch(L4_msg_tag const &/*tag*/, Utcb *utcb)
 
   if (curr != this && (state() & Thread_ready_mask))
     {
-      curr->schedule_if(curr->switch_exec_locked(this, Not_Helping));
+      curr->schedule_if(curr->switch_exec_locked(this, Not_Helping) != Switch::Ok);
       reinterpret_cast<Utcb::Time_val*>(utcb->values)->t = 0; // Assume timeslice was used up
       return commit_result(0, Utcb::Time_val::Words);
     }
@@ -679,7 +681,7 @@ Thread_object::sys_thread_stats(L4_msg_tag const &/*tag*/, Utcb *utcb)
   Clock::Time value;
 
   if (home_cpu() != current_cpu())
-    drq(handle_sys_thread_stats_remote, &value, 0, Drq::Any_ctxt);
+    drq(handle_sys_thread_stats_remote, &value, Drq::Any_ctxt);
   else
     {
       // Respect the fact that the consumed time is only updated on context switch

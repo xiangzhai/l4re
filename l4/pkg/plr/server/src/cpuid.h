@@ -36,7 +36,7 @@ public:
     };
 
     /* Perform CPUID */
-    static unsigned cpuid(l4_umword_t code, l4_umword_t* a, l4_umword_t* b,
+    static l4_umword_t cpuid(l4_umword_t code, l4_umword_t* a, l4_umword_t* b,
                           l4_umword_t *c, l4_umword_t *d)
     {
         asm volatile ("cpuid"
@@ -74,7 +74,7 @@ public:
     }
 
 
-    static CPU_id current_apicid(unsigned fiascoID)
+    static CPU_id current_apicid(l4_umword_t fiascoID)
     {
         CPU_id ret;
         l4_umword_t a,b,c,d;

@@ -18,6 +18,8 @@ enum
   L4vbus_vdevice_get_by_hid,
   L4vbus_vdevice_get_next,
   L4vbus_vdevice_get_resource,
+  L4vbus_vdevice_get_hid,
+  L4vbus_vdevice_is_compatible,
 };
 
 enum {

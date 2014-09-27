@@ -99,7 +99,7 @@ Lock_guard<LOCK, POLICY> lock_guard(LOCK *lock)
 
 inline
 template<template<typename L> class POLICY = Lock_guard_regular_policy, typename LOCK>
-Lock_guard<LOCK, POLICY> lock_guard_dont_lock(LOCK &lock)
+Lock_guard<LOCK, POLICY> lock_guard_dont_lock(LOCK &)
 { return Lock_guard<LOCK, POLICY>(); }
 
 inline

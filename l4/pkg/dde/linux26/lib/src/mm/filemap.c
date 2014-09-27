@@ -218,8 +218,13 @@ int __filemap_fdatawrite_range(struct address_space *mapping, loff_t start,
 	if (!mapping_cap_writeback_dirty(mapping))
 		return 0;
 
+#ifndef DDE_LINUX
 	ret = do_writepages(mapping, &wbc);
 	return ret;
+#else  /* DDE_LINUX */
+        WARN_UNIMPL;
+        return 0;
+#endif  /* !DDE_LINUX */
 }
 
 static inline int __filemap_fdatawrite(struct address_space *mapping,
@@ -266,6 +271,7 @@ EXPORT_SYMBOL(filemap_flush);
 int wait_on_page_writeback_range(struct address_space *mapping,
 				pgoff_t start, pgoff_t end)
 {
+#ifndef DDE_LINUX
 	struct pagevec pvec;
 	int nr_pages;
 	int ret = 0;
@@ -304,6 +310,10 @@ int wait_on_page_writeback_range(struct address_space *mapping,
 		ret = -EIO;
 
 	return ret;
+#else  /* DDE_LINUX */
+        WARN_UNIMPL;
+        return 0;
+#endif  /* !DDE_LINUX */
 }
 
 /**
@@ -330,11 +340,15 @@ int sync_page_range(struct inode *inode, struct address_space *mapping,
 	if (!mapping_cap_writeback_dirty(mapping) || !count)
 		return 0;
 	ret = filemap_fdatawrite_range(mapping, pos, pos + count - 1);
+#ifndef DDE_LINUX
 	if (ret == 0) {
 		mutex_lock(&inode->i_mutex);
 		ret = generic_osync_inode(inode, mapping, OSYNC_METADATA);
 		mutex_unlock(&inode->i_mutex);
 	}
+#else  /* DDE_LINUX */
+        WARN_UNIMPL;
+#endif  /* !DDE_LINUX */
 	if (ret == 0)
 		ret = wait_on_page_writeback_range(mapping, start, end);
 	return ret;
@@ -627,10 +641,15 @@ EXPORT_SYMBOL(__lock_page);
 
 int __lock_page_killable(struct page *page)
 {
+#ifndef DDE_LINUX
 	DEFINE_WAIT_BIT(wait, &page->flags, PG_locked);
 
 	return __wait_on_bit_lock(page_waitqueue(page), &wait,
 					sync_page_killable, TASK_KILLABLE);
+#else  /* DDE_LINUX */
+        WARN_UNIMPL;
+        return 0;
+#endif  /* !DDE_LINUX */
 }
 
 /**
@@ -664,7 +683,9 @@ struct page *find_get_page(struct address_space *mapping, pgoff_t offset)
 repeat:
 	page = NULL;
 	pagep = radix_tree_lookup_slot(&mapping->page_tree, offset);
+  ddekit_printf ("WAH %s:%s:%d disk %x\n", __FILE__, __FUNCTION__, __LINE__, offset);
 	if (pagep) {
+  ddekit_printf ("WAH %s:%s:%d disk %x\n", __FILE__, __FUNCTION__, __LINE__, offset);
 		page = radix_tree_deref_slot(pagep);
 		if (unlikely(!page || page == RADIX_TREE_RETRY))
 			goto repeat;
@@ -682,6 +703,7 @@ repeat:
 			goto repeat;
 		}
 	}
+  ddekit_printf ("WAH %s:%s:%d disk %x\n", __FILE__, __FUNCTION__, __LINE__, offset);
 	rcu_read_unlock();
 
 	return page;
@@ -1036,18 +1058,26 @@ static void do_generic_file_read(struct file *filp, loff_t *ppos,
 find_page:
 		page = find_get_page(mapping, index);
 		if (!page) {
+#ifndef DDE_LINUX
 			page_cache_sync_readahead(mapping,
 					ra, filp,
 					index, last_index - index);
+#else  /* DDE_LINUX */
+                        WARN_UNIMPL;
+#endif  /* !DDE_LINUX */
 			page = find_get_page(mapping, index);
 			if (unlikely(page == NULL))
 				goto no_cached_page;
 		}
+#ifndef DDE_LINUX
 		if (PageReadahead(page)) {
 			page_cache_async_readahead(mapping,
 					ra, filp, page,
 					index, last_index - index);
 		}
+#else  /* DDE_LINUX */
+                        WARN_UNIMPL;
+#endif  /* !DDE_LINUX */
 		if (!PageUptodate(page)) {
 			if (inode->i_blkbits == PAGE_CACHE_SHIFT ||
 					!mapping->a_ops->is_partially_uptodate)
@@ -1230,8 +1260,13 @@ int file_read_actor(read_descriptor_t *desc, struct page *page,
 	 */
 	if (!fault_in_pages_writeable(desc->arg.buf, size)) {
 		kaddr = kmap_atomic(page, KM_USER0);
+#ifndef DDE_LINUX
 		left = __copy_to_user_inatomic(desc->arg.buf,
 						kaddr + offset, size);
+#else  /* DDE_LINUX */
+                WARN_UNIMPL;
+                left = 0;
+#endif  /* !DDE_LINUX */
 		kunmap_atomic(kaddr, KM_USER0);
 		if (left == 0)
 			goto success;
@@ -1825,6 +1860,7 @@ static size_t __iovec_copy_from_user_inatomic(char *vaddr,
 {
 	size_t copied = 0, left = 0;
 
+#ifndef DDE_LINUX
 	while (bytes) {
 		char __user *buf = iov->iov_base + base;
 		int copy = min(bytes, iov->iov_len - base);
@@ -1839,6 +1875,10 @@ static size_t __iovec_copy_from_user_inatomic(char *vaddr,
 		if (unlikely(left))
 			break;
 	}
+#else  /* DDE_LINUX */
+        WARN_UNIMPL;
+#endif  /* !DDE_LINUX */
+
 	return copied - left;
 }
 
@@ -1855,6 +1895,7 @@ size_t iov_iter_copy_from_user_atomic(struct page *page,
 
 	BUG_ON(!in_atomic());
 	kaddr = kmap_atomic(page, KM_USER0);
+#ifndef DDE_LINUX
 	if (likely(i->nr_segs == 1)) {
 		int left;
 		char __user *buf = i->iov->iov_base + i->iov_offset;
@@ -1862,9 +1903,12 @@ size_t iov_iter_copy_from_user_atomic(struct page *page,
 							buf, bytes);
 		copied = bytes - left;
 	} else {
+#endif  /* !DDE_LINUX */
 		copied = __iovec_copy_from_user_inatomic(kaddr + offset,
 						i->iov, i->iov_offset, bytes);
+#ifndef DDE_LINUX
 	}
+#endif  /* !DDE_LINUX */
 	kunmap_atomic(kaddr, KM_USER0);
 
 	return copied;
@@ -1984,7 +2028,11 @@ inline int generic_write_checks(struct file *file, loff_t *pos, size_t *count, i
 
 		if (limit != RLIM_INFINITY) {
 			if (*pos >= limit) {
+#ifndef DDE_LINUX
 				send_sig(SIGXFSZ, current, 0);
+#else  /* DDE_LINUX */
+                                WARN_UNIMPL;
+#endif  /* !DDE_LINUX */
 				return -EFBIG;
 			}
 			if (*count > limit - (typeof(limit))*pos) {
@@ -2071,6 +2119,7 @@ generic_file_direct_write(struct kiocb *iocb, const struct iovec *iov,
 		unsigned long *nr_segs, loff_t pos, loff_t *ppos,
 		size_t count, size_t ocount)
 {
+#ifndef DDE_LINUX
 	struct file	*file = iocb->ki_filp;
 	struct address_space *mapping = file->f_mapping;
 	struct inode	*inode = mapping->host;
@@ -2146,6 +2195,10 @@ out:
 			written = err;
 	}
 	return written;
+#else  /* DDE_LINUX */
+        WARN_UNIMPL;
+        return 0;
+#endif  /* !DDE_LINUX */
 }
 EXPORT_SYMBOL(generic_file_direct_write);
 
@@ -2292,9 +2345,13 @@ generic_file_buffered_write(struct kiocb *iocb, const struct iovec *iov,
 		 * O_DSYNC
 		 */
 		if (unlikely((file->f_flags & O_SYNC) || IS_SYNC(inode))) {
+#ifndef DDE_LINUX
 			if (!a_ops->writepage || !is_sync_kiocb(iocb))
 				status = generic_osync_inode(inode, mapping,
 						OSYNC_METADATA|OSYNC_DATA);
+#else  /* DDE_LINUX */
+                        WARN_UNIMPL;
+#endif  /* !DDE_LINUX */
 		}
   	}
 	
@@ -2381,6 +2438,7 @@ __generic_file_aio_write_nolock(struct kiocb *iocb, const struct iovec *iov,
 			goto out;
 		}
 
+#ifndef DDE_LINUX
 		/*
 		 * We need to ensure that the page cache pages are written to
 		 * disk and invalidated to preserve the expected O_DIRECT
@@ -2402,6 +2460,7 @@ __generic_file_aio_write_nolock(struct kiocb *iocb, const struct iovec *iov,
 			 * the number of bytes which were direct-written
 			 */
 		}
+#endif  /* !DDE_LINUX */
 	} else {
 		written = generic_file_buffered_write(iocb, iov, nr_segs,
 				pos, ppos, count, written);

@@ -503,8 +503,6 @@ static int exact_lock(dev_t devt, void *data)
 	return 0;
 }
 
-void ddekit_add_disk(struct gendisk *disk);
-
 /**
  * add_disk - add partitioning information to kernel list
  * @disk: per-device partitioning information
@@ -553,7 +551,7 @@ void add_disk(struct gendisk *disk)
 				   "bdi");
 	WARN_ON(retval);
 
-	ddekit_add_disk(disk);
+	ddekit_add_disk(disk->disk_name, disk);
 }
 
 EXPORT_SYMBOL(add_disk);

@@ -21,14 +21,17 @@
 #include <cstdarg>
 #include <cstring>
 
+#include <l4/plr/measurements.h>
+
 namespace Romain {
 
+extern Measurements::EventBuf* globalLogBuf;
 
 template <typename T>
-void dump_mem(T const * ptr, unsigned count, unsigned brk = 10)
+void dump_mem(T const * ptr, l4_umword_t count, l4_umword_t brk = 10)
 {
-	for (unsigned i = 0; i < count; ++i) {
-		unsigned char const *base = reinterpret_cast<unsigned char const*>(ptr) + i;
+	for (l4_umword_t i = 0; i < count; ++i) {
+		l4_uint8_t const *base = reinterpret_cast<l4_uint8_t const*>(ptr) + i;
 		printf("%02x", *base);
 		if (i % brk == brk-1 || count-1 == i) {
 			printf("\n");
@@ -59,6 +62,7 @@ class Log
 			Loader     = 0x40,
 			Swifi      = 0x80,
 			Gdb        = 0x100,
+			MarkShared = 0x200,
 			All        = 0xFFFFFFFF,
 		};
 
@@ -115,12 +119,12 @@ class Dbg
 	enum { bufsize = 60 };
 
 	public:
-		int cprintf(char const *fmt, ...) const
+		l4_mword_t cprintf(char const *fmt, ...) const
 		{
 			static char buf[bufsize];
 			va_list arg;
 			va_start(arg, fmt);
-			int ret = vsnprintf(buf, bufsize, fmt, arg);
+			l4_mword_t ret = vsnprintf(buf, bufsize, fmt, arg);
 			va_end(arg);
 
 			if (buf[strlen(buf)-1] == '\n')
@@ -131,12 +135,12 @@ class Dbg
 		}
 
 
-		int printf(char const *fmt, ...) const
+		l4_mword_t printf(char const *fmt, ...) const
 		{
 			static char buf[bufsize];
 			va_list arg;
 			va_start(arg, fmt);
-			int ret = vsnprintf(buf, bufsize, fmt, arg);
+			l4_mword_t ret = vsnprintf(buf, bufsize, fmt, arg);
 			va_end(arg);
 
 			if (buf[strlen(buf)-1] == '\n')

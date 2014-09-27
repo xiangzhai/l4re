@@ -59,6 +59,20 @@ Dispatcher::dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios)
     case L4_PROTO_PAGE_FAULT:
       return Global::local_rm->handle_pagefault(ios);
 
+#if defined(ARCH_x86) || defined(ARCH_amd64)
+    case L4_PROTO_IO_PAGE_FAULT:
+        {
+          l4_umword_t addr, pc;
+          l4_fpage_t fp;
+          ios >> addr >> pc;
+          fp.raw = addr;
+          Err().printf("IO-port-fault: port=0x%lx size=%d pc=0x%lx\n",
+                       l4_fpage_page(fp), 1 << l4_fpage_size(fp), pc);
+        }
+      // return -1, this lets the kernel generate an exception.
+      return -1;
+#endif
+
     default:
       dbg.printf("unknown request: tag=0x%lx proto=%ld obj=0x%lx\n",
                   t.raw, t.label(), obj);

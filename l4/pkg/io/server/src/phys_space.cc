@@ -24,9 +24,7 @@ Phys_space Phys_space::space;
 
 Phys_space::Phys_space()
 {
-  _set.insert(Phys_region(4 << 22, Phys_region::Addr(~0)));
-  //_set.insert(Phys_region(0xd0000000, Phys_region::Addr(~0)));
- // reserve(Phys_region(0xe0000000, 0xf0000000-1));
+  _set.insert(Phys_region(0, Phys_region::Addr(~0)));
 
   L4::Kip::Mem_desc *md = L4::Kip::Mem_desc::first(l4re_kip());
   L4::Kip::Mem_desc *mde = md + L4::Kip::Mem_desc::count(l4re_kip());

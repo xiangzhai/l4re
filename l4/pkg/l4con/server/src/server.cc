@@ -178,7 +178,7 @@ Vc::puts(L4::Ipc::Iostream &ios)
   l4con_pslim_color_t bg_color;
 
   ios >> x >> y >> fg_color >> bg_color
-      >> L4::Ipc::Buf_in<char>(s, len);
+      >> L4::Ipc::buf_in(s, len);
 
   len = cxx::min<unsigned long>(len, sizeof(buf));
   memcpy(buf, s, len);
@@ -197,7 +197,7 @@ Vc::puts_scale(L4::Ipc::Iostream &ios)
   l4con_pslim_color_t bg_color;
 
   ios >> x >> y >> fg_color >> bg_color >> scale_x >> scale_y
-      >> L4::Ipc::Buf_in<char>(s, len);
+      >> L4::Ipc::buf_in(s, len);
 
   len = cxx::min<unsigned long>(len, sizeof(buf));
   memcpy(buf, s, len);

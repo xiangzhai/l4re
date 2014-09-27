@@ -57,10 +57,7 @@
 /** l4evdev event structure */
 struct l4evdev_event {
 	struct l4evdev *evdev;
-	union {
-		struct input_event event;
-		struct l4input l4event;
-	};
+	struct l4input l4event;
 };
 
 /** l4evdev device structure */
@@ -356,9 +353,9 @@ static void l4evdev_event(struct input_handle *handle, unsigned int type,
 
 	BUFFER[HEAD].evdev = evdev;
 	BUFFER[HEAD].l4event.time = clk;
-	BUFFER[HEAD].event.type = type;
-	BUFFER[HEAD].event.code = code;
-	BUFFER[HEAD].event.value = value;
+	BUFFER[HEAD].l4event.type = type;
+	BUFFER[HEAD].l4event.code = code;
+	BUFFER[HEAD].l4event.value = value;
 	BUFFER[HEAD].l4event.stream_id = (l4_umword_t)handle->dev;
 
 	INC(HEAD);
@@ -474,15 +471,7 @@ static int l4evdev_flush(void *buf, int count)
 
 	while ((TAIL!=HEAD) && count) {
 		/* flush event buffer */
-		/* XXX if sizeof(struct l4input) and sizeof(struct input_event) differ
-		   memcpy is not enough  */
-
-
-	        buffer->time = BUFFER[TAIL].l4event.time;
-	        buffer->type = BUFFER[TAIL].event.type;
-		buffer->code = BUFFER[TAIL].event.code;
-		buffer->value = BUFFER[TAIL].event.value;
-		buffer->stream_id = BUFFER[TAIL].l4event.stream_id;
+                *buffer = BUFFER[TAIL].l4event;
 
 		//memset(&BUFFER[TAIL], 0, sizeof(struct l4evdev_event));
 

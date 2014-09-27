@@ -185,6 +185,7 @@ public:
   int mkdir(const char *, mode_t) throw();
   int unlink(const char *) throw();
   int rename(const char *, const char *) throw();
+  int faccessat(const char *, int, int) throw();
 
 private:
   int walk_path(cxx::String const &_s,
@@ -291,6 +292,32 @@ Tmpfs_file::fchmod(mode_t m) throw()
   return 0;
 }
 
+int
+Tmpfs_dir::faccessat(const char *path, int mode, int) throw()
+{
+  Ref_ptr<Node> node;
+  cxx::String name = path;
+
+  int err = walk_path(name, &node, &name);
+  if (err < 0)
+    return err;
+
+  if (mode == F_OK) // existence check
+    return 0;
+
+  struct stat64 *stats = node->info();
+
+  if ((mode & R_OK) && !(stats->st_mode & S_IRUSR))
+    return -EACCES;
+
+  if ((mode & W_OK) && !(stats->st_mode & S_IWUSR))
+    return -EACCES;
+
+  if ((mode & X_OK) && !(stats->st_mode & S_IXUSR))
+    return -EACCES;
+
+  return 0;
+}
 
 int
 Tmpfs_dir::get_entry(const char *name, int flags, mode_t mode,

@@ -24,18 +24,21 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <bsd/getopt.h>
+#include <getopt.h>
 
 int optreset = 0;
 
 int
-bsd_getopt (int argc, char **argv, char *shortopts)
+bsd_getopt(int argc, char * const argv[], const char *shortopts)
 {
-  if (optreset == 1)
-    {
-      optreset = 0;
-      optind = 0;
-    }
+	if (optreset == 1) {
+		optreset = 0;
+		optind = 0;
+	}
 
-  return getopt (argc, argv, shortopts);
+	/*
+	 * Make sure we are using the system getopt() and not a possible
+	 * overlay macro.
+	 */
+	return (getopt)(argc, argv, shortopts);
 }

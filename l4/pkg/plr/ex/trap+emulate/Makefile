@@ -9,7 +9,7 @@ SYSTEMS     = x86-l4f
 SRC_C       =
 SRC_CC      = vcpu.cc emulation.cc
 
-CXXFLAGS += -I$(SRC_DIR)/../../server/src/
+CXXFLAGS += -I$(SRC_DIR)/../../server/src/ -std=c++11
 
 vpath %.cc $(SRC_DIR)/../../server/src/
 

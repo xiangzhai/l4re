@@ -41,7 +41,7 @@ __alloc(lua_State *l)
   for (int i = 3; i <= argc; ++i)
     {
       if (lua_isnumber(l, i))
-	s << (l4_mword_t)luaL_checkint(l, i);
+	s << (l4_mword_t)luaL_checklong(l, i);
       else if (lua_isstring(l, i))
 	s << (char const *)luaL_checkstring(l, i);
       else if (lua_isnil(l, i))

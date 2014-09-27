@@ -24,7 +24,24 @@ class Resource;
 class Device;
 
 
-typedef std::vector<Resource *> Resource_list;
+class Resource_list : public std::vector<Resource *>
+{
+public:
+  /**
+   * \brief Find a resource by their ID.
+   * \param id  The resource id (usually 4 letters ASCII, little endian
+   *            encoded).
+   * \return The first resource with the given ID, or null_ptr if non found.
+   */
+  Resource *find(l4_uint32_t id) const;
+
+  /**
+   * \brief Find a resource by their ID (using a 4-letter string).
+   * \param id  The resource id (usually up to 4 letters ASCII).
+   * \return The first resource with the given ID, or null_ptr if non found.
+   */
+  Resource *find(char const *id) const;
+};
 
 class Resource_space
 {
@@ -33,13 +50,16 @@ public:
                        Resource *child, Device *cdev) = 0;
   virtual bool alloc(Resource *parent, Device *pdev,
                      Resource *child, Device *cdev, bool resize) = 0;
-  virtual ~Resource_space() {}
+  virtual ~Resource_space() = 0;
 };
+
+inline Resource_space::~Resource_space() {}
 
 class Resource
 {
 private:
   unsigned long _f;
+  l4_uint32_t _id;
   Resource *_p;
 
 public:
@@ -52,8 +72,8 @@ public:
     Irq_res     = L4VBUS_RESOURCE_IRQ,
     Mmio_res    = L4VBUS_RESOURCE_MEM,
     Io_res      = L4VBUS_RESOURCE_PORT,
-    Bus_res,
-    Gpio_res
+    Bus_res     = L4VBUS_RESOURCE_BUS,
+    Gpio_res    = L4VBUS_RESOURCE_GPIO
   };
 
   enum Flags
@@ -65,8 +85,8 @@ public:
     F_size_aligned = 0x0800,
     F_empty        = 0x1000,
     F_rom          = 0x2000,
-    F_fixed_size   = 0x4000,
-    F_fixed_addr   = 0x8000,
+    F_can_resize   = 0x4000,
+    F_can_move     = 0x8000,
 
     F_width_64bit   = 0x010000,
     F_relative      = 0x040000,
@@ -88,10 +108,15 @@ public:
   { return (_f & Irq_type_mask) & (L4_IRQ_F_NEG   * Irq_type_base); }
 
   explicit Resource(unsigned long flags = 0)
-  : _f(flags | F_fixed_size), _p(0), _s(0), _e(0), _a(0) {}
+  : _f(flags), _id(0), _p(0), _s(0), _e(0), _a(0) {}
 
   Resource(unsigned long flags, Addr start, Addr end)
-  : _f(flags | F_fixed_size), _p(0), _s(start), _e(end), _a(end - start)
+  : _f(flags), _id(0), _p(0), _s(start), _e(end), _a(end - start)
+  {}
+
+  Resource(unsigned type, unsigned long flags, Addr start, Addr end)
+  : _f((type & F_type_mask) | (flags & ~(unsigned long)F_type_mask)),
+    _id(0), _p(0), _s(start), _e(end), _a(end - start)
   {}
 
   unsigned long flags() const { return _f; }
@@ -101,13 +126,30 @@ public:
   bool disabled() const { return _f & F_disabled; }
   bool prefetchable() const { return _f & F_prefetchable; }
   bool empty() const { return _f & F_empty; }
-  bool fixed_addr() const { return _f & F_fixed_addr; }
-  bool fixed_size() const { return _f & F_fixed_size; }
+  bool fixed_addr() const { return !(_f & F_can_move); }
+  bool fixed_size() const { return !(_f & F_can_resize); }
   bool relative() const { return _f & F_relative; }
   unsigned type() const { return _f & F_type_mask; }
 
   virtual bool lt_compare(Resource const *o) const
   { return end() < o->start(); }
+
+  static l4_uint32_t str_to_id(char const *id)
+  {
+    l4_uint32_t res = 0;
+    for (unsigned i = 0; i < 4 && id && id[i]; ++i)
+      res |= (l4_uint32_t)id[i] << (8 * i);
+    return res;
+  }
+
+  void set_id(l4_uint32_t id)
+  { _id = id; }
+
+  void set_id(char const *id)
+  { _id = str_to_id(id); }
+
+  l4_uint32_t id() const { return _id; }
+
 
 public:
 //private:
@@ -209,7 +251,8 @@ public:
     return res_map_iomem(start(), size());
   }
 
-
+  virtual l4vbus_device_handle_t provider_device_handle() const
+  { return ~0; }
 };
 
 class Resource_provider : public Resource
@@ -241,9 +284,6 @@ public:
 
   Resource_space *provided() const
   { return &_rs; }
-
-  ~Resource_provider() {}
-
 };
 
 class Root_resource : public Resource
@@ -257,8 +297,6 @@ public:
 
   Resource_space *provided() const { return _rs; }
   void dump(int) const {}
-
-  ~Root_resource() {}
 };
 
 

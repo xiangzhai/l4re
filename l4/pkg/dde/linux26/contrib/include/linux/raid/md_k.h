@@ -16,7 +16,7 @@
 #define _MD_K_H
 
 /* and dm-bio-list.h is not under include/linux because.... ??? */
-#include "../../../drivers/md/dm-bio-list.h"
+#include <../drivers/md/dm-bio-list.h>
 
 #ifdef CONFIG_BLOCK
 

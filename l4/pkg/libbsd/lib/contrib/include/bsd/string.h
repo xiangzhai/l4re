@@ -1,5 +1,5 @@
 /*
- * Copyright © 2004, 2005, 2009 Guillem Jover
+ * Copyright © 2004, 2005, 2009, 2011 Guillem Jover <guillem@hadrons.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,20 +24,22 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef LIBBSD_OVERLAY
+#include_next <string.h>
+#else
+#include <string.h>
+#endif
+
 #ifndef LIBBSD_STRING_H
 #define LIBBSD_STRING_H
 
 #include <sys/cdefs.h>
 #include <sys/types.h>
-#include <stddef.h>
-#include <stdio.h>
 
 __BEGIN_DECLS
 size_t strlcpy(char *dst, const char *src, size_t siz);
 size_t strlcat(char *dst, const char *src, size_t siz);
-char *fgetln(FILE *fp, size_t *lenp);
-wchar_t *fgetwln(FILE * __restrict fp, size_t *lenp);
-
+char *strnstr(const char *str, const char *find, size_t str_len);
 void strmode(mode_t mode, char *str);
 __END_DECLS
 

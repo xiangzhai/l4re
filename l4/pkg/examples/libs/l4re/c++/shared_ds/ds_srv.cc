@@ -108,24 +108,17 @@ public:
 
 int Shm_observer::dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios)
 {
-  // we don't care about the original object reference, however
+  // We don't care about the original object reference, however
   // we could read out the access rights from the lowest 2 bits
-  (void) obj;
+  (void)obj;
 
-  l4_msgtag_t t;
-  ios >> t; // extract the tag
+  // Since we end up here in this function, we got a 'message' from the IRQ
+  // that is bound to us. The 'ios' stream won't contain any valuable info.
+  (void)ios;
 
-  switch (t.label())
-    {
-    case L4::Irq::Protocol:
-      // Got an IRQ so just print the new contents of the
-      // shared memory.
-      printf("Content: %s\n", _shm);
-      return 0;
-    default:
-      // every other protocol is not supported.
-      return -L4_EBADPROTO;
-    }
+  printf("Client sent us: %s\n", _shm);
+
+  return 0;
 }
 
 /**
@@ -172,7 +165,6 @@ static char *get_ds(L4::Cap<L4Re::Dataspace> *_ds)
       return 0;
     }
 
-
   /*
    * Success! Write something to DS.
    */
@@ -191,15 +183,14 @@ int main()
   if (!(addr = get_ds(&ds)))
     return 2;
 
-
-  // first the IRQ handler, because we need it in the My_server_obj object
+  // First the IRQ handler, because we need it in the My_server_obj object
   Shm_observer observer(addr);
 
   // Registering the observer as an IRQ handler, this allocates an
   // IRQ object using the factory of our server.
   L4::Cap<L4::Irq> irq = server.registry()->register_irq_obj(&observer);
 
-  // now the initial server object shared with the client via our parent.
+  // Now the initial server object shared with the client via our parent.
   // it provides the data-space and the IRQ capabilities to a client.
   My_server_obj server_obj(ds, irq);
 
@@ -211,6 +202,3 @@ int main()
   server.loop();
   return 0;
 }
-
-
-

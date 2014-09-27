@@ -1,5 +1,6 @@
 /*
  * Copyright © 2006 Robert Millan
+ * Copyright © 2010-2012 Guillem Jover <guillem@hadrons.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,18 +29,39 @@
   Rejected in glibc (http://sourceware.org/ml/libc-alpha/2006-03/msg00125.html)
 */
 
-#include <bsd/stdlib.h>
+#include <errno.h>
+#include <string.h>
+#include <stdlib.h>
 
-static char *__progname = NULL;
+#ifdef HAVE___PROGNAME
+extern const char *__progname;
+#else
+static const char *__progname = NULL;
+#endif
 
-char *
-getprogname ()
+const char *
+getprogname(void)
 {
-  return __progname;
+#if defined(HAVE_PROGRAM_INVOCATION_SHORT_NAME)
+	if (__progname == NULL)
+		__progname = program_invocation_short_name;
+#elif defined(HAVE_GETEXECNAME)
+	/* getexecname(3) returns an absolute pathname, normalize it. */
+	if (__progname == NULL)
+		setprogname(getexecname());
+#endif
+
+	return __progname;
 }
 
 void
-setprogname (char *new)
+setprogname(const char *progname)
 {
-  __progname = new;
+	const char *last_slash;
+
+	last_slash = strrchr(progname, '/');
+	if (last_slash == NULL)
+		__progname = progname;
+	else
+		__progname = last_slash + 1;
 }

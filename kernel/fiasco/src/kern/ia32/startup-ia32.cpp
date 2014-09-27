@@ -25,6 +25,7 @@ IMPLEMENTATION[ia32,amd64]:
 #include "per_cpu_data.h"
 #include "per_cpu_data_alloc.h"
 #include "pic.h"
+#include "platform_control.h"
 #include "static_init.h"
 #include "std_macros.h"
 #include "thread.h"
@@ -62,7 +63,7 @@ Startup::stage2()
   // Initialize cpu-local data management and run constructors for CPU 0
   Per_cpu_data::init_ctors();
   Per_cpu_data_alloc::alloc(Cpu_number::boot_cpu());
-  Per_cpu_data::run_ctors(Cpu_number::boot_cpu(), false);
+  Per_cpu_data::run_ctors(Cpu_number::boot_cpu());
 
   // set frequency in KIP to that of the boot CPU
   Kip_init::init_freq(Cpu::cpus.cpu(Cpu_number::boot_cpu()));
@@ -71,11 +72,16 @@ Startup::stage2()
   if (use_io_apic)
     {
       Config::apic = true;
+      // ensure PIC state save/restore on suspend/resume
+      Pic *p = new Boot_object<Pic>();
+      p->register_pm(Cpu_number::boot_cpu());
       Pic::disable_all_save();
     }
   else
     {
-      Pic::init();
+      Pic *p = new Boot_object<Pic>();
+      p->init();
+      p->register_pm(Cpu_number::boot_cpu());
       Irq_chip_ia32_pic::init();
     }
 
@@ -87,7 +93,7 @@ Startup::stage2()
   Idt::init();
   Fpu::init(Cpu_number::boot_cpu(), false);
   Apic::init();
-  Apic::apic.cpu(Cpu_number::boot_cpu()).construct();
+  Apic::apic.cpu(Cpu_number::boot_cpu()).construct(Cpu_number::boot_cpu());
   Ipi::init(Cpu_number::boot_cpu());
   Timer::init(Cpu_number::boot_cpu());
   int timer_irq = Timer::irq();
@@ -119,5 +125,6 @@ Startup::stage2()
   Idt::set_vectors_run();
   Timer::master_cpu(Cpu_number::boot_cpu());
   Apic::check_still_getting_interrupts();
+  Platform_control::init(Cpu_number::boot_cpu());
 //  Cpu::init_global_features();
 }

@@ -37,6 +37,12 @@ struct backing_dev_info default_backing_dev_info = {
 	.unplug_io_fn = default_unplug_io_fn,
 };
 
+int seq_puts(struct seq_file *m, const char *f)
+{
+	WARN_UNIMPL;
+	return 0;
+}
+
 int seq_printf(struct seq_file *m, const char *f, ...)
 {
 	WARN_UNIMPL;
@@ -70,12 +76,21 @@ int redirty_page_for_writepage(struct writeback_control *wbc, struct page *page)
 	return 0;
 }
 
+struct ddekit_thread {
+        long pthread;
+        void *data;
+        void *stack;
+        void *sleep_cv;
+        const char *name;
+};
+struct ddekit_thread *ddekit_thread_myself(void);
+
 static struct vfsmount *dde_kern_mount(struct file_system_type *type,
-								 	   int flags, const char *name,
-									   void *data)
+			 	       int flags, const char *name, void *data)
 {
 	struct list_head *pos, *head;
 	int error;
+        ddekit_printf ("WAH %s:%s:%d %s\n", __FILE__, __FUNCTION__, __LINE__, ddekit_thread_myself()->name);
 
 	head = &dde_vfs_mounts;
 	__list_for_each(pos, head) {
@@ -91,7 +106,7 @@ static struct vfsmount *dde_kern_mount(struct file_system_type *type,
 	m->fs_type = type;
 	m->name = kmalloc(strlen(name) + 1, GFP_KERNEL);
 	memcpy(m->name, name, strlen(name) + 1);
-
+        ddekit_printf ("WAH %s:%s:%d %s %p\n", __FILE__, __FUNCTION__, __LINE__, ddekit_thread_myself()->name, type);
 	error = type->get_sb(type, flags, name, data, m);
 	BUG_ON(error);
 
@@ -102,5 +117,6 @@ static struct vfsmount *dde_kern_mount(struct file_system_type *type,
 
 struct vfsmount *kern_mount_data(struct file_system_type *type, void *data)
 {
-	return dde_kern_mount(type, 0, type->name, NULL);
+  ddekit_printf ("WAH %s:%s:%d %s %p\n", __FILE__, __FUNCTION__, __LINE__, ddekit_thread_myself()->name, type);
+	return dde_kern_mount(type, 0, type->name, data);
 }

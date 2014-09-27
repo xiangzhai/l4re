@@ -26,6 +26,15 @@
 
 #include "local.h"
 
+struct ddekit_thread {
+        long pthread;
+        void *data;
+        void *stack;
+        void *sleep_cv;
+        const char *name;
+};
+struct ddekit_thread *ddekit_thread_myself(void);
+
 /*****************************************************************************
  ** Current() implementation                                                **
  *****************************************************************************/
@@ -348,7 +357,7 @@ int l4dde26_process_from_ddekit(ddekit_thread_t *t)
 
 /** Function to initialize the first DDE process.
  */
-static int __init l4dde26_process_init(void)
+void __init l4dde26_process_init(void)
 {
 	ddekit_lock_init_unlocked(&_pid_task_list_lock);
 
@@ -356,10 +365,8 @@ static int __init l4dde26_process_init(void)
 	kthreadd_task = find_task_by_pid(kthreadd_pid);
 
 	l4dde26_process_add_worker();
-
-	return 0;
 }
 
 DEFINE_PER_CPU(int, cpu_number);
 
-dde_process_initcall(l4dde26_process_init);
+/* dde_process_initcall(l4dde26_process_init); */

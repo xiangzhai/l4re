@@ -77,7 +77,8 @@ int main()
   printf("Content: %s\n", addr);
 
   // wait a bit for the demo effect
-  sleep(3);
+  printf("Sleeping a bit...\n");
+  sleep(1);
 
   /*
    * Fill in new stuff
@@ -86,7 +87,8 @@ int main()
   char const * const msg = "Hello from client, too!";
   printf("Setting new content in shared memory\n");
   snprintf(addr, strlen(msg)+1, msg);
-  l4_cache_clean_data((unsigned long)addr, (unsigned long)addr + strlen(msg) + 1);
+  l4_cache_clean_data((unsigned long)addr,
+                      (unsigned long)addr + strlen(msg) + 1);
 
   // notify the server
   irq->trigger();
@@ -99,7 +101,9 @@ int main()
   if (err)
     printf("Failed to detach region\n");
 
+  /* Free objects and capabilties, just for completeness. */
   L4Re::Util::cap_alloc.free(ds, L4Re::This_task);
+  L4Re::Util::cap_alloc.free(irq, L4Re::This_task);
 
   return 0;
 }

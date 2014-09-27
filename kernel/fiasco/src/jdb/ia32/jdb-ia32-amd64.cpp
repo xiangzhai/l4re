@@ -203,18 +203,9 @@ Jdb::connected()
   return _connected;
 }
 
-PROTECTED static inline
-template< typename T >
-void
-Jdb::set_monitored_address(T *dest, T val)
-{
-  *dest = val;
-}
-
-PROTECTED static inline
-template< typename T >
+IMPLEMENT inline template< typename T >
 T
-Jdb::monitor_address(Cpu_number current_cpu, T *addr)
+Jdb::monitor_address(Cpu_number current_cpu, T volatile const *addr)
 {
   if (!*addr && Cpu::cpus.cpu(current_cpu).has_monitor_mwait())
     {
@@ -716,7 +707,7 @@ Jdb::handle_single_step(Cpu_number cpu)
 static inline NOEXPORT int
 Jdb::handle_trap1(Cpu_number cpu)
 {
-  // FIXME: currently only on bot cpu
+  // FIXME: currently only on boot cpu
   if (cpu != Cpu_number::boot_cpu())
     return 0;
 
@@ -900,8 +891,8 @@ Jdb::leave_trap_handler(Cpu_number cpu)
 
 IMPLEMENT
 bool
-Jdb::handle_conditional_breakpoint(Cpu_number cpu)
-{ return entry_frame.cpu(cpu)->_trapno == 1 && bp_test_log_only && bp_test_log_only(); }
+Jdb::handle_conditional_breakpoint(Cpu_number, Jdb_entry_frame *e)
+{ return e->_trapno == 1 && bp_test_log_only && bp_test_log_only(); }
 
 IMPLEMENT
 void

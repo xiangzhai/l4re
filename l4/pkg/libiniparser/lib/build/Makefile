@@ -10,6 +10,3 @@ SRC_C           = dictionary.c iniparser.c
 vpath %.c $(SRC_DIR)/../contrib/src
 
 include $(L4DIR)/mk/lib.mk
-
-# prevent warnings
-CFLAGS := $(filter-out -Wextra -Wall,$(CFLAGS))

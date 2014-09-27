@@ -218,7 +218,7 @@ int region_pf_handler(RM *rm, IOS &ios)
 
   if (!n || !n->second.memory())
     {
-      Dbg(Dbg::Warn, "rm").printf("unhandled %s page fault @%lx pc=%lx\n",
+      Dbg(Dbg::Warn, "rm").printf("unhandled %s page fault at 0x%lx pc=0x%lx\n",
                                   writable ? "write" : "read", addr, pc);
 
       // generate exception
@@ -228,7 +228,7 @@ int region_pf_handler(RM *rm, IOS &ios)
 
   if (n->second.is_ro() && writable)
     {
-      Dbg(Dbg::Warn, "rm").printf("write page fault in readonly region @%lx pc=%lx\n",
+      Dbg(Dbg::Warn, "rm").printf("write page fault in readonly region at 0x%lx pc=0x%lx\n",
                                   addr, pc);
       // generate exception
       ios << (l4_umword_t)~0;
@@ -238,7 +238,7 @@ int region_pf_handler(RM *rm, IOS &ios)
   typename RM::Region_handler::Ops::Map_result result;
   if (int err = n->second.map(addr, n->first, writable, &result))
     {
-      Dbg(Dbg::Warn, "rm").printf("mapping for page fault failed with %d @%lx pc=%lx\n",
+      Dbg(Dbg::Warn, "rm").printf("mapping for page fault failed with error %d at 0x%lx pc=0x%lx\n",
                                   err, addr, pc);
       // generate exception
       ios << (l4_umword_t)~0;

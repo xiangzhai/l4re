@@ -11,9 +11,80 @@
 
 #include "hw_device.h"
 #include "cfg.h"
+#include "debug.h"
 
 namespace Hw {
 
+bool
+Device::setup()
+{
+  // FIXME: check and initialize things we depend on
+  for (Feature_list::const_iterator d = _features.begin();
+       d != _features.end(); ++d)
+    (*d)->setup(this);
+
+  return true;
+}
+
+int
+Device::pm_suspend()
+{
+  if (pm_power_state() != Pm_online)
+    return 0;
+
+  for (Feature_list::const_iterator d = _features.begin();
+       d != _features.end(); ++d)
+    (*d)->pm_save_state(this);
+
+  pm_set_state(Pm_suspended);
+
+  return 0;
+}
+
+int
+Device::pm_resume()
+{
+  if (pm_power_state() != Pm_suspended)
+    return 0;
+
+  for (Feature_list::const_iterator d = _features.begin();
+       d != _features.end(); ++d)
+    (*d)->pm_restore_state(this);
+
+  pm_set_state(Pm_online);
+
+  return 0;
+}
+
+void
+Device::setup_children()
+{
+  for (Feature_list::const_iterator d = _features.begin();
+       d != _features.end(); ++d)
+    (*d)->setup_children(this);
+}
+
+int
+Device::pm_init()
+{
+#if 0
+  printf("Hw::Device::plug(this=%p, name='%s', hid='%s')\n",
+         this, name(), hid());
+#endif
+  allocate_pending_resources();
+  if (!setup())
+    {
+      pm_set_state(Pm_failed);
+      return -ENODEV;
+    }
+
+  _sta = Active;
+
+  setup_children();
+
+  pm_set_state(Pm_online);
+  return 0;
+}
 
 void
 Device::init()
@@ -22,35 +93,21 @@ Device::init()
   printf("Hw::Device::plug(this=%p, name='%s', hid='%s')\n",
          this, name(), hid());
 #endif
-  discover_resources();
-  request_resources();
-  _sta = Active;
-}
-
-void
-Device::discover_secondary_bus()
-{
-#if 0
-  printf("Hw::Device::discover_secondary_bus(this=%p, name='%s', hid='%s')\n",
-         this, name(), hid());
-#endif
-  discover_devices();
+  int r = pm_init();
+  if (r < 0)
+    {
+      d_printf(DBG_ERR, "error: failed to setup device: %s\n", name());
+      return;
+    }
 
   for (iterator c = begin(0); c != end(); ++c)
     (*c)->init();
-
-  for (iterator c = begin(0); c != end(); ++c)
-    if ((*c)->status())
-      (*c)->discover_secondary_bus();
 }
 
 void
 Device::plugin()
 {
   init();
-  discover_secondary_bus();
-  allocate_pending_resources();
-  setup_resources();
 }
 
 void
@@ -76,32 +133,6 @@ Device::resource_allocated(Resource const *r) const
   return r->parent();
 }
 
-void
-Device::discover_devices()
-{
-  if (discover_bus_if())
-    discover_bus_if()->scan_bus();
-}
-
-void
-Device::discover_resources()
-{
-  for (Discover_res_list::const_iterator d = _resource_discovery_chain.begin();
-       d != _resource_discovery_chain.end(); ++d)
-    (*d)->discover_resources(this);
-}
-
-void
-Device::setup_resources()
-{
-  for (Discover_res_list::const_iterator d = _resource_discovery_chain.begin();
-       d != _resource_discovery_chain.end(); ++d)
-    (*d)->setup_resources(this);
-
-  // take care for children
-  for (Hw::Device::iterator i = begin(0); i != end(); ++i)
-    i->setup_resources();
-}
 
 Device *
 Device::get_child_dev_adr(l4_uint32_t adr, bool create)
@@ -192,13 +223,71 @@ Device::match_cid(cxx::String const &cid) const
 void
 Device::dump(int indent) const
 {
-  printf("%*.sHw::Device[%s]\n", indent, " ", name());
+  printf("%*.s%s: %s%s\n", indent, " ", name(),
+         hid() ? "hid=" : "", hid() ? hid() : "");
   if (Io_config::cfg->verbose() > 2)
     {
       for (Feature_list::const_iterator i = _features.begin();
            i != _features.end(); ++i)
         (*i)->dump(indent + 2);
+
+      if (!_clients.empty())
+        {
+          printf("%*.s  Clients: ===== start ==== \n", indent, " ");
+          for (auto i = _clients.begin(); i != _clients.end(); ++i)
+            (*i)->dump(indent + 4);
+          printf("%*.s  Clients: ===== end ====\n", indent, " ");
+        }
     }
+}
+
+void
+Device::add_feature(Dev_feature *f)
+{
+  _features.push_back(f);
+  Feature_manager_base::match(this, f);
+  if (!_clients.empty())
+    f->enable_notifications(this);
+}
+
+void
+Device::check_conflicts() const
+{
+  for (auto i = _clients.begin(); i != _clients.end(); ++i)
+    for (auto j = i; ++j != _clients.end();)
+      {
+        if (!(*j)->check_conflict(*i))
+          continue;
+
+        d_printf(DBG_WARN, "warning: conflicting virtual clients:\n"
+                 "  %s\n"
+                 "  %s\n",
+                 (*j)->get_full_name().c_str(),
+                 (*i)->get_full_name().c_str());
+
+      }
+}
+
+void
+Device::add_client(Device_client *client)
+{
+  bool first = _clients.empty();
+  _clients.push_front(client);
+  if (first)
+    for (auto i = _features.begin(); i != _features.end(); ++i)
+      (*i)->enable_notifications(this);
+}
+
+void
+Device::notify(unsigned type, unsigned event, unsigned value)
+{
+  for (auto i = _clients.begin(); i != _clients.end(); ++i)
+    (*i)->notify(type, event, value);
+
+  if (_clients.empty())
+    for (auto i = _features.begin(); i != _features.end(); ++i)
+      (*i)->disable_notifications(this);
+
 }
 
 namespace {

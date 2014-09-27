@@ -1320,7 +1320,9 @@ namespace std
 /* #undef _GLIBCXX_USE_SYSCTL_HW_NCPU */
 
 /* Define if code specialized for wchar_t should be used. */
-//l4/#define _GLIBCXX_USE_WCHAR_T 1
+#ifndef L4_MINIMAL_LIBC
+#define _GLIBCXX_USE_WCHAR_T 1
+#endif
 
 /* Define if all C++ overloads are available in <math.h>.  */
 #if __cplusplus >= 199711L

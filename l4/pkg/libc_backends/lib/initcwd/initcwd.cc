@@ -18,7 +18,7 @@ static void set_initial_cwd()
     {
       int err = chdir(initial_dir);
       if (err != 0)
-        printf("libl4re_file: could not chdir to '%s'.\n", initial_dir);
+        printf("libinitcwd: could not chdir to '%s'.\n", initial_dir);
     }
 }
 

@@ -347,6 +347,8 @@ do {						\
 	1 : ({ local_irq_restore(flags); 0; }); \
 })
 
+#else /* DDE_LINUX */
+
 /*
  * Pull the atomic_t declaration:
  * (asm-mips/atomic.h needs above definitions)
@@ -369,8 +371,6 @@ extern int _atomic_dec_and_lock(atomic_t *atomic, spinlock_t *lock);
  * @lock: the spinlock in question.
  */
 #define spin_can_lock(lock)	(!spin_is_locked(lock))
-
-#else /* DDE_LINUX */
 
 #define spin_lock_init(l) \
 	do { \
@@ -457,7 +457,7 @@ static int __lockfunc spin_trylock(spinlock_t *lock)
 #define write_trylock(l) read_trylock(l)
 
 #define spin_is_locked(x) \
-		(ddekit_lock_owner(&(x)->ddekit_lock) != 0)
+		(ddekit_lock_is_locked(&(x)->ddekit_lock))
 
 #define assert_spin_locked(x)   BUG_ON(!spin_is_locked(x))
 

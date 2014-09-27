@@ -35,11 +35,13 @@
 #include <errno.h>
 #include <sys/uio.h>
 
-//#include <l4/sys/kdebug.h>
-//static int debug_mmap = 1;
-//#define DEBUG_LOG(level, dbg...) do { if (level) dbg } while (0)
-
+#if 0
+#include <l4/sys/kdebug.h>
+static int debug_mmap = 1;
+#define DEBUG_LOG(level, dbg...) do { if (level) dbg } while (0)
+#else
 #define DEBUG_LOG(level, dbg...) do { } while (0)
+#endif
 
 /**
  * If USE_BIG_ANON_DS is defined the implementation will use a really big
@@ -611,6 +613,16 @@ Vfs::mremap(void *old_addr, size_t old_size, size_t new_size, int flags,
             void **new_addr) L4_NOTHROW
 {
   using namespace L4Re;
+
+  DEBUG_LOG(debug_mmap, {
+            outstring("Mremap: addr=");
+            outhex32((l4_umword_t)old_addr);
+            outstring(" old_size=");
+            outhex32(old_size);
+            outstring("  new_size=");
+            outhex32(new_size);
+            outstring("\n");
+            });
 
   if (flags & MREMAP_FIXED && !(flags & MREMAP_MAYMOVE))
     return -EINVAL;

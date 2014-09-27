@@ -29,7 +29,7 @@ namespace L4Re
     enum Opcodes
     {
       Get, Get_num_streams, Get_stream_info, Get_stream_info_for_id,
-      Get_axis_info
+      Get_axis_info, Get_stream_state_for_id
     };
   };
 };

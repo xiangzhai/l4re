@@ -2,8 +2,7 @@ PKGDIR?= ../..
 L4DIR ?= $(PKGDIR)/../..
 
 # the name of your library
-TARGET	= $(PKGNAME)_rsaref2.a
-BUILD_PIC = $(TARGET)
+TARGET	= $(PKGNAME)_rsaref2.a $(PKGNAME)_rsaref2.p.a
 SYSTEMS = x86 arm amd64
 PC_FILENAME = $(PKGNAME)_rsaref2
 

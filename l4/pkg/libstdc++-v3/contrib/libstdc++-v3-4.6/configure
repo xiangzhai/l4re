@@ -644,6 +644,7 @@ GLIBCXX_LDBL_COMPAT_FALSE
 GLIBCXX_LDBL_COMPAT_TRUE
 ENABLE_VISIBILITY_FALSE
 ENABLE_VISIBILITY_TRUE
+libtool_VERSION
 ENABLE_SYMVERS_SOL2_FALSE
 ENABLE_SYMVERS_SOL2_TRUE
 ENABLE_SYMVERS_SUN_FALSE
@@ -787,7 +788,6 @@ build_vendor
 build_cpu
 build
 multi_basedir
-libtool_VERSION
 target_alias
 host_alias
 build_alias
@@ -2823,10 +2823,6 @@ ac_config_headers="$ac_config_headers config.h"
 # keeping the changes in LD private, export them just because LD is
 # exported.  Only used at the end of this file.
 ### am handles this now?  ORIGINAL_LD_FOR_MULTILIBS=$LD
-
-# For libtool versioning info, format is CURRENT:REVISION:AGE
-libtool_VERSION=6:16:0
-
 
 # Find the rest of the source tree framework.
 # Default to --enable-multilib
@@ -9702,7 +9698,7 @@ if test -z "$aix_libpath"; then aix_libpath="/usr/lib:/lib"; fi
       ;;
 
     # Unfortunately, older versions of FreeBSD 2 do not have this feature.
-    freebsd2*)
+    freebsd2.*)
       archive_cmds='$LD -Bshareable -o $lib $libobjs $deplibs $linker_flags'
       hardcode_direct=yes
       hardcode_minus_L=yes
@@ -10618,7 +10614,7 @@ freebsd* | dragonfly*)
     objformat=`/usr/bin/objformat`
   else
     case $host_os in
-    freebsd[123]*) objformat=aout ;;
+    freebsd[23].*) objformat=aout ;;
     *) objformat=elf ;;
     esac
   fi
@@ -10636,7 +10632,7 @@ freebsd* | dragonfly*)
   esac
   shlibpath_var=LD_LIBRARY_PATH
   case $host_os in
-  freebsd2*)
+  freebsd2.*)
     shlibpath_overrides_runpath=yes
     ;;
   freebsd3.[01]* | freebsdelf3.[01]*)
@@ -11488,7 +11484,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 11491 "configure"
+#line 11487 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -11594,7 +11590,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 11597 "configure"
+#line 11593 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -12526,7 +12522,7 @@ if test -z "$aix_libpath"; then aix_libpath="/usr/lib:/lib"; fi
         esac
         ;;
 
-      freebsd[12]*)
+      freebsd2.*)
         # C++ shared libraries reported to be fairly broken before
 	# switch to ELF
         ld_shlibs_CXX=no
@@ -14301,7 +14297,7 @@ freebsd* | dragonfly*)
     objformat=`/usr/bin/objformat`
   else
     case $host_os in
-    freebsd[123]*) objformat=aout ;;
+    freebsd[23].*) objformat=aout ;;
     *) objformat=elf ;;
     esac
   fi
@@ -14319,7 +14315,7 @@ freebsd* | dragonfly*)
   esac
   shlibpath_var=LD_LIBRARY_PATH
   case $host_os in
-  freebsd2*)
+  freebsd2.*)
     shlibpath_overrides_runpath=yes
     ;;
   freebsd3.[01]* | freebsdelf3.[01]*)
@@ -14952,7 +14948,7 @@ fi
     #
     # Fake what AC_TRY_COMPILE does.  XXX Look at redoing this new-style.
     cat > conftest.$ac_ext << EOF
-#line 14955 "configure"
+#line 14951 "configure"
 struct S { ~S(); };
 void bar();
 void foo()
@@ -15320,7 +15316,7 @@ $as_echo "$glibcxx_cv_atomic_long_long" >&6; }
   # Fake what AC_TRY_COMPILE does.
 
     cat > conftest.$ac_ext << EOF
-#line 15323 "configure"
+#line 15319 "configure"
 int main()
 {
   typedef bool atomic_type;
@@ -15357,7 +15353,7 @@ $as_echo "$glibcxx_cv_atomic_bool" >&6; }
     rm -f conftest*
 
     cat > conftest.$ac_ext << EOF
-#line 15360 "configure"
+#line 15356 "configure"
 int main()
 {
   typedef short atomic_type;
@@ -15394,7 +15390,7 @@ $as_echo "$glibcxx_cv_atomic_short" >&6; }
     rm -f conftest*
 
     cat > conftest.$ac_ext << EOF
-#line 15397 "configure"
+#line 15393 "configure"
 int main()
 {
   // NB: _Atomic_word not necessarily int.
@@ -15432,7 +15428,7 @@ $as_echo "$glibcxx_cv_atomic_int" >&6; }
     rm -f conftest*
 
     cat > conftest.$ac_ext << EOF
-#line 15435 "configure"
+#line 15431 "configure"
 int main()
 {
   typedef long long atomic_type;
@@ -15508,7 +15504,7 @@ $as_echo "$as_me: WARNING: Performance of certain classes will degrade as a resu
   # unnecessary for this test.
 
     cat > conftest.$ac_ext << EOF
-#line 15511 "configure"
+#line 15507 "configure"
 int main()
 {
   _Decimal32 d1;
@@ -19469,6 +19465,84 @@ $as_echo "$ac_has_gthreads" >&6; }
   if test x"$ac_has_gthreads" = x"yes"; then
 
 $as_echo "#define _GLIBCXX_HAS_GTHREADS 1" >>confdefs.h
+
+  fi
+
+  CXXFLAGS="$ac_save_CXXFLAGS"
+  ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+
+
+# For copy-assignable gthreads types
+
+
+
+  ac_ext=cpp
+ac_cpp='$CXXCPP $CPPFLAGS'
+ac_compile='$CXX -c $CXXFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CXX -o conftest$ac_exeext $CXXFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
+
+  ac_save_CXXFLAGS="$CXXFLAGS"
+  CXXFLAGS="$CXXFLAGS -std=c++0x -I${toplevel_srcdir}/gcc"
+
+  target_thread_file=`$CXX -v 2>&1 | sed -n 's/^Thread model: //p'`
+  case $target_thread_file in
+    posix)
+      CXXFLAGS="$CXXFLAGS -DSUPPORTS_WEAK -DGTHREAD_USE_WEAK -D_PTHREADS"
+  esac
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether gthreads types are copy-assignable in C++11 mode" >&5
+$as_echo_n "checking whether gthreads types are copy-assignable in C++11 mode... " >&6; }
+
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include "gthr.h"
+int
+main ()
+{
+
+      #ifdef __GTHREAD_MUTEX_INIT
+      __gthread_mutex_t m1;
+      __gthread_mutex_t m2 = __GTHREAD_MUTEX_INIT;
+      m1 = m2;
+      #endif
+      #ifdef __GTHREAD_RECURSIVE_MUTEX_INIT
+      __gthread_recursive_mutex_t r1;
+      __gthread_recursive_mutex_t r2 = __GTHREAD_RECURSIVE_MUTEX_INIT;
+      r1 = r2;
+      #endif
+      #ifdef __GTHREAD_HAS_COND
+      #ifdef __GTHREAD_COND_INIT
+      __gthread_cond_t c1;
+      __gthread_cond_t c2 = __GTHREAD_COND_INIT;
+      c1 = c2;
+      #endif
+      #endif
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_cxx_try_compile "$LINENO"; then :
+  ac_gthread_cxx11_copy_assign=1
+else
+  ac_gthread_cxx11_copy_assign=0
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+
+  if test $ac_gthread_cxx11_copy_assign = 1 ; then res_gthr_copy_assign=yes ;
+  else res_gthr_copy_assign=no ; fi
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $res_gthr_copy_assign" >&5
+$as_echo "$res_gthr_copy_assign" >&6; }
+
+  if test x"$res_gthr_copy_assign" = x"no"; then
+
+$as_echo "#define _GLIBCXX_GTHREADS_NO_COPY_ASSIGN_IN_CXX11 1" >>confdefs.h
 
   fi
 
@@ -64267,7 +64341,10 @@ $as_echo "$as_me: WARNING: === Symbol versioning will be disabled." >&2;}
   fi
 fi
 
-# Everything parsed; figure out what file to use.
+# For libtool versioning info, format is CURRENT:REVISION:AGE
+libtool_VERSION=6:16:0
+
+# Everything parsed; figure out what files and settings to use.
 case $enable_symvers in
   no)
     SYMVER_FILE=config/abi/pre/none.ver
@@ -64279,6 +64356,7 @@ $as_echo "#define _GLIBCXX_SYMVER_GNU 1" >>confdefs.h
 
     ;;
   gnu-versioned-namespace)
+    libtool_VERSION=7:0:0
     SYMVER_FILE=config/abi/pre/gnu-versioned-namespace.ver
 
 $as_echo "#define _GLIBCXX_SYMVER_GNU_NAMESPACE 1" >>confdefs.h
@@ -64427,6 +64505,8 @@ $as_echo "#define _GLIBCXX_PTRDIFF_T_IS_INT 1" >>confdefs.h
 fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $glibcxx_ptrdiff_t_is_i" >&5
 $as_echo "$glibcxx_ptrdiff_t_is_i" >&6; }
+
+
 
 
  # Check whether --enable-visibility was given.

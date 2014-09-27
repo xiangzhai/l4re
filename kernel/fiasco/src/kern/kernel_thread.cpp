@@ -66,7 +66,6 @@ Kernel_thread::bootstrap()
   // FIXME: we in fact need only the _pending_rqq lock
   Per_cpu_data_alloc::alloc(Cpu::invalid());
   Per_cpu_data::run_ctors(Cpu::invalid());
-  Per_cpu_data::run_late_ctors(Cpu::invalid());
   set_current_cpu(Cpu::boot_cpu()->id());
   _home_cpu = Cpu::boot_cpu()->id();
   Mem::barrier();
@@ -85,9 +84,10 @@ Kernel_thread::bootstrap()
   assert (current_cpu() == Cpu_number::boot_cpu()); // currently the boot cpu must be 0
   enable_tlb(current_cpu());
 
+  Per_cpu_data::run_late_ctors(Cpu_number::boot_cpu());
+  Per_cpu_data::run_late_ctors(Cpu::invalid());
   bootstrap_arch();
 
-  Per_cpu_data::run_late_ctors(Cpu_number::boot_cpu(), false);
   Timer_tick::enable(current_cpu());
   Proc::sti();
   Watchdog::enable();
@@ -173,10 +173,9 @@ Kernel_thread::idle_op()
       Rcu::enter_idle(cpu);
       Timer_tick::disable(cpu);
       disable_tlb(cpu);
-
+      Mem_unit::tlb_flush();
 
       // do everything to do to a deep sleep state:
-      //  - flush tlbs
       //  - flush caches
       //  - ...
       arch_tickless_idle(cpu);

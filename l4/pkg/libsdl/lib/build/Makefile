@@ -5,6 +5,9 @@ TARGET          = libSDL.a
 
 CONTRIB_INCDIR  = libsdl
 REQUIRES_LIBS   = libc_support_misc l4re_c-util libpthread
+WARNINGS        = $(WARNINGS_MINIMAL) -Wno-unused-but-set-variable \
+                  -Wno-implicit-function-declaration \
+                  -Wno-unused-variable
 
 SRC_C = $(patsubst $(PKGDIR)/%.c, %.c, $(wildcard $(PKGDIR)/contrib/src/*.c)) \
 	$(patsubst $(PKGDIR)/%.c, %.c, $(wildcard $(PKGDIR)/contrib/src/events/*.c)) \
@@ -46,5 +49,3 @@ PRIVATE_INCDIR	= $(PKGDIR)/contrib/src \
 vpath %.c $(PKGDIR)
 
 include $(L4DIR)/mk/lib.mk
-
-CFLAGS := $(filter-out -Wextra -Wall -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations,$(CFLAGS))

@@ -80,7 +80,7 @@ Romain::SWIFIPriv::notify(Romain::App_instance *i,
 						ret = Romain::Observer::Finished_step;
 						break;
 			default:
-						ERROR() << "Unhandled injection type: " << _flags;
+						ERROR() << "Unhandled injection type: " << _flags << "\n";
 						return Romain::Observer::Ignored;
 		}
 		flipper_trap3(t);

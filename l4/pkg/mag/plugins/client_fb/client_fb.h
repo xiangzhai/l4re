@@ -75,6 +75,9 @@ public:
   static void set_flags_prop(Session *s, Property_handler const *p, cxx::String const &v);
   static void set_bar_height_prop(Session *s, Property_handler const *p, cxx::String const &v);
 
+  void put_event(l4_umword_t stream, int type, int code, int value,
+                 l4_uint64_t time);
+
 private:
   int event_get(L4::Ipc::Iostream &s);
   int event_get_stream_info_for_id(L4::Ipc::Iostream &s);

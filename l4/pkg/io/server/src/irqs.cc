@@ -48,3 +48,19 @@ Kernel_irq_pin::set_mode(unsigned mode)
   return l4_error(system_icu()->icu->set_mode(_idx, mode));
 }
 
+int
+Io_irq_pin::clear()
+{
+  int cnt = 0;
+  while (!l4_error(l4_ipc_receive(irq().cap(), l4_utcb(), L4_IPC_BOTH_TIMEOUT_0)))
+    ++cnt;
+
+  return cnt;
+}
+
+int
+Kernel_irq_pin::mask()
+{
+  return l4_error(system_icu()->icu->mask(_idx));
+}
+

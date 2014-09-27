@@ -3,13 +3,13 @@ INTERFACE [arm]:
 #include <cstddef>
 #include "types.h"
 #include "mem_layout.h"
+#include "cpu.h"
+#include "paging.h"
 
 //---------------------------------------------------------------------------
 IMPLEMENTATION [arm]:
 
 #include "cpu.h"
-#include "kmem_space.h"
-
 
 extern char kernel_page_directory[];
 
@@ -64,24 +64,77 @@ INTERFACE [arm && !arm_lpae]:
 
 namespace Bootstrap {
 inline void
-set_ttbr(Mword pdir)
+enable_paging(Mword pdir)
 {
+  unsigned domains = 0x55555555; // client for all domains
+  unsigned control = Config::Cache_enabled
+                     ? Cpu::Cp15_c1_cache_enabled : Cpu::Cp15_c1_cache_disabled;
+
+  set_ttbcr();
+  Mem::dsb();
+  asm volatile("mcr p15, 0, r0, c8, c7, 0"); // TLBIALL
+  Mem::dsb();
+  asm volatile("mcr p15, 0, %[doms], c3, c0" // domains
+               : : [doms]  "r" (domains));
+
   asm volatile("mcr p15, 0, %[pdir], c2, c0" // TTBR0
                : : [pdir] "r" (pdir));
+
+  asm volatile("mcr p15, 0, %[control], c1, c0" // control
+               : : [control] "r" (control));
+  Mem::isb();
 }
 }
 
 //---------------------------------------------------------------------------
-INTERFACE [arm && arm_lpae]:
+INTERFACE [arm && arm_lpae && !hyp]:
 
 namespace Bootstrap {
 inline void
-set_ttbr(Mword pdir)
+enable_paging(Mword pdir)
 {
+  unsigned domains = 0x55555555; // client for all domains
+  unsigned control = Config::Cache_enabled
+                     ? Cpu::Cp15_c1_cache_enabled : Cpu::Cp15_c1_cache_disabled;
+
+  asm volatile("mcr p15, 0, %[ttbcr], c2, c0, 2" // TTBCR
+               : : [ttbcr] "r" (Page::Ttbcr_bits));
+  Mem::dsb();
+  asm volatile("mcr p15, 0, r0, c8, c7, 0"); // TLBIALL
+  Mem::dsb();
+  asm volatile("mcr p15, 0, %[doms], c3, c0" // domains
+               : : [doms]  "r" (domains));
+
   asm volatile("mcrr p15, 0, %[pdir], %[null], c2" // TTBR0
-               : :
-               [pdir]  "r" (pdir),
-               [null]  "r" (0));
+               : : [pdir]  "r" (pdir), [null]  "r" (0));
+
+  asm volatile("mcr p15, 0, %[control], c1, c0" // control
+               : : [control] "r" (control));
+  Mem::isb();
+}
+}
+
+//---------------------------------------------------------------------------
+INTERFACE [arm && arm_lpae && hyp]:
+
+namespace Bootstrap {
+inline void
+enable_paging(Mword pdir)
+{
+  asm volatile("mcr p15, 4, %[ttbcr], c2, c0, 2" // HTCR
+               : : [ttbcr] "r" (Page::Ttbcr_bits));
+  asm volatile("mcr p15, 4, %[hmair0], c10, c2, 0" // HMAIR0
+               : : [hmair0] "r" (Page::Mair0_prrr_bits));
+  asm volatile("mcrr p15, 4, %[pdir], %[null], c2" // HTBR
+               : : [pdir]  "r" (pdir), [null]  "r" (0));
+  Mem::dsb();
+  asm volatile("mcr p15, 4, r0, c8, c7, 0" : : : "memory"); // TLBIALLH
+  asm volatile("mcr p15, 4, r0, c8, c7, 4" : : : "memory"); // TLBIALLNSNH
+  Mem::dsb();
+
+  asm volatile("mcr p15, 4, %[control], c1, c0" // HSCTLR
+      : : [control] "r" (1 | 2 | 4 | 32 | 0x1000));
+  Mem::isb();
 }
 }
 
@@ -146,7 +199,7 @@ inline Phys_addr init_paging(void *const page_dir)
     lpae[i] = Phys_addr(((Address)page_dir + 0x1000 * i) | 3);;
 
   asm volatile ("mcr p15, 0, %0, c10, c2, 0 \n" // MAIR0
-                : : "r"(Page::Mair0_bits));
+                : : "r"(Page::Mair0_prrr_bits));
 
   return Phys_addr((Mword)lpae);
 }
@@ -168,12 +221,28 @@ inline Phys_addr pt_entry(Phys_addr pa, bool cache, bool local)
                 | Phys_addr(cache ? Page::Section_cachable : Page::Section_no_cache)
                 | Phys_addr(local ? Page::Section_local : Page::Section_global);
 }
+};
 
+//---------------------------------------------------------------------------
+IMPLEMENTATION [arm && !arm_lpae && !(armv7 || mpcore)]:
+
+namespace Bootstrap {
 inline Phys_addr init_paging(void *const page_dir)
 {
   return Phys_addr((Mword)page_dir);
 }
+};
 
+//---------------------------------------------------------------------------
+IMPLEMENTATION [arm && !arm_lpae && (armv7 || mpcore)]:
+
+namespace Bootstrap {
+inline Phys_addr init_paging(void *const page_dir)
+{
+  asm volatile ("mcr p15, 0, %0, c10, c2, 0" : : "r"(Page::Mair0_prrr_bits));
+  asm volatile ("mcr p15, 0, %0, c10, c2, 1" : : "r"(Page::Mair1_nmrr_bits));
+  return Phys_addr((Mword)page_dir);
+}
 };
 
 //---------------------------------------------------------------------------
@@ -193,11 +262,35 @@ map_memory(void volatile *pd, Virt_addr va, Phys_addr pa,
     = pt_entry(pa, cache, local);
 }
 
+}
+
+
+//---------------------------------------------------------------------------
+IMPLEMENTATION [arm && !hyp]:
+
+namespace Bootstrap {
 static void
 create_initial_mappings(void *const page_dir)
 {
   typedef Bootstrap::Phys_addr Phys_addr;
   typedef Bootstrap::Virt_addr Virt_addr;
+
+  Mword cpsr;
+  asm volatile ("mrs %0, cpsr" : "=r"(cpsr));
+  if ((cpsr & 0x1f) != 0x13)
+    { // we have no hyp mode support so leave hyp mode
+      Mword tmp, tmp2;
+      asm volatile ("   mov %[tmp], sp   \n"
+                    "   mov %[tmp2], lr  \n"
+                    "   msr spsr, %[psr] \n"
+                    "   adr r4, 1f       \n"
+                    "   .inst 0xe12ef300 | 4   @ msr elr_hyp, r4 \n"
+                    "   .inst 0xe160006e       @ eret \n"
+                    "1: mov sp, %[tmp]   \n"
+                    "   mov lr, %[tmp2]  \n"
+                    : [tmp]"=&r"(tmp), [tmp2]"=&r"(tmp2)
+                    : [psr]"r"((cpsr & ~0x1f) | 0xd3) : "cc", "r4");
+    }
 
   Virt_addr va;
   Phys_addr pa;
@@ -224,6 +317,72 @@ add_initial_pmem()
 }
 }
 
+//---------------------------------------------------------------------------
+IMPLEMENTATION [arm && hyp]:
+
+#include "feature.h"
+#include "kip.h"
+
+extern char my_kernel_info_page[];
+namespace Bootstrap {
+static void
+create_initial_mappings(void *const page_dir)
+{
+  typedef Bootstrap::Phys_addr Phys_addr;
+  typedef Bootstrap::Virt_addr Virt_addr;
+
+  Kip *kip = reinterpret_cast<Kip*>(my_kernel_info_page);
+  Mem_desc const *md = kip->mem_descs();
+  Mem_desc const *const md_end = md + kip->num_mem_descs();
+
+  for (; md < md_end; ++md)
+    {
+      if (!md->valid())
+	{
+	  const_cast<Mem_desc*>(md)->type(Mem_desc::Undefined);
+	  continue;
+	}
+
+      if (md->is_virtual())
+	continue;
+
+      unsigned long s = md->start();
+      unsigned long e = md->end();
+
+      // Sweep out stupid descriptors (that have the end before the start)
+      Virt_addr va;
+      Phys_addr pa;
+
+      switch (md->type())
+	{
+	case Mem_desc::Conventional:
+	  if (e <= s)
+	    break;
+          for (va = Virt_addr(s), pa = Phys_addr(s); va < Virt_addr(e);
+               va += Bootstrap::map_page_size(), pa += Bootstrap::map_page_size_phys())
+            Bootstrap::map_memory(page_dir, va, pa, true, false);
+	  break;
+	default:
+	  break;
+	}
+    }
+}
+
+KIP_KERNEL_FEATURE("arm:hyp");
+
+static void
+add_initial_pmem()
+{
+}
+
+}
+
+//---------------------------------------------------------------------------
+IMPLEMENTATION [arm]:
+
+#include "kmem_space.h"
+
+
 asm
 (
 ".section .text.init,#alloc,#execinstr \n"
@@ -236,6 +395,7 @@ asm
 ".long _stack                          \n"
 ".previous                             \n"
 ".section .bss                         \n"
+".p2align 3                            \n"
 "	.space	2048                   \n"
 "_stack:                               \n"
 ".previous                             \n"
@@ -262,28 +422,12 @@ extern "C" void bootstrap_main()
 
   Bootstrap::create_initial_mappings(page_dir);
 
-  unsigned domains = 0x55555555; // client for all domains
-  unsigned control = Config::Cache_enabled
-                     ? Cpu::Cp15_c1_cache_enabled : Cpu::Cp15_c1_cache_disabled;
-
   Mmu<Bootstrap::Cache_flush_area, true>::flush_cache();
 
   Bootstrap::do_arm_1176_cache_alias_workaround();
   Bootstrap::set_asid();
 
-  Bootstrap::set_ttbcr();
-  Mem::dsb();
-  asm volatile("mcr p15, 0, %[null], c8, c7, 0" // TLBIALL
-               : : [null]  "r" (0));
-  Mem::dsb();
-  asm volatile("mcr p15, 0, %[doms], c3, c0" // domains
-               : : [doms]  "r" (domains));
-
-  Bootstrap::set_ttbr(tbbr | Page::Ttbr_bits);
-
-  asm volatile("mcr p15, 0, %[control], c1, c0" // control
-               : : [control] "r" (control));
-  Mem::isb();
+  Bootstrap::enable_paging(tbbr);
 
   Bootstrap::add_initial_pmem();
 

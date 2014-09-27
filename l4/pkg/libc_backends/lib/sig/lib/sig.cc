@@ -189,7 +189,7 @@ int Sig_handling::handle_exception(l4_umword_t, L4::Ipc::Iostream &ios)
 #endif
 
 #ifdef ARCH_arm
-  if ((u->err & 0x00f00000) == 0x00500000)
+  if ((u->err >> 26) == 0x3e)
 #elif defined(ARCH_ppc32)
   if ((u->err & 3) == 4)
 #else

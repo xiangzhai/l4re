@@ -29,7 +29,7 @@
 
 #ifdef DDE_LINUX
 #include "local.h"
-#endif
+#endif  /* !DDE_LINUX */
 
 struct bdev_inode {
 	struct block_device bdev;
@@ -1302,6 +1302,7 @@ int ioctl_by_bdev(struct block_device *bdev, unsigned cmd, unsigned long arg)
 
 EXPORT_SYMBOL(ioctl_by_bdev);
 
+#ifndef DDE_LINUX
 /**
  * lookup_bdev  - lookup a struct block_device by name
  * @pathname:	special file representing the block device
@@ -1343,6 +1344,7 @@ fail:
 	goto out;
 }
 EXPORT_SYMBOL(lookup_bdev);
+#endif  /* !DDE_LINUX */
 
 /**
  * open_bdev_exclusive  -  open a block device by name and set it up for use

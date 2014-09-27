@@ -3,10 +3,16 @@ L4DIR       ?= $(PKGDIR)/../..
 
 TARGET      = romain
 
-SYSTEMS     = x86-l4f
+SYSTEMS     = x86-l4f #amd64-l4f
+
+USE_WATCHDOG = n
+SRC_$(USE_WATCHDOG) = watchdog.cc
+DEFINES_$(USE_WATCHDOG) = -DWATCHDOG=1
+
 
 OBSERVERS = $(addprefix fault_handlers/, \
               debugger.cc \
+              dbg_mem.cc \
               kiptime.cc \
 			  lock_observer.cc \
               observer.cc \
@@ -39,7 +45,11 @@ ASMJIT = $(addprefix asmjit/, \
 
 # list your .c or .cc files here
 SRC_C       =
-SRC_S       = instruction_length.S
+
+SRC_S_x86   = instruction_length.S
+SRC_S_amd64 =
+SRC_S       = $(SRC_S_$(ARCH))
+
 SRC_CC      = main.cc \
               manager.cc \
               memory.cc \
@@ -48,8 +58,11 @@ SRC_CC      = main.cc \
               handler.cc \
               emulation.cc \
               logging.cc \
+              $(SRC_y) \
               $(OBSERVERS) \
               $(ASMJIT)
+
+DEFINES += $(DEFINES_y)
 
 #SRC_CC += gdb_stub/gdb.cc \
 #          gdb_stub/tcp_connection.cc \
@@ -65,7 +78,7 @@ REQUIRES_LIBS = libvcpu libstdc++ libloader libudis86 libiniparser libpthread \
 include $(L4DIR)/mk/prog.mk
 
 DEFINES += -D__L4
-CXXFLAGS += -Wno-parentheses -Wno-unused -Wno-reorder -Wno-missing-field-initializers \
+CXXFLAGS += -Wno-parentheses -Wno-unused -Wno-unused-parameter -Wno-reorder -Wno-missing-field-initializers \
             -Wno-sequence-point -Wno-sign-compare -Wno-missing-braces -Wno-uninitialized \
             -Wno-missing-declarations -Wno-format -Wno-write-strings
 CXXFLAGS += $(call checkcxx,-std=c++11)

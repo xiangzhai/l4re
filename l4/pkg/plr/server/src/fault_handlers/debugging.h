@@ -24,7 +24,7 @@ class Breakpoint
 
 	l4_addr_t   _address;
 	l4_umword_t _orig_code;
-	unsigned    _refcnt;
+	l4_umword_t   _refcnt;
 
 	public:
 		Breakpoint(l4_addr_t addr)
@@ -43,9 +43,9 @@ class Breakpoint
 			DEBUG() << "Setting BP @ 0x" << std::hex << address()
 			        << " -> local 0x" << local;
 			
-			if (*(unsigned char*)local != BREAK_INSTRUCTION) {
+			if (*(l4_uint8_t*)local != BREAK_INSTRUCTION) {
 				_orig_code = *(l4_umword_t*)local;
-				*(unsigned char*)local = BREAK_INSTRUCTION;
+				*(l4_uint8_t*)local = BREAK_INSTRUCTION;
 				DEBUG() << "addr @ " << std::hex << &_address;
 			}
 		}
@@ -64,7 +64,7 @@ class Breakpoint
 
 		l4_addr_t address() { return _address; }
 		l4_umword_t orig()  { return _orig_code; }
-		unsigned refs() const { return _refcnt; }
+		l4_umword_t refs() const { return _refcnt; }
 
 		bool was_hit(Romain::App_thread *t)
 		{

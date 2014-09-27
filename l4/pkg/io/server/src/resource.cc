@@ -18,9 +18,26 @@
 #include <cstdio>
 #include <cassert>
 
+Resource *
+Resource_list::find(l4_uint32_t id) const
+{
+  for (auto i = begin(); i != end(); ++i)
+    if ((*i)->id() == id)
+      return *i;
+
+  return 0;
+}
+
+Resource *
+Resource_list::find(char const *id) const
+{
+  return find(Resource::str_to_id(id));
+}
+
+
 void
 Resource::dump(char const *ty, int indent) const
-{ printf("<%p>", this);
+{
   //bool abs = true;
 
   //if (!valid())
@@ -76,7 +93,7 @@ void
 Resource::dump(int indent) const
 {
   static char const *ty[] = { "INVALID", "IRQ   ", "IOMEM ", "IOPORT",
-                              "BUS   ", "unk", "", "" };
+                              "BUS   ", "GPIO", "", "" };
 
   dump(ty[type() % 8], indent);
 }
@@ -190,8 +207,6 @@ void Mmio_data_space::alloc_ram(Size size, unsigned long alloc_flags)
     throw(L4::Out_of_memory("not really"));
 
   start(phys_start);
-
-  add_flags(Resource::F_fixed_size | Resource::F_fixed_addr);
 
   L4Re::chksys(L4Re::Env::env()->rm()->attach(&_r, ds_size,
                                               L4Re::Rm::Search_addr |

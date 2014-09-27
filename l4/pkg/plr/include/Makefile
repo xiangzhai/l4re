@@ -1,6 +1,8 @@
 PKGDIR	?= ..
 L4DIR	?= $(PKGDIR)/../..
 
+PKGNAME := plr
+
 # All haeder files found in this directory tree will be automatically
 # installed in a way that they can be included with
 # #include <l4/pkgname/yourfile.h> later.

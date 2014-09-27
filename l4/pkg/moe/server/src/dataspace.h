@@ -46,7 +46,7 @@ public:
     : fpage(l4_fpage(base, size, rw ? L4_FPAGE_RWX : L4_FPAGE_RX)),
       offs(offs) {}
 
-    unsigned long bs() const throw() { return fpage.raw & ~((1 << 12)-1); }
+    unsigned long bs() const throw() { return fpage.raw & L4_FPAGE_ADDR_MASK; }
     unsigned long sz() const throw() { return 1 << l4_fpage_size(fpage); }
     unsigned long of() const throw() { return offs; }
     l4_fpage_t fp() const throw() { return fpage; }

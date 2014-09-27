@@ -43,7 +43,7 @@
  * ___swab16, ___swab32, ___swab64, ___swahw32, ___swahb32
  */
 
-static __inline__ __u16 __fswab16(__u16 val)
+static __inline__  __u16 __fswab16(__u16 val)
 {
 #ifdef __HAVE_BUILTIN_BSWAP16__
 	return __builtin_bswap16(val);
@@ -54,7 +54,7 @@ static __inline__ __u16 __fswab16(__u16 val)
 #endif
 }
 
-static __inline__ __u32 __fswab32(__u32 val)
+static __inline__  __u32 __fswab32(__u32 val)
 {
 #ifdef __HAVE_BUILTIN_BSWAP32__
 	return __builtin_bswap32(val);
@@ -65,7 +65,7 @@ static __inline__ __u32 __fswab32(__u32 val)
 #endif
 }
 
-static __inline__ __u64 __fswab64(__u64 val)
+static __inline__  __u64 __fswab64(__u64 val)
 {
 #ifdef __HAVE_BUILTIN_BSWAP64__
 	return __builtin_bswap64(val);
@@ -80,7 +80,7 @@ static __inline__ __u64 __fswab64(__u64 val)
 #endif
 }
 
-static __inline__ __u32 __fswahw32(__u32 val)
+static __inline__  __u32 __fswahw32(__u32 val)
 {
 #ifdef __arch_swahw32
 	return __arch_swahw32(val);
@@ -89,7 +89,7 @@ static __inline__ __u32 __fswahw32(__u32 val)
 #endif
 }
 
-static __inline__ __u32 __fswahb32(__u32 val)
+static __inline__  __u32 __fswahb32(__u32 val)
 {
 #ifdef __arch_swahb32
 	return __arch_swahb32(val);

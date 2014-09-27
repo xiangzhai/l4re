@@ -2,12 +2,7 @@
 
 void
 Gpio_resource::dump(int indent) const
-{ printf("<%p>", this);
-  //bool abs = true;
-
-  //if (!valid())
-  //  return;
-
+{
   l4_uint64_t s, e;
   s = start();
   e = end();

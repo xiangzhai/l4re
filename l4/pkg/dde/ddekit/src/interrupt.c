@@ -69,6 +69,7 @@ static struct
 } ddekit_irq_ctrl[MAX_INTERRUPTS];
 
 
+#if 0
 static void ddekit_irq_exit_fn(l4_cap_idx_t thread __attribute__((unused)),
                                void *data)
 {
@@ -78,7 +79,8 @@ static void ddekit_irq_exit_fn(l4_cap_idx_t thread __attribute__((unused)),
 	l4_irq_detach(ddekit_irq_ctrl[idx].irq_cap);
 }
 
-//L4THREAD_EXIT_FN_STATIC(exit_fn, ddekit_irq_exit_fn);
+L4THREAD_EXIT_FN_STATIC(exit_fn, ddekit_irq_exit_fn);
+#endif
 
 static int do_irq_attach(int irq)
 {

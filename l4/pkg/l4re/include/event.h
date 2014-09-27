@@ -48,6 +48,7 @@ enum l4re_event_stream_max_values_t
   L4RE_EVENT_REL_MAX = 0xf,
   L4RE_EVENT_ABS_MAX = 0x3f,
   L4RE_EVENT_PROP_MAX = 0x1f,
+  L4RE_EVENT_SW_MAX   = 0xf, // should be >= L4RE_SW_MAX
 };
 
 enum l4re_event_stream_props_t
@@ -71,8 +72,15 @@ typedef struct l4re_event_stream_info_t
   unsigned long keybits[__UNUM_B(L4RE_EVENT_KEY_MAX)];
   unsigned long relbits[__UNUM_B(L4RE_EVENT_REL_MAX)];
   unsigned long absbits[__UNUM_B(L4RE_EVENT_ABS_MAX)];
+  unsigned long swbits[__UNUM_B(L4RE_EVENT_SW_MAX)];
 
 } l4re_event_stream_info_t;
+
+typedef struct l4re_event_stream_state_t
+{
+  unsigned long keybits[__UNUM_B(L4RE_EVENT_KEY_MAX)];
+  unsigned long swbits[__UNUM_B(L4RE_EVENT_SW_MAX)];
+} l4re_event_stream_state_t;
 
 #undef __UNUM_B
 

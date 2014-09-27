@@ -15,6 +15,7 @@
 #include "memory"
 #include "emulation"
 
+#include <string.h>
 #include <l4/sys/kdebug.h>
 
 #define MSG() DEBUGf(Romain::Log::Emulator)
@@ -43,9 +44,9 @@ void Romain::Emulator_base::init_ud()
 	ud_set_syntax(&_ud, UD_SYN_INTEL);
 
 	ud_set_pc(&_ud, ip());
-	ud_set_input_buffer(&_ud, (unsigned char*)_local_ip, 32);
+	ud_set_input_buffer(&_ud, (l4_uint8_t*)_local_ip, 32);
 
-	int num_bytes = ud_disassemble(&_ud);
+	l4_mword_t num_bytes = ud_disassemble(&_ud);
 	(void)num_bytes;
 #if 0
 	MSG() << "print_instruction "
@@ -65,7 +66,7 @@ Romain::Emulator_base::Emulator_base(L4vcpu::Vcpu *vcpu,
 	: _vcpu(vcpu), _translator(trans)
 {
 	_local_ip = _translator->translate(ip());
-	init_ud();
+	//init_ud();
 }
 
 
@@ -262,7 +263,7 @@ l4_umword_t Romain::Emulator_base::operand_to_value(ud_operand_t *op)
  * This incorporates looking at the operand's size to figure out
  * the right masking. Plus, the result is _SIGNED_!
  */
-int Romain::Emulator_base::offset_from_operand(ud_operand_t *op)
+l4_mword_t Romain::Emulator_base::offset_from_operand(ud_operand_t *op)
 {
 	uint8_t offs    = op->offset;
 	long long value = 0;
@@ -434,7 +435,7 @@ void Romain::WriteEmulator::handle_stos()
 {
 	_check(_ud.mnemonic != UD_Istosd, "non-word string copy");
 
-	unsigned count = _ud.pfx_rep != UD_NONE ? _vcpu->r()->cx : 1;
+	l4_umword_t count = _ud.pfx_rep != UD_NONE ? _vcpu->r()->cx : 1;
 
 	MSG() << std::hex << "rep = 0x" << (int)_ud.pfx_rep;
 	MSG() << "iterations: " << count;
@@ -442,7 +443,7 @@ void Romain::WriteEmulator::handle_stos()
 	l4_addr_t base = _vcpu->r()->di;
 	base = _translator->translate(base);
 
-	for (unsigned idx = 0; idx < count; ++idx) {
+	for (l4_umword_t idx = 0; idx < count; ++idx) {
 		*(l4_umword_t*)base = _vcpu->r()->ax;
 
 		// XXX: Handle
@@ -467,14 +468,14 @@ void Romain::WriteEmulator::handle_movsd()
 {
 	_check(_ud.mnemonic != UD_Imovsd, "non-word memcopy");
 
-	unsigned count = _ud.pfx_rep != UD_NONE ? _vcpu->r()->cx : 1;
+	l4_umword_t count = _ud.pfx_rep != UD_NONE ? _vcpu->r()->cx : 1;
 	MSG() << std::hex << "rep = 0x" << (int)_ud.pfx_rep;
 	MSG() << "iterations: " << count;
 
 	l4_addr_t src = _translator->translate(_vcpu->r()->si);
 	l4_addr_t dst = _translator->translate(_vcpu->r()->di);
 
-	for (unsigned idx = 0; idx < count; ++idx) {
+	for (l4_umword_t idx = 0; idx < count; ++idx) {
 		*(l4_umword_t*)dst = *(l4_umword_t*)src;
 		dst += 4;
 		src += 4;
@@ -496,23 +497,23 @@ void Romain::WriteEmulator::handle_movsb()
 {
 	_check(_ud.mnemonic != UD_Imovsb, "non-byte memcopy");
 
-	unsigned count = _ud.pfx_rep != UD_NONE ? _vcpu->r()->cx : 1;
+	l4_umword_t count = _ud.pfx_rep != UD_NONE ? _vcpu->r()->cx : 1;
 	MSG() << std::hex << "rep = 0x" << (int)_ud.pfx_rep;
 	MSG() << "iterations: " << count;
 
 	l4_addr_t src = _translator->translate(_vcpu->r()->si);
 	l4_addr_t dst = _translator->translate(_vcpu->r()->di);
 
-	for (unsigned idx = 0; idx < count; ++idx) {
-		*(unsigned char*)dst = *(unsigned char*)src;
+	for (l4_umword_t idx = 0; idx < count; ++idx) {
+		*(l4_uint8_t*)dst = *(l4_uint8_t*)src;
 		dst++;
 		src++;
 	}
 
 	if (_ud.pfx_rep != UD_NONE) // we're done rep'ing
 		_vcpu->r()->cx = 0;
-	_vcpu->r()->si += count * sizeof(unsigned char);
-	_vcpu->r()->di += count * sizeof(unsigned char);
+	_vcpu->r()->si += count * sizeof(l4_uint8_t);
+	_vcpu->r()->di += count * sizeof(l4_uint8_t);
 
 	_vcpu->r()->ip += ilen();
 }
@@ -620,4 +621,99 @@ void Romain::Emulator_base::print_instruction()
 {
 	INFO() << "INSTR(" << std::setw(16) << ud_insn_hex(&_ud) << ") "
 	       << std::setw(20) << ud_insn_asm(&_ud);
+}
+
+static unsigned long long rdtsc1()
+{
+	unsigned long long ret = 0;
+	unsigned long hi, lo;
+	asm volatile ("cpuid\t\n"
+				  "rdtsc\t\n"
+				  "mov %%edx, %0\n\t"
+				  "mov %%eax, %1\n\t"
+				  : "=r"(hi), "=r"(lo)
+				  :
+				  : "eax", "ebx", "ecx", "edx");
+	ret = hi;
+	ret <<= 32;
+	ret |= lo;
+	return ret;
+}
+
+
+static unsigned long long rdtsc2()
+{
+	unsigned long long ret = 0;
+	unsigned long hi, lo;
+	asm volatile ("rdtscp\n\t"
+				  "mov %%edx, %0\n\t"
+				  "mov %%eax, %1\n\t"
+				  "cpuid\n\t"
+				  : "=r"(hi), "=r"(lo)
+				  :
+				  : "eax", "ebx", "ecx", "edx");
+	ret = hi;
+	ret <<= 32;
+	ret |= lo;
+	//printf("%lx %lx %llx\n", hi, lo, ret);
+	return ret;
+}
+
+
+#if 1
+static unsigned long long t = 0;
+static unsigned count = 0;
+#endif
+
+#include "instruction_length.h"
+
+void Romain::CopyAndExecute::emulate(Romain::AddressTranslator *at)
+{
+	unsigned long long t1, t2;
+#if 0
+	MSG() << "CopyAndExecute::emulate() called @ " << std::hex << _vcpu->r()->ip
+	      << "\n   local IP @ " << _local_ip << "\n   ilen " << _ilen;
+#endif
+
+	// XXX: need rewrite support for rep:movs, because this instruction would
+	//      potentially use a second address that is not a shared mem address
+	_local_ip = at->translate(_vcpu->r()->ip);
+	_ilen     = mlde32((void*)_local_ip);
+
+	//static char instbuf[32];
+	//memset(_instbuf, 0x90, 32); // NOP
+	t1 = rdtsc1();
+	for (unsigned inc = 0; inc <= _ilen; inc += 4) {
+		*(unsigned*)(_instbuf + inc) = *(unsigned*)(_local_ip + inc);
+	}
+	t2 = rdtsc2();
+	//memcpy((void*)_instbuf, (void*)_local_ip, _ilen); // THE instruction
+	_instbuf[_ilen] = 0xC3; // RET
+
+	asm volatile(
+				 "call *%5\n\t"
+				 : "=a" (_vcpu->r()->ax),
+				   "=c" (_vcpu->r()->cx),
+				   "=d" (_vcpu->r()->dx),
+				   "=S" (_vcpu->r()->si),
+				   "=D" (_vcpu->r()->di)
+				 : "r" (_instbuf), "a" (_vcpu->r()->ax),
+				   "d" (_vcpu->r()->dx), "D" (_vcpu->r()->di),
+				   "c" (_vcpu->r()->cx), "S" (_vcpu->r()->si)
+				 : "cc", "memory"
+	);
+
+
+#if 1
+	t += (t2-t1);
+
+	count++;
+
+	if (count >= 100000) {
+		printf("DT: %lld %p %p\n", t / count, this, _instbuf);
+		count = 0;
+		t = 0;
+	}
+#endif
+	_vcpu->r()->ip += _ilen;
 }

@@ -4,6 +4,8 @@ L4DIR  ?= $(PKGDIR)/../..
 TARGET = libpython.a
 PC_FILENAME = libpython
 REQUIRES_LIBS := readline
+WARNINGS       = $(WARNINGS_MINIMAL) -Wno-unused-but-set-variable \
+                 -Wno-unused-function
 
 PRIVATE_INCDIR = $(PKGDIR_ABS)/include $(PKGDIR_ABS)/include/ARCH-$(ARCH)
 
@@ -149,10 +151,6 @@ SRC_C += dummies.c
 
 vpath %.c $(PKGDIR)/contrib
 
-PRIVATE_INCDIR += $(PKGDIR)/contrib/Include
-PRIVATE_INCDIR += $(PKGDIR)/contrib/Python
+PRIVATE_INCDIR += $(PKGDIR)/contrib/Include $(PKGDIR)/contrib/Python
 
 include $(L4DIR)/mk/lib.mk
-
-CFLAGS   := $(filter-out -Wextra,$(CFLAGS)) -Wno-attributes -fno-strict-aliasing
-CXXFLAGS := $(filter-out -Wextra,$(CXXFLAGS)) -Wno-attributes -fno-strict-aliasing -fno-strict-prototype

@@ -15,6 +15,7 @@
 #include <l4/libloader/remote_app_model>
 #include "remote_mem.h"
 #include "app_task.h"
+#include "debug.h"
 
 #if 0
 namespace Ldr {
@@ -116,6 +117,18 @@ struct App_model : public Ldr::Base_app_model<Stack>
                          l4_sched_param_t const &sp)
   {
     L4::Cap<L4::Scheduler> s(prog_info()->scheduler.raw & (~0UL << L4_FPAGE_ADDR_SHIFT));
+
+    // test whether intersection between provided cpu set and online cpu set
+    // is empty, in that case warn that the thread _may_ never run
+    l4_umword_t cpu_max;
+    l4_sched_cpu_set_t cpus = sp.affinity;
+    l4_msgtag_t t = s->info(&cpu_max, &cpus);
+    if (l4_error(t))
+      return t;
+
+    if (!(cpus.map & sp.affinity.map))
+      Dbg(Dbg::Warn).printf("warning: Launching thread on offline CPU. Thread may never run!\n");
+
     return s->run_thread(thread, sp);
   }
 

@@ -34,9 +34,10 @@
 .Xr printf 3 Ns -style
 format string
 .Sh LIBRARY
-.Lb libc
+.ds str-Lb-libbsd Utility functions from BSD systems (libbsd, \-lbsd)
+.Lb libbsd
 .Sh SYNOPSIS
-.In stdio.h
+.In bsd/stdio.h
 .Ft const char *
 .Fn fmtcheck "const char *fmt_suspect" "const char *fmt_default"
 .Sh DESCRIPTION
