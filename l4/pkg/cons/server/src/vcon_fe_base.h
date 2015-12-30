@@ -13,13 +13,28 @@
 
 #include <l4/sys/vcon>
 #include <l4/re/util/object_registry>
-#include <l4/cxx/ipc_server>
+#include <l4/sys/cxx/ipc_epiface>
 
-class Vcon_fe_base : public Frontend, public L4::Server_object
+class Vcon_fe_base :
+  public Frontend,
+  public L4::Irqep_t<Vcon_fe_base>
 {
 public:
   Vcon_fe_base(L4::Cap<L4::Vcon> con, L4Re::Util::Object_registry *r);
-  int dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios);
+  void handle_irq()
+  {
+    char buf[30];
+    const int sz = sizeof(buf);
+    int r;
+
+    do
+      {
+        r = _vcon->read(buf, sz);
+        if (_input && r > 0)
+          _input->input(cxx::String(buf, r > sz ? sz : r));
+      }
+    while (r > sz);
+  }
 
 protected:
   int do_write(char const *buf, unsigned sz);

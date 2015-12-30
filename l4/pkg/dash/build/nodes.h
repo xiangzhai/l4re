@@ -33,6 +33,7 @@
 
 struct ncmd {
       int type;
+      int linno;
       union node *assign;
       union node *args;
       union node *redirect;
@@ -48,6 +49,7 @@ struct npipe {
 
 struct nredir {
       int type;
+      int linno;
       union node *n;
       union node *redirect;
 };
@@ -70,6 +72,7 @@ struct nif {
 
 struct nfor {
       int type;
+      int linno;
       union node *args;
       union node *body;
       char *var;
@@ -78,6 +81,7 @@ struct nfor {
 
 struct ncase {
       int type;
+      int linno;
       union node *expr;
       union node *cases;
 };
@@ -87,6 +91,14 @@ struct nclist {
       int type;
       union node *next;
       union node *pattern;
+      union node *body;
+};
+
+
+struct ndefun {
+      int type;
+      int linno;
+      char *text;
       union node *body;
 };
 
@@ -141,6 +153,7 @@ union node {
       struct nfor nfor;
       struct ncase ncase;
       struct nclist nclist;
+      struct ndefun ndefun;
       struct narg narg;
       struct nfile nfile;
       struct ndup ndup;

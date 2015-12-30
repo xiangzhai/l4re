@@ -68,8 +68,8 @@
 #include "dde_support.h"
 #endif /* DDE_LINUX */
 
-#include <l4/cunit/CUnit.h>
-#include <l4/cunit/MyMem.h>
+#include <CUnit.h>
+#include <MyMem.h>
 
 #ifdef MEMTRACE
 

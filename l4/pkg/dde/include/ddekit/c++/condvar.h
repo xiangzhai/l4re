@@ -17,7 +17,7 @@
 /** \file ddekit/condvar.h */
 
 #include <l4/sys/compiler.h>
-#include <l4/dde/ddekit/lock.h>
+#include <l4/dde/ddekit/c++/lock.h>
 
 namespace DDEKit
 {

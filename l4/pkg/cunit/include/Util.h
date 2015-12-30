@@ -56,7 +56,7 @@
 #ifndef __INCLUDE_UTIL_H_
 #define __INCLUDE_UTIL_H_
 
-#include <l4/cunit/CUnit.h>
+#include <CUnit.h>
 
 #ifdef __cplusplus
 extern "C" {

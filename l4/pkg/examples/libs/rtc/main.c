@@ -13,28 +13,29 @@
 
 #include <l4/rtc/rtc.h>
 #include <l4/util/util.h>
+#include <l4/re/env.h>
 #include <stdio.h>
 
 int main(void)
 {
-  l4_uint32_t value;
+  l4_uint64_t value;
 
-  if (l4rtc_get_offset_to_realtime(&value))
+  l4_cap_idx_t server = l4re_env_get_cap("rtc");
+  if (!l4_is_valid_cap(server))
+    {
+      printf("Error finding 'rtc' cap.\n");
+      return 1;
+    }
+
+  if (l4rtc_get_offset_to_realtime(server, &value))
     printf("Error: l4rtc_get_offset_to_realtime\n");
   else
-    printf("offset-to-realtime: %d\n", value);
-
-  if (l4rtc_get_linux_tsc_scaler(&value))
-    printf("Error: l4rtc_get_linux_tsc_scaler\n");
-  else
-    printf("linux-tsc-scaler: %d\n", value);
+    printf("offset-to-realtime: %lld\n", value);
 
   while (1)
     {
-      if (l4rtc_get_seconds_since_1970(&value))
-        printf("Error: l4rtc_get_seconds_since_1970\n");
-      else
-        printf("time: %d\n", value);
+      l4_uint64_t now = l4rtc_get_timer() + value;
+      printf("time: %lldns\n", now);
       l4_sleep(400);
     }
 

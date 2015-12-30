@@ -2,7 +2,8 @@
 
 package.path = "rom/?.lua";
 
-require("vmm");
+local L4 = require "L4";
+local vmm = require "vmm";
 
 vmm.loader.log_fab = L4.default_loader:new_channel();
 

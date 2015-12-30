@@ -14,6 +14,8 @@
 #ifndef __FERRET_EXAMPLES_MERGE_MON_UU_H_
 #define __FERRET_EXAMPLES_MERGE_MON_UU_H_
 
+#include <l4/sys/compiler.h>
+
 EXTERN_C_BEGIN
 
 #include <stddef.h>

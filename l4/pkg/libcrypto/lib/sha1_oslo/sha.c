@@ -13,8 +13,8 @@
  */
 
 #define SHA1_PROTOTYPES
-#include "private/sha.h"
-#include "private/util.h"
+#include <l4/crypto/private/sha.h>
+#include <l4/crypto/private/util.h>
 
 
 #define ROL(VALUE, COUNT) ((VALUE)<<COUNT | (VALUE)>>(32-COUNT))

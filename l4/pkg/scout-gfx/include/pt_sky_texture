@@ -16,6 +16,9 @@
 #pragma once
 
 #include <l4/scout-gfx/sky_texture>
+#include <l4/mag-gfx/canvas>
+
+#include <cstring>
 
 namespace Scout_gfx { namespace Pt {
 

@@ -1,9 +1,3 @@
-PKGDIR	?= .
-L4DIR	?= $(PKGDIR)/../..
+L4DIR ?= ../..
 
-TARGET := server
-
-include $(L4DIR)/mk/subdir.mk
-
-#server: lib
-
+include $(L4DIR)/mk/project.mk

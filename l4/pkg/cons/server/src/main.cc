@@ -24,14 +24,15 @@
 #include "registry.h"
 #include "server.h"
 
-#include <l4/re/util/cap_alloc>
 #include <l4/re/util/icu_svr>
 #include <l4/re/util/vcon_svr>
 #include <l4/re/util/object_registry>
+#include <l4/re/util/br_manager>
 #include <l4/re/error_helper>
 
 #include <l4/sys/typeinfo_svr>
 #include <l4/cxx/iostream>
+#include <l4/sys/cxx/ipc_epiface>
 
 #include <algorithm>
 #include <set>
@@ -53,24 +54,10 @@ struct Config_opts
 };
 
 static Config_opts config;
-L4::Cap<void> rcv_cap = L4Re::Util::cap_alloc.alloc<void>();
 
-class Loop_hooks :
-  public L4::Ipc_svr::Ignore_errors,
-  public L4::Ipc_svr::Default_timeout,
-  public L4::Ipc_svr::Compound_reply
-{
-public:
-  static void setup_wait(L4::Ipc::Istream &istr, bool)
-  {
-    istr.reset();
-    istr << L4::Ipc::Small_buf(rcv_cap.cap(), L4_RCV_ITEM_LOCAL_ID);
-    l4_utcb_br_u(istr.utcb())->bdr = 0;
-  }
-};
 
-static Registry registry;
-static L4::Server<Loop_hooks>  server(l4_utcb());
+static L4::Server<L4Re::Util::Br_manager_hooks>  server(l4_utcb());
+static Registry registry(&server);
 
 class My_mux : public Mux_i, public cxx::H_list_item
 {
@@ -91,7 +78,7 @@ private:
   std::set<std::string> _auto_connect_consoles;
 };
 
-class Cons_svr : public Server_object
+class Cons_svr : public L4::Epiface_t<Cons_svr, L4::Factory, Server_object>
 {
 public:
   explicit Cons_svr(const char *name);
@@ -100,8 +87,8 @@ public:
 
   int create(cxx::String const &name, int color, Vcon_client **,
              size_t bufsz, Client::Key key);
-  int dispatch_factory(L4::Ipc::Iostream &ios);
-  int dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios);
+  int op_create(L4::Factory::Rights, L4::Ipc::Cap<void> &obj,
+                l4_mword_t proto, L4::Ipc::Varg_list_ref args);
 
   Controller *ctl() { return &_ctl; }
   void add(My_mux *m)
@@ -159,9 +146,15 @@ Cons_svr::create(cxx::String const &name, int color,
 
 
   Vcon_client *v = new Vcon_client(std::string(_name.start(), _name.len()),
-                                   color, bufsz, key);
+                                   color, bufsz, key, &registry);
   if (!v)
     return -L4_ENOMEM;
+
+  if (!registry.register_obj(v))
+    {
+      delete v;
+      return -L4_ENOMEM;
+    }
 
   if (c != _ctl.clients.end())
     {
@@ -173,7 +166,6 @@ Cons_svr::create(cxx::String const &name, int color,
   else
     _ctl.clients.push_front(v);
 
-  registry.register_obj(v);
   sys_msg("Created vcon channel: %s [%lx]\n",
           v->tag().c_str(), v->obj_cap().cap());
 
@@ -182,31 +174,27 @@ Cons_svr::create(cxx::String const &name, int color,
 }
 
 int
-Cons_svr::dispatch_factory(L4::Ipc::Iostream &ios)
+Cons_svr::op_create(L4::Factory::Rights, L4::Ipc::Cap<void> &obj,
+                    l4_mword_t proto, L4::Ipc::Varg_list_ref args)
 {
-  L4::Opcode op;
-  ios >> op;
-
-  switch (op)
+  switch (proto)
     {
-    case L4_PROTO_LOG:
+    case (l4_mword_t)L4_PROTO_LOG:
         {
           // copied from moe/server/src/alloc.cc
 
-          L4::Ipc::Varg tag;
-          ios.get(&tag);
+          L4::Ipc::Varg tag = args.next();
 
           if (!tag.is_of<char const *>())
             return -L4_EINVAL;
 
-          L4::Ipc::Varg col;
-          ios.get(&col);
+          L4::Ipc::Varg col = args.next();
 
           int color;
           if (col.is_of<char const *>())
             {
               cxx::String cs = cxx::String(col.value<char const*>(),
-                                           col.length());
+                                           col.length() - 1);
 
               int c = 7, bright = 0;
               if (!cs.empty())
@@ -240,15 +228,14 @@ Cons_svr::dispatch_factory(L4::Ipc::Iostream &ios)
           bool show = config.default_show_all;
           bool keep = config.default_keep;
           Client::Key key;
-          L4::Ipc::Varg opts;
           size_t bufsz = 0;
 
-          while (ios.get(&opts))
+          for (L4::Ipc::Varg opts = args.next(); !opts.is_nil(); opts = args.next())
             {
               if (opts.is_of<char const *>())
                 {
                   cxx::String cs = cxx::String(opts.value<char const *>(),
-                                               opts.length());
+                                               opts.length() - 1);
 
                   if (cs == "hide")
                     show = false;
@@ -282,7 +269,7 @@ Cons_svr::dispatch_factory(L4::Ipc::Iostream &ios)
                 }
             }
 
-          ios << v->obj_cap();
+          obj = L4::Ipc::make_cap(v->obj_cap(), L4_CAP_FPAGE_RWSD);
           return L4_EOK;
         }
       break;
@@ -291,23 +278,6 @@ Cons_svr::dispatch_factory(L4::Ipc::Iostream &ios)
     }
 }
 
-
-int
-Cons_svr::dispatch(l4_umword_t, L4::Ipc::Iostream &ios)
-{
-  l4_msgtag_t tag;
-  ios >> tag;
-
-  switch (tag.label())
-    {
-    case L4::Meta::Protocol:
-      return L4::Util::handle_meta_request<L4::Factory>(ios);
-    case L4::Factory::Protocol:
-      return dispatch_factory(ios);
-    default:
-      return -L4_EBADPROTO;
-    }
-}
 
 static int work(int argc, char const *argv[])
 {
@@ -371,7 +341,7 @@ static int work(int argc, char const *argv[])
         case OPT_FE:
           if (!current_mux)
             {
-              printf("ERROR: need to instanitiate a muxer (--mux) before\n"
+              printf("ERROR: need to instantiate a muxer (--mux) before\n"
                      "using the --frontend option.\n");
               break;
             }
@@ -422,7 +392,7 @@ static int work(int argc, char const *argv[])
 
   ac_consoles.clear();
 
-  server.loop(&registry);
+  server.loop<L4::Runtime_error>(&registry);
   return 0;
 }
 

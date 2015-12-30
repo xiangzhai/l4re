@@ -30,17 +30,10 @@ namespace Event {
 int
 Event::wait()
 {
-  pthread_mutex_lock(&_wait_lock);
-
-  attach(pthread_l4_getcap(pthread_self()));
-
-  int ret = l4_error(_irq->receive());
-
-  pthread_mutex_unlock(&_wait_lock);
-  return ret;
+  return l4_error(_irq->down());
 }
 
-Event_loop::Event_loop(L4::Cap<L4::Irq> irq, int prio)
+Event_loop::Event_loop(L4::Cap<L4::Semaphore> irq, int prio)
   : Event_base(irq), _pthread(0)
 {
   pthread_attr_t a;
@@ -66,7 +59,6 @@ Event_loop::Event_loop(L4::Cap<L4::Irq> irq, int prio)
 void
 Event_loop::start()
 {
-  attach(pthread_l4_getcap(_pthread));
 }
 
 Event_loop::~Event_loop()
@@ -81,7 +73,7 @@ Event_loop::event_loop(void *data)
   Event_loop *e = reinterpret_cast<Event_loop *>(data);
   while (1)
     {
-      l4_msgtag_t res = e->_irq->receive(L4_IPC_NEVER);
+      l4_msgtag_t res = e->_irq->down();
       if (l4_ipc_error(res, l4_utcb()))
         continue;
 

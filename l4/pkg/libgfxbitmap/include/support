@@ -16,6 +16,8 @@
 #ifndef __LIBTERM__SUPPORT_H__
 #define __LIBTERM__SUPPORT_H__
 
+#include <l4/re/video/view>
+
 void
 libterm_init_colors(L4Re::Video::View::Info *fbi);
 

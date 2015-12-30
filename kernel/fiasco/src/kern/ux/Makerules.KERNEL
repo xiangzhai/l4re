@@ -53,11 +53,21 @@ irq0:		irq0.o
 
 ifeq ($(CONFIG_UX_CON),y)
 
-SDL_CFLAGS  := $(shell $(SYSTEM_TARGET)sdl-config --cflags)
-SDL_LDFLAGS := $(shell $(SYSTEM_TARGET)sdl-config --libs)
+define get_sdl_config
+  if sdl2-config --cflags > /dev/null 2>&1; then \
+    echo sdl2-config; \
+  else \
+    echo sdl-config; \
+  fi
+endef
+
+SDL_CONFIG := $(shell $(call get_sdl_config))
+
+SDL_CFLAGS  := $(shell $(CROSS_COMPILE)$(SDL_CONFIG) --cflags)
+SDL_LDFLAGS := $(shell $(CROSS_COMPILE)$(SDL_CONFIG) --libs)
 
 ifeq ($(SDL_CFLAGS),)
-  $(error sdl-config not found. libsdl including header files installed?)
+  $(error $(SDL_CONFIG) not found. libsdl including header files installed?)
 endif
 
 ux_con.o:	ux_con.c

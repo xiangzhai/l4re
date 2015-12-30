@@ -16,17 +16,13 @@
 #include <l4/re/rm>
 #include <l4/re/rm-sys.h>
 #include <l4/re/env>
-#include <l4/re/protocols>
 
 #include <l4/sys/task>
 
 #include <l4/cxx/iostream>
 #include <l4/cxx/l4iostream>
 
-#include <l4/re/util/region_mapping_svr>
-
 #include "global.h"
-//#include "dispatcher.h"
 #include "debug.h"
 
 #include <cstdio>
@@ -122,11 +118,6 @@ Region_ops::release(Region_handler const * /*h*/)
 {
 }
 
-template<typename T>
-inline
-T extract(L4::Ipc::Istream &s)
-{ T t; s >> t; return t; }
-
 void
 Region_map::debug_dump(unsigned long /*function*/) const
 {
@@ -160,46 +151,15 @@ Region_ops::free(Region_handler const *h, l4_addr_t start, unsigned long size)
   ds->clear(start + h->offset(), size);
 }
 
-
-class Rm_server
+long
+Region_map::op_io_page_fault(L4::Io_pager::Rights,
+                             l4_fpage_t io_pfa, l4_umword_t pc,
+                             L4::Ipc::Opt<l4_mword_t> &result,
+                             L4::Ipc::Opt<L4::Ipc::Snd_fpage> &)
 {
-public:
-  typedef L4::Cap<L4Re::Dataspace> Dataspace;
-  enum { Have_find = true };
-  static int validate_ds(L4::Ipc::Snd_fpage const & /*ds_cap*/, unsigned, L4::Cap<L4Re::Dataspace> *ds)
-  {
-    // XXX: must check that ds is from trusted allocator!
-    *ds = L4Re::Util::cap_alloc.alloc<L4Re::Dataspace>();
-    // XXX: use L4::Cap::move()!
-    L4::Cap<L4::Task>(L4Re::This_task)->map(L4Re::This_task, Glbl::rcv_cap.fpage(),
-	              ds->snd_base(L4_MAP_ITEM_GRANT));
-    return L4_EOK;
-  }
-
-  static l4_umword_t find_res(L4::Cap<void> const &ds) { return ds.cap(); }
-
-
-};
-
-int
-Region_map::handle_rm_request(L4::Ipc::Iostream &ios)
-{
-  return L4Re::Util::region_map_server<Rm_server>(this, ios);
+  Err().printf("IO-port-fault: port=0x%lx size=%d pc=0x%lx\n",
+               l4_fpage_page(io_pfa), 1 << l4_fpage_size(io_pfa), pc);
+  result = ~0;
+  return -1;
 }
 
-int
-Region_map::dispatch(l4_umword_t, L4::Ipc::Iostream &ios)
-{
-  l4_msgtag_t tag;
-  ios >> tag;
-
-  switch (tag.label())
-    {
-    case L4_PROTO_PAGE_FAULT:
-      return L4Re::Util::region_pf_handler<Dbg>(this, ios);
-    case L4Re::Protocol::Rm:
-      return L4Re::Util::region_map_server<Rm_server>(this, ios);
-    default:
-      return -L4_EBADPROTO;
-    }
-}

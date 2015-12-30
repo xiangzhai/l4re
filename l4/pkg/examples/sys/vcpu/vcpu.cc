@@ -14,7 +14,7 @@
 #include <l4/re/util/cap_alloc>
 #include <l4/re/util/kumem_alloc>
 #include <l4/sys/debugger.h>
-#include <l4/vcpu/vcpu>
+#include <l4/vcpu/vcpu.h>
 #include <l4/cxx/iostream>
 
 #include <l4/re/error_helper>
@@ -37,7 +37,7 @@ static char thread_stack[8 << 10];
 static char hdl_stack[8 << 10];
 
 static L4::Cap<L4::Task> vcpu_task;
-static L4vcpu::Vcpu *vcpu;
+static l4_vcpu_state_t *vcpu;
 
 const l4_addr_t super_code_map_addr = 0x10000;
 extern char my_super_code[];
@@ -80,17 +80,17 @@ asm
   );
 
 
-static void setup_user_state_arch(L4vcpu::Vcpu *v)
+static void setup_user_state_arch(l4_vcpu_state_t *v)
 {
   asm volatile ("mov %%fs, %0" : "=r"(fs));
   asm volatile ("mov %%ds, %0" : "=r"(ds));
 #ifndef __amd64__
-  v->r()->gs = ds;
-  v->r()->fs = ds;
-  v->r()->es = ds;
-  v->r()->ds = ds;
+  v->r.gs = ds;
+  v->r.fs = ds;
+  v->r.es = ds;
+  v->r.ds = ds;
 #endif
-  v->r()->ss = ds;
+  v->r.ss = ds;
 }
 
 static void handler_prolog()
@@ -128,7 +128,7 @@ asm
   );
 
 
-static void setup_user_state_arch(L4vcpu::Vcpu *) { }
+static void setup_user_state_arch(l4_vcpu_state_t *) { }
 static void handler_prolog() {}
 
 #elif defined(ARCH_ppc32)
@@ -150,7 +150,7 @@ asm
   "   addi %r4, %r4, 4              \t\n"
   "   b 1b                          \t\n"
   );
-static void setup_user_state_arch(L4vcpu::Vcpu *) { }
+static void setup_user_state_arch(l4_vcpu_state_t *) { }
 static void handler_prolog() {}
 #elif defined(ARCH_sparc)
 asm
@@ -168,7 +168,7 @@ asm
   "   b 1b                          \t\n"
   "   nop                           \t\n"
   );
-static void setup_user_state_arch(L4vcpu::Vcpu *) { }
+static void setup_user_state_arch(l4_vcpu_state_t *) { }
 static void handler_prolog() {}
 #else
 #error Add your architecture.
@@ -179,37 +179,37 @@ static void handler(void)
 {
   handler_prolog();
 
-  vcpu->state()->clear(L4_VCPU_F_EXCEPTIONS);
+  vcpu->state &= ~L4_VCPU_F_EXCEPTIONS;
 
   if (0)
-    vcpu->print_state();
+    l4vcpu_print_state(vcpu, "");
 
   // very simple page-fault handling
   // we're just replying with the only page we have, without checking any
   // values
-  if (vcpu->is_page_fault_entry())
+  if (l4vcpu_is_page_fault_entry(vcpu))
     {
       vcpu_task->map(L4Re::This_task, l4_fpage((l4_addr_t)my_super_code,
                                                L4_PAGESHIFT, L4_FPAGE_RWX),
                                                super_code_map_addr);
-      vcpu->saved_state()->add(L4_VCPU_F_PAGE_FAULTS);
+      vcpu->saved_state |= L4_VCPU_F_PAGE_FAULTS;
     }
-  else if (vcpu->is_irq_entry())
+  else if (l4vcpu_is_irq_entry(vcpu))
     {
       // We use the label 2000 for our IRQ
-      if (vcpu->i()->label == 2000)
+      if (vcpu->i.label == 2000)
         printf("Our triggered IRQ\n");
-      else if (vcpu->i()->label == 0)
+      else if (vcpu->i.label == 0)
         // direct IPC message to vCPU without
         // going through an IPCgate, label is set to 0
-        printf("IPC: %lx\n", vcpu->i()->tag.label());
+        printf("IPC: %lx\n", vcpu->i.tag.label());
       else
         printf("Unclassifiable message\n");
     }
   else
   // we should also check the exception number here
-    if (vcpu->r()->ip == (l4_addr_t)my_super_code_excp - (l4_addr_t)my_super_code + super_code_map_addr)
-      vcpu->r()->ip += my_super_code_excp_after - my_super_code_excp;
+    if (vcpu->r.ip == (l4_addr_t)my_super_code_excp - (l4_addr_t)my_super_code + super_code_map_addr)
+      vcpu->r.ip += my_super_code_excp_after - my_super_code_excp;
 
   //printf("resume\n");
   L4::Cap<L4::Thread> self;
@@ -225,19 +225,19 @@ static void vcpu_thread(void)
   memset(hdl_stack, 0, sizeof(hdl_stack));
 
   setup_user_state_arch(vcpu);
-  vcpu->saved_state()->set(L4_VCPU_F_USER_MODE
-                           | L4_VCPU_F_EXCEPTIONS
-                           | L4_VCPU_F_PAGE_FAULTS
-                           | L4_VCPU_F_IRQ);
-  vcpu->r()->ip = super_code_map_addr;
-  vcpu->r()->sp = 0x40000; // actually doesn't matter, we're not using any
+  vcpu->saved_state =  L4_VCPU_F_USER_MODE
+                       | L4_VCPU_F_EXCEPTIONS
+                       | L4_VCPU_F_PAGE_FAULTS
+                       | L4_VCPU_F_IRQ;
+  vcpu->r.ip = super_code_map_addr;
+  vcpu->r.sp = 0x40000; // actually doesn't matter, we're not using any
                            // stack memory in our code
 
   L4::Cap<L4::Thread> self;
 
   printf("IRET\n");
 
-  vcpu->task(vcpu_task);
+  vcpu->user_task = vcpu_task.cap();
   self->vcpu_resume_commit(self->vcpu_resume_start());
 
   printf("IRET: failed!\n");
@@ -275,7 +275,7 @@ static int run(void)
   // get an IRQ
   irq = chkcap(L4Re::Util::cap_alloc.alloc<L4::Irq>(),
                "Irq cap alloc");
-  chksys(L4Re::Env::env()->factory()->create_irq(irq), "irq");
+  chksys(L4Re::Env::env()->factory()->create(irq), "irq");
   l4_debugger_set_object_name(irq.cap(), "some irq");
 
   // get memory for vCPU state
@@ -288,9 +288,9 @@ static int run(void)
         exit(1);
     }
   l4_utcb_t *vcpu_utcb = (l4_utcb_t *)kumem;
-  vcpu = L4vcpu::Vcpu::cast(kumem + L4_UTCB_OFFSET);
-  vcpu->entry_sp((l4_umword_t)hdl_stack + sizeof(hdl_stack));
-  vcpu->entry_ip((l4_umword_t)handler);
+  vcpu = (l4_vcpu_state_t *)(kumem + L4_UTCB_OFFSET);
+  vcpu->entry_sp = (l4_umword_t)hdl_stack + sizeof(hdl_stack);
+  vcpu->entry_ip = (l4_umword_t)handler;
 
   printf("VCPU: utcb = %p, vcpu = %p\n", vcpu_utcb, vcpu);
 

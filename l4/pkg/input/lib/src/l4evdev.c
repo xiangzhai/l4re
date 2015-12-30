@@ -487,6 +487,7 @@ static int l4evdev_flush(void *buf, int count)
 
 static void l4_input_fill_info(struct input_dev *dev, l4re_event_stream_info_t *info)
 {
+	memset(info, 0, sizeof(*info));
 	info->stream_id = (l4_umword_t)dev;
 
 	info->id.bustype = dev->id.bustype;
@@ -520,7 +521,7 @@ l4evdev_stream_info_for_id(l4_umword_t id, l4re_event_stream_info_t *si)
 }
 
 L4_CV int
-l4evdev_absinfo(l4_umword_t id, unsigned naxes, unsigned *axes,
+l4evdev_absinfo(l4_umword_t id, unsigned naxes, unsigned const *axes,
                 l4re_event_absinfo_t *infos)
 {
 	unsigned devn, idx;

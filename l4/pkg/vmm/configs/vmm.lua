@@ -1,6 +1,4 @@
-module("vmm", package.seeall);
-
-require("L4");
+local L4 = require "L4";
 
 local l = L4.Loader.new({factory = L4.Env.factory, mem = L4.Env.user_factory});
 loader = l;
@@ -39,21 +37,22 @@ end
 
 function start_virtio_switch(ports, prio, cpus)
   local caps = {};
-  local port_names = "";
-  for k, v in pairs(ports) do
-    local c = l:new_channel();
-    ports[k] = c;
-    caps[k] = c:svr();
-    port_names = port_names .. " " .. k;
-  end
+  local switch = l:new_channel();
 
   local opts = {
     log = { "switch", "Blue" },
-    caps = caps;
+    caps = { svr = switch:svr() };
   };
 
   set_sched(opts, prio, cpus);
-  return l:start(opts, "rom/virtio-switch" .. port_names);
+  svr = l:start(opts, "rom/l4vio_net");
+
+  for k, v in pairs(ports) do
+    local c = l:new_channel();
+    ports[k] = L4.cast(L4.Proto.Factory, switch):create(0, 4);
+  end
+
+  return svr;
 end
 
 function start_vm(options)
@@ -94,6 +93,7 @@ function start_vm(options)
   };
 
   set_sched(opts, prio, cpus);
-  return l:startv(opts, "rom/vmm", unpack(cmdline));
+  return l:startv(opts, "rom/arm-vmm", table.unpack(cmdline));
 end
 
+return _ENV

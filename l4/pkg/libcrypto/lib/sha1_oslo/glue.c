@@ -14,7 +14,7 @@
 
 #define SHA1_PROTOTYPES
 #include <l4/crypto/sha1.h>
-#include "private/util.h"
+#include <l4/crypto/private/util.h>
 #include <stdio.h>
 
 

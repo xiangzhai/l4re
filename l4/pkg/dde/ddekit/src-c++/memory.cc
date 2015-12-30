@@ -96,8 +96,11 @@ static void *slab_allocate_new_region(long const size, long const mem_flags,
 	if (err < 0)
 		goto out;
 
-	err = L4Re::Env::env()->rm()->attach(&ret, size, attach_flags, ds, 0,
-	                                     l4util_log2(size) + 1);
+	err = L4Re::Env::env()->rm()->attach(&ret, size, attach_flags,
+                                             L4::Ipc::make_cap(ds, (attach_flags & L4Re::Rm::Read_only)
+                                                                   ? L4_CAP_FPAGE_RO
+                                                                   : L4_CAP_FPAGE_RW),
+                                             0, l4util_log2(size) + 1);
 	if (!ret) enter_kdebug("slab_allocate_new_region failed");
 
 out:

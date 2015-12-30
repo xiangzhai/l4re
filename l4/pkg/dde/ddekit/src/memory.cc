@@ -113,8 +113,11 @@ static void *ddekit_slab_allocate_new_region(long size, long mem_flags,
 #if DEBUG
 	ddekit_printf("\033[33mattach(ptr %p, size %d, flags %lx)\033[0m\n", ret, size, attach_flags | L4Re::Rm::Search_addr);
 #endif
-	err = L4Re::Env::env()->rm()->attach(&ret, size, attach_flags | L4Re::Rm::Search_addr, ds, 0,
-	                                     l4util_log2(size) + 1);
+	err = L4Re::Env::env()->rm()->attach(&ret, size, attach_flags | L4Re::Rm::Search_addr,
+                                             L4::Ipc::make_cap(ds, (attach_flags & L4Re::Rm::Read_only)
+                                                                   ? L4_CAP_FPAGE_RO
+                                                                   : L4_CAP_FPAGE_RW),
+                                             0, l4util_log2(size) + 1);
 #if DEBUG
 	ddekit_printf("\033[33mattached ds to %p : %d\033[0m\n", ret, err);
 #endif

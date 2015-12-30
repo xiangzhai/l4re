@@ -18,7 +18,7 @@ SRC_CC		= tick.cc png_image.cc \
 		  window.cc \
 		  simple_window_deco.cc
 
-SRC_BIN =   vera16.tff \
+SRC_DATA =  vera16.tff \
             verai16.tff \
 	    vera18.tff \
 	    vera20.tff \
@@ -38,15 +38,8 @@ SRC_RGBA  =   uparrow.rgba \
 	     whitebar.rgba \
 	        sizer.rgba
 
-SRC_BIN += $(SRC_RGBA)
-
-OBJS += $(addsuffix .bin.o, $(notdir $(SRC_BIN)))
+SRC_DATA += $(SRC_RGBA)
+SRC_DATA := $(addprefix data/,$(SRC_DATA))
 
 REQUIRES_LIBS := mag-gfx libpng libstdc++
-
-%.bin.o: $(SRC_DIR)/data/% $(SRC_DIR)/Make.rules $(ELF_PATCHER)
-	@$(GEN_MESSAGE)
-	$(VERBOSE)(TARGETDIR=$$PWD && cd $(SRC_DIR)/data/ && $(OBJCOPY) -I binary -B $(BFD_ARCH) -O $(OFORMAT) $(notdir $<) $$TARGETDIR/$@ )
-	$(VERBOSE)$(ELF_PATCHER) $@ --min-section-align=4
-
 

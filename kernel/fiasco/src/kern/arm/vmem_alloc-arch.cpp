@@ -7,7 +7,6 @@ IMPLEMENTATION [arm]:
 #include "kmem_alloc.h"
 #include "config.h"
 #include "panic.h"
-#include "kdb_ke.h"
 #include "mem_unit.h"
 #include "ram_quota.h"
 #include "static_init.h"

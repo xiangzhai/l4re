@@ -355,7 +355,7 @@ Jdb_bt::action(int cmd, void *&args, char const *&fmt, int &next_char)
 	      Kobject* o = ko_tid;
 
 	      if (o)
-		tid = Kobject::dcast<Thread_object*>(o);
+		tid = cxx::dyn_cast<Thread*>(o);
 
 	      if (!tid)
 		{

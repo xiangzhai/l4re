@@ -34,7 +34,7 @@
  *	@(#)jobs.h	8.2 (Berkeley) 5/4/95
  */
 
-#include <stdint.h>
+#include <inttypes.h>
 #include <sys/types.h>
 
 /* Mode argument to forkshell.  Don't change FORK_FG or FORK_BG. */
@@ -105,5 +105,5 @@ int waitforjob(struct job *);
 int stoppedjobs(void);
 
 #if ! JOBS
-#define setjobctl(on)	/* do nothing */
+#define setjobctl(on) ((void)(on))	/* do nothing */
 #endif

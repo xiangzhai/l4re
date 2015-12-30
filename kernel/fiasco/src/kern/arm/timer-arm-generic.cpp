@@ -88,7 +88,7 @@ void Timer::init(Cpu_number cpu)
     ;
 }
 
-IMPLEMENT
+IMPLEMENT_OVERRIDE
 void
 Timer::enable()
 {

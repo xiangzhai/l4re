@@ -46,7 +46,7 @@
 #include <errno.h>
 #include <inttypes.h>
 #include <limits.h>
-#include <stdint.h>
+#include <inttypes.h>
 #include <stdlib.h>
 #include "shell.h"
 #include "syntax.h"
@@ -62,6 +62,7 @@ const char spcstr[] = " ";
 const char snlfmt[] = "%s\n";
 const char dolatstr[] = { CTLQUOTEMARK, CTLVAR, VSNORMAL, '@', '=',
 			  CTLQUOTEMARK, '\0' };
+const char qchars[] = { CTLESC, CTLQUOTEMARK, 0 };
 const char illnum[] = "Illegal number: %s";
 const char homestr[] = "HOME";
 

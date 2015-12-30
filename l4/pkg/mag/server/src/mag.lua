@@ -2,11 +2,15 @@
 -- exported functions used by the mag logic
 -------------------------------------------------
 
+local Mag = Mag
+local string = require "string"
+local table = require "table"
 
 Mag.user_state = Mag.get_user_state();
 
 -- handle an incoming event
 function handle_event(ev)
+  -- print("handle_event", ev[1], ev[2], ev[3], ev[4], ev[5], ev[6]);
   -- 1: type, 2: code, 3: value, 4: time, 5: device_id, 6: source
   local l4re_syn_stream_cfg = (ev[1] == 0 and ev[2] == 0x80);
   local l4re_close_stream = l4re_syn_stream_cfg and ev[3] == 1;
@@ -39,6 +43,7 @@ end
 
 -- mag requests infos about a specific input event stream
 function input_source_info(global_id)
+  -- print "input_source_info";
   local device = Mag.streams[global_id];
   if not device then
     return -22;
@@ -49,6 +54,7 @@ end
 
 -- mag requests infos about a specific input event stream
 function input_source_abs_info(global_id, ...)
+  -- print "input_source_abs_info";
   local device = Mag.streams[global_id];
   if not device then
     return -22;
@@ -75,7 +81,7 @@ local function Mag_index(table, key)
   return o;
 end
 Mag_mt.__index = Mag_index;
-setfenv(1, Mag);
+_ENV = Mag;
 
 -- mag will initialize the variable 'user_state' to refer to
 -- mag's user state object.
@@ -789,7 +795,7 @@ function Input_device.Devs.pointer:get_abs_info(...)
       end
     end
   end
-  return (vaxes ~= nil), unpack(r);
+  return (vaxes ~= nil), table.unpack(r);
 end
 
 -- generic transformationof absolute pointer events to screen coordinates
@@ -798,8 +804,8 @@ function Input_device:get_pointer_transform_func(ax, ay)
   local w, h = user_state:screen_size();
   return function(self, p)
     if self.abs_info then
-      return p[1] * w / self.abs_info[ax].delta,
-             p[2] * h / self.abs_info[ay].delta;
+      return (p[1] * w) // self.abs_info[ax].delta,
+             (p[2] * h) // self.abs_info[ay].delta;
     else
       return p[1], p[2];
     end
@@ -1143,7 +1149,7 @@ function Input_device.Devs.touchpad:motion(r)
       p.p[c][cnt] = v;
       if cnt >= 2 then
         local size = self.abs_info[c-1].delta;
-        r[2]:set(c-1, (v - p.p[c]:get(cnt - 2)) * 256 / size);
+        r[2]:set(c-1, (v - p.p[c]:get(cnt - 2)) * 256 // size);
       end
       abs:inv(c-1);
     end

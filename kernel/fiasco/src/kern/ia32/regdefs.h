@@ -157,6 +157,7 @@
 #define MSR_SFMASK      0xc0000084      // RFLAGS for Syscall
 #define MSR_FS_BASE     0xc0000100      // FS-Base
 #define MSR_GS_BASE     0xc0000101      // GS-Base
+#define MSR_KERNEL_GS_BASE 0xc0000102   // Kernel-GS-Base
 #define MSR_VM_CR       0xc0010114      // SVM
 #define MSR_VM_HSAVE_PA 0xc0010117      // SVM host state-save area
 

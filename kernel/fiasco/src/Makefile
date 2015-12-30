@@ -180,10 +180,11 @@ source:
 	test -e source || ln -sf $(srcdir) source
 
 
-BSP_DIR            := $(srcdir)/kern/arm/bsp $(srcdir)/kern/ppc32/bsp $(srcdir)/kern/sparc/bsp
+BSP_DIR            := $(wildcard $(srcdir)/kern/*/bsp)
 KCONFIG_FILE       := Kconfig
 KCONFIG_SRC_FILE   := $(srcdir)/Kconfig
 KCONFIG_BSP_FILES  := $(shell find $(BSP_DIR) -name Kconfig -follow -print)
+KCONFIG_ARCH_FILES := $(wildcard $(srcdir)/kern/*/Kconfig)
 
 kconfig_call = $(MAKE) -C $(tooldir)/kconfig O=$(objbase) \
 	       Kconfig=$(KCONFIG_FILE) \
@@ -196,8 +197,10 @@ kconfig_call = $(MAKE) -C $(tooldir)/kconfig O=$(objbase) \
 	       INCLUDE_SPARC=$(INCLUDE_SPARC) \
 	       fiasco_srcdir=$(srcdir)/..
 
-$(KCONFIG_FILE): $(KCONFIG_SRC_FILE) $(KCONFIG_BSP_FILES) $(srcdir)/Makefile
-	@$(tooldir)/gen_kconfig $(KCONFIG_SRC_FILE) $(KCONFIG_FILE) $(KCONFIG_BSP_FILES)
+$(KCONFIG_FILE): $(KCONFIG_SRC_FILE) $(KCONFIG_BSP_FILES) \
+                 $(KCONFIG_ARCH_FILES) $(srcdir)/Makefile
+	@$(tooldir)/gen_kconfig $(KCONFIG_SRC_FILE) $(KCONFIG_FILE) \
+	                        $(KCONFIG_BSP_FILES) $(KCONFIG_ARCH_FILES)
 
 globalconfig.out: $(KCONFIG_FILE)
 	+$(kconfig_call) oldconfig

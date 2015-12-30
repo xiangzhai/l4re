@@ -14,8 +14,7 @@
 
 #pragma once
 
-#include <l4/sys/compiler.h>
-#include <l4/io/types.h>
+#include <l4/sys/types.h>
 
 namespace DDEKit
 {

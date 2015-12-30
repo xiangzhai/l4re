@@ -34,9 +34,9 @@
 .\"
 .Dd January 19, 2003
 .Os
-.Dt SH 1
+.Dt DASH 1
 .Sh NAME
-.Nm sh
+.Nm dash
 .Nd command interpreter (shell)
 .Sh SYNOPSIS
 .Nm
@@ -93,9 +93,6 @@ but it is not a Korn shell clone (see
 Only features designated by
 .Tn POSIX ,
 plus a few Berkeley extensions, are being incorporated into this shell.
-We expect
-.Tn POSIX
-conformance by the time 4.4 BSD is released.
 This man page is not intended
 to be a tutorial or a complete specification of the shell.
 .Ss Overview
@@ -666,7 +663,7 @@ These are implemented as builtin commands.
 The syntax of the case command is
 .Bd -literal -offset indent
 case word in
-pattern) list ;;
+[(]pattern) list ;;
 \&...
 esac
 .Ed
@@ -676,6 +673,11 @@ The pattern can actually be one or more patterns (see
 described later), separated by
 .Dq \*(Ba
 characters.
+The
+.Do
+(
+.Dc
+character before the pattern is optional.
 .Ss Grouping Commands Together
 Commands may be grouped by writing either
 .Pp
@@ -1668,7 +1670,7 @@ for
 .Cm e
 and
 .Cm f
-formats, or the maximum number of characters to be printed
+formats, or the maximum number of bytes to be printed
 from a string
 .Sm off
 .Pf ( Cm b
@@ -1713,7 +1715,7 @@ The
 .Ar argument
 is printed in the style
 .Sm off
-.Pf [\-]d Cm \&. No ddd Cm e No \\*(Pmdd
+.Pf [\-]d Cm \&. No ddd Cm e No \*(Pmdd
 .Sm on
 where there
 is one digit before the decimal point and the number after is equal to
@@ -1756,7 +1758,7 @@ is printed.
 .It Cm s
 Characters from the string
 .Ar argument
-are printed until the end is reached or until the number of characters
+are printed until the end is reached or until the number of bytes
 indicated by the precision specification is reached; if the
 precision is omitted, all characters in the string are printed.
 .It Cm \&%
@@ -2069,10 +2071,14 @@ The signals are specified by signal number or as the name of the signal.
 If
 .Ar signal
 is
-.Li 0 ,
+.Li 0
+or
+.Li EXIT ,
 the action is executed when the shell exits.
 .Ar action
-may be null, which cause the specified signals to be ignored.
+may be empty
+.Li ( "''" ) ,
+which causes the specified signals to be ignored.
 With
 .Ar action
 omitted or set to `-' the specified signals are set to their default action.
@@ -2132,9 +2138,9 @@ is specified, the soft limit is displayed or both limits are set.
 If both are specified, the last one wins.
 .El
 .Pp
-.Bl -tag -width Fl
 The limit to be interrogated or set, then, is chosen by specifying
 any one of these flags:
+.Bl -tag -width Fl
 .It Fl a
 show all the current limits
 .It Fl t
@@ -2161,6 +2167,8 @@ show or set the limit on the number of processes this user can
 have at one time
 .It Fl n
 show or set the limit on the number files a process can have open at once
+.It Fl r
+show or set the limit on the real-time scheduling priority of a process
 .El
 .Pp
 If none of these is specified, it is the limit on file size that is shown
@@ -2203,7 +2211,7 @@ options are given, only the variable is unset.
 Wait for the specified job to complete and return the exit status of the
 last process in the job.
 If the argument is omitted, wait for all jobs to
-complete and the return an exit status of zero.
+complete and return an exit status of zero.
 .El
 .Ss Command Line Editing
 When
@@ -2274,16 +2282,16 @@ setting.
 There is a maximum of 10 mailboxes that can be monitored at once.
 .It Ev PS1
 The primary prompt string, which defaults to
-.Dq $ \  ,
+.Dq $\  ,
 unless you are the superuser, in which case it defaults to
-.Dq # \  .
+.Dq #\  .
 .It Ev PS2
 The secondary prompt string, which defaults to
-.Dq \*[Gt] \  .
+.Dq \*[Gt]\  .
 .It Ev PS4
 Output before each line when execution trace (set -x) is enabled,
 defaults to
-.Dq + \  .
+.Dq +\  .
 .It Ev IFS
 Input Field Separators.
 This is normally set to
@@ -2333,11 +2341,15 @@ The process ID of the parent process of the shell.
 .Xr environ 7 ,
 .Xr sysctl 8
 .Sh HISTORY
-A
 .Nm
-command appeared in
-.At v1 .
-It was, however, unmaintainable so we wrote this one.
+is a POSIX-compliant implementation of /bin/sh that aims to be as small as
+possible.
+.Nm
+is a direct descendant of the NetBSD version of ash (the Almquist SHell),
+ported to Linux in early 1997.
+It was renamed to
+.Nm
+in 2002.
 .Sh BUGS
 Setuid shell scripts should be avoided at all costs, as they are a
 significant security risk.

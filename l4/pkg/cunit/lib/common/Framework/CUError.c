@@ -53,7 +53,7 @@
 #include "dde_support.h"
 #endif
 
-#include <l4/cunit/CUError.h>
+#include <CUError.h>
 
 /*
  *	Global/Static Definitions

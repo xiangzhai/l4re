@@ -38,7 +38,7 @@ public:
    *
    * \param v Initial state.
    */
-  explicit State(l4vcpu_state_t v) : _s(v) {}
+  explicit State(unsigned v) : _s(v) {}
 
   /**
    * \brief Add flags.
@@ -59,10 +59,10 @@ public:
    *
    * \param v Set the word to the value of v.
    */
-  void set(l4vcpu_state_t v) throw() { _s = v; }
+  void set(unsigned v) throw() { _s = v; }
 
 private:
-  l4vcpu_state_t _s;
+  __typeof__(((l4_vcpu_state_t *)0)->state) _s;
 };
 
 /**
@@ -73,11 +73,6 @@ class Vcpu : private l4_vcpu_state_t
 {
 public:
   /**
-   * \brief IRQ status type.
-   */
-  typedef l4vcpu_irq_state_t Irq_state;
-
-  /**
    * \brief Disable the vCPU for event delivery.
    */
   void irq_disable() throw()
@@ -87,8 +82,11 @@ public:
    * \brief Disable the vCPU for event delivery and return previous state.
    * \return IRQ state before disabling IRQs.
    */
-  Irq_state irq_disable_save() throw()
+  unsigned irq_disable_save() throw()
   { return l4vcpu_irq_disable_save(this); }
+
+  l4_vcpu_state_t *s() { return this; }
+  l4_vcpu_state_t const *s() const { return this; }
 
   /**
    * \brief Get state word
@@ -126,6 +124,12 @@ public:
   { return static_cast<State>(l4_vcpu_state_t::saved_state); }
 
   /**
+   * \brief Get sticky flags
+   */
+  l4_uint16_t sticky_flags() const throw()
+  { return l4_vcpu_state_t::sticky_flags; }
+
+  /**
    * \brief Enable the vCPU for event delivery.
    *
    * \param utcb             The UTCB to use.
@@ -150,7 +154,7 @@ public:
    *                         IPC operation is called, and before event
    *                         delivery is enabled.
    */
-  void irq_restore(Irq_state s, l4_utcb_t *utcb,
+  void irq_restore(unsigned s, l4_utcb_t *utcb,
                    l4vcpu_event_hndl_t do_event_work_cb,
                    l4vcpu_setup_ipc_t setup_ipc) throw()
   { l4vcpu_irq_restore(this, s, utcb, do_event_work_cb, setup_ipc); }
@@ -181,14 +185,14 @@ public:
    * \brief Return whether the entry reason was a page fault.
    * return 0 if not, !=0 otherwise.
    */
-  int is_page_fault_entry()
+  int is_page_fault_entry() const
   { return l4vcpu_is_page_fault_entry(this); }
 
   /**
    * \brief Return whether the entry reason was an IRQ/IPC message.
    * return 0 if not, !=0 otherwise.
    */
-  int is_irq_entry()
+  int is_irq_entry() const
   { return l4vcpu_is_irq_entry(this); }
 
   /**
@@ -274,7 +278,7 @@ public:
   /**
    * \brief Print the state of the vCPU.
    */
-  void print_state(const char *prefix = "") throw()
+  void print_state(const char *prefix = "") const throw()
   { l4vcpu_print_state(this, prefix); }
 };
 

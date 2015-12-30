@@ -6,7 +6,7 @@
 #include "syntax.h"
 
 /* syntax table used when not in quotes */
-const char basesyntax[257] = {
+const char basesyntax[] = {
       CEOF,    CSPCL,   CWORD,   CCTL,
       CCTL,    CCTL,    CCTL,    CCTL,
       CCTL,    CCTL,    CCTL,    CWORD,
@@ -71,11 +71,11 @@ const char basesyntax[257] = {
       CWORD,   CWORD,   CWORD,   CWORD,
       CWORD,   CWORD,   CWORD,   CWORD,
       CWORD,   CWORD,   CSPCL,   CENDVAR,
-      CWORD
+      CWORD,   CWORD
 };
 
 /* syntax table used when in double quotes */
-const char dqsyntax[257] = {
+const char dqsyntax[] = {
       CEOF,    CIGN,    CWORD,   CCTL,
       CCTL,    CCTL,    CCTL,    CCTL,
       CCTL,    CCTL,    CCTL,    CWORD,
@@ -131,7 +131,7 @@ const char dqsyntax[257] = {
       CWORD,   CWORD,   CWORD,   CWORD,
       CWORD,   CWORD,   CWORD,   CWORD,
       CWORD,   CWORD,   CWORD,   CWORD,
-      CWORD,   CCTL,    CDBACK,  CCTL,
+      CWORD,   CCTL,    CBACK,   CCTL,
       CWORD,   CWORD,   CBQUOTE, CWORD,
       CWORD,   CWORD,   CWORD,   CWORD,
       CWORD,   CWORD,   CWORD,   CWORD,
@@ -140,11 +140,11 @@ const char dqsyntax[257] = {
       CWORD,   CWORD,   CWORD,   CWORD,
       CWORD,   CWORD,   CWORD,   CWORD,
       CWORD,   CWORD,   CWORD,   CENDVAR,
-      CCTL
+      CCTL,    CWORD
 };
 
 /* syntax table used when in single quotes */
-const char sqsyntax[257] = {
+const char sqsyntax[] = {
       CEOF,    CIGN,    CWORD,   CCTL,
       CCTL,    CCTL,    CCTL,    CCTL,
       CCTL,    CCTL,    CCTL,    CWORD,
@@ -209,11 +209,11 @@ const char sqsyntax[257] = {
       CWORD,   CWORD,   CWORD,   CWORD,
       CWORD,   CWORD,   CWORD,   CWORD,
       CWORD,   CWORD,   CWORD,   CWORD,
-      CCTL
+      CCTL,    CWORD
 };
 
 /* syntax table used when in arithmetic */
-const char arisyntax[257] = {
+const char arisyntax[] = {
       CEOF,    CIGN,    CWORD,   CCTL,
       CCTL,    CCTL,    CCTL,    CCTL,
       CCTL,    CCTL,    CCTL,    CWORD,
@@ -269,7 +269,7 @@ const char arisyntax[257] = {
       CWORD,   CWORD,   CWORD,   CWORD,
       CWORD,   CWORD,   CWORD,   CWORD,
       CWORD,   CWORD,   CWORD,   CWORD,
-      CWORD,   CWORD,   CDBACK,  CWORD,
+      CWORD,   CWORD,   CBACK,   CWORD,
       CWORD,   CWORD,   CBQUOTE, CWORD,
       CWORD,   CWORD,   CWORD,   CWORD,
       CWORD,   CWORD,   CWORD,   CWORD,
@@ -278,11 +278,11 @@ const char arisyntax[257] = {
       CWORD,   CWORD,   CWORD,   CWORD,
       CWORD,   CWORD,   CWORD,   CWORD,
       CWORD,   CWORD,   CWORD,   CENDVAR,
-      CWORD
+      CWORD,   CWORD
 };
 
 /* character classification table */
-const char is_type[257] = {
+const char is_type[] = {
       0,       0,       0,       0,
       0,       0,       0,       0,
       0,       0,       0,       0,
@@ -347,5 +347,5 @@ const char is_type[257] = {
       ISLOWER, ISLOWER, ISLOWER, ISLOWER,
       ISLOWER, ISLOWER, ISLOWER, ISLOWER,
       ISLOWER, 0,       0,       0,
-      0
+      0,       0
 };

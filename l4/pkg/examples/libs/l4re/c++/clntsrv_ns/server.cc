@@ -15,49 +15,29 @@
 #include <l4/re/namespace>
 #include <l4/re/util/cap_alloc>
 #include <l4/re/util/object_registry>
-#include <l4/cxx/ipc_server>
+#include <l4/sys/cxx/ipc_epiface>
+#include <l4/sys/cxx/ipc_server_loop>
 
 #include "shared.h"
 
 static L4Re::Util::Registry_server<> server;
 
-class Calculation_server : public L4::Server_object
+class Calculation_server : public L4::Epiface_t<Calculation_server, Calc>
 {
 public:
-  int dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios);
+  int op_sub(Calc::Rights, l4_uint32_t a, l4_uint32_t b, l4_uint32_t &res)
+  {
+    res = a - b;
+    return 0;
+  }
+
+  int op_neg(Calc::Rights, l4_uint32_t a, l4_uint32_t &res)
+  {
+    res = -a;
+    return 0;
+  }
 };
 
-int
-Calculation_server::dispatch(l4_umword_t, L4::Ipc::Iostream &ios)
-{
-  l4_msgtag_t t;
-  ios >> t;
-
-  // We're only talking the calculation protocol
-  if (t.label() != Protocol::Calc)
-    return -L4_EBADPROTO;
-
-  L4::Opcode opcode;
-  ios >> opcode;
-
-  switch (opcode)
-    {
-    case Opcode::func_neg:
-      l4_uint32_t val;
-      ios >> val;
-      val = -val;
-      ios << val;
-      return L4_EOK;
-    case Opcode::func_sub:
-      l4_uint32_t val1, val2;
-      ios >> val1 >> val2;
-      val1 -= val2;
-      ios << val1;
-      return L4_EOK;
-    default:
-      return -L4_ENOSYS;
-    }
-}
 
 int
 main()

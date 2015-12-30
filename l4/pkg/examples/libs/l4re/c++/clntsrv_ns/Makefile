@@ -1,5 +1,5 @@
-PKGDIR          ?= ..
-L4DIR           ?= $(PKGDIR)/../../../../..
+PKGDIR          ?= ../../../..
+L4DIR           ?= $(PKGDIR)/../..
 
 TARGET              = ex_ns-server ex_ns-client
 SRC_CC_ex_ns-server = server.cc

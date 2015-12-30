@@ -10,8 +10,6 @@
 #include "app_task.h"
 //#include "slab_alloc.h"
 //#include "globals.h"
-#include <l4/re/parent-sys.h>
-#include <l4/re/protocols>
 #include <l4/re/error_helper>
 #include <l4/re/util/cap_alloc>
 
@@ -40,42 +38,22 @@ void App_task::operator delete (void *m) throw()
 #endif
 
 int
-App_task::dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios)
+App_task::op_signal(L4Re::Parent::Rights, unsigned long sig, unsigned long val)
 {
-  l4_msgtag_t tag;
-  ios >> tag;
-
-  if (tag.label() != L4Re::Protocol::Parent)
-    return -L4_EBADPROTO;
-
-  L4::Opcode op;
-  ios >> op;
-  switch (op)
+  switch (sig)
     {
-      case L4Re::Parent_::Signal:
-      {
-	unsigned long sig;
-	unsigned long val;
-	ios >> sig >> val;
-
-	switch (sig)
-	  {
-	  case 0: // exit
-	    {
-	      L4Re::Util::cap_alloc.free(obj_cap());
-	      delete this;
-	      if (val != 0)
-	        L4::cout << "LDR: task " << obj << " exited with " << val
-                         << '\n';
-	      return -L4_ENOREPLY;
-	    }
-	  default: break;
-	  }
-	return L4_EOK;
-      }
-    default:
-      return -L4_ENOSYS;
+    case 0: // exit
+        {
+          L4Re::Util::cap_alloc.free(obj_cap());
+          delete this;
+          if (val != 0)
+            L4::cout << "LDR: task " << this << " exited with " << val
+                     << '\n';
+          return -L4_ENOREPLY;
+        }
+    default: break;
     }
+  return L4_EOK;
 }
 
 App_task::App_task()

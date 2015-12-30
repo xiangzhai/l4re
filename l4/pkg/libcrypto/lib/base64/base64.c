@@ -14,11 +14,9 @@
 
 /* generic includes */
 #include <stdio.h>
-#include <stdlib.h> 
-#include <ctype.h> 
-#include <string.h> 
-
-/* L4-specific includes */
+#include <stdlib.h>
+#include <ctype.h>
+#include <string.h>
 #include <l4/crypto/base64.h>
 
 /*

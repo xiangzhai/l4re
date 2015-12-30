@@ -9,6 +9,7 @@
  */
 #pragma once
 
+#include <l4/mag-gfx/canvas>
 #include <l4/scout-gfx/widget>
 
 namespace Scout_gfx { namespace Pt {

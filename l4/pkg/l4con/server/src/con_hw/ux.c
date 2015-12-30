@@ -47,7 +47,7 @@ static void *updater_thread(void *data)
 
   l4_thread_control_start();
   l4_thread_control_ux_host_syscall(1);
-  l4_thread_control_commit(pthread_getl4cap(pthread_self()));
+  l4_thread_control_commit(pthread_l4_cap(pthread_self()));
 
   while (1)
     {
@@ -141,7 +141,7 @@ ux_probe(con_accel_t *accel)
 
     if (pthread_create(&update_tid, &a, updater_thread, NULL))
        return -L4_ENOMEM;
-    updater_id = pthread_getl4cap(update_tid);
+    updater_id = pthread_l4_cap(update_tid);
 
 #if 0
     update_tid = l4thread_create_long(L4THREAD_INVALID_ID,

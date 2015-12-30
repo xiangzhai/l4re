@@ -4,9 +4,9 @@ PUBLIC template<typename T> inline
 void FIASCO_NORETURN
 Thread::fast_return_to_user(Mword ip, Mword sp, T arg)
 {
-  assert_kdb(cpu_lock.test());
-  assert_kdb(current() == this);
-  assert_kdb(Config::Is_ux || (regs()->cs() & 3 == 3));
+  assert(cpu_lock.test());
+  assert(current() == this);
+  assert(Config::Is_ux || (regs()->cs() & 3 == 3));
 
   regs()->ip(ip);
   regs()->sp(sp);
@@ -71,13 +71,21 @@ Thread::trap_state_to_rf(Trap_state *ts)
   return reinterpret_cast<Return_frame*>(im)-1;
 }
 
-PRIVATE static inline NEEDS[Thread::trap_state_to_rf]
+PRIVATE static inline NEEDS[Thread::trap_state_to_rf, Thread::sanitize_user_flags]
 bool FIASCO_WARN_RESULT
 Thread::copy_utcb_to_ts(L4_msg_tag const &tag, Thread *snd, Thread *rcv,
                         L4_fpage::Rights rights)
 {
+  enum
+  {
+    Ts_words = sizeof(Trap_state) / sizeof(Mword),
+    Exc_words = Ts_words - 3, /* without es, ds, and ss */
+  };
+
+  if (EXPECT_FALSE(tag.words() < Exc_words))
+    return true;
+
   Trap_state *ts = (Trap_state*)rcv->_utcb_handler;
-  Mword       s  = tag.words();
   Unsigned32  cs = ts->cs();
   Utcb *snd_utcb = snd->utcb().access();
 
@@ -85,30 +93,35 @@ Thread::copy_utcb_to_ts(L4_msg_tag const &tag, Thread *snd, Thread *rcv,
   // ldt!
   if (EXPECT_FALSE(rcv->exception_triggered()))
     {
-      // triggered exception pending
-      Mem::memcpy_mwords(&ts->_gs, snd_utcb->values, s > 12 ? 12 : s);
-      if (EXPECT_TRUE(s > 15))
-	{
-	  Continuation::User_return_frame const *s
-	    = reinterpret_cast<Continuation::User_return_frame const *>((char*)&snd_utcb->values[12]);
+      // triggered exception pending, skip ip, cs, flags, and sp
+      Mem::memcpy_mwords(&ts->_gs, snd_utcb->values, Exc_words - 4);
+      Continuation::User_return_frame const *urfp
+        = reinterpret_cast<Continuation::User_return_frame const *>(
+            (char*)&snd_utcb->values[Exc_words - 4]);
 
-	  rcv->_exc_cont.set(trap_state_to_rf(ts), s);
-	}
+      Continuation::User_return_frame urf = access_once(urfp);
+
+      // sanitize flags
+      urf.flags(sanitize_user_flags(urf.flags()));
+      rcv->_exc_cont.set(trap_state_to_rf(ts), &urf);
     }
   else
-    Mem::memcpy_mwords (&ts->_gs, snd_utcb->values, s > 16 ? 16 : s);
+    {
+      Mem::memcpy_mwords (&ts->_gs, snd_utcb->values, Exc_words);
+      // sanitize flags
+      ts->flags(sanitize_user_flags(ts->flags()));
+      // don't allow to overwrite the code selector!
+      ts->cs(cs);
+    }
 
   // reset segments
   rcv->_gs = rcv->_fs = 0;
 
+  if (rcv == current())
+    rcv->load_gdt_user_entries(rcv);
+
   if (tag.transfer_fpu() && (rights & L4_fpage::Rights::W()))
     snd->transfer_fpu(rcv);
-
-  // sanitize eflags
-  ts->flags((ts->flags() & ~(EFLAGS_IOPL | EFLAGS_NT)) | EFLAGS_IF);
-
-  // don't allow to overwrite the code selector!
-  ts->cs(cs);
 
   bool ret = transfer_msg_items(tag, snd, snd_utcb,
                                 rcv, rcv->utcb().access(), rights);
@@ -337,7 +350,7 @@ Thread::call_nested_trap_handler(Trap_state *ts)
      : "memory");
 
   if (!ntr)
-    handle_global_requests();
+    Cpu_call::handle_global_requests();
 
   return ret == 0 ? 0 : -1;
 }

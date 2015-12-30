@@ -19,7 +19,6 @@
 #include <stdio.h>
 
 
-l4_cap_idx_t pthread_getl4cap(pthread_t t);
 static SDL_VideoDevice *dev;
 
 
@@ -241,7 +240,7 @@ static void * ev_loop(void * data)
 
 	l4re_event_buffer_consumer_process(&d->hidden->ev_buf,
 	                                   d->hidden->ev_irq,
-	                                   pthread_getl4cap(d->hidden->ev_thread),
+	                                   pthread_l4_cap(d->hidden->ev_thread),
 	                                   NULL, event_callback);
 	printf("Input handler terminates\n");
 	return 0;

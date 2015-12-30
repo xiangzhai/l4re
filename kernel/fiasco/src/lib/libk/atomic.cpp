@@ -337,7 +337,7 @@ mp_cas(T *m, T o, T n)
                      Mword(n));
 }
 
-template< typename T, typename T2 > inline
+template< typename T, typename T2 > inline NEEDS[mp_cas2_arch]
 bool
 mp_cas2(Pair<T,T2> *m, T o1, T2 o2, T n1, T2 n2)
 {

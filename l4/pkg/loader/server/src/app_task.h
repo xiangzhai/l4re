@@ -13,9 +13,9 @@
 #include "region.h"
 #include "sched_proxy.h"
 
-#include <l4/cxx/ipc_server>
+#include <l4/sys/cxx/ipc_epiface>
 
-class App_task : public L4::Server_object
+class App_task : public L4::Epiface_t<App_task, L4Re::Parent>
 {
 private:
   L4::Cap<L4::Task> _task;
@@ -30,8 +30,8 @@ public:
   App_task();
   static L4::Cap<L4Re::Mem_alloc> allocator()
   { return L4Re::Env::env()->mem_alloc(); }
-  int dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios);
 
+  int op_signal(L4Re::Parent::Rights, unsigned long sig, unsigned long val);
 
   Region_map *rm() { return &_rm; }
 

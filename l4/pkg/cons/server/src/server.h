@@ -8,11 +8,11 @@
  */
 #pragma once
 
-#include <l4/cxx/ipc_server>
 #include <l4/cxx/hlist>
+#include <l4/sys/cxx/ipc_epiface>
 
 class Server_object
-: public L4::Server_object,
+: public L4::Epiface,
   public cxx::H_list_item
 {
 public:

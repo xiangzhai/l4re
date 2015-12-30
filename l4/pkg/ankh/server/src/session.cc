@@ -133,11 +133,11 @@ EXTERN_C void *xmit_thread_fn(void *data)
 
 	char namebuf[40];
 	snprintf(namebuf, 40, "ankh.%s.xmit", session->_shmname);
-	l4_debugger_set_object_name(pthread_getl4cap(pthread_self()), namebuf);
+	l4_debugger_set_object_name(pthread_l4_cap(pthread_self()), namebuf);
 
 	enable_ux_self();
 
-	int _id =  l4_debugger_global_id(pthread_getl4cap(pthread_self()));
+	int _id =  l4_debugger_global_id(pthread_l4_cap(pthread_self()));
 	std::cout << "xmit thread started, data @ " << data
 	          << ", TID: 0x" << std::hex << _id << std::dec <<  "\n";
 

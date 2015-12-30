@@ -1,22 +1,30 @@
+/*
+ * (c) 2013-2014 Alexander Warg <warg@os.inf.tu-dresden.de>
+ *     economic rights: Technische Universität Dresden (Germany)
+ *
+ * This file is part of TUD:OS and distributed under the terms of the
+ * GNU General Public License 2.
+ * Please see the COPYING-GPL-2 file for details.
+ */
 #pragma once
 
 #include <l4/re/dataspace>
 #include <l4/util/util.h>
 
-#include "arm_mmio_device.h"
+#include "mmio_device.h"
+#include "vcpu.h"
 
 class Ds_handler : public Vmm::Mmio_device
 {
   L4::Cap<L4Re::Dataspace> _ds;
   l4_addr_t _offset;
-  bool access(l4_addr_t pfa, l4_addr_t offset, l4_vcpu_state_t *vcpu,
+  bool access(l4_addr_t pfa, l4_addr_t offset, Vmm::Cpu vcpu,
               L4::Cap<L4::Task> vm_task, l4_addr_t min, l4_addr_t max)
   {
-    Vmm::Arm::Hsr hsr(vcpu->r.err);
     long res;
 #ifdef MAP_OTHER
     res = _ds->map(offset + _offset,
-                   hsr.pf_write() ? L4Re::Dataspace::Map_rw : 0,
+                   vcpu.pf_write() ? L4Re::Dataspace::Map_rw : 0,
                    pfa, min, max, vm_task);
 #else
     (void)vm_task;
@@ -29,7 +37,7 @@ class Ds_handler : public Vmm::Mmio_device
     res = L4Re::chksys(vm_task->map(L4Re::This_task,
                                     l4_fpage(l4_trunc_size(_local_start + offset, ps),
                                              ps,
-                                             hsr.pf_write()
+                                             vcpu.pf_write()
                                                ? L4_FPAGE_RWX : L4_FPAGE_RX),
                                     l4_trunc_size(pfa, ps)));
 #endif
@@ -65,7 +73,8 @@ public:
                                                     : L4Re::chksys(ds->size()),
                                                   L4Re::Rm::Search_addr
                                                   | L4Re::Rm::Eager_map,
-                                                  ds, offset, L4_SUPERPAGESHIFT));
+                                                  L4::Ipc::make_cap_rw(ds),
+                                                  offset, L4_SUPERPAGESHIFT));
 #endif
   }
 };

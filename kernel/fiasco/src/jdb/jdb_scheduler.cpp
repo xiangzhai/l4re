@@ -23,7 +23,7 @@ public:
 
 IMPLEMENT
 Jdb_cpu::Jdb_cpu()
-  : Jdb_kobject_handler(Scheduler::static_kobj_type)
+  : Jdb_kobject_handler((Scheduler*)0)
 {
   Jdb_kobject::module()->register_handler(this);
 }
@@ -37,7 +37,7 @@ Jdb_cpu::show_kobject(Kobject_common *, int )
 
 PUBLIC
 char const *
-Jdb_cpu::kobject_type() const
+Jdb_cpu::kobject_type(Kobject_common *) const
 {
   return JDB_ANSI_COLOR(blue) "Sched" JDB_ANSI_COLOR(default);
 }

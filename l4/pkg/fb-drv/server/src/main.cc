@@ -11,7 +11,7 @@
 
 #include <l4/sys/capability>
 #include <l4/sys/typeinfo_svr>
-#include <l4/cxx/ipc_server>
+#include <l4/re/util/br_manager>
 
 #include <cstdio>
 #include <getopt.h>
@@ -19,13 +19,12 @@
 
 #include "fb.h"
 
-L4Re::Util::Object_registry registry;
-static L4::Server<> server(l4_utcb());
+static L4Re::Util::Registry_server<L4Re::Util::Br_manager_hooks> server;
 
 void
 Phys_fb::setup_ds(char const *name)
 {
-  registry.register_obj(this, name);
+  server.registry()->register_obj(this, name);
   _fb_ds = L4::Cap<L4Re::Dataspace>(obj_cap().cap());
   _ds_start = _vidmem_start;
   _ds_size = _vidmem_size;
@@ -66,25 +65,6 @@ Phys_fb::map_hook(l4_addr_t offs, unsigned long flags,
   return 0;
 }
 
-int
-Phys_fb::dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios)
-{
-  l4_msgtag_t tag;
-  ios >> tag;
-  switch (tag.label())
-    {
-    case L4::Meta::Protocol:
-      return L4::Util::handle_meta_request<L4Re::Video::Goos>(ios);
-    case L4Re::Protocol::Goos:
-      return L4Re::Util::Video::Goos_svr::dispatch(obj, ios);
-    case L4Re::Protocol::Dataspace:
-      return L4Re::Util::Dataspace_svr::dispatch(obj, ios);
-    default:
-      return -L4_EBADPROTO;
-    }
-}
-
-
 Prog_args::Prog_args(int argc, char *argv[])
  : vbemode(~0), do_dummy(false), config_str(0)
 {
@@ -119,30 +99,21 @@ Prog_args::Prog_args(int argc, char *argv[])
     }
 }
 
-
 int main(int argc, char *argv[])
 {
-#ifdef ARCH_arm
-  Lcd_drv_fb arch_fb;
-#elif defined(ARCH_x86) || defined(ARCH_amd64)
-  Vesa_fb arch_fb;
-#else
-  Dummy_fb arch_fb;
-#endif
-  Dummy_fb dummy_fb;
-  Phys_fb *fb = &dummy_fb;
-
   Prog_args args(argc, argv);
+  Phys_fb *fb;
+  if (args.do_dummy)
+    fb = Phys_fb::get_dummy();
+  else
+    fb = Phys_fb::probe();
 
-  if (!fb->setup_drv(&args))
+  if (!fb->setup_drv(&args, server.registry()))
     {
-      fb = &arch_fb;
-      if (!fb->setup_drv(&args))
-        {
-          printf("Failed to setup Framebuffer\n");
-          return 1;
-        }
+      printf("Failed to setup Framebuffer\n");
+      return 1;
     }
+
   fb->setup_ds("fb");
 
   if (!fb->running())
@@ -158,7 +129,7 @@ int main(int argc, char *argv[])
     }
 
   printf("Starting server loop\n");
-  server.loop(registry);
+  server.loop();
 
   return 0;
 }

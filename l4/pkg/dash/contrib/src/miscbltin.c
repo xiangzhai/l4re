@@ -44,7 +44,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <ctype.h>
-#include <stdint.h>
+#include <inttypes.h>
 
 #include "shell.h"
 #include "options.h"
@@ -55,14 +55,81 @@
 #include "miscbltin.h"
 #include "mystring.h"
 #include "main.h"
+#include "expand.h"
+#include "parser.h"
+#include "trap.h"
 
 #undef rflag
 
 
+/** handle one line of the read command.
+ *  more fields than variables -> remainder shall be part of last variable.
+ *  less fields than variables -> remaining variables unset.
+ *
+ *  @param line complete line of input
+ *  @param ap argument (variable) list
+ *  @param len length of line including trailing '\0'
+ */
+static void
+readcmd_handle_line(char *s, char **ap)
+{
+	struct arglist arglist;
+	struct strlist *sl;
+	char *backup;
+	char *line;
+
+	/* ifsbreakup will fiddle with stack region... */
+	line = stackblock();
+	s = grabstackstr(s);
+
+	/* need a copy, so that delimiters aren't lost
+	 * in case there are more fields than variables */
+	backup = sstrdup(line);
+
+	arglist.lastp = &arglist.list;
+	
+	ifsbreakup(s, &arglist);
+	*arglist.lastp = NULL;
+	ifsfree();
+
+	sl = arglist.list;
+
+	do {
+		if (!sl) {
+			/* nullify remaining arguments */
+			do {
+				setvar(*ap, nullstr, 0);
+			} while (*++ap);
+
+			return;
+		}
+
+		/* remaining fields present, but no variables left. */
+		if (!ap[1] && sl->next) {
+			size_t offset;
+			char *remainder;
+
+			/* FIXME little bit hacky, assuming that ifsbreakup 
+			 * will not modify the length of the string */
+			offset = sl->text - s;
+			remainder = backup + offset;
+			rmescapes(remainder);
+			setvar(*ap, remainder, 0);
+
+			return;
+		}
+		
+		/* set variable to field */
+		rmescapes(sl->text);
+		setvar(*ap, sl->text, 0);
+		sl = sl->next;
+	} while (*++ap);
+}
 
 /*
  * The read builtin.  The -e option causes backslashes to escape the
- * following character.
+ * following character. The -p option followed by an argument prompts
+ * with the argument.
  *
  * This uses unbuffered input, which may be avoidable in some cases.
  */
@@ -71,13 +138,12 @@ int
 readcmd(int argc, char **argv)
 {
 	char **ap;
-	int backslash;
 	char c;
 	int rflag;
 	char *prompt;
-	const char *ifs;
 	char *p;
-	int startword;
+	int startloc;
+	int newloc;
 	int status;
 	int i;
 
@@ -97,53 +163,55 @@ readcmd(int argc, char **argv)
 	}
 	if (*(ap = argptr) == NULL)
 		sh_error("arg count");
-	if ((ifs = bltinlookup("IFS")) == NULL)
-		ifs = defifs;
+
 	status = 0;
-	startword = 1;
-	backslash = 0;
 	STARTSTACKSTR(p);
+
+	goto start;
+
 	for (;;) {
-		if (read(0, &c, 1) != 1) {
-			status = 1;
+		switch (read(0, &c, 1)) {
+		case 1:
 			break;
+		default:
+			if (errno == EINTR && !pendingsigs)
+				continue;
+				/* fall through */
+		case 0:
+			status = 1;
+			goto out;
 		}
 		if (c == '\0')
 			continue;
-		if (backslash) {
-			backslash = 0;
-			if (c != '\n')
-				goto put;
-			continue;
+		if (newloc >= startloc) {
+			if (c == '\n')
+				goto resetbs;
+			goto put;
 		}
 		if (!rflag && c == '\\') {
-			backslash++;
+			newloc = p - (char *)stackblock();
 			continue;
 		}
 		if (c == '\n')
 			break;
-		if (startword && *ifs == ' ' && strchr(ifs, c)) {
-			continue;
-		}
-		startword = 0;
-		if (ap[1] != NULL && strchr(ifs, c) != NULL) {
-			STACKSTRNUL(p);
-			setvar(*ap, stackblock(), 0);
-			ap++;
-			startword = 1;
-			STARTSTACKSTR(p);
-		} else {
 put:
-			STPUTC(c, p);
+		CHECKSTRSPACE(2, p);
+		if (strchr(qchars, c))
+			USTPUTC(CTLESC, p);
+		USTPUTC(c, p);
+
+		if (newloc >= startloc) {
+resetbs:
+			recordregion(startloc, newloc, 0);
+start:
+			startloc = p - (char *)stackblock();
+			newloc = startloc - 1;
 		}
 	}
+out:
+	recordregion(startloc, p - (char *)stackblock(), 0);
 	STACKSTRNUL(p);
-	/* Remove trailing blanks */
-	while ((char *)stackblock() <= --p && strchr(ifs, *p) != NULL)
-		*p = '\0';
-	setvar(*ap, stackblock(), 0);
-	while (*++ap != NULL)
-		setvar(*ap, nullstr, 0);
+	readcmd_handle_line(p + 1, ap);
 	return status;
 }
 
@@ -198,7 +266,7 @@ umaskcmd(int argc, char **argv)
 	} else {
 		int new_mask;
 
-		if (isdigit(*ap)) {
+		if (isdigit((unsigned char) *ap)) {
 			new_mask = 0;
 			do {
 				if (*ap >= '8' || *ap < '0')
@@ -324,6 +392,9 @@ static const struct limits limits[] = {
 #ifdef RLIMIT_LOCKS
 	{ "locks",			RLIMIT_LOCKS,	   1, 'w' },
 #endif
+#ifdef RLIMIT_RTPRIO
+	{ "rtprio",			RLIMIT_RTPRIO,	   1, 'r' },
+#endif
 	{ (char *) 0,			0,		   0,  '\0' }
 };
 
@@ -342,7 +413,7 @@ static void printlim(enum limtype how, const struct rlimit *limit,
 		out1fmt("unlimited\n");
 	else {
 		val /= l->factor;
-		out1fmt("%jd\n", (intmax_t) val);
+		out1fmt("%" PRIdMAX "\n", (intmax_t) val);
 	}
 }
 

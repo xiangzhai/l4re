@@ -437,7 +437,7 @@ Cpu::phys_id() const
 
 IMPLEMENT
 void
-Cpu::init(bool, bool is_boot_cpu)
+Cpu::init(bool /*resume*/, bool is_boot_cpu)
 {
   if (is_boot_cpu)
     {

@@ -13,6 +13,7 @@
  * COPYING file for details.
  */
 
+#include <l4/sys/compiler.h>
 #include <stdarg.h>
 
 L4_CV int  term_init    (char *terminal_name);

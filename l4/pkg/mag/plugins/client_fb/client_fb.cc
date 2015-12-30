@@ -22,6 +22,7 @@
 #include <l4/sys/factory>
 #include <l4/re/util/meta>
 #include <l4/re/console>
+#include <l4/re/event-sys.h>
 
 #include <l4/mag/server/user_state>
 #include <cstdio>
@@ -141,7 +142,10 @@ Client_fb::setup()
                                                     ds.get()));
 
   L4Re::Rm::Auto_region<void *> dsa;
-  L4Re::chksys(L4Re::Env::env()->rm()->attach(&dsa, ds->size(), L4Re::Rm::Search_addr, ds.get(), 0, L4_SUPERPAGESHIFT));
+  L4Re::chksys(L4Re::Env::env()->rm()
+                 ->attach(&dsa, ds->size(), L4Re::Rm::Search_addr,
+                          L4::Ipc::make_cap_rw(ds.get()), 0,
+                          L4_SUPERPAGESHIFT));
 
   _fb = sf->create_texture(res, dsa.get());
 
@@ -174,7 +178,8 @@ Client_fb::setup()
 
 
   chksys(e->mem_alloc()->alloc(L4_PAGESIZE, _ev_ds.get()));
-  chksys(e->rm()->attach(&_ev_ds_m, L4_PAGESIZE, L4Re::Rm::Search_addr, _ev_ds.get(), 0, L4_PAGESHIFT));
+  chksys(e->rm()->attach(&_ev_ds_m, L4_PAGESIZE, L4Re::Rm::Search_addr,
+                         L4::Ipc::make_cap_rw(_ev_ds.get()), 0, L4_PAGESHIFT));
 
   _events = L4Re::Event_buffer(_ev_ds_m.get(), L4_PAGESIZE);
 
@@ -369,7 +374,7 @@ Client_fb::get_stream_info_for_id(l4_umword_t id, L4Re::Event_stream_info *info)
 }
 
 int
-Client_fb::get_abs_info(l4_umword_t id, unsigned naxes, unsigned *axes,
+Client_fb::get_abs_info(l4_umword_t id, unsigned naxes, unsigned const *axes,
                         L4Re::Event_absinfo *infos)
 {
   unsigned char ax_mode[naxes];
@@ -399,87 +404,7 @@ Client_fb::get_abs_info(l4_umword_t id, unsigned naxes, unsigned *axes,
   return i;
 }
 
-inline int
-Client_fb::event_get(L4::Ipc::Iostream &s)
-{
-  _events.reset();
-  s << _ev_ds.get();
-  return L4_EOK;
-}
 
-inline int
-Client_fb::event_get_stream_info_for_id(L4::Ipc::Iostream &s)
-{
-  L4Re::Event_stream_info info;
-  l4_umword_t id;
-
-  s >> id;
-  int i = get_stream_info_for_id(id, &info);
-  if (i < 0)
-    return i;
-
-  s.put(info);
-  return i;
-}
-
-inline int
-Client_fb::event_get_axis_info(L4::Ipc::Iostream &s)
-{
-  l4_umword_t id;
-  long unsigned naxes = L4RE_ABS_MAX;
-  unsigned axes[L4RE_ABS_MAX];
-  s >> id >> L4::Ipc::buf_cp_in(axes, naxes);
-  L4Re::Event_absinfo infos[naxes];
-  int i = get_abs_info(id, naxes, axes, infos);
-  if (i < 0)
-    return i;
-
-  s << L4::Ipc::buf_cp_out(infos, naxes);
-  return i;
-}
-
-inline int
-Client_fb::event_dispatch(l4_umword_t, L4::Ipc::Iostream &s)
-{
-  using namespace L4Re;
-
-  L4::Opcode op;
-  s >> op;
-  switch (op)
-    {
-    case Event_::Get:
-      return event_get(s);
-    case Event_::Get_stream_info_for_id:
-      return event_get_stream_info_for_id(s);
-    case Event_::Get_axis_info:
-      return event_get_axis_info(s);
-    default:
-      return -L4_ENOSYS;
-    }
-}
-
-int
-Client_fb::dispatch(l4_umword_t obj, L4::Ipc::Iostream &s)
-{
-  using namespace L4Re;
-
-  l4_msgtag_t tag;
-  s >> tag;
-
-  switch (tag.label())
-    {
-    case L4::Meta::Protocol:
-      return L4Re::Util::handle_meta_request<L4Re::Console>(s);
-    case L4_PROTO_IRQ:
-      return Icu_svr::dispatch(obj, s);
-    case Protocol::Goos:
-      return L4Re::Util::Video::Goos_svr::dispatch(obj, s);
-    case Protocol::Event:
-      return event_dispatch(obj, s);
-    default:
-      return -L4_EBADPROTO;
-    }
-}
 
 
 void

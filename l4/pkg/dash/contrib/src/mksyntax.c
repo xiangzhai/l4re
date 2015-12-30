@@ -53,7 +53,6 @@ struct synclass synclass[] = {
 	{ "CWORD",	"character is nothing special" },
 	{ "CNL",	"newline character" },
 	{ "CBACK",	"a backslash character" },
-	{ "CDBACK",	"a backslash character in double quotes" },
 	{ "CSQUOTE",	"single quote" },
 	{ "CDQUOTE",	"double quote" },
 	{ "CENDQUOTE",	"a terminating quote" },
@@ -176,7 +175,7 @@ main(int argc, char **argv)
 	init();
 	fputs("\n/* syntax table used when in double quotes */\n", cfile);
 	add("\n", "CNL");
-	add("\\", "CDBACK");
+	add("\\", "CBACK");
 	add("\"", "CENDQUOTE");
 	add("`", "CBQUOTE");
 	add("$", "CVAR");
@@ -194,7 +193,7 @@ main(int argc, char **argv)
 	init();
 	fputs("\n/* syntax table used when in arithmetic */\n", cfile);
 	add("\n", "CNL");
-	add("\\", "CDBACK");
+	add("\\", "CBACK");
 	add("`", "CBQUOTE");
 	add("$", "CVAR");
 	add("}", "CENDVAR");
@@ -224,7 +223,7 @@ filltable(char *dftval)
 {
 	int i;
 
-	for (i = 0 ; i < 257; i++)
+	for (i = 0 ; i < 258; i++)
 		syntax[i] = dftval;
 }
 
@@ -270,9 +269,9 @@ print(char *name)
 	int col;
 
 	fprintf(hfile, "extern const char %s[];\n", name);
-	fprintf(cfile, "const char %s[%d] = {\n", name, 257);
+	fprintf(cfile, "const char %s[] = {\n", name);
 	col = 0;
-	for (i = 0 ; i < 257; i++) {
+	for (i = 0 ; i < 258; i++) {
 		if (i == 0) {
 			fputs("      ", cfile);
 		} else if ((i & 03) == 0) {

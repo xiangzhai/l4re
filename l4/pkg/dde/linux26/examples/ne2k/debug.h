@@ -3,7 +3,7 @@
 #include <l4/sys/types.h>
 typedef long pthread_t;
 extern pthread_t pthread_self(void);
-extern l4_cap_idx_t pthread_getl4cap(pthread_t t);
+extern l4_cap_idx_t pthread_l4_cap(pthread_t t);
 extern long ddekit_self_cap(l4_cap_idx_t);
 #endif
 

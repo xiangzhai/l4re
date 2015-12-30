@@ -144,6 +144,10 @@ public:
   int y1() const { return _p1.y(); }
   int x2() const { return _p2.x(); }
   int y2() const { return _p2.y(); }
+  void x1(int v) { _p1.x(v); }
+  void y1(int v) { _p1.y(v); }
+  void x2(int v) { _p2.x(v); }
+  void y2(int v) { _p2.y(v); }
   int w() const  { return x2() - x1() + 1; }
   int h() const  { return y2() - y1() + 1; }
 
@@ -157,6 +161,12 @@ public:
   {
     return Rect(Point(std::max(x1(), o.x1()), std::max(y1(), o.y1())),
                 Point(std::min(x2(), o.x2()), std::min(y2(), o.y2())));
+  }
+
+  Rect &operator &= (Rect const &o)
+  {
+    *this = *this & o;
+    return *this;
   }
 
   Rect operator | (Rect const &o) const
@@ -211,15 +221,29 @@ public:
   bool contains(Point const &p) const
   { return p >= p1() && p <= p2(); }
 
+  bool contains(Rect const &o) const
+  { return x1() <= o.x1() && y1() <= o.y1() && x2() >= o.x2() && y2() >= o.y2(); }
+
   Rect operator - (Point const &p) const
   { return Rect(p1() - p, p2() - p); }
 
   Rect operator + (Point const &p) const
   { return Rect(p1() + p, p2() + p); }
 
+  Rect &operator += (Point const &p)
+  { _p1 += p; _p2 += p; return *this; }
+
+  Rect &operator -= (Point const &p)
+  { _p1 -= p; _p2 -= p; return *this; }
+
   Rect move_to(Point const &p1) const
   { return Rect(p1, area()); }
 
+  bool overlaps(Rect const &o) const
+  {
+    return    o.x2() >= x1() && o.x1() <= x2()
+           && o.y2() >= y1() && o.y1() <= y2();
+  }
 };
 
 struct Rect_tuple

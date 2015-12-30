@@ -6,24 +6,29 @@
  */
 #pragma once
 
-enum Protocols
+#include <l4/sys/capability>
+
+namespace Ferret {
+struct Client : L4::Kobject_t<Client, L4::Kobject, 0>
 {
-	Client  = 0x10,
-	Monitor = 0x20
+  enum ClientOperations
+  {
+    Create = 0x10,
+    Free   = 0x20,
+    NewInstance = 0x30,
+  };
 };
 
-
-enum ClientOperations
+struct Monitor : L4::Kobject_t<Monitor, L4::Kobject, 1>
 {
-	Create = 0x10,
-	Free   = 0x20,
-	NewInstance = 0x30,
+  enum MonitorOperations
+  {
+    Attach = 0x10,
+    Detach = 0x20,
+    List   = 0x30,
+  };
 };
 
+struct Ding : L4::Kobject_2t<Ding, Client, Monitor> {};
 
-enum MonitorOperations
-{
-	Attach = 0x10,
-	Detach = 0x20,
-	List   = 0x30,
-};
+}

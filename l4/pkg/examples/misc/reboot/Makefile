@@ -1,5 +1,5 @@
-PKGDIR          ?= ../../..
-L4DIR           ?= $(PKGDIR)/..
+PKGDIR          ?= ../..
+L4DIR           ?= $(PKGDIR)/../..
 
 TARGET           = reboot
 SRC_C            = main.c

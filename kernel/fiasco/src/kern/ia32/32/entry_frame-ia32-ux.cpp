@@ -102,10 +102,6 @@ IMPLEMENTATION [ia32,ux]:
 // IPC frame methods for IA32
 // 
 IMPLEMENT inline
-Mword Syscall_frame::next_period() const
-{ return false; }
- 
-IMPLEMENT inline
 Mword Syscall_frame::from_spec() const
 { return _esi; }
 

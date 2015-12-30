@@ -123,8 +123,9 @@ public:
 
 class Factory;
 
-struct Pixel_info : public L4Re::Video::Pixel_info
+class Pixel_info : public L4Re::Video::Pixel_info
 {
+public:
   Factory *factory;
 
   Pixel_info(char bytes, char r, char rs, char g, char gs,

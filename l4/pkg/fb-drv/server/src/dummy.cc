@@ -14,12 +14,26 @@
 
 #include "fb.h"
 
-bool
-Dummy_fb::setup_drv(Prog_args *pa)
+class Dummy_fb : public Phys_fb
 {
-  if (!pa->do_dummy)
-    return false;
+public:
+  bool setup_drv(Prog_args *pa, L4Re::Util::Object_registry *);
+};
 
+Phys_fb *Phys_fb::get_dummy()
+{
+  return new Dummy_fb();
+}
+
+Phys_fb * __attribute__((weak))
+Phys_fb::probe()
+{
+  return new Dummy_fb();
+}
+
+bool
+Dummy_fb::setup_drv(Prog_args *, L4Re::Util::Object_registry *)
+{
   _screen_info.width      = 1024;
   _screen_info.height     = 768;
   _screen_info.flags      = L4Re::Video::Goos::F_auto_refresh;

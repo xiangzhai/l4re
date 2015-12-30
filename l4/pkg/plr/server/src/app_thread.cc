@@ -92,7 +92,7 @@ void Romain::App_thread::start()
 	l4_mword_t err = pthread_create(&_pthread, NULL, pthread_fn, this);
 	_check(err != 0, "pthread_create");
 
-	//_vcpu_cap = L4::Cap<L4::Thread>(pthread_getl4cap(_pthread));
+	//_vcpu_cap = Pthread::L4::cap(_pthread);
 }
 
 
@@ -371,7 +371,7 @@ void* Romain::GateAgent::listener_function(void *gk)
 
 	char namebuf[16];
 	snprintf(namebuf, 16, "GK::%s", agent->owner_group->name.c_str());
-	l4_debugger_set_object_name(pthread_getl4cap(pthread_self()), namebuf);
+	l4_debugger_set_object_name(pthread_l4_cap(pthread_self()), namebuf);
 
 	sem_wait(&agent->init_sem);
 	sem_destroy(&agent->init_sem);

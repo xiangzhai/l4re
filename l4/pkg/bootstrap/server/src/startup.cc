@@ -155,6 +155,9 @@ void *find_kip()
 	      break;
 	    }
 	}
+
+      if (k)
+        break;
     }
 
   if (!k)
@@ -405,8 +408,11 @@ init_regions()
   extern int _start;	/* begin of image -- defined in crt0.S */
   extern int _end;	/* end   of image -- defined by bootstrap.ld */
 
-  regions.add(Region::n((unsigned long)&_start, (unsigned long)&_end,
-              ".bootstrap", Region::Boot));
+  auto *p = Platform_base::platform;
+
+  regions.add(Region::n(p->to_phys((unsigned long)&_start),
+                        p->to_phys((unsigned long)&_end),
+                        ".bootstrap", Region::Boot));
 }
 
 /**
@@ -513,6 +519,33 @@ running_in_hyp_mode()
 static void
 setup_and_check_kernel_config(Platform_base *plat, l4_kernel_info_t *kip)
 {
+  l4_kip_platform_info_arch *ia = &kip->platform_info.arch;
+
+  asm("mrc p15, 0, %0, c0, c0, 0" : "=r" (ia->cpuinfo.MIDR));
+  asm("mrc p15, 0, %0, c0, c0, 1" : "=r" (ia->cpuinfo.CTR));
+  asm("mrc p15, 0, %0, c0, c0, 2" : "=r" (ia->cpuinfo.TCMTR));
+  asm("mrc p15, 0, %0, c0, c0, 3" : "=r" (ia->cpuinfo.TLBTR));
+  asm("mrc p15, 0, %0, c0, c0, 5" : "=r" (ia->cpuinfo.MPIDR));
+  asm("mrc p15, 0, %0, c0, c0, 6" : "=r" (ia->cpuinfo.REVIDR));
+
+  if (((ia->cpuinfo.MIDR >> 16) & 0xf) >= 7)
+    {
+      asm("mrc p15, 0, %0, c0, c1, 0" : "=r" (ia->cpuinfo.ID_PFR[0]));
+      asm("mrc p15, 0, %0, c0, c1, 1" : "=r" (ia->cpuinfo.ID_PFR[1]));
+      asm("mrc p15, 0, %0, c0, c1, 2" : "=r" (ia->cpuinfo.ID_DFR0));
+      asm("mrc p15, 0, %0, c0, c1, 3" : "=r" (ia->cpuinfo.ID_AFR0));
+      asm("mrc p15, 0, %0, c0, c1, 4" : "=r" (ia->cpuinfo.ID_MMFR[0]));
+      asm("mrc p15, 0, %0, c0, c1, 5" : "=r" (ia->cpuinfo.ID_MMFR[1]));
+      asm("mrc p15, 0, %0, c0, c1, 6" : "=r" (ia->cpuinfo.ID_MMFR[2]));
+      asm("mrc p15, 0, %0, c0, c1, 7" : "=r" (ia->cpuinfo.ID_MMFR[3]));
+      asm("mrc p15, 0, %0, c0, c2, 0" : "=r" (ia->cpuinfo.ID_ISAR[0]));
+      asm("mrc p15, 0, %0, c0, c2, 1" : "=r" (ia->cpuinfo.ID_ISAR[1]));
+      asm("mrc p15, 0, %0, c0, c2, 2" : "=r" (ia->cpuinfo.ID_ISAR[2]));
+      asm("mrc p15, 0, %0, c0, c2, 3" : "=r" (ia->cpuinfo.ID_ISAR[3]));
+      asm("mrc p15, 0, %0, c0, c2, 4" : "=r" (ia->cpuinfo.ID_ISAR[4]));
+      asm("mrc p15, 0, %0, c0, c2, 5" : "=r" (ia->cpuinfo.ID_ISAR[5]));
+    }
+
   const char *s = l4_kip_version_string(kip);
   if (!s)
     return;
@@ -529,6 +562,7 @@ setup_and_check_kernel_config(Platform_base *plat, l4_kernel_info_t *kip)
               panic("\nFailed to switch to HYP as required by Fiasco.OC.\n");
           }
         is_hyp_kernel = true;
+        break;
       }
 
   if (!is_hyp_kernel && running_in_hyp_mode())
@@ -561,6 +595,9 @@ startup(char const *cmdline)
 {
   if (!cmdline || !*cmdline)
     cmdline = builtin_cmdline;
+
+  if (check_arg(cmdline, "-noserial"))
+    set_stdio_uart(NULL);
 
   if (!Platform_base::platform)
     {

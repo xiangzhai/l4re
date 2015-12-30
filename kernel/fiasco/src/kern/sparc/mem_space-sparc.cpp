@@ -57,7 +57,6 @@ IMPLEMENTATION [sparc]:
 #include <cstring>
 #include <cstdio>
 #include "cpu.h"
-#include "kdb_ke.h"
 #include "l4_types.h"
 #include "mem_layout.h"
 #include "paging.h"
@@ -98,7 +97,7 @@ Mem_space::Mem_space(Ram_quota *q, Dir_type* pdir)
   _current.cpu(Cpu_number::boot_cpu()) = this;
 }
 
-IMPLEMENT inline
+IMPLEMENT inline NEEDS[<cstdio>]
 void
 Mem_space::make_current()
 {
@@ -106,7 +105,7 @@ Mem_space::make_current()
 }
 
 
-PROTECTED inline
+PROTECTED inline NEEDS[<cstdio>]
 int
 Mem_space::sync_kernel()
 {
@@ -115,8 +114,8 @@ Mem_space::sync_kernel()
 }
 
 
-IMPLEMENT inline NEEDS ["kmem.h"]
-void Mem_space::switchin_context(Mem_space *from)
+IMPLEMENT inline NEEDS ["kmem.h", <cstdio>]
+void Mem_space::switchin_context(Mem_space *from, unsigned)
 {
   (void)from;
   printf("%s FIXME\n", __func__);
@@ -235,7 +234,7 @@ Mem_space::Status
 Mem_space::v_insert(Phys_addr phys, Vaddr virt, Page_order size,
 		    Attr page_attribs)
 {
-  (void)phys; (void)virt; (void)page_attribs;
+  (void)phys; (void)virt; (void)page_attribs; (void)size;
   assert (cxx::get_lsb(Phys_addr(phys), size) == 0);
   assert (cxx::get_lsb(Virt_addr(virt), size) == 0);
 /*

@@ -1,15 +1,13 @@
-PKGDIR		?= ../../
-L4DIR		?= $(PKGDIR)/../..
+PKGDIR ?= ../../
+L4DIR  ?= $(PKGDIR)/../..
 
-TARGET		= crypto_bench_linux1 \
-                  crypto_bench_linux2 \
-                  crypto_bench_linux3 \
-		  crypto_bench_openssl
-SRC_C		= bench.c modes/cbc.c
+TARGET  = crypto_bench_linux1 \
+          crypto_bench_linux2 \
+          crypto_bench_linux3 \
+          crypto_bench_openssl
+SRC_C   = bench.c modes/cbc.c
+MODE    = host
 
-MODE		= host
-
-# list additional library paths and libraries here
 SRC_C_crypto_bench_linux1  = sha1_linux/sha1.c \
                              aes_linux/aes.c
 SRC_C_crypto_bench_linux2  = sha1_linux_new/sha1.c \
@@ -27,7 +25,7 @@ SRC_C_crypto_bench_openssl = sha1_openssl/glue.c \
 SRC_S_crypto_bench_openssl = aes_openssl/ax86-elf.S \
                              sha1_openssl/sx86-elf.S
 
-DEFINES	+= -DBUILD_FOR_L4_LIBCRYPTO=1
+DEFINES += -DBUILD_FOR_L4_LIBCRYPTO=1
 
 PRIVATE_INCDIR = $(PKGDIR)/include
 

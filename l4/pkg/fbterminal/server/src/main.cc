@@ -32,12 +32,12 @@
 #include <l4/cxx/ipc_stream>
 #include <l4/cxx/ipc_server>
 #include <l4/cxx/exceptions>
-#include <l4/re/protocols>
-#include <l4/re/log-sys.h>
 #include <l4/util/util.h>
 #include <l4/re/util/icu_svr>
 #include <l4/re/util/vcon_svr>
+#include <l4/re/util/br_manager>
 #include <l4/sys/typeinfo_svr>
+#include <l4/sys/semaphore>
 
 #include <pthread-l4.h>
 
@@ -50,7 +50,7 @@
 static L4Re::Util::Video::Goos_fb fb;
 static void *fb_addr;
 static L4::Cap<L4Re::Dataspace> ev_ds;
-static L4::Cap<L4::Irq> ev_irq;
+static L4::Cap<L4::Semaphore> ev_irq;
 
 static L4Re::Event_buffer ev_buffer;
 
@@ -60,14 +60,7 @@ static l4_uint32_t fn_x, fn_y;
 // vt100 interpreter of ouput stream from client
 termstate_t *term;
 
-static L4::Cap<void> rcv_cap()
-{
-  static L4::Cap<void> r = L4Re::Util::cap_alloc.alloc<void>();
-  return r;
-}
-
-
-class Terminal : public L4::Server_object,
+class Terminal : public L4::Server_object_t<L4::Vcon>,
                  public L4Re::Util::Icu_cap_array_svr<Terminal>,
                  public L4Re::Util::Vcon_svr<Terminal>
 {
@@ -76,11 +69,12 @@ public:
   typedef L4Re::Util::Vcon_svr<Terminal>          Vcon_svr;
 
   explicit Terminal();
-  int dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios);
+
+  L4_RPC_LEGACY_DISPATCH(L4::Vcon);
+  int dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios)
+  { return dispatch<L4::Ipc::Iostream>(obj, ios); }
 
   void trigger() { _irq.trigger(); }
-
-  static L4::Cap<void> rcv_cap() { return ::rcv_cap(); }
 
   unsigned vcon_read(char *buf, unsigned size) throw();
   void vcon_write(const char *buf, unsigned size) throw();
@@ -157,11 +151,11 @@ static const char* init()
   if (!ev_ds.is_valid())
     return "Cannot allocate cap\n";
 
-  ev_irq = L4Re::Util::cap_alloc.alloc<L4::Irq>();
+  ev_irq = L4Re::Util::cap_alloc.alloc<L4::Semaphore>();
   if (!ev_irq.is_valid())
     return "Cannot allocate cap\n";
 
-  if (l4_error(L4Re::Env::env()->factory()->create_irq(ev_irq)))
+  if (l4_error(L4Re::Env::env()->factory()->create(ev_irq)))
     return "Could not create event IRQ\n";
 
   if (l4_error(L4::cap_cast<L4Re::Console>(fb.goos())->bind(0, ev_irq)))
@@ -248,7 +242,7 @@ namespace {
 
 struct Ev_loop : public Event::Event_loop
 {
-  Ev_loop(L4::Cap<L4::Irq> irq, int prio) : Event::Event_loop(irq, prio) {}
+  Ev_loop(L4::Cap<L4::Semaphore> irq, int prio) : Event::Event_loop(irq, prio) {}
   void handle()
   {
     L4Re::Event_buffer::Event *e;
@@ -393,7 +387,7 @@ void vt100_show_cursor(termstate_t *term)
 
 }
 
-static L4Re::Util::Object_registry term_registry;
+static L4Re::Util::Registry_server<L4Re::Util::Br_manager_hooks> server;
 
 Terminal::Terminal()
   : Icu_svr(1, &_irq)
@@ -445,26 +439,7 @@ Terminal::vcon_get_attr(l4_vcon_attr_t *attr) throw()
   return -L4_EOK;
 }
 
-int
-Terminal::dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios)
-{
-  l4_msgtag_t tag;
-  ios >> tag;
-
-  switch (tag.label())
-    {
-    case L4::Meta::Protocol:
-      return L4::Util::handle_meta_request<L4::Vcon>(ios);
-    case L4::Irq::Protocol:
-      return Icu_svr::dispatch(obj, ios);
-    case L4::Vcon::Protocol:
-      return Vcon_svr::dispatch(obj, ios);
-    default:
-      return -L4_EBADPROTO;
-    }
-}
-
-class Controller : public L4::Server_object
+class Controller : public L4::Server_object_t<L4::Factory>
 {
 public:
   int dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios);
@@ -496,7 +471,7 @@ Controller::dispatch(l4_umword_t, L4::Ipc::Iostream &ios)
         try
           {
             Terminal *t = new Terminal;
-            ios << term_registry.register_obj(t);
+            ios << server.registry()->register_obj(t);
           }
         catch (L4::Runtime_error const &e)
           {
@@ -513,20 +488,6 @@ Controller::dispatch(l4_umword_t, L4::Ipc::Iostream &ios)
   }
 }
 
-struct My_hooks
-  : public L4::Ipc_svr::Default_timeout,
-    public L4::Ipc_svr::Ignore_errors,
-    public L4::Ipc_svr::Compound_reply
-{
-  void setup_wait(L4::Ipc::Istream &istr, L4::Ipc_svr::Reply_mode)
-  {
-    istr.reset();
-    istr << L4::Ipc::Small_buf(rcv_cap().cap(), L4_RCV_ITEM_LOCAL_ID);
-    l4_utcb_br_u(istr.utcb())->bdr = 0;
-  }
-};
-
-static L4::Server<My_hooks> server(l4_utcb());
 
 int main()
 {
@@ -544,9 +505,8 @@ int main()
   event.start();
 
   Terminal _terminal;
-  term_registry.register_obj(&_terminal, "term");
   terminal = &_terminal;
-  if (!term_registry.register_obj(&_terminal, "term"))
+  if (!server.registry()->register_obj(&_terminal, "term"))
     {
       printf("Terminal registration failed.\n");
       return 1;
@@ -555,13 +515,13 @@ int main()
   if (0)
     {
       Controller ctrl;
-      if (!term_registry.register_obj(&ctrl, "terminal"))
+      if (!server.registry()->register_obj(&ctrl, "terminal"))
         {
           printf("Terminal ctrl registration failed.\n");
           return 1;
         }
     }
 
-  server.loop(term_registry);
+  server.loop();
 }
 

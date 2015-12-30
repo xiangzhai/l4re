@@ -85,7 +85,7 @@ static int _ferret_create_sensor(l4_cap_idx_t dir_cap,
 #endif
 
 	L4::Ipc::Iostream s(l4_utcb());
-	s << l4_umword_t(Create);                         // Opcode
+	s << L4::Opcode(Ferret::Client::Create);                         // Opcode
 	s << major << minor << instance << type << flags; // Parameters
 
 	/*
@@ -104,7 +104,7 @@ static int _ferret_create_sensor(l4_cap_idx_t dir_cap,
 	// recv fpage is final parameter
 	s << L4::Ipc::Small_buf(ds.cap(), 0);                  // Recv. fpage for ds cap
 
-	l4_msgtag_t res = s.call(dir_cap, /* Protocol = */ Client);
+	l4_msgtag_t res = s.call(dir_cap, Ferret::Client::Protocol);
 	if (l4_ipc_error(res, l4_utcb()))
 	{
 		std::cout << "IPC error in " << __func__ << "()\n";

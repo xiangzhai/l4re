@@ -57,6 +57,7 @@ static l4la_free_t *malloc_pool = NULL;
  */
 void * DDEKit::simple_malloc(unsigned const size)
 {
+  // FIXME: all resources are leaked in error cases
 	unsigned size2 = size;
 	/* we store chunk size in the first word of the chunk */
 	size2 += sizeof(unsigned);
@@ -79,7 +80,7 @@ void * DDEKit::simple_malloc(unsigned const size)
 		if (err < 0)
 			return 0;
 
-		err = L4Re::Env::env()->rm()->attach(&res, ds_size, L4Re::Rm::Search_addr, ds, 0);
+		err = L4Re::Env::env()->rm()->attach(&res, ds_size, L4Re::Rm::Search_addr, L4::Ipc::make_cap_rw(ds), 0);
 		if (err < 0)
 			return 0;
 

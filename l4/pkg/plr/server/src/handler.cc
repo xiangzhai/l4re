@@ -35,8 +35,7 @@ EXTERN_C void *pthread_fn(void *data)
 {
 	Romain::App_thread *t = (Romain::App_thread*)data;
 
-	l4_cap_idx_t cap = (l4_cap_idx_t)pthread_getl4cap(pthread_self());
-	t->vcpu_cap(L4::Cap<L4::Thread>(cap));
+	t->vcpu_cap(Pthread::L4::cap(pthread_self()));
 
 	DEBUG() << "vcpu @ " << (void*)t->vcpu();
 	DEBUG() << "thread entry: " << (void*)t->thread_entry();
@@ -244,7 +243,7 @@ class SplitHandler
 		}
 
 		SplitHandler(Romain::InstanceManager* im)
-			: _split_handler(pthread_getl4cap(pthread_self())),
+			: _split_handler(pthread_l4_cap(pthread_self())),
 		      _im(im), _replicator()
 		{
 			_psi       = new SplitInfo*[_im->instance_count()];
@@ -293,7 +292,7 @@ SplitHandler* SplitHandler::_handlers[5] = {0};
 
 EXTERN_C void *split_handler_fn(void* data)
 {
-	//SplitHandler::split_handler_cap(pthread_getl4cap(pthread_self()));
+	//SplitHandler::split_handler_cap(pthread_l4_cap(pthread_self()));
 
 	SplitHandler::_handlers[0] = new SplitHandler(reinterpret_cast<Romain::InstanceManager*>(data));
 	SplitHandler::get(0)->run();

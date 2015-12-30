@@ -1,6 +1,7 @@
 INTERFACE:
 
 #include "cpu_lock.h"
+#include "types.h"
 
 class Spin_lock_base : protected Cpu_lock
 {
@@ -14,7 +15,7 @@ public:
  * Also disables lock IRQs for the time the lock is held.
  * In the UP case it is in fact just the Cpu_lock.
  */
-template<typename Lock_t = char>
+template<typename Lock_t = Small_atomic_int>
 class Spin_lock : public Spin_lock_base
 {
 };

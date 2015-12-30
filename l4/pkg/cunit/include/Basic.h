@@ -47,8 +47,8 @@
 #ifndef __INCLUDE_BASIC_H_
 #define __INCLUDE_BASIC_H_
 
-#include <l4/cunit/CUnit.h>
-#include <l4/cunit/TestDB.h>
+#include <CUnit.h>
+#include <TestDB.h>
 
 #ifdef __cplusplus
 extern "C" {

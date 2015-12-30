@@ -37,29 +37,8 @@ __BEGIN_DECLS
  * \brief extended vCPU handling functionality.
  */
 
-/**
- * \brief IRQ/Event enable and disable flags.
- * \ingroup api_libvcpu
- */
-typedef enum l4vcpu_irq_state_t
-{
-  L4VCPU_IRQ_STATE_DISABLED = 0,             ///< IRQ/Event delivery disabled
-  L4VCPU_IRQ_STATE_ENABLED  = L4_VCPU_F_IRQ, ///< IRQ/Event delivery enabled
-} l4vcpu_irq_state_t;
-
-typedef l4_uint16_t l4vcpu_state_t;
 typedef void (*l4vcpu_event_hndl_t)(l4_vcpu_state_t *vcpu);
 typedef void (*l4vcpu_setup_ipc_t)(l4_utcb_t *utcb);
-
-/**
- * \brief Return the state flags of a vCPU.
- * \ingroup api_libvcpu
- *
- * \param vcpu  Pointer to vCPU area.
- */
-L4_CV L4_INLINE
-l4vcpu_state_t
-l4vcpu_state(l4_vcpu_state_t const *vcpu) L4_NOTHROW;
 
 /**
  * \brief Disable a vCPU for event delivery.
@@ -80,7 +59,7 @@ l4vcpu_irq_disable(l4_vcpu_state_t *vcpu) L4_NOTHROW;
  * \return IRQ state before disabling IRQs.
  */
 L4_CV L4_INLINE
-l4vcpu_irq_state_t
+unsigned
 l4vcpu_irq_disable_save(l4_vcpu_state_t *vcpu) L4_NOTHROW;
 
 /**
@@ -117,7 +96,7 @@ l4vcpu_irq_enable(l4_vcpu_state_t *vcpu, l4_utcb_t *utcb,
  */
 L4_CV L4_INLINE
 void
-l4vcpu_irq_restore(l4_vcpu_state_t *vcpu, l4vcpu_irq_state_t s,
+l4vcpu_irq_restore(l4_vcpu_state_t *vcpu, unsigned s,
                    l4_utcb_t *utcb,
                    l4vcpu_event_hndl_t do_event_work_cb,
                    l4vcpu_setup_ipc_t setup_ipc) L4_NOTHROW;
@@ -170,13 +149,13 @@ l4vcpu_wait_for_event(l4_vcpu_state_t *vcpu, l4_utcb_t *utcb,
  * \param prefix A prefix for each line printed.
  */
 L4_CV void
-l4vcpu_print_state(l4_vcpu_state_t *vcpu, const char *prefix) L4_NOTHROW;
+l4vcpu_print_state(const l4_vcpu_state_t *vcpu, const char *prefix) L4_NOTHROW;
 
 /**
  * \internal
  */
 L4_CV void
-l4vcpu_print_state_arch(l4_vcpu_state_t *vcpu, const char *prefix) L4_NOTHROW;
+l4vcpu_print_state_arch(const l4_vcpu_state_t *vcpu, const char *prefix) L4_NOTHROW;
 
 
 /**
@@ -189,7 +168,7 @@ l4vcpu_print_state_arch(l4_vcpu_state_t *vcpu, const char *prefix) L4_NOTHROW;
  */
 L4_CV L4_INLINE
 int
-l4vcpu_is_irq_entry(l4_vcpu_state_t *vcpu) L4_NOTHROW;
+l4vcpu_is_irq_entry(l4_vcpu_state_t const *vcpu) L4_NOTHROW;
 
 /**
  * \brief Return whether the entry reason was a page fault.
@@ -201,7 +180,7 @@ l4vcpu_is_irq_entry(l4_vcpu_state_t *vcpu) L4_NOTHROW;
  */
 L4_CV L4_INLINE
 int
-l4vcpu_is_page_fault_entry(l4_vcpu_state_t *vcpu) L4_NOTHROW;
+l4vcpu_is_page_fault_entry(l4_vcpu_state_t const *vcpu) L4_NOTHROW;
 
 /**
  * \brief Allocate state area for an extended vCPU.
@@ -225,13 +204,6 @@ l4vcpu_ext_alloc(l4_vcpu_state_t **vcpu, l4_addr_t *ext_state,
 #include <l4/vcpu/vcpu_arch.h>
 
 L4_CV L4_INLINE
-l4vcpu_state_t
-l4vcpu_state(l4_vcpu_state_t const *vcpu) L4_NOTHROW
-{
-  return vcpu->state;
-}
-
-L4_CV L4_INLINE
 void
 l4vcpu_irq_disable(l4_vcpu_state_t *vcpu) L4_NOTHROW
 {
@@ -240,10 +212,10 @@ l4vcpu_irq_disable(l4_vcpu_state_t *vcpu) L4_NOTHROW
 }
 
 L4_CV L4_INLINE
-l4vcpu_irq_state_t
+unsigned
 l4vcpu_irq_disable_save(l4_vcpu_state_t *vcpu) L4_NOTHROW
 {
-  l4vcpu_irq_state_t s = (l4vcpu_irq_state_t)l4vcpu_state(vcpu);
+  unsigned s = vcpu->state;
   l4vcpu_irq_disable(vcpu);
   return s;
 }
@@ -289,7 +261,7 @@ l4vcpu_irq_enable(l4_vcpu_state_t *vcpu, l4_utcb_t *utcb,
 
 L4_CV L4_INLINE
 void
-l4vcpu_irq_restore(l4_vcpu_state_t *vcpu, l4vcpu_irq_state_t s,
+l4vcpu_irq_restore(l4_vcpu_state_t *vcpu, unsigned s,
                    l4_utcb_t *utcb,
                    l4vcpu_event_hndl_t do_event_work_cb,
                    l4vcpu_setup_ipc_t setup_ipc) L4_NOTHROW

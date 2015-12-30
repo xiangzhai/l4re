@@ -49,6 +49,11 @@ typedef struct pslim_rect
   l4_int16_t  y;	/**< y-position in vfb; negative values allowed */
   l4_uint16_t w;	/**< width */
   l4_uint16_t h;	/**< height */
+#ifdef __cplusplus
+  pslim_rect() {}
+  pslim_rect(int x, int y, int w, int h)
+  : x(x), y(y), w(w), h(h) {}
+#endif
 } l4con_pslim_rect_t;
 
 /** color type for the virtual framebuffer */

@@ -110,6 +110,7 @@ void
 Jdb::save_disable_irqs(Cpu_number cpu)
 {
   assert(cpu == Cpu_number::boot_cpu());
+  (void)cpu;
   jdb_irq_state = Proc::cli_save();
 }
 
@@ -119,6 +120,7 @@ void
 Jdb::restore_irqs(Cpu_number cpu)
 {
   assert(cpu == Cpu_number::boot_cpu());
+  (void)cpu;
   Proc::sti_restore(jdb_irq_state);
 }
 

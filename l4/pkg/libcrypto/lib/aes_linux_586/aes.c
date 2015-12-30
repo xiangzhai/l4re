@@ -51,7 +51,7 @@
 #else
 
 #define __LIBCRYPTO_INTERNAL__
-#include "aes.h"
+#include <l4/crypto/aes.h>
 
 #endif /* BUILD_FOR_L4 */
 

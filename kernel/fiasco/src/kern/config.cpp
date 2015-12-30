@@ -13,21 +13,22 @@ INTERFACE:
 #define STRINGIFY_(x) #x
 #define STRINGIFY(x) STRINGIFY_(x)
 
+#if defined(__clang__)
+# define COMPILER "clang " __clang_version__
+# define GCC_VERSION 409
+#else
 #if defined(__GNUC__)
-# if defined(__GNUC_PATCHLEVEL__)
-#  define COMPILER STRINGIFY(__GNUC__) "." STRINGIFY(__GNUC_MINOR__) "." STRINGIFY(__GNUC_PATCHLEVEL__)
-# else
-#  define COMPILER STRINGIFY(__GNUC__) "." STRINGIFY(__GNUC_MINOR__)
-# endif
+# define COMPILER "gcc " __VERSION__
 # define GCC_VERSION (__GNUC__ * 100 + __GNUC_MINOR__)
 #else
 # define COMPILER "Non-GCC"
 # define GCC_VERSION 0
 #endif
+#endif
 
 #define GREETING_COLOR_ANSI_OFF    "\033[0m"
 
-#define FIASCO_KERNEL_SUBVERSION 2
+#define FIASCO_KERNEL_SUBVERSION 3
 
 class Config
 {
@@ -122,33 +123,35 @@ public:
 #define GREETING_COLOR_ANSI_TITLE  "\033[1;32m"
 #define GREETING_COLOR_ANSI_INFO   "\033[0;32m"
 
-INTERFACE[ia32,ux]:
-#define ARCH_NAME "ia32"
+INTERFACE[ia32]:
 #define TARGET_NAME CONFIG_IA32_TARGET
 
-INTERFACE[arm]:
-#define ARCH_NAME "arm"
+INTERFACE[ux]:
+#define TARGET_NAME CONFIG_IA32_TARGET
 
 INTERFACE[amd64]:
-#define ARCH_NAME "amd64"
 #define TARGET_NAME CONFIG_IA32_TARGET
 
-INTERFACE[ppc32]:
-#define ARCH_NAME "ppc32"
-
-INTERFACE[sparc]:
-#define ARCH_NAME "sparc"
-#define TARGET_NAME ""
-
 INTERFACE:
+#ifdef TARGET_NAME
 #define CONFIG_KERNEL_VERSION_STRING \
-  GREETING_COLOR_ANSI_TITLE "Welcome to Fiasco.OC (" CONFIG_XARCH ")!\\n"            \
-  GREETING_COLOR_ANSI_INFO "L4/Fiasco.OC " ARCH_NAME " "                \
-                           "microkernel (C) 1998-2013 TU Dresden\\n"           \
-                           "Rev: " CODE_VERSION " compiled with gcc " COMPILER \
+  GREETING_COLOR_ANSI_TITLE "Welcome to L4/Fiasco.OC!\\n"                      \
+  GREETING_COLOR_ANSI_INFO "L4/Fiasco.OC microkernel on " CONFIG_XARCH "\\n"      \
+                           "Rev: " CODE_VERSION " compiled with " COMPILER \
                             " for " TARGET_NAME "    [" CONFIG_LABEL "]\\n"    \
                            "Build: #" BUILD_NR " " BUILD_DATE "\\n"            \
   GREETING_COLOR_ANSI_OFF
+
+#else
+
+#define CONFIG_KERNEL_VERSION_STRING \
+  GREETING_COLOR_ANSI_TITLE "Welcome to L4/Fiasco.OC!\\n"                      \
+  GREETING_COLOR_ANSI_INFO "L4/Fiasco.OC microkernel on " CONFIG_XARCH "\\n"      \
+                           "Rev: " CODE_VERSION " compiled with " COMPILER \
+                           "   [" CONFIG_LABEL "]\\n"    \
+                           "Build: #" BUILD_NR " " BUILD_DATE "\\n"            \
+  GREETING_COLOR_ANSI_OFF
+#endif
 
 
 //---------------------------------------------------------------------------

@@ -8,6 +8,10 @@
  *     economic rights: Technische Universitaet Dresden (Germany)
  */
 
+#include <l4/re/util/icu_svr>
+#include <l4/re/util/vcon_svr>
+#include <l4/sys/cxx/ipc_epiface>
+
 namespace Vcap
 {
 /*
@@ -31,9 +35,19 @@ namespace Vcap
  *  inherit from this server class _and_ pass our class name as the
  *  template parameter at the same time.
  */
-class vcon_srv : public L4Re::Util::Vcon_svr<Vcap::vcon_srv>
+class vcon_srv : public L4Re::Util::Vcon_svr<Vcap::vcon_srv>,
+                 public L4Re::Util::Icu_cap_array_svr<Vcap::vcon_srv>
 {
     public:
+        L4_RPC_LEGACY_DISPATCH(L4::Vcon);
+        vcon_srv() : Icu_cap_array_svr<Vcap::vcon_srv>(0, 0) {}
+
+        // this is not a real server object, but the ICU needs
+        // this interface. However, the ICU is configured for 0
+        // IRQs and so never calls this function, this means
+        // returning 0 is OK here.
+        L4::Ipc_svr::Server_iface *server_iface() const { return 0; }
+
         int vcon_write(const char *buffer, unsigned size)
         {
             static char const *prefix = "\033[35m";

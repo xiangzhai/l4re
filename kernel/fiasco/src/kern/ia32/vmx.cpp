@@ -18,6 +18,22 @@ public:
     T _or;
     T _and;
 
+    void enforce_bits(T m, bool value = true)
+    {
+      if (value)
+        _or |= m;
+      else
+        _and &= ~m;
+    }
+
+    bool allowed_bits(T m, bool value = true) const
+    {
+      if (value)
+        return _and & m;
+      else
+        return !(_or & m);
+    }
+
   public:
     Bit_defs() {}
     Bit_defs(T _or, T _and) : _or(_or), _and(_and) {}
@@ -25,52 +41,48 @@ public:
     T must_be_one() const { return _or; }
     T may_be_one() const { return _and; }
 
-  private:
-    void enforce_bits(T m, bool value = true)
-    {
-      if (value)
-	_or |= m;
-      else
-	_and &= ~m;
-    }
-
-    bool allowed_bits(T m, bool value = true) const
-    {
-      if (value)
-	return _and & m;
-      else
-	return !(_or & m);
-    }
-
-  public:
-    void relax(unsigned char bit)
-    {
-      _or &= ~(T(1) << T(bit));
-      _and |= T(1) << T(bit);
-    }
-
-    void enforce(unsigned char bit, bool value = true)
-    { enforce_bits((T)1 << (T)bit, value); }
-
-    bool allowed(unsigned char bit, bool value = true) const
-    { return allowed_bits((T)1 << (T)bit, value); }
-
     T apply(T v) const { return (v | _or) & _and; }
 
     void print(char const *name) const
     {
       if (sizeof(T) <= 4)
-	printf("%20s = %8x %8x\n", name, (unsigned)_and, (unsigned)_or);
+        printf("%20s = %8x %8x\n", name, (unsigned)_and, (unsigned)_or);
       else if (sizeof(T) <= 8)
-	printf("%20s = %16llx %16llx\n", name, (unsigned long long)_and, (unsigned long long)_or);
+        printf("%20s = %16llx %16llx\n", name, (unsigned long long)_and,
+               (unsigned long long)_or);
     }
   };
 
-  class Bit_defs_32 : public Bit_defs<Unsigned32>
+  template<typename WORD_TYPE, typename BITS_TYPE>
+  struct Bit_defs_t : Bit_defs<WORD_TYPE>
+  {
+    Bit_defs_t() = default;
+    Bit_defs_t(WORD_TYPE _and, WORD_TYPE _or)
+    : Bit_defs<WORD_TYPE>(_and, _or) {}
+
+    Bit_defs_t(Bit_defs<WORD_TYPE> const &o) : Bit_defs<WORD_TYPE>(o) {}
+
+    void relax(BITS_TYPE bit)
+    {
+      this->_or &= ~(WORD_TYPE(1) << WORD_TYPE(bit));
+      this->_and |= WORD_TYPE(1) << WORD_TYPE(bit);
+    }
+
+    void enforce(BITS_TYPE bit, bool value = true)
+    { this->enforce_bits((WORD_TYPE)1 << (WORD_TYPE)bit, value); }
+
+    bool allowed(BITS_TYPE bit, bool value = true) const
+    { return this->allowed_bits((WORD_TYPE)1 << (WORD_TYPE)bit, value); }
+  };
+
+  template<typename BITS_TYPE>
+  class Bit_defs_32 : public Bit_defs_t<Unsigned32, BITS_TYPE>
   {
   public:
     Bit_defs_32() {}
-    Bit_defs_32(Unsigned64 v) : Bit_defs<Unsigned32>(v, v >> 32) {}
+    Bit_defs_32(Unsigned64 v)
+    : Bit_defs_t<Unsigned32, BITS_TYPE>(v, v >> 32)
+    {}
   };
 
   typedef Bit_defs<Unsigned64> Bit_defs_64;
@@ -87,18 +99,73 @@ public:
     T _f;
   };
 
+  enum Pin_based_ctls
+  {
+    PIB_ext_int_exit = 0,
+    PIB_nmi_exit     = 3,
+  };
+
+  enum Primary_proc_based_ctls
+  {
+    PRB1_tpr_shadow               = 21,
+    PRB1_unconditional_io_exit    = 24,
+    PRB1_use_io_bitmaps           = 25,
+    PRB1_use_msr_bitmaps          = 28,
+    PRB1_enable_proc_based_ctls_2 = 31,
+  };
+
+  enum Secondary_proc_based_ctls
+  {
+    PRB2_virtualize_apic = 0,
+    PRB2_enable_ept      = 1,
+    PRB2_enable_vpid     = 5,
+    PRB2_unrestricted    = 7,
+    PRB2_enable_xsaves   = 20,
+  };
+
+  enum Entry_ctls
+  {
+    En_load_debug_ctls       = 2,
+    En_ia32e_mode_guest      = 9,
+    En_entry_to_smm          = 10,
+    En_no_dual_monitor       = 11,
+    En_load_perf_global_ctl  = 13,
+    En_load_ia32_pat         = 14,
+    En_load_ia32_efer        = 15,
+  };
+
+  enum Exit_ctls
+  {
+    Ex_save_debug_ctls        = 2,
+    Ex_host_addr_size         = 9,
+    Ex_load_perf_global_ctl   = 12,
+    Ex_ack_irq_on_exit        = 15,
+    Ex_save_ia32_pat          = 18,
+    Ex_load_ia32_pat          = 19,
+    Ex_save_ia32_efer         = 20,
+    Ex_load_ia32_efer         = 21,
+    Ex_save_preemption_timer  = 22,
+  };
+
+  enum Exceptions
+  {
+    Exception_db                 = 1,
+    Exception_ac                 = 17,
+  };
+
   Unsigned64 basic;
 
-  Bit_defs_32 pinbased_ctls;
-  Bit_defs_32 procbased_ctls;
+  Bit_defs_32<Pin_based_ctls> pinbased_ctls;
+  Bit_defs_32<Primary_proc_based_ctls> procbased_ctls;
 
-  Bit_defs_32 exit_ctls;
-  Bit_defs_32 entry_ctls;
+  Bit_defs_32<Exit_ctls> exit_ctls;
+  Bit_defs_32<Entry_ctls> entry_ctls;
   Unsigned64 misc;
 
-  Bit_defs<Mword> cr0_defs;
-  Bit_defs<Mword> cr4_defs;
-  Bit_defs_32 procbased_ctls2;
+  Bit_defs_t<Mword, unsigned char> cr0_defs;
+  Bit_defs_t<Mword, unsigned char> cr4_defs;
+  Bit_defs_32<Secondary_proc_based_ctls> procbased_ctls2;
+  Bit_defs_32<Exceptions> exception_bitmap;
 
   Unsigned64 ept_vpid_cap;
   Unsigned64 max_index;
@@ -121,10 +188,11 @@ struct Vmx_user_info
       Foi_size = 4
     };
 
-    static void *field(void *b, unsigned vm_field)
+    template<typename T>
+    static T *field(T *b, unsigned vm_field)
     {
-      return (char*)b + master_offsets[vm_field >> 10] * 64
-             + ((vm_field & 0x3ff) << master_offsets[Foi_size + (vm_field >> 13)]);
+      return (void*)((Address)b + master_offsets[vm_field >> 10] * 64
+             + ((vm_field & 0x3ff) << master_offsets[Foi_size + (vm_field >> 13)]));
     }
 
     void init()
@@ -142,25 +210,25 @@ struct Vmx_user_info
                   unsigned s2 = ((t2 << 10) | (w2 << 13));
                   unsigned e1 = s1 | max_idx;
                   unsigned e2 = s2 | max_idx;
-                  assert (field(0, s1) > field(0, e2)
-                          || field(0, s2) > field(0, e1));
+                  assert (field((void*)0, s1) > field((void*)0, e2)
+                          || field((void*)0, s2) > field((void*)0, e1));
                   (void) s1; (void) s2; (void) e1; (void) e2;
                 }
     }
   };
 
   Unsigned64 basic;
-  Vmx_info::Bit_defs_32 pinbased;
-  Vmx_info::Bit_defs_32 procbased;
-  Vmx_info::Bit_defs_32 exit;
-  Vmx_info::Bit_defs_32 entry;
+  Vmx_info::Bit_defs_32<Vmx_info::Pin_based_ctls> pinbased;
+  Vmx_info::Bit_defs_32<Vmx_info::Primary_proc_based_ctls> procbased;
+  Vmx_info::Bit_defs_32<Vmx_info::Exit_ctls> exit;
+  Vmx_info::Bit_defs_32<Vmx_info::Entry_ctls> entry;
   Unsigned64 misc;
   Unsigned64 cr0_or;
   Unsigned64 cr0_and;
   Unsigned64 cr4_or;
   Unsigned64 cr4_and;
   Unsigned64 vmcs_field_info;
-  Vmx_info::Bit_defs_32 procbased2;
+  Vmx_info::Bit_defs_32<Vmx_info::Secondary_proc_based_ctls> procbased2;
   Unsigned64 ept_vpid_cap;
   Unsigned32 pinbased_dfl1;
   Unsigned32 procbased_dfl1;
@@ -213,6 +281,9 @@ public:
 
     F_vm_instruction_error = 0x4400,
     F_exit_reason        = 0x4402,
+    F_vectoring_info     = 0x4408,
+    F_vectoring_error_code = 0x440a,
+    F_exit_insn_len      = 0x440c,
 
     F_preempt_timer      = 0x482e,
 
@@ -220,6 +291,13 @@ public:
 
     F_guest_cr3          = 0x6802,
     F_sw_guest_cr2       = 0x683e,
+    F_sw_guest_xcr0      = 0x6842,
+    F_sw_msr_syscall_mask= 0x6844,
+    F_sw_msr_lstar       = 0x6846,
+    F_sw_msr_cstar       = 0x6848,
+    F_sw_msr_tsc_aux     = 0x6850,
+    F_sw_msr_star        = 0x6852,
+    F_sw_msr_kernel_gs_base = 0x6854,
 
 
     F_host_cr0           = 0x6c00,
@@ -236,28 +314,6 @@ public:
 
   };
 
-  enum Pin_based_ctls
-  {
-    PIB_ext_int_exit = 0,
-    PIB_nmi_exit     = 3,
-  };
-
-  enum Primary_proc_based_ctls
-  {
-    PRB1_tpr_shadow               = 21,
-    PRB1_unconditional_io_exit    = 24,
-    PRB1_use_io_bitmaps           = 25,
-    PRB1_use_msr_bitmaps          = 28,
-    PRB1_enable_proc_based_ctls_2 = 31,
-  };
-
-  enum Secondary_proc_based_ctls
-  {
-    PRB2_virtualize_apic = 0,
-    PRB2_enable_ept      = 1,
-    PRB2_enable_vpid     = 5,
-    PRB2_unrestricted    = 7,
-  };
 };
 
 INTERFACE [vmx]:
@@ -316,7 +372,97 @@ IMPLEMENTATION[vmx]:
 #include "idt.h"
 #include "warn.h"
 
-DEFINE_PER_CPU_LATE Per_cpu<Vmx> Vmx::cpus(Per_cpu_data::Cpu_num);
+class Vmx_init_host_state
+{
+  static Per_cpu<Vmx_init_host_state> cpus;
+};
+
+PUBLIC inline
+Vmx_init_host_state::Vmx_init_host_state(Cpu_number cpu)
+{
+  Vmx &v = Vmx::cpus.cpu(cpu);
+  Cpu &c = Cpu::cpus.cpu(cpu);
+
+  if (cpu == Cpu::invalid() || !c.vmx() || !v.vmx_enabled())
+    return;
+
+  extern char entry_sys_fast_ipc_c[];
+  extern char vm_vmx_exit_vec[];
+
+  v.vmwrite(Vmx::F_host_es_selector, GDT_DATA_KERNEL);
+  v.vmwrite(Vmx::F_host_cs_selector, GDT_CODE_KERNEL);
+  v.vmwrite(Vmx::F_host_ss_selector, GDT_DATA_KERNEL);
+  v.vmwrite(Vmx::F_host_ds_selector, GDT_DATA_KERNEL);
+
+  /* set FS and GS to unusable in the host state */
+  v.vmwrite(Vmx::F_host_fs_selector, 0);
+  v.vmwrite(Vmx::F_host_gs_selector, 0);
+
+  Unsigned16 tr = c.get_tr();
+  v.vmwrite(Vmx::F_host_tr_selector, tr);
+
+  v.vmwrite(Vmx::F_host_tr_base, ((*c.get_gdt())[tr / 8]).base());
+  v.vmwrite(Vmx::F_host_rip, vm_vmx_exit_vec);
+  v.vmwrite<Mword>(Vmx::F_host_sysenter_cs, Gdt::gdt_code_kernel);
+  v.vmwrite(Vmx::F_host_sysenter_esp, &c.kernel_sp());
+  v.vmwrite(Vmx::F_host_sysenter_eip, entry_sys_fast_ipc_c);
+
+  if (c.features() & FEAT_PAT
+      && v.info.exit_ctls.allowed(Vmx_info::Ex_load_ia32_pat))
+    {
+      v.vmwrite(Vmx::F_host_ia32_pat, Cpu::rdmsr(MSR_PAT));
+      v.info.exit_ctls.enforce(Vmx_info::Ex_load_ia32_pat, true);
+    }
+  else
+    {
+      // We have no proper PAT support, so disallow PAT load store for
+      // guest too
+      v.info.exit_ctls.enforce(Vmx_info::Ex_save_ia32_pat, false);
+      v.info.entry_ctls.enforce(Vmx_info::En_load_ia32_pat, false);
+    }
+
+  if (v.info.exit_ctls.allowed(Vmx_info::Ex_load_ia32_efer))
+    {
+      v.vmwrite(Vmx::F_host_ia32_efer, Cpu::rdmsr(MSR_EFER));
+      v.info.exit_ctls.enforce(Vmx_info::Ex_load_ia32_efer, true);
+    }
+  else
+    {
+      // We have no EFER load for host, so disallow EFER load store for
+      // guest too
+      v.info.exit_ctls.enforce(Vmx_info::Ex_save_ia32_efer, false);
+      v.info.entry_ctls.enforce(Vmx_info::En_load_ia32_efer, false);
+    }
+
+  if (v.info.exit_ctls.allowed(Vmx_info::Ex_load_perf_global_ctl))
+    v.vmwrite(Vmx::F_host_ia32_perf_global_ctrl, Cpu::rdmsr(0x199));
+  else
+    // do not allow Load IA32_PERF_GLOBAL_CTRL on entry
+    v.info.entry_ctls.enforce(Vmx_info::En_load_perf_global_ctl, false);
+
+  v.vmwrite(Vmx::F_host_cr0, Cpu::get_cr0());
+  v.vmwrite(Vmx::F_host_cr4, Cpu::get_cr4());
+
+  Pseudo_descriptor pseudo;
+  c.get_gdt()->get(&pseudo);
+
+  v.vmwrite(Vmx::F_host_gdtr_base, pseudo.base());
+
+  Idt::get(&pseudo);
+  v.vmwrite(Vmx::F_host_idtr_base, pseudo.base());
+
+  // init static guest area stuff
+  v.vmwrite(0x2800, ~0ULL); // link pointer
+  v.vmwrite(Vmx::F_cr3_target_cnt, 0);
+
+  // MSR load / store disabled
+  v.vmwrite(Vmx::F_exit_msr_load_cnt, 0);
+  v.vmwrite(Vmx::F_exit_msr_store_cnt, 0);
+  v.vmwrite(Vmx::F_entry_msr_load_cnt, 0);
+}
+
+DEFINE_PER_CPU Per_cpu<Vmx> Vmx::cpus(Per_cpu_data::Cpu_num);
+DEFINE_PER_CPU_LATE Per_cpu<Vmx_init_host_state> Vmx_init_host_state::cpus(Per_cpu_data::Cpu_num);
 
 PUBLIC
 void
@@ -336,6 +482,7 @@ Vmx_info::init()
 
   cr0_defs = Bit_defs<Mword>(Cpu::rdmsr(0x486), Cpu::rdmsr(0x487));
   cr4_defs = Bit_defs<Mword>(Cpu::rdmsr(0x488), Cpu::rdmsr(0x489));
+  exception_bitmap = Bit_defs_32<Vmx_info::Exceptions>(0xffffffff00000000ULL);
 
   max_index = Cpu::rdmsr(0x48a);
 
@@ -357,61 +504,68 @@ Vmx_info::init()
   if (0)
     dump("as read from hardware");
 
-  pinbased_ctls.enforce(Vmx::PIB_ext_int_exit);
-  pinbased_ctls.enforce(Vmx::PIB_nmi_exit);
+  pinbased_ctls.enforce(Vmx_info::PIB_ext_int_exit);
+  pinbased_ctls.enforce(Vmx_info::PIB_nmi_exit);
 
 
   // currently we IO-passthrough is missing, disable I/O bitmaps and enforce
   // unconditional io exiting
-  procbased_ctls.enforce(Vmx::PRB1_use_io_bitmaps, false);
-  procbased_ctls.enforce(Vmx::PRB1_unconditional_io_exit);
+  procbased_ctls.enforce(Vmx_info::PRB1_use_io_bitmaps, false);
+  procbased_ctls.enforce(Vmx_info::PRB1_unconditional_io_exit);
+
+  procbased_ctls.enforce(Vmx_info::PRB1_use_msr_bitmaps, false);
 
   // virtual APIC not yet supported
-  procbased_ctls.enforce(Vmx::PRB1_tpr_shadow, false);
+  procbased_ctls.enforce(Vmx_info::PRB1_tpr_shadow, false);
 
-  if (procbased_ctls.allowed(31))
+  if (procbased_ctls.allowed(Vmx_info::PRB1_enable_proc_based_ctls_2))
     {
-      procbased_ctls.enforce(31, true);
+      procbased_ctls.enforce(Vmx_info::PRB1_enable_proc_based_ctls_2, true);
 
       procbased_ctls2 = Cpu::rdmsr(0x48b);
-      if (procbased_ctls2.allowed(Vmx::PRB2_enable_ept))
+      if (procbased_ctls2.allowed(Vmx_info::PRB2_enable_ept))
 	ept_vpid_cap = Cpu::rdmsr(0x48c);
 
 
       // we disable VPID so far, need to handle virtualize it in Fiasco,
       // as done for AMDs ASIDs
-      procbased_ctls2.enforce(Vmx::PRB2_enable_vpid, false);
+      procbased_ctls2.enforce(Vmx_info::PRB2_enable_vpid, false);
 
       // EPT only in conjunction with unrestricted guest !!!
-      if (procbased_ctls2.allowed(Vmx::PRB2_enable_ept))
+      if (procbased_ctls2.allowed(Vmx_info::PRB2_enable_ept))
         {
           ept = true;
-          procbased_ctls2.enforce(Vmx::PRB2_enable_ept, true);
+          procbased_ctls2.enforce(Vmx_info::PRB2_enable_ept, true);
 
-          if (procbased_ctls2.allowed(Vmx::PRB2_unrestricted))
+          if (procbased_ctls2.allowed(Vmx_info::PRB2_unrestricted))
             {
               // unrestricted guest allows PE and PG to be 0
               cr0_defs.relax(0);  // PE
               cr0_defs.relax(31); // PG
-              procbased_ctls2.enforce(Vmx::PRB2_unrestricted);
+              procbased_ctls2.enforce(Vmx_info::PRB2_unrestricted);
             }
           else
             {
               assert (not cr0_defs.allowed(0, false));
               assert (not cr0_defs.allowed(31, false));
             }
+
+          // We currently do not implement the xss bitmap, and do not support
+          // the MSR_IA32_XSS which is shared between guest and host. Therefore
+          // we disable xsaves/xrstores for the guest.
+          procbased_ctls2.enforce(Vmx_info::PRB2_enable_xsaves, false);
         }
       else
-        assert (not procbased_ctls2.allowed(Vmx::PRB2_unrestricted));
+        assert (not procbased_ctls2.allowed(Vmx_info::PRB2_unrestricted));
     }
   else
     procbased_ctls2 = 0;
 
   // never automatically ack interrupts on exit
-  exit_ctls.enforce(15, false);
+  exit_ctls.enforce(Vmx_info::Ex_ack_irq_on_exit, false);
 
   // host-state is 64bit or not
-  exit_ctls.enforce(9, sizeof(long) > sizeof(int));
+  exit_ctls.enforce(Vmx_info::Ex_host_addr_size, sizeof(long) > sizeof(int));
 
   if (!ept) // needs to be per VM
     {
@@ -424,6 +578,12 @@ Vmx_info::init()
       // enforce PAE on 64bit, and disallow it on 32bit
       cr4_defs.enforce(5, sizeof(long) > sizeof(int));
     }
+
+  // allow cr4.vmxe
+  cr4_defs.relax(13);
+
+  exception_bitmap.enforce(Vmx_info::Exception_db, true);
+  exception_bitmap.enforce(Vmx_info::Exception_ac, true);
 
   if (0)
     dump("as modified");
@@ -444,6 +604,7 @@ Vmx_info::dump(const char *tag) const
   cr4_defs.print("cr4_fixed");
   procbased_ctls2.print("procbased_ctls2");
   printf("ept_vpid_cap         = %16llx\n", ept_vpid_cap);
+  exception_bitmap.print("exception_bitmap");
 }
 
 PRIVATE static inline
@@ -544,7 +705,7 @@ Vmx::Vmx(Cpu_number cpu)
   : _vmx_enabled(false), _has_vpid(false)
 {
   Cpu &c = Cpu::cpus.cpu(cpu);
-  if (!c.online() || !c.vmx())
+  if (cpu == Cpu::invalid() || !c.vmx())
     {
       if (cpu == Cpu_number::boot_cpu())
         WARNX(Info, "VMX: Not supported\n");
@@ -567,14 +728,14 @@ Vmx::Vmx(Cpu_number cpu)
   // check for EPT support
   if (cpu == Cpu_number::boot_cpu())
     {
-      if (info.procbased_ctls2.allowed(PRB2_enable_ept))
+      if (info.procbased_ctls2.allowed(Vmx_info::PRB2_enable_ept))
         printf("VMX: EPT supported\n");
       else
         printf("VMX: EPT not available\n");
     }
 
   // check for vpid support
-  if (info.procbased_ctls2.allowed(PRB2_enable_vpid))
+  if (info.procbased_ctls2.allowed(Vmx_info::PRB2_enable_vpid))
     _has_vpid = true;
 
   c.set_cr4(c.get_cr4() | (1 << 13)); // set CR4.VMXE to 1
@@ -591,7 +752,7 @@ Vmx::Vmx(Cpu_number cpu)
 
   if (vmcs_size > Vmcs_size)
     {
-      WARN("VMX: VMCS size of %d bytes not supported\n", vmcs_size);
+      WARN("VMX: VMCS size of %u bytes not supported\n", vmcs_size);
       return;
     }
 
@@ -640,78 +801,6 @@ Vmx::Vmx(Cpu_number cpu)
 
   Pm_object::register_pm(cpu);
 
-  extern char entry_sys_fast_ipc_c[];
-  extern char vm_vmx_exit_vec[];
-
-  vmwrite(F_host_es_selector, GDT_DATA_KERNEL);
-  vmwrite(F_host_cs_selector, GDT_CODE_KERNEL);
-  vmwrite(F_host_ss_selector, GDT_DATA_KERNEL);
-  vmwrite(F_host_ds_selector, GDT_DATA_KERNEL);
-
-  /* set FS and GS to unusable in the host state */
-  vmwrite(F_host_fs_selector, 0);
-  vmwrite(F_host_gs_selector, 0);
-
-  Unsigned16 tr = c.get_tr();
-  vmwrite(F_host_tr_selector, tr);
-
-  vmwrite(F_host_tr_base, ((*c.get_gdt())[tr / 8]).base());
-  vmwrite(F_host_rip, vm_vmx_exit_vec);
-  vmwrite<Mword>(F_host_sysenter_cs, Gdt::gdt_code_kernel);
-  vmwrite(F_host_sysenter_esp, &c.kernel_sp());
-  vmwrite(F_host_sysenter_eip, entry_sys_fast_ipc_c);
-
-  if (c.features() & FEAT_PAT && info.exit_ctls.allowed(19))
-    {
-      vmwrite(F_host_ia32_pat, Cpu::rdmsr(MSR_PAT));
-      info.exit_ctls.enforce(19, true);
-    }
-  else
-    {
-      // We have no proper PAT support, so disallow PAT load store for
-      // guest too
-      info.exit_ctls.enforce(18, false);
-      info.entry_ctls.enforce(14, false);
-    }
-
-  if (info.exit_ctls.allowed(21)) // Load IA32_EFER
-    {
-      vmwrite(F_host_ia32_efer, Cpu::rdmsr(MSR_EFER));
-      info.exit_ctls.enforce(21, true);
-    }
-  else
-    {
-      // We have no EFER load for host, so disallow EFER load store for
-      // guest too
-      info.exit_ctls.enforce(20, false);
-      info.entry_ctls.enforce(15, false);
-    }
-
-  if (info.exit_ctls.allowed(12))
-    vmwrite(F_host_ia32_perf_global_ctrl, Cpu::rdmsr(0x199));
-  else
-    // do not allow Load IA32_PERF_GLOBAL_CTRL on entry
-    info.entry_ctls.enforce(13, false);
-
-  vmwrite(F_host_cr0, Cpu::get_cr0());
-  vmwrite(F_host_cr4, Cpu::get_cr4());
-
-  Pseudo_descriptor pseudo;
-  c.get_gdt()->get(&pseudo);
-
-  vmwrite(F_host_gdtr_base, pseudo.base());
-
-  Idt::get(&pseudo);
-  vmwrite(F_host_idtr_base, pseudo.base());
-
-  // init static guest area stuff
-  vmwrite(0x2800, ~0ULL); // link pointer
-  vmwrite(F_cr3_target_cnt, 0);
-
-  // MSR load / store disabled
-  vmwrite(F_exit_msr_load_cnt, 0);
-  vmwrite(F_exit_msr_store_cnt, 0);
-  vmwrite(F_entry_msr_load_cnt, 0);
 
 }
 
@@ -738,7 +827,7 @@ unsigned char const Vmx_user_info::Fo_table::master_offsets[32] =
     64 / 64,  768 / 64, 1472 / 64, 0,   0, 2, 1, 2,
    128 / 64,  832 / 64, 1536 / 64, 0,   0, 0, 0, 0,
    384 / 64, 1088 / 64, 1792 / 64, 0,   0, 0, 0, 0,
-   512 / 64, 1216 / 64, 1920 / 64, 0,   64 / 64, 2112 / 64, 0, 0,
+   512 / 64, 1216 / 64, 1920 / 64, 0,   64 / 64, 2264 / 64, 0, 0,
 };
 
 PUBLIC inline

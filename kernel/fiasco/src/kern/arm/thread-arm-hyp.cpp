@@ -1,6 +1,6 @@
 IMPLEMENTATION [arm && hyp]:
 
-IMPLEMENT
+IMPLEMENT_OVERRIDE
 void
 Thread::arch_init_vcpu_state(Vcpu_state *vcpu_state, bool ext)
 {
@@ -47,11 +47,6 @@ Thread::arch_init_vcpu_state(Vcpu_state *vcpu_state, bool ext)
   else
     regs()->psr |=  Proc::PSR_m_svc;
 }
-
-IMPLEMENT inline
-bool
-Thread::arch_ext_vcpu_enabled()
-{ return true; }
 
 extern "C" void slowtrap_entry(Trap_state *ts);
 extern "C" Mword pagefault_entry(const Mword pfa, Mword error_code,
@@ -174,12 +169,12 @@ PUBLIC inline
 void
 Thread::vcpu_vgic_upcall(unsigned virq)
 {
-  assert_kdb (state() & Thread_ext_vcpu_enabled);
-  assert_kdb (state() & Thread_vcpu_user);
-  assert_kdb (!_exc_cont.valid());
+  assert (state() & Thread_ext_vcpu_enabled);
+  assert (state() & Thread_vcpu_user);
+  assert (!_exc_cont.valid(regs()));
 
   Vcpu_state *vcpu = vcpu_state().access();
-  assert_kdb (vcpu_exceptions_enabled(vcpu));
+  assert (vcpu_exceptions_enabled(vcpu));
 
   Trap_state *ts = static_cast<Trap_state *>((Return_frame *)regs());
 
@@ -190,8 +185,8 @@ Thread::vcpu_vgic_upcall(unsigned virq)
   check (vcpu_enter_kernel_mode(vcpu));
   vcpu = vcpu_state().access();
 
-  vcpu->_ts.hsr().ec() = 0x3d;
-  vcpu->_ts.hsr().svc_imm() = virq;
+  vcpu->_regs.s.hsr().ec() = 0x3d;
+  vcpu->_regs.s.hsr().svc_imm() = virq;
 
   vcpu_save_state_and_upcall();
 }

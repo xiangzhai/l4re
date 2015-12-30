@@ -19,7 +19,7 @@
 #include <l4/vcpu/vcpu.h>
 #include <stdio.h>
 
-void l4vcpu_print_state_arch(l4_vcpu_state_t *vcpu,
+void l4vcpu_print_state_arch(l4_vcpu_state_t const *vcpu,
                              const char *prefix) L4_NOTHROW
 {
   printf("%sip=%08lx sp=%08lx trapno=%08lx\n",

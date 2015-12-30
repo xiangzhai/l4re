@@ -1,6 +1,7 @@
 # vim:set ft=make:
 
 TARGET		= con
+SRC_CC_IS_CXX11 = y
 
 REQUIRES_LIBS      += libio input libirq libgfxbitmap l4util l4re_c-util
 REQUIRES_LIBS_x86   = x86emu_int10 lxfuxlibc

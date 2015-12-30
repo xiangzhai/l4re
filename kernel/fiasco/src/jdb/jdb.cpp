@@ -12,6 +12,7 @@ INTERFACE:
 #include "string_buffer.h"
 
 class Context;
+class Space;
 class Thread;
 class Push_console;
 
@@ -268,7 +269,7 @@ Jdb::printf_statline(const char *prompt, const char *help,
                      const char *format, ...)
 {
   cursor(Jdb_screen::height(), 1);
-  unsigned w = Jdb_screen::width();
+  int w = Jdb_screen::width();
   prompt_start();
   if (prompt)
     {
@@ -600,7 +601,7 @@ Jdb::execute_command()
   char const *args;
   Jdb_core::Cmd cmd(0,0);
   bool leave;
-  int cmd_key;
+  int cmd_key = 0;
 
   if (short_mode)
     leave = input_short_mode(&cmd, &args, cmd_key);
@@ -840,10 +841,10 @@ Jdb::cpu_mask_print(Cpu_mask &m)
       bool last = i + Cpu_number(1) == Config::max_num_cpus();
       if (start != Cpu_number::nil() && (!m.get(i) || last))
         {
-          printf("%s%d", first ? "" : ",", cxx::int_value<Cpu_number>(start));
+          printf("%s%u", first ? "" : ",", cxx::int_value<Cpu_number>(start));
           first = false;
           if (i - Cpu_number(!last) > start)
-            printf("-%d", cxx::int_value<Cpu_number>(i) - !(last && m.get(i)));
+            printf("-%u", cxx::int_value<Cpu_number>(i) - !(last && m.get(i)));
 
           start = Cpu_number::nil();
         }
@@ -1211,7 +1212,7 @@ Jdb::enter_jdb(Jdb_entry_frame *e, Cpu_number cpu)
 	               ? ""
 	               : "    WARNING: Fiasco kernel checksum differs -- "
 	                 "read-only data has changed!\n",
-	             Jdb_screen::width()-11,
+	             (int)Jdb_screen::width() - 11,
 	             Jdb_screen::Line);
 
               Cpu_mask cpus_in_jdb;
@@ -1361,7 +1362,7 @@ retry:
 	{
 	  if (!running.cpu(c))
 	    {
-	      printf("JDB: CPU %d: is not responding ... %s\n",
+	      printf("JDB: CPU%u: is not responding ... %s\n",
                      cxx::int_value<Cpu_number>(c),
 		     try_nmi ? "trying NMI" : "");
 	      if (try_nmi)

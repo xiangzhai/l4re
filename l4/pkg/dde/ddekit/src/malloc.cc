@@ -85,7 +85,7 @@ EXTERN_C void * ddekit_simple_malloc(unsigned size)
 		if (err < 0)
 			goto err_out;
 
-		err = L4Re::Env::env()->rm()->attach(&res, ds_size, L4Re::Rm::Search_addr, ds, 0);
+		err = L4Re::Env::env()->rm()->attach(&res, ds_size, L4Re::Rm::Search_addr, L4::Ipc::make_cap_rw(ds), 0);
 		if (err < 0)
 			goto err_out;
 
@@ -103,6 +103,8 @@ EXTERN_C void * ddekit_simple_malloc(unsigned size)
 	}
 
 err_out:
+        // FIXME: goto is error prone in C++
+        // FIXME: missing nearly all free operations here
 	pthread_mutex_unlock(&malloc_mtx);
 
 	return p;

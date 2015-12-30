@@ -115,20 +115,33 @@ public:
 //---------------------------------------------------------------------------
 IMPLEMENTATION [arm && hyp]:
 
+#include "mem.h"
+
 IMPLEMENT inline
 void
-Context::sanitize_user_state(Trap_state *ts) const
+Context::sanitize_user_state(Return_frame *dst) const
 {
   if (state() & Thread_ext_vcpu_enabled)
     {
-      if ((ts->psr & Proc::Status_mode_mask) == Proc::PSR_m_hyp)
-        ts->psr = (ts->psr & ~Proc::Status_mode_mask) | Proc::PSR_m_usr;
+      if ((dst->psr & Proc::Status_mode_mask) == Proc::PSR_m_hyp)
+        dst->psr = (dst->psr & ~Proc::Status_mode_mask) | Proc::PSR_m_usr;
     }
   else
     {
-      ts->psr &= ~(Proc::Status_mode_mask | Proc::Status_interrupts_mask);
-      ts->psr |= Proc::Status_mode_user | Proc::Status_always_mask;
+      dst->psr &= ~(Proc::Status_mode_mask | Proc::Status_interrupts_mask);
+      dst->psr |= Proc::Status_mode_user | Proc::Status_always_mask;
     }
+}
+
+IMPLEMENT_OVERRIDE inline NEEDS["mem.h", Context::sanitize_user_state]
+void
+Context::copy_and_sanitize_trap_state(Trap_state *dst,
+                                      Trap_state const *src) const
+{
+  Mem::memcpy_mwords(dst, src, 19);
+  dst->pc = src->pc;
+  dst->psr = access_once(&src->psr);
+  sanitize_user_state(dst);
 }
 
 IMPLEMENT inline
@@ -340,7 +353,7 @@ Context::switch_vm_state(Context *t)
     }
 }
 
-IMPLEMENT inline NEEDS[Context::vm_state]
+IMPLEMENT_OVERRIDE inline NEEDS[Context::vm_state]
 void
 Context::arch_load_vcpu_kern_state(Vcpu_state *vcpu, bool do_load)
 {
@@ -436,7 +449,7 @@ Context::arch_load_vcpu_kern_state(Vcpu_state *vcpu, bool do_load)
     }
 }
 
-IMPLEMENT inline NEEDS[Context::vm_state]
+IMPLEMENT_OVERRIDE inline NEEDS[Context::vm_state]
 void
 Context::arch_load_vcpu_user_state(Vcpu_state *vcpu, bool do_load)
 {

@@ -38,10 +38,10 @@ public:
 class Basic_window : public Scout_gfx::Parent_widget
 {
 private:
-
   View *_view;
   Area _max_sz;
   Widget *_mfocus;
+  Widget *_kbd_focused;
   Widget *_active;
   Point _active_pos;
 
@@ -143,7 +143,24 @@ public:
 
   Widget *handle_event(Event const &ev);
 
+  /**
+   * This method handles a left-mouse button or tab press and determines the
+   * next widget receiving the keyboard focus.
+   *
+   * \returns true if Event handling has finished,
+   *          false if Event was not handled by this method
+   */
+  bool handle_key_focus(Event const &ev);
+
 private:
+  /**
+   * This method finds the next widget with the `is_keyb_focusable()` property
+   * in the widget-hierarchy.
+   *
+   * \param cur_focus: the current widget receiving the keyboard focus
+   * \pre `cur_focus` must be non-Null
+   */
+  Widget *find_next_focus(Widget *cur_focus);
   void _assign_mfocus(Widget *e, int force = 0);
 };
 

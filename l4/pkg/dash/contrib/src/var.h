@@ -34,7 +34,7 @@
  *	@(#)var.h	8.2 (Berkeley) 5/4/95
  */
 
-#include <stdint.h>
+#include <inttypes.h>
 
 /*
  * Shell variables.
@@ -69,6 +69,8 @@ struct localvar {
 	const char *text;		/* saved text */
 };
 
+struct localvar_list;
+
 
 extern struct localvar *localvars;
 extern struct var varinit[];
@@ -86,8 +88,15 @@ extern struct var varinit[];
 #define vps2 (&vps1)[1]
 #define vps4 (&vps2)[1]
 #define voptind (&vps4)[1]
+#ifdef WITH_LINENO
+#define vlineno (&voptind)[1]
+#endif
 #ifndef SMALL
+#ifdef WITH_LINENO
+#define vterm (&vlineno)[1]
+#else
 #define vterm (&voptind)[1]
+#endif
 #define vhistsize (&vterm)[1]
 #endif
 
@@ -98,7 +107,10 @@ extern const char defifsvar[];
 extern const char defifs[];
 #endif
 extern const char defpathvar[];
-#define defpath (defpathvar + 5)
+#define defpath (defpathvar + 36)
+
+extern int lineno;
+extern char linenovar[];
 
 /*
  * The following macros access the values of the above variables.
@@ -115,6 +127,7 @@ extern const char defpathvar[];
 #define ps2val()	(vps2.text + 4)
 #define ps4val()	(vps4.text + 4)
 #define optindval()	(voptind.text + 7)
+#define linenoval()	(vlineno.text + 7)
 #ifndef SMALL
 #define histsizeval()	(vhistsize.text + 9)
 #define termval()	(vterm.text + 5)
@@ -126,24 +139,37 @@ extern const char defpathvar[];
 #define mpathset()	((vmpath.flags & VUNSET) == 0)
 
 void initvar(void);
-void setvar(const char *, const char *, int);
+struct var *setvar(const char *name, const char *val, int flags);
 intmax_t setvarint(const char *, intmax_t, int);
-void setvareq(char *, int);
+struct var *setvareq(char *s, int flags);
 struct strlist;
 void listsetvar(struct strlist *, int);
 char *lookupvar(const char *);
 intmax_t lookupvarint(const char *);
-char *bltinlookup(const char *);
 char **listvars(int, int, char ***);
 #define environment() listvars(VEXPORT, VUNSET, 0)
 int showvars(const char *, int, int);
 int exportcmd(int, char **);
 int localcmd(int, char **);
-void poplocalvars(void);
+void mklocal(char *);
+struct localvar_list *pushlocalvars(void);
+void poplocalvars(int);
+void unwindlocalvars(struct localvar_list *stop);
 int unsetcmd(int, char **);
-int unsetvar(const char *);
+void unsetvar(const char *);
 int varcmp(const char *, const char *);
 
 static inline int varequal(const char *a, const char *b) {
 	return !varcmp(a, b);
 }
+
+/*
+ * Search the environment of a builtin command.
+ */
+
+static inline char *bltinlookup(const char *name)
+{
+	return lookupvar(name);
+}
+
+

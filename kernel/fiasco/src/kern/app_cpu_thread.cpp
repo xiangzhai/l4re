@@ -66,7 +66,10 @@ App_cpu_thread::bootstrap(Mword resume)
   Mem_unit::tlb_flush();
 
   Cpu::cpus.current().set_present(1);
-  Cpu::cpus.current().set_online(1);
+    {
+      auto guard = lock_guard(_pending_rqq.current().q_lock());
+      Cpu::cpus.current().set_online(1);
+    }
 
   _tramp_mp_spinlock.set(1);
 
@@ -79,7 +82,7 @@ App_cpu_thread::bootstrap(Mword resume)
     }
 
   Rcu::leave_idle(current_cpu());
-  enable_tlb(current_cpu());
+  Mem_space::enable_tlb(current_cpu());
 
   if (!resume)
     // Setup initial timeslice

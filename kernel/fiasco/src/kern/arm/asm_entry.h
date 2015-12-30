@@ -32,7 +32,7 @@
  */
 .macro RESET_THREAD_CANCEL_AT tcb
 	ldr 	r0, [\tcb, #(OFS__THREAD__STATE)]
-	bic	r0, r0, #0x100
+	bic	r0, r0, #VAL__Thread_cancel
 	str	r0, [\tcb, #(OFS__THREAD__STATE)]
 .endm
 
@@ -78,7 +78,7 @@ leave_by_vcpu_upcall:
 	str	r0, [r2, #RF(PC, 0)]
         .if ! \USR_ONLY
           ldr     r0, [r1, #(OFS__THREAD__STATE)]
-          tst     r0, #0x2000000 @ext vcpu ?
+          tst     r0, #VAL__Thread_ext_vcpu_enabled
         .endif
 	ldr	r0, [r1, #(OFS__THREAD__EXCEPTION_PSR)]
 	str	r0, [r2, #RF(PSR, 0)]
@@ -207,6 +207,23 @@ kern_kdebug_ipi_entry:
 	align_and_save_sp r0
 	adr	lr, exception_return
 	ldr	pc, .LCslowtrap_entry
+.endm
+
+.macro GEN_EXCEPTION_RETURN
+	.global __return_from_user_invoke
+exception_return:
+	disable_irqs
+	ldr	sp, [sp]
+__return_from_user_invoke:
+	add	sp, sp, #12 // pfa, err & tpidruro
+	ldmia	sp!, {r0 - r12}
+	return_from_exception
+.endm
+
+.macro GEN_IRET
+	.global __iret
+__iret:
+	return_from_exception
 .endm
 
 .macro GEN_LEAVE_BY_TRIGGER_EXCEPTION

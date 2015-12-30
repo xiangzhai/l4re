@@ -31,7 +31,7 @@ static void thread_fn(L4::Cap<L4::Irq> irq, unsigned return_after)
       L4::Cap<L4::Thread> t;
       // As there are no means to get the equivalent with std::thread, we
       // use pthread_self() to get this thread
-      t = L4::Cap<L4::Thread>(pthread_getl4cap(pthread_self()));
+      t = L4::Cap<L4::Thread>(pthread_l4_cap(pthread_self()));
 
       // Attach to ourselves to the IRQ to receive its triggers
       L4Re::chksys(irq->attach(0, t), "Could not attach to IRQ.");
@@ -66,7 +66,7 @@ int main()
 
       // Create the IRQ object with the capability, using our default
       // factory
-      L4Re::chksys(L4Re::Env::env()->factory()->create_irq(irq),
+      L4Re::chksys(L4Re::Env::env()->factory()->create(irq),
                    "Failed to create IRQ.");
 
       enum { Loops = 3 };

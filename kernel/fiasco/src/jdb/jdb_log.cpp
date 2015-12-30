@@ -35,7 +35,6 @@ Tb_log_table_entry *Jdb_log_list::_end;
 class Jdb_log_list_hdl : public Jdb_kobject_handler
 {
 public:
-  Jdb_log_list_hdl() : Jdb_kobject_handler(0) {}
   virtual bool show_kobject(Kobject_common *, int) { return true; }
 };
 
@@ -83,7 +82,8 @@ Jdb_log_list_hdl::invoke(Kobject_common *, Syscall_frame *f, Utcb *utcb)
             memcpy(dst, e->name, sz);
             dst[sz - 1] = 0;
 
-            f->tag(Kobject_iface::commit_result(0));
+            f->tag(Kobject_iface::commit_result(0, (sz + sizeof(Mword) - 1)
+                                                   / sizeof(Mword)));
             return true;
           }
       case Op_switch_log:
@@ -157,7 +157,7 @@ Jdb_log_list::patch_item(Tb_log_table_entry const *e, unsigned char val)
   if (e->patch)
     {
       *(e->patch) = val;
-      Mem_unit::clean_dcache(e->patch);
+      Mem_unit::make_coherent_to_pou(e->patch);
     }
 
   for (Tb_log_table_entry *x = _end; x < &_log_table_end; ++x)
@@ -165,7 +165,7 @@ Jdb_log_list::patch_item(Tb_log_table_entry const *e, unsigned char val)
       if (equal(x, e) && x->patch)
         {
           *(x->patch) = val;
-          Mem_unit::clean_dcache(x->patch);
+          Mem_unit::make_coherent_to_pou(x->patch);
         }
     }
 }

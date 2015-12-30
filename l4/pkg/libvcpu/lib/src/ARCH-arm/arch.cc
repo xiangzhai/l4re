@@ -20,7 +20,7 @@
 
 #include <stdio.h>
 
-void l4vcpu_print_state_arch(l4_vcpu_state_t *vcpu,
+void l4vcpu_print_state_arch(l4_vcpu_state_t const *vcpu,
                              const char *prefix) L4_NOTHROW
 {
   printf("%svcpu=%p ip=%08lx  sp=%08lx err=%08lx label=%08lx\n",

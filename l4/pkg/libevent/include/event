@@ -19,7 +19,7 @@
  */
 #pragma once
 
-#include <l4/sys/irq>
+#include <l4/sys/semaphore>
 #include <l4/sys/factory>
 #include <l4/re/env>
 #include <l4/re/util/cap_alloc>
@@ -30,50 +30,29 @@ namespace Event {
 class Event_base
 {
 public:
-  L4::Cap<L4::Irq> irq() const { return _irq; }
+  L4::Cap<L4::Semaphore> irq() const { return _irq; }
   bool attached() const { return _irq.is_valid(); }
 
 protected:
-  L4::Cap<L4::Irq> _irq;
+  L4::Cap<L4::Semaphore> _irq;
   L4::Cap<L4::Thread> _l4thread;
 
-  explicit Event_base(L4::Cap<L4::Irq> irq) : _irq(irq) {}
-  ~Event_base()
-  {
-    if (_irq.is_valid())
-      _irq->detach();
-  }
-
-  void attach(L4::Cap<L4::Thread> thread)
-  {
-    if (_l4thread == thread)
-      return;
-
-    _irq->detach();
-    _l4thread = thread;
-    _irq->attach(12, _l4thread);
-  }
+  explicit Event_base(L4::Cap<L4::Semaphore> irq) : _irq(irq) {}
 };
 
 class Event : public Event_base
 {
 public:
-  explicit Event(L4::Cap<L4::Irq> irq) : Event_base(irq)
+  explicit Event(L4::Cap<L4::Semaphore> irq) : Event_base(irq)
   {
-    pthread_mutex_init(&_wait_lock, 0);
-    attach(pthread_l4_getcap(pthread_self()));
   }
 
   int wait();
 
 protected:
-  Event() : Event_base(L4::Cap<L4::Irq>::Invalid)
+  Event() : Event_base(L4::Cap<L4::Semaphore>::Invalid)
   {
-    pthread_mutex_init(&_wait_lock, 0);
   }
-
-private:
-  pthread_mutex_t     _wait_lock;
 };
 
 class Event_cap : public Event
@@ -83,11 +62,11 @@ public:
   template < typename GI >
   explicit Event_cap(GI *gi) : Event()
   {
-    _irq = L4Re::Util::cap_alloc.alloc<L4::Irq>();
+    _irq = L4Re::Util::cap_alloc.alloc<L4::Semaphore>();
     if (!_irq.is_valid())
       return;
 
-    if (l4_error(L4Re::Env::env()->factory()->create_irq(_irq)) < 0)
+    if (l4_error(L4Re::Env::env()->factory()->create(_irq)) < 0)
       {
 	L4Re::Util::cap_alloc.free(_irq);
 	_irq.invalidate();
@@ -100,12 +79,11 @@ public:
 	_irq.invalidate();
 	return;
       }
-
-    attach(pthread_l4_getcap(pthread_self()));
   }
 
   ~Event_cap()
   {
+    // TODO: canditate for Auto_cap
     if (_irq)
       L4Re::Util::cap_alloc.free(_irq, L4Re::This_task, L4_FP_DELETE_OBJ);
   }
@@ -116,7 +94,7 @@ class Event_loop : public Event_base
 public:
 
 
-  Event_loop(L4::Cap<L4::Irq> irq, int prio);
+  Event_loop(L4::Cap<L4::Semaphore> irq, int prio);
 
   void start();
 

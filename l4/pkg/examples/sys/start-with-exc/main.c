@@ -11,7 +11,7 @@
  */
 /*
  * Start a thread with an exception reply. This example does only work on
- * the x86-32 architecture.
+ * the x86-32 and ARM architectures.
  */
 
 #include <l4/sys/thread.h>
@@ -47,9 +47,16 @@ static void L4_STICKY(thread_func(l4_umword_t *d))
 asm(
 ".global thread			\n\t"
 "thread:			\n\t"
+#ifdef ARCH_x86
 "	pusha			\n\t"
 "	push %esp		\n\t"
 "	call thread_func	\n\t"
+#endif
+#ifdef ARCH_arm
+"       push {r0-r7}            \n\t"
+"       mov r0, sp              \n\t"
+"       bl thread_func          \n\t"
+#endif
 );
 extern void thread(void);
 
@@ -62,15 +69,13 @@ int main(void)
   l4_exc_regs_t *e = l4_utcb_exc_u(u);
   l4_msgtag_t tag;
   int err;
-  extern char _start[], _end[], _sdata[];
+
+  printf("Example showing how to start a thread with an exception.\n");
+  /* We do not want to implement a pager here, take the shortcut. */
+  printf("Make sure to start this program with ldr-flags=eager_map\n");
 
   if (l4_is_invalid_cap(t1))
     return 1;
-
-  /* Prevent pagefaults of our new thread because we do not want to
-   * implement a pager as well. */
-  l4_touch_ro(_start, _sdata - _start + 1);
-  l4_touch_rw(_sdata, _end - _sdata);
 
   /* Create the thread using our default factory */
   tag = l4_factory_create_thread(l4re_env()->factory, t1);
@@ -117,8 +122,9 @@ int main(void)
     }
 
   /* Fill out the complete register set of the new thread */
-  e->ip = (l4_umword_t)thread;
   e->sp = (l4_umword_t)(thread_stack + sizeof(thread_stack));
+#ifdef ARCH_x86
+  e->ip = (l4_umword_t)thread;
   e->eax = 1;
   e->ebx = 4;
   e->ecx = 2;
@@ -126,6 +132,18 @@ int main(void)
   e->esi = 6;
   e->edi = 7;
   e->ebp = 5;
+#endif
+#ifdef ARCH_arm
+  e->pc = (l4_umword_t)thread;
+  e->r[0] = 0;
+  e->r[1] = 1;
+  e->r[2] = 2;
+  e->r[3] = 3;
+  e->r[4] = 4;
+  e->r[5] = 5;
+  e->r[6] = 6;
+  e->r[7] = 7;
+#endif
   /* Send a complete exception */
   tag = l4_msgtag(0, L4_UTCB_EXCEPTION_REGS_SIZE, 0, 0);
 

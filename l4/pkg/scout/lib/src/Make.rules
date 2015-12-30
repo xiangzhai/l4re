@@ -13,9 +13,9 @@ SRC_RGBA  =     sizer.rgba \
           opened_icon.rgba \
           closed_icon.rgba
 
-SRC_BIN += $(SRC_RGBA)
+SRC_DATA += $(SRC_RGBA)
 
-SRC_BIN +=    cover.rgba \
+SRC_DATA +=    cover.rgba \
             forward.rgba \
            backward.rgba \
                home.rgba \
@@ -23,14 +23,10 @@ SRC_BIN +=    cover.rgba \
               about.rgba \
             pointer.rgba
 
-SRC_BIN += ior.map
+SRC_DATA += ior.map
 
-OBJS += $(addsuffix .bin.o, $(notdir $(SRC_BIN)))
+SRC_DATA_VPATH := $(SRC_DIR)/../data
 
 REQUIRES_LIBS := mag-gfx scout-gfx libpng libpthread
-
-%.bin.o: $(SRC_DIR)/../data/% $(SRC_DIR)/Make.rules
-	@$(GEN_MESSAGE)
-	$(VERBOSE)(TARGETDIR=$$PWD && cd $(SRC_DIR)/../data/ && $(OBJCOPY) -I binary -B $(BFD_ARCH_$(ARCH)) -O $(OFORMAT) $(notdir $<) $$TARGETDIR/$@)
 
 

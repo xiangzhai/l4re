@@ -7,70 +7,70 @@
 /* Define to 1 if you have the `access' function. */
 #define HAVE_ACCESS 1
 
-/* libm includes acos */
+/* Define to 1 if you have the `acos' function. */
 #define HAVE_ACOS 1
 
-/* libm includes acosf */
+/* Define to 1 if you have the `acosf' function. */
 #define HAVE_ACOSF 1
 
-/* libm includes acosh */
+/* Define to 1 if you have the `acosh' function. */
 #define HAVE_ACOSH 1
 
-/* libm includes acoshf */
+/* Define to 1 if you have the `acoshf' function. */
 #define HAVE_ACOSHF 1
 
-/* libm includes acoshl */
+/* Define to 1 if you have the `acoshl' function. */
 #define HAVE_ACOSHL 1
 
-/* libm includes acosl */
+/* Define to 1 if you have the `acosl' function. */
 #define HAVE_ACOSL 1
 
 /* Define to 1 if you have the `alarm' function. */
 #define HAVE_ALARM 1
 
-/* libm includes asin */
+/* Define to 1 if you have the `asin' function. */
 #define HAVE_ASIN 1
 
-/* libm includes asinf */
+/* Define to 1 if you have the `asinf' function. */
 #define HAVE_ASINF 1
 
-/* libm includes asinh */
+/* Define to 1 if you have the `asinh' function. */
 #define HAVE_ASINH 1
 
-/* libm includes asinhf */
+/* Define to 1 if you have the `asinhf' function. */
 #define HAVE_ASINHF 1
 
-/* libm includes asinhl */
+/* Define to 1 if you have the `asinhl' function. */
 #define HAVE_ASINHL 1
 
-/* libm includes asinl */
+/* Define to 1 if you have the `asinl' function. */
 #define HAVE_ASINL 1
 
-/* libm includes atan */
+/* Define to 1 if you have the `atan' function. */
 #define HAVE_ATAN 1
 
-/* libm includes atan2 */
+/* Define to 1 if you have the `atan2' function. */
 #define HAVE_ATAN2 1
 
-/* libm includes atan2f */
+/* Define to 1 if you have the `atan2f' function. */
 #define HAVE_ATAN2F 1
 
-/* libm includes atan2l */
+/* Define to 1 if you have the `atan2l' function. */
 #define HAVE_ATAN2L 1
 
-/* libm includes atanf */
+/* Define to 1 if you have the `atanf' function. */
 #define HAVE_ATANF 1
 
-/* libm includes atanh */
+/* Define to 1 if you have the `atanh' function. */
 #define HAVE_ATANH 1
 
-/* libm includes atanhf */
+/* Define to 1 if you have the `atanhf' function. */
 #define HAVE_ATANHF 1
 
-/* libm includes atanhl */
+/* Define to 1 if you have the `atanhl' function. */
 #define HAVE_ATANHL 1
 
-/* libm includes atanl */
+/* Define to 1 if you have the `atanl' function. */
 #define HAVE_ATANL 1
 
 /* Define to 1 if the target supports __attribute__((alias(...))). */
@@ -82,115 +82,112 @@
 /* Define to 1 if the target supports __attribute__((visibility(...))). */
 #define HAVE_ATTRIBUTE_VISIBILITY 1
 
-/* Define if powf is broken. */
-/* #undef HAVE_BROKEN_POWF */
-
-/* libm includes cabs */
+/* Define to 1 if you have the `cabs' function. */
 #define HAVE_CABS 1
 
-/* libm includes cabsf */
+/* Define to 1 if you have the `cabsf' function. */
 #define HAVE_CABSF 1
 
-/* libm includes cabsl */
+/* Define to 1 if you have the `cabsl' function. */
 #define HAVE_CABSL 1
 
-/* libm includes cacos */
+/* Define to 1 if you have the `cacos' function. */
 #define HAVE_CACOS 1
 
-/* libm includes cacosf */
+/* Define to 1 if you have the `cacosf' function. */
 #define HAVE_CACOSF 1
 
-/* libm includes cacosh */
+/* Define to 1 if you have the `cacosh' function. */
 #define HAVE_CACOSH 1
 
-/* libm includes cacoshf */
+/* Define to 1 if you have the `cacoshf' function. */
 #define HAVE_CACOSHF 1
 
-/* libm includes cacoshl */
+/* Define to 1 if you have the `cacoshl' function. */
 #define HAVE_CACOSHL 1
 
-/* libm includes cacosl */
+/* Define to 1 if you have the `cacosl' function. */
 #define HAVE_CACOSL 1
 
-/* libm includes carg */
+/* Define to 1 if you have the `carg' function. */
 #define HAVE_CARG 1
 
-/* libm includes cargf */
+/* Define to 1 if you have the `cargf' function. */
 #define HAVE_CARGF 1
 
-/* libm includes cargl */
+/* Define to 1 if you have the `cargl' function. */
 #define HAVE_CARGL 1
 
-/* libm includes casin */
+/* Define to 1 if you have the `casin' function. */
 #define HAVE_CASIN 1
 
-/* libm includes casinf */
+/* Define to 1 if you have the `casinf' function. */
 #define HAVE_CASINF 1
 
-/* libm includes casinh */
+/* Define to 1 if you have the `casinh' function. */
 #define HAVE_CASINH 1
 
-/* libm includes casinhf */
+/* Define to 1 if you have the `casinhf' function. */
 #define HAVE_CASINHF 1
 
-/* libm includes casinhl */
+/* Define to 1 if you have the `casinhl' function. */
 #define HAVE_CASINHL 1
 
-/* libm includes casinl */
+/* Define to 1 if you have the `casinl' function. */
 #define HAVE_CASINL 1
 
-/* libm includes catan */
+/* Define to 1 if you have the `catan' function. */
 #define HAVE_CATAN 1
 
-/* libm includes catanf */
+/* Define to 1 if you have the `catanf' function. */
 #define HAVE_CATANF 1
 
-/* libm includes catanh */
+/* Define to 1 if you have the `catanh' function. */
 #define HAVE_CATANH 1
 
-/* libm includes catanhf */
+/* Define to 1 if you have the `catanhf' function. */
 #define HAVE_CATANHF 1
 
-/* libm includes catanhl */
+/* Define to 1 if you have the `catanhl' function. */
 #define HAVE_CATANHL 1
 
-/* libm includes catanl */
+/* Define to 1 if you have the `catanl' function. */
 #define HAVE_CATANL 1
 
-/* libm includes ccos */
+/* Define to 1 if you have the `ccos' function. */
 #define HAVE_CCOS 1
 
-/* libm includes ccosf */
+/* Define to 1 if you have the `ccosf' function. */
 #define HAVE_CCOSF 1
 
-/* libm includes ccosh */
+/* Define to 1 if you have the `ccosh' function. */
 #define HAVE_CCOSH 1
 
-/* libm includes ccoshf */
+/* Define to 1 if you have the `ccoshf' function. */
 #define HAVE_CCOSHF 1
 
-/* libm includes ccoshl */
+/* Define to 1 if you have the `ccoshl' function. */
 #define HAVE_CCOSHL 1
 
-/* libm includes ccosl */
+/* Define to 1 if you have the `ccosl' function. */
 #define HAVE_CCOSL 1
 
-/* libm includes ceil */
+/* Define to 1 if you have the `ceil' function. */
 #define HAVE_CEIL 1
 
-/* libm includes ceilf */
+/* Define to 1 if you have the `ceilf' function. */
 #define HAVE_CEILF 1
 
-/* libm includes ceill */
+/* Define to 1 if you have the `ceill' function. */
 #define HAVE_CEILL 1
 
-/* libm includes cexp */
+/* Define to 1 if you have the `cexp' function. */
 #define HAVE_CEXP 1
 
-/* libm includes cexpf */
+/* Define to 1 if you have the `cexpf' function. */
 #define HAVE_CEXPF 1
 
-/* libm includes cexpl */
+/* Define to 1 if you have the `cexpl' function. */
 #define HAVE_CEXPL 1
 
 /* Define to 1 if you have the `chdir' function. */
@@ -200,27 +197,27 @@
 /* #undef HAVE_CHSIZE */
 
 /* Define to 1 if you have the `clock_gettime' function. */
-/* #undef HAVE_CLOCK_GETTIME */
+#define HAVE_CLOCK_GETTIME 1
 
 /* Define to 1 if you have the `clock_gettime' function in librt. */
-#define HAVE_CLOCK_GETTIME_LIBRT 1
+/* #undef HAVE_CLOCK_GETTIME_LIBRT */
 
 /* libm includes clog */
 #define HAVE_CLOG 1
 
-/* libm includes clog10 */
+/* Define to 1 if you have the `clog10' function. */
 #define HAVE_CLOG10 1
 
-/* libm includes clog10f */
+/* Define to 1 if you have the `clog10f' function. */
 #define HAVE_CLOG10F 1
 
-/* libm includes clog10l */
+/* Define to 1 if you have the `clog10l' function. */
 #define HAVE_CLOG10L 1
 
-/* libm includes clogf */
+/* Define to 1 if you have the `clogf' function. */
 #define HAVE_CLOGF 1
 
-/* libm includes clogl */
+/* Define to 1 if you have the `clogl' function. */
 #define HAVE_CLOGL 1
 
 /* Define to 1 if you have the `close' function. */
@@ -229,88 +226,88 @@
 /* Define to 1 if you have the <complex.h> header file. */
 #define HAVE_COMPLEX_H 1
 
-/* libm includes copysign */
+/* Define to 1 if you have the `copysign' function. */
 #define HAVE_COPYSIGN 1
 
-/* libm includes copysignf */
+/* Define to 1 if you have the `copysignf' function. */
 #define HAVE_COPYSIGNF 1
 
-/* libm includes copysignl */
+/* Define to 1 if you have the `copysignl' function. */
 #define HAVE_COPYSIGNL 1
 
-/* libm includes cos */
+/* Define to 1 if you have the `cos' function. */
 #define HAVE_COS 1
 
-/* libm includes cosf */
+/* Define to 1 if you have the `cosf' function. */
 #define HAVE_COSF 1
 
-/* libm includes cosh */
+/* Define to 1 if you have the `cosh' function. */
 #define HAVE_COSH 1
 
-/* libm includes coshf */
+/* Define to 1 if you have the `coshf' function. */
 #define HAVE_COSHF 1
 
-/* libm includes coshl */
+/* Define to 1 if you have the `coshl' function. */
 #define HAVE_COSHL 1
 
-/* libm includes cosl */
+/* Define to 1 if you have the `cosl' function. */
 #define HAVE_COSL 1
 
-/* libm includes cpow */
+/* Define to 1 if you have the `cpow' function. */
 #define HAVE_CPOW 1
 
-/* libm includes cpowf */
+/* Define to 1 if you have the `cpowf' function. */
 #define HAVE_CPOWF 1
 
-/* libm includes cpowl */
+/* Define to 1 if you have the `cpowl' function. */
 #define HAVE_CPOWL 1
 
 /* Define if CRLF is line terminator. */
 /* #undef HAVE_CRLF */
 
-/* libm includes csin */
+/* Define to 1 if you have the `csin' function. */
 #define HAVE_CSIN 1
 
-/* libm includes csinf */
+/* Define to 1 if you have the `csinf' function. */
 #define HAVE_CSINF 1
 
-/* libm includes csinh */
+/* Define to 1 if you have the `csinh' function. */
 #define HAVE_CSINH 1
 
-/* libm includes csinhf */
+/* Define to 1 if you have the `csinhf' function. */
 #define HAVE_CSINHF 1
 
-/* libm includes csinhl */
+/* Define to 1 if you have the `csinhl' function. */
 #define HAVE_CSINHL 1
 
-/* libm includes csinl */
+/* Define to 1 if you have the `csinl' function. */
 #define HAVE_CSINL 1
 
-/* libm includes csqrt */
+/* Define to 1 if you have the `csqrt' function. */
 #define HAVE_CSQRT 1
 
-/* libm includes csqrtf */
+/* Define to 1 if you have the `csqrtf' function. */
 #define HAVE_CSQRTF 1
 
-/* libm includes csqrtl */
+/* Define to 1 if you have the `csqrtl' function. */
 #define HAVE_CSQRTL 1
 
-/* libm includes ctan */
+/* Define to 1 if you have the `ctan' function. */
 #define HAVE_CTAN 1
 
-/* libm includes ctanf */
+/* Define to 1 if you have the `ctanf' function. */
 #define HAVE_CTANF 1
 
-/* libm includes ctanh */
+/* Define to 1 if you have the `ctanh' function. */
 #define HAVE_CTANH 1
 
-/* libm includes ctanhf */
+/* Define to 1 if you have the `ctanhf' function. */
 #define HAVE_CTANHF 1
 
-/* libm includes ctanhl */
+/* Define to 1 if you have the `ctanhl' function. */
 #define HAVE_CTANHL 1
 
-/* libm includes ctanl */
+/* Define to 1 if you have the `ctanl' function. */
 #define HAVE_CTANL 1
 
 /* Define to 1 if you have the <dlfcn.h> header file. */
@@ -322,47 +319,50 @@
 /* Define to 1 if you have the `dup2' function. */
 #define HAVE_DUP2 1
 
-/* libm includes erf */
+/* Define to 1 if you have the `erf' function. */
 #define HAVE_ERF 1
 
-/* libm includes erfc */
+/* Define to 1 if you have the `erfc' function. */
 #define HAVE_ERFC 1
 
-/* libm includes erfcf */
+/* Define to 1 if you have the `erfcf' function. */
 #define HAVE_ERFCF 1
 
-/* libm includes erfcl */
+/* Define to 1 if you have the `erfcl' function. */
 #define HAVE_ERFCL 1
 
-/* libm includes erff */
+/* Define to 1 if you have the `erff' function. */
 #define HAVE_ERFF 1
 
-/* libm includes erfl */
+/* Define to 1 if you have the `erfl' function. */
 #define HAVE_ERFL 1
 
 /* Define to 1 if you have the `execl' function. */
-#define HAVE_EXECL 1
+/* #undef HAVE_EXECL */
 
 /* Define to 1 if you have the `execve' function. */
 /* #undef HAVE_EXECVE */
 
-/* libm includes exp */
+/* Define to 1 if you have the `exp' function. */
 #define HAVE_EXP 1
 
-/* libm includes expf */
+/* Define to 1 if you have the `expf' function. */
 #define HAVE_EXPF 1
 
-/* libm includes expl */
+/* Define to 1 if you have the `expl' function. */
 #define HAVE_EXPL 1
 
-/* libm includes fabs */
+/* Define to 1 if you have the `fabs' function. */
 #define HAVE_FABS 1
 
-/* libm includes fabsf */
+/* Define to 1 if you have the `fabsf' function. */
 #define HAVE_FABSF 1
 
-/* libm includes fabsl */
+/* Define to 1 if you have the `fabsl' function. */
 #define HAVE_FABSL 1
+
+/* Define to 1 if you have the `fcntl' function. */
+#define HAVE_FCNTL 1
 
 /* libm includes feenableexcept */
 #define HAVE_FEENABLEEXCEPT 1
@@ -376,46 +376,70 @@
 /* Define to 1 if you have the <floatingpoint.h> header file. */
 /* #undef HAVE_FLOATINGPOINT_H */
 
-/* libm includes floor */
+/* Define to 1 if you have the `floor' function. */
 #define HAVE_FLOOR 1
 
-/* libm includes floorf */
+/* Define to 1 if you have the `floorf' function. */
 #define HAVE_FLOORF 1
 
-/* libm includes floorl */
+/* Define to 1 if you have the `floorl' function. */
 #define HAVE_FLOORL 1
 
-/* libm includes fmod */
+/* Define to 1 if you have the `fmod' function. */
 #define HAVE_FMOD 1
 
-/* libm includes fmodf */
+/* Define to 1 if you have the `fmodf' function. */
 #define HAVE_FMODF 1
 
-/* libm includes fmodl */
+/* Define to 1 if you have the `fmodl' function. */
 #define HAVE_FMODL 1
 
 /* Define to 1 if you have the `fork' function. */
 /* #undef  HAVE_FORK */
 
+/* fpresetsticky is present */
+/* #undef HAVE_FPRESETSTICKY */
+
 /* Define if you have fpsetmask. */
 /* #undef HAVE_FPSETMASK */
+
+/* fpsetsticky is present */
+/* #undef HAVE_FPSETSTICKY */
 
 /* Define to 1 if you have the <fptrap.h> header file. */
 /* #undef HAVE_FPTRAP_H */
 
+/* Define to 1 if you have the <fpxcp.h> header file. */
+/* #undef HAVE_FPXCP_H */
+
 /* fp_enable is present */
 /* #undef HAVE_FP_ENABLE */
+
+/* Define to 1 if the system has the type `fp_except'. */
+/* #undef HAVE_FP_EXCEPT */
+
+/* Define to 1 if the system has the type `fp_except_t'. */
+/* #undef HAVE_FP_EXCEPT_T */
+
+/* Define to 1 if the system has the type `fp_rnd'. */
+/* #undef HAVE_FP_RND */
+
+/* Define to 1 if the system has the type `fp_rnd_t'. */
+/* #undef HAVE_FP_RND_T */
 
 /* fp_trap is present */
 /* #undef HAVE_FP_TRAP */
 
-/* libm includes frexp */
+/* Define to 1 if you have the `freelocale' function. */
+/* #undef HAVE_FREELOCALE */
+
+/* Define to 1 if you have the `frexp' function. */
 #define HAVE_FREXP 1
 
-/* libm includes frexpf */
+/* Define to 1 if you have the `frexpf' function. */
 #define HAVE_FREXPF 1
 
-/* libm includes frexpl */
+/* Define to 1 if you have the `frexpl' function. */
 #define HAVE_FREXPL 1
 
 /* Define to 1 if you have the `fstat' function. */
@@ -426,6 +450,9 @@
 
 /* Define to 1 if you have the `getcwd' function. */
 #define HAVE_GETCWD 1
+
+/* Define to 1 if you have the `getegid' function. */
+#define HAVE_GETEGID 1
 
 /* Define to 1 if you have the `geteuid' function. */
 #define HAVE_GETEUID 1
@@ -469,13 +496,13 @@
 /* Define to 1 if you have the `gmtime_r' function. */
 #define HAVE_GMTIME_R 1
 
-/* libm includes hypot */
+/* Define to 1 if you have the `hypot' function. */
 #define HAVE_HYPOT 1
 
-/* libm includes hypotf */
+/* Define to 1 if you have the `hypotf' function. */
 #define HAVE_HYPOTF 1
 
-/* libm includes hypotl */
+/* Define to 1 if you have the `hypotl' function. */
 #define HAVE_HYPOTL 1
 
 /* Define to 1 if you have the <ieeefp.h> header file. */
@@ -487,98 +514,104 @@
 /* Define to 1 if you have the <inttypes.h> header file. */
 #define HAVE_INTTYPES_H 1
 
-/* libm includes j0 */
+/* Define to 1 if you have the `j0' function. */
 #define HAVE_J0 1
 
-/* libm includes j0f */
+/* Define to 1 if you have the `j0f' function. */
 #define HAVE_J0F 1
 
-/* libm includes j0l */
+/* Define to 1 if you have the `j0l' function. */
 #define HAVE_J0L 1
 
-/* libm includes j1 */
+/* Define to 1 if you have the `j1' function. */
 #define HAVE_J1 1
 
-/* libm includes j1f */
+/* Define to 1 if you have the `j1f' function. */
 #define HAVE_J1F 1
 
-/* libm includes j1l */
+/* Define to 1 if you have the `j1l' function. */
 #define HAVE_J1L 1
 
-/* libm includes jn */
+/* Define to 1 if you have the `jn' function. */
 #define HAVE_JN 1
 
-/* libm includes jnf */
+/* Define to 1 if you have the `jnf' function. */
 #define HAVE_JNF 1
 
-/* libm includes jnl */
+/* Define to 1 if you have the `jnl' function. */
 #define HAVE_JNL 1
 
 /* Define to 1 if you have the `kill' function. */
 #define HAVE_KILL 1
 
-/* libm includes ldexp */
+/* Define to 1 if you have the `ldexp' function. */
 #define HAVE_LDEXP 1
 
-/* libm includes ldexpf */
+/* Define to 1 if you have the `ldexpf' function. */
 #define HAVE_LDEXPF 1
 
-/* libm includes ldexpl */
+/* Define to 1 if you have the `ldexpl' function. */
 #define HAVE_LDEXPL 1
 
-/* libm includes lgamma */
+/* Define to 1 if you have the `lgamma' function. */
 #define HAVE_LGAMMA 1
 
-/* libm includes lgammaf */
+/* Define to 1 if you have the `lgammaf' function. */
 #define HAVE_LGAMMAF 1
 
-/* libm includes lgammal */
+/* Define to 1 if you have the `lgammal' function. */
 #define HAVE_LGAMMAL 1
+
+/* Define to 1 if you have the `m' library (-lm). */
+#define HAVE_LIBM 1
 
 /* Define to 1 if you have the `link' function. */
 #define HAVE_LINK 1
 
-/* libm includes llround */
+/* Define to 1 if you have the `llround' function. */
 #define HAVE_LLROUND 1
 
-/* libm includes llroundf */
+/* Define to 1 if you have the `llroundf' function. */
 #define HAVE_LLROUNDF 1
 
-/* libm includes llroundl */
+/* Define to 1 if you have the `llroundl' function. */
 #define HAVE_LLROUNDL 1
 
 /* Define to 1 if you have the `localtime_r' function. */
 #define HAVE_LOCALTIME_R 1
 
-/* libm includes log */
+/* Define to 1 if you have the `log' function. */
 #define HAVE_LOG 1
 
-/* libm includes log10 */
+/* Define to 1 if you have the `log10' function. */
 #define HAVE_LOG10 1
 
-/* libm includes log10f */
+/* Define to 1 if you have the `log10f' function. */
 #define HAVE_LOG10F 1
 
-/* libm includes log10l */
+/* Define to 1 if you have the `log10l' function. */
 #define HAVE_LOG10L 1
 
-/* libm includes logf */
+/* Define to 1 if you have the `logf' function. */
 #define HAVE_LOGF 1
 
-/* libm includes logl */
+/* Define to 1 if you have the `logl' function. */
 #define HAVE_LOGL 1
 
-/* libm includes lround */
+/* Define to 1 if you have the `lround' function. */
 #define HAVE_LROUND 1
 
-/* libm includes lroundf */
+/* Define to 1 if you have the `lroundf' function. */
 #define HAVE_LROUNDF 1
 
-/* libm includes lroundl */
+/* Define to 1 if you have the `lroundl' function. */
 #define HAVE_LROUNDL 1
 
 /* Define to 1 if you have the `lstat' function. */
 #define HAVE_LSTAT 1
+
+/* Define to 1 if you have the <math.h> header file. */
+#define HAVE_MATH_H 1
 
 /* Define to 1 if you have the <memory.h> header file. */
 #define HAVE_MEMORY_H 1
@@ -586,16 +619,22 @@
 /* Define if you have __mingw_snprintf. */
 /* #undef HAVE_MINGW_SNPRINTF */
 
+/* Define to 1 if you have the `mkostemp' function. */
+#define HAVE_MKOSTEMP 1
+
 /* Define to 1 if you have the `mkstemp' function. */
 #define HAVE_MKSTEMP 1
 
-/* libm includes nextafter */
+/* Define to 1 if you have the `newlocale' function. */
+/* #undef HAVE_NEWLOCALE */
+
+/* Define to 1 if you have the `nextafter' function. */
 #define HAVE_NEXTAFTER 1
 
-/* libm includes nextafterf */
+/* Define to 1 if you have the `nextafterf' function. */
 #define HAVE_NEXTAFTERF 1
 
-/* libm includes nextafterl */
+/* Define to 1 if you have the `nextafterl' function. */
 #define HAVE_NEXTAFTERL 1
 
 /* Define to 1 if you have the `pipe' function. */
@@ -604,13 +643,13 @@
 /* Define to 1 if we have POSIX getpwuid_r which takes 5 arguments. */
 #define HAVE_POSIX_GETPWUID_R 1
 
-/* libm includes pow */
+/* Define to 1 if you have the `pow' function. */
 #define HAVE_POW 1
 
-/* libm includes powf */
+/* Define to 1 if you have the `powf' function. */
 #define HAVE_POWF 1
 
-/* libm includes powl */
+/* Define to 1 if you have the `powl' function. */
 #define HAVE_POWL 1
 
 /* Define to 1 if the system has the type `ptrdiff_t'. */
@@ -622,43 +661,46 @@
 /* Define to 1 if you have the `readlink' function. */
 #define HAVE_READLINK 1
 
-/* libm includes round */
+/* Define to 1 if you have the `round' function. */
 #define HAVE_ROUND 1
 
-/* libm includes roundf */
+/* Define to 1 if you have the `roundf' function. */
 #define HAVE_ROUNDF 1
 
-/* libm includes roundl */
+/* Define to 1 if you have the `roundl' function. */
 #define HAVE_ROUNDL 1
 
-/* libm includes scalbn */
+/* Define to 1 if you have the `scalbn' function. */
 #define HAVE_SCALBN 1
 
-/* libm includes scalbnf */
+/* Define to 1 if you have the `scalbnf' function. */
 #define HAVE_SCALBNF 1
 
-/* libm includes scalbnl */
+/* Define to 1 if you have the `scalbnl' function. */
 #define HAVE_SCALBNL 1
+
+/* Define to 1 if you have the `secure_getenv' function. */
+/* #undef HAVE_SECURE_GETENV */
 
 /* Define to 1 if you have the `setmode' function. */
 /* #undef HAVE_SETMODE */
 
-/* libm includes sin */
+/* Define to 1 if you have the `sin' function. */
 #define HAVE_SIN 1
 
-/* libm includes sinf */
+/* Define to 1 if you have the `sinf' function. */
 #define HAVE_SINF 1
 
-/* libm includes sinh */
+/* Define to 1 if you have the `sinh' function. */
 #define HAVE_SINH 1
 
-/* libm includes sinhf */
+/* Define to 1 if you have the `sinhf' function. */
 #define HAVE_SINHF 1
 
-/* libm includes sinhl */
+/* Define to 1 if you have the `sinhl' function. */
 #define HAVE_SINHL 1
 
-/* libm includes sinl */
+/* Define to 1 if you have the `sinl' function. */
 #define HAVE_SINL 1
 
 /* Define to 1 if you have the `sleep' function. */
@@ -667,13 +709,13 @@
 /* Define to 1 if you have the `snprintf' function. */
 #define HAVE_SNPRINTF 1
 
-/* libm includes sqrt */
+/* Define to 1 if you have the `sqrt' function. */
 #define HAVE_SQRT 1
 
-/* libm includes sqrtf */
+/* Define to 1 if you have the `sqrtf' function. */
 #define HAVE_SQRTF 1
 
-/* libm includes sqrtl */
+/* Define to 1 if you have the `sqrtl' function. */
 #define HAVE_SQRTL 1
 
 /* Define to 1 if you have the `stat' function. */
@@ -688,8 +730,14 @@
 /* Define to 1 if you have the `strcasestr' function. */
 #define HAVE_STRCASESTR 1
 
-/* Define to 1 if you have the `strerror_r' function. */
+/* Define to 1 if you have the `strerror_l' function. */
+/* #undef HAVE_STRERROR_L */
+
+/* Define if strerror_r is available in <string.h>. */
 #define HAVE_STRERROR_R 1
+
+/* Define if strerror_r takes two arguments and is available in <string.h>. */
+/* #undef HAVE_STRERROR_R_2ARGS */
 
 /* Define to 1 if you have the <strings.h> header file. */
 #define HAVE_STRINGS_H 1
@@ -697,8 +745,17 @@
 /* Define to 1 if you have the <string.h> header file. */
 #define HAVE_STRING_H 1
 
+/* Define to 1 if you have the `strndup' function. */
+#define HAVE_STRNDUP 1
+
+/* Define to 1 if you have the `strnlen' function. */
+#define HAVE_STRNLEN 1
+
 /* Define to 1 if you have the `strtof' function. */
 #define HAVE_STRTOF 1
+
+/* Define to 1 if you have the `strtok_r' function. */
+#define HAVE_STRTOK_R 1
 
 /* Define to 1 if you have the `strtold' function. */
 #define HAVE_STRTOLD 1
@@ -736,43 +793,43 @@
 /* Define to 1 if you have the <sys/wait.h> header file. */
 #define HAVE_SYS_WAIT_H 1
 
-/* libm includes tan */
+/* Define to 1 if you have the `tan' function. */
 #define HAVE_TAN 1
 
-/* libm includes tanf */
+/* Define to 1 if you have the `tanf' function. */
 #define HAVE_TANF 1
 
-/* libm includes tanh */
+/* Define to 1 if you have the `tanh' function. */
 #define HAVE_TANH 1
 
-/* libm includes tanhf */
+/* Define to 1 if you have the `tanhf' function. */
 #define HAVE_TANHF 1
 
-/* libm includes tanhl */
+/* Define to 1 if you have the `tanhl' function. */
 #define HAVE_TANHL 1
 
-/* libm includes tanl */
+/* Define to 1 if you have the `tanl' function. */
 #define HAVE_TANL 1
 
-/* libm includes tgamma */
+/* Define to 1 if you have the `tgamma' function. */
 #define HAVE_TGAMMA 1
 
-/* libm includes tgammaf */
+/* Define to 1 if you have the `tgammaf' function. */
 #define HAVE_TGAMMAF 1
 
-/* libm includes tgammal */
+/* Define to 1 if you have the `tgammal' function. */
 #define HAVE_TGAMMAL 1
 
 /* Define to 1 if you have the `times' function. */
 #define HAVE_TIMES 1
 
-/* libm includes trunc */
+/* Define to 1 if you have the `trunc' function. */
 #define HAVE_TRUNC 1
 
-/* libm includes truncf */
+/* Define to 1 if you have the `truncf' function. */
 #define HAVE_TRUNCF 1
 
-/* libm includes truncl */
+/* Define to 1 if you have the `truncl' function. */
 #define HAVE_TRUNCL 1
 
 /* Define to 1 if you have the `ttyname' function. */
@@ -793,6 +850,9 @@
 /* Define if target can unlink open files. */
 #define HAVE_UNLINK_OPEN_FILE 1
 
+/* Define to 1 if you have the `uselocale' function. */
+/* #undef HAVE_USELOCALE */
+
 /* Define to 1 if you have the `vsnprintf' function. */
 #define HAVE_VSNPRINTF 1
 
@@ -802,32 +862,38 @@
 /* Define if target has a reliable stat. */
 #define HAVE_WORKING_STAT 1
 
-/* libm includes y0 */
+/* Define to 1 if you have the <xlocale.h> header file. */
+/* #undef HAVE_XLOCALE_H */
+
+/* Define to 1 if you have the `y0' function. */
 #define HAVE_Y0 1
 
-/* libm includes y0f */
+/* Define to 1 if you have the `y0f' function. */
 #define HAVE_Y0F 1
 
-/* libm includes y0l */
+/* Define to 1 if you have the `y0l' function. */
 #define HAVE_Y0L 1
 
-/* libm includes y1 */
+/* Define to 1 if you have the `y1' function. */
 #define HAVE_Y1 1
 
-/* libm includes y1f */
+/* Define to 1 if you have the `y1f' function. */
 #define HAVE_Y1F 1
 
-/* libm includes y1l */
+/* Define to 1 if you have the `y1l' function. */
 #define HAVE_Y1L 1
 
-/* libm includes yn */
+/* Define to 1 if you have the `yn' function. */
 #define HAVE_YN 1
 
-/* libm includes ynf */
+/* Define to 1 if you have the `ynf' function. */
 #define HAVE_YNF 1
 
-/* libm includes ynl */
+/* Define to 1 if you have the `ynl' function. */
 #define HAVE_YNL 1
+
+/* Define to 1 if you have the `__secure_getenv' function. */
+/* #undef HAVE___SECURE_GETENV */
 
 /* Define to the sub-directory in which libtool stores uninstalled libraries.
    */
@@ -898,7 +964,7 @@
 
 
 /* Number of bits in a file offset, on hosts where this is settable. */
-/* #undef _FILE_OFFSET_BITS */
+#define _FILE_OFFSET_BITS 64
 
 /* Define for large files, on AIX-style hosts. */
 /* #undef _LARGE_FILES */

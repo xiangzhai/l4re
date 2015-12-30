@@ -62,7 +62,7 @@
 #endif
 PACK_STRUCT_BEGIN
 struct eth_addr {
-  PACK_STRUCT_FIELD(u8_t addr[6]);
+  PACK_STRUCT_FLD_8(u8_t addr[6]);
 } PACK_STRUCT_STRUCT;
 PACK_STRUCT_END
 #ifdef PACK_STRUCT_USE_INCLUDES
@@ -76,10 +76,10 @@ PACK_STRUCT_END
 PACK_STRUCT_BEGIN
 struct eth_hdr {
 #if ETH_PAD_SIZE
-  PACK_STRUCT_FIELD(u8_t padding[ETH_PAD_SIZE]);
+  PACK_STRUCT_FLD_8(u8_t padding[ETH_PAD_SIZE]);
 #endif
-  PACK_STRUCT_FIELD(struct eth_addr dest);
-  PACK_STRUCT_FIELD(struct eth_addr src);
+  PACK_STRUCT_FLD_S(struct eth_addr dest);
+  PACK_STRUCT_FLD_S(struct eth_addr src);
   PACK_STRUCT_FIELD(u16_t type);
 } PACK_STRUCT_STRUCT;
 PACK_STRUCT_END
@@ -133,7 +133,7 @@ ethip6_send(struct netif *netif, struct pbuf *p, struct eth_addr *src, struct et
  * or the return type of either etharp_query() or etharp_send_ip().
  */
 err_t
-ethip6_output(struct netif *netif, struct pbuf *q, ip6_addr_t *ip6addr)
+ethip6_output(struct netif *netif, struct pbuf *q, const ip6_addr_t *ip6addr)
 {
   struct eth_addr dest;
   s8_t i;
@@ -151,10 +151,10 @@ ethip6_output(struct netif *netif, struct pbuf *q, ip6_addr_t *ip6addr)
     /* Hash IP multicast address to MAC address.*/
     dest.addr[0] = 0x33;
     dest.addr[1] = 0x33;
-    dest.addr[2] = ((u8_t *)(&(ip6addr->addr[3])))[0];
-    dest.addr[3] = ((u8_t *)(&(ip6addr->addr[3])))[1];
-    dest.addr[4] = ((u8_t *)(&(ip6addr->addr[3])))[2];
-    dest.addr[5] = ((u8_t *)(&(ip6addr->addr[3])))[3];
+    dest.addr[2] = ((const u8_t *)(&(ip6addr->addr[3])))[0];
+    dest.addr[3] = ((const u8_t *)(&(ip6addr->addr[3])))[1];
+    dest.addr[4] = ((const u8_t *)(&(ip6addr->addr[3])))[2];
+    dest.addr[5] = ((const u8_t *)(&(ip6addr->addr[3])))[3];
 
     /* Send out. */
     return ethip6_send(netif, q, (struct eth_addr*)(netif->hwaddr), &dest);
@@ -187,9 +187,7 @@ ethip6_output(struct netif *netif, struct pbuf *q, ip6_addr_t *ip6addr)
 
   /* We should queue packet on this interface. */
   pbuf_header(q, -(s16_t)SIZEOF_ETH_HDR);
-  nd6_queue_packet(i, q);
-
-  return ERR_OK;
+  return nd6_queue_packet(i, q);
 }
 
 #endif /* LWIP_IPV6 && LWIP_ETHERNET */

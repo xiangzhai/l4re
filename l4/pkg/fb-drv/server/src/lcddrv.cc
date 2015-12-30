@@ -14,8 +14,21 @@
 #include "fb.h"
 #include "splash.h"
 
+class Lcd_drv_fb : public Phys_fb
+{
+public:
+  bool setup_drv(Prog_args *pa, L4Re::Util::Object_registry *);
+};
+
+
+Phys_fb *Phys_fb::probe()
+{
+  return new Lcd_drv_fb();
+}
+
+
 bool
-Lcd_drv_fb::setup_drv(Prog_args *pa)
+Lcd_drv_fb::setup_drv(Prog_args *pa, L4Re::Util::Object_registry *)
 {
   struct arm_lcd_ops *lcd;
 

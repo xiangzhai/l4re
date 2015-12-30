@@ -22,9 +22,12 @@
 #include <sys/types.h>
 #include <tls.h>
 #include <l4/sys/utcb.h>
-
 #include <pt-machine.h>
+#include <sched.h>
+/* The type of thread descriptors */
 typedef struct pthread *pthread_descr;
+
+
 
 /* Arguments passed to thread creation routine */
 struct pthread_start_args {
@@ -69,16 +72,17 @@ typedef struct _pthread_rwlock_info {
 } pthread_readlock_info;
 
 #ifndef TCB_ALIGNMENT
-# define TCB_ALIGNMENT sizeof (double)
+# define TCB_ALIGNMENT	sizeof (double)
 #endif
+
 
 /* We keep thread specific data in a special data structure, a two-level
    array.  The top-level array contains pointers to dynamically allocated
    arrays of a certain number of data pointers.  So we can implement a
    sparse array.  Each dynamic second-level array has
-	PTHREAD_KEY_2NDLEVEL_SIZE
+        PTHREAD_KEY_2NDLEVEL_SIZE
    entries.  This value shouldn't be too large.  */
-#define PTHREAD_KEY_2NDLEVEL_SIZE	32
+#define PTHREAD_KEY_2NDLEVEL_SIZE       32
 
 /* We need to address PTHREAD_KEYS_MAX key with PTHREAD_KEY_2NDLEVEL_SIZE
    keys in each subarray.  */
@@ -94,19 +98,19 @@ struct pthread
   union
   {
 #if !defined(TLS_DTV_AT_TP)
-  /* This overlaps tcbhead_t (see tls.h), as used for TLS without threads.  */
-	tcbhead_t header;
+    /* This overlaps the TCB as used for TLS without threads (see tls.h).  */
+    tcbhead_t header;
 #else
     struct
     {
       int multiple_threads;
-	  int gscope_flags;
+      int gscope_flag;
 # ifndef CONFIG_L4
 # ifndef __ASSUME_PRIVATE_FUTEX
-	  int private_futex;
+      int private_futex;
 # endif
 # endif
-	} header;
+    } header;
 #endif
 
     /* This extra padding has no special purpose, and this structure layout
@@ -124,6 +128,7 @@ struct pthread
 
   int p_priority;               /* Thread priority (== 0 if not realtime) */
   int p_sched_policy;
+  __cpu_mask p_affinity_mask[1]; /* L4 addition; small, more needs dynamic allocations */
 
 
   l4_cap_idx_t     p_thsem_cap;
@@ -185,7 +190,7 @@ extern char *__pthread_initial_thread_bos;
 
 /* Descriptor of the initial thread */
 
-extern struct _pthread_descr_struct __pthread_initial_thread;
+extern struct pthread __pthread_initial_thread;
 
 /* Limits of the thread manager stack. */
 
@@ -194,7 +199,7 @@ extern char *__pthread_manager_thread_tos;
 
 /* Descriptor of the manager thread */
 
-extern struct _pthread_descr_struct __pthread_manager_thread;
+extern struct pthread __pthread_manager_thread;
 extern pthread_descr __pthread_manager_threadp L4_HIDDEN;
 
 /* Indicate whether at least one thread has a user-defined stack (if 1),

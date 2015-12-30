@@ -6,6 +6,4 @@ PC_FILENAME    = libc_be_socket_lwip
 SRC_CC         = socket.cc
 REQUIRES_LIBS  = lwip libstdc++
 
-CXXFLAGS += -std=c++0x
-
 include $(L4DIR)/mk/lib.mk

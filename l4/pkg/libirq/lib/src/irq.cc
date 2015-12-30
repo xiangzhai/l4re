@@ -34,7 +34,7 @@ enum l4irq_type {
 
 struct l4irq_t {
   L4::Cap<L4::Irq>       cap;
-  L4::Cap<L4::Irq_eio>   eoi_cap;
+  L4::Cap<L4::Irq_eoi>   eoi_cap;
   enum l4irq_type        type;
   unsigned               num;
   pthread_t              thread;
@@ -76,7 +76,7 @@ alloc_and_get_irq(enum l4irq_type type, int irqnum, l4_cap_idx_t given_cap,
 
       irq->num = irqnum;
 
-      if (l4_error(L4Re::Env::env()->factory()->create_irq(L4::cap_cast<L4::Irq>(irq->cap))))
+      if (l4_error(L4Re::Env::env()->factory()->create(L4::cap_cast<L4::Irq>(irq->cap))))
 	return release(irq, 2);
 
       L4::Cap<L4::Icu> icu(l4io_request_icu());
@@ -114,7 +114,7 @@ isr_loop(void *data)
   l4irq_t *irq = (l4irq_t *)data;
   l4_msgtag_t res;
 
-  if (attach_to_irq(irq, pthread_getl4cap(pthread_self())))
+  if (attach_to_irq(irq, pthread_l4_cap(pthread_self())))
     return NULL;
 
   while (1)
@@ -206,7 +206,7 @@ l4irq_attach_thread(int irqnum, l4_cap_idx_t to_thread)
 l4irq_t *
 l4irq_attach(int irqnum)
 {
-  return l4irq_attach_thread(irqnum, pthread_getl4cap(pthread_self()));
+  return l4irq_attach_thread(irqnum, pthread_l4_cap(pthread_self()));
 }
 
 l4irq_t *
@@ -226,7 +226,7 @@ l4irq_attach_thread_cap(l4_cap_idx_t irqcap, l4_cap_idx_t to_thread)
 l4irq_t *
 l4irq_attach_cap(l4_cap_idx_t irqcap)
 {
-  return l4irq_attach_thread_cap(irqcap, pthread_getl4cap(pthread_self()));
+  return l4irq_attach_thread_cap(irqcap, pthread_l4_cap(pthread_self()));
 }
 
 long

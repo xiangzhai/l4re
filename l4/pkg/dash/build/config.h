@@ -10,6 +10,13 @@
 /* Define to 1 if you have the `bsearch' function. */
 #define HAVE_BSEARCH 1
 
+/* Define to 1 if you have the declaration of `isblank', and to 0 if you
+   don't. */
+#define HAVE_DECL_ISBLANK 1
+
+/* Define to 1 if you have the `faccessat' function. */
+#undef HAVE_FACCESSAT
+
 /* Define to 1 if you have the `fnmatch' function. */
 #define HAVE_FNMATCH 1
 
@@ -21,9 +28,6 @@
 
 /* Define to 1 if you have the `glob' function. */
 #define HAVE_GLOB 1
-
-/* Define to 1 if you have the `imaxdiv' function. */
-#define HAVE_IMAXDIV 1
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #define HAVE_INTTYPES_H 1
@@ -39,6 +43,9 @@
 
 /* Define to 1 if you have the `mempcpy' function. */
 #define HAVE_MEMPCPY 1
+
+/* Define to 1 if you have the <paths.h> header file. */
+#undef HAVE_PATHS_H
 
 /* Define to 1 if you have the `sigsetmask' function. */
 //#define HAVE_SIGSETMASK 1
@@ -100,8 +107,20 @@
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "dash"
 
+/* Define to the home page for this package. */
+#undef PACKAGE_URL
+
 /* Define to the version of this package. */
 #define PACKAGE_VERSION "0.5.5.1"
+
+/* Define to printf format string for intmax_t */
+#undef PRIdMAX
+
+/* The size of `intmax_t', as computed by sizeof. */
+#undef SIZEOF_INTMAX_T
+
+/* The size of `long long int', as computed by sizeof. */
+#undef SIZEOF_LONG_LONG_INT
 
 /* Define if you build with -DSMALL */
 #define SMALL 1
@@ -109,25 +128,67 @@
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1
 
-/* Version number of package */
-#define VERSION "0.5.5.1"
-
+/* Enable extensions on AIX 3, Interix.  */
+#ifndef _ALL_SOURCE
+# undef _ALL_SOURCE
+#endif
 /* Enable GNU extensions on systems that have them.  */
 #ifndef _GNU_SOURCE
 # define _GNU_SOURCE 1
 #endif
+/* Enable threading extensions on Solaris.  */
+#ifndef _POSIX_PTHREAD_SEMANTICS
+# undef _POSIX_PTHREAD_SEMANTICS
+#endif
+/* Enable extensions on HP NonStop.  */
+#ifndef _TANDEM_SOURCE
+# undef _TANDEM_SOURCE
+#endif
+/* Enable general extensions on Solaris.  */
+#ifndef __EXTENSIONS__
+# undef __EXTENSIONS__
+#endif
+
+
+/* Version number of package */
+#undef VERSION
+
+/* Define if you build with -DWITH_LINENO */
+#undef WITH_LINENO
+
+/* Define to 1 if on MINIX. */
+#undef _MINIX
+
+/* Define to system shell path */
+#undef _PATH_BSHELL
+#define _PATH_BSHELL    "/bin/sh"
+
+/* Define to devnull device node path */
+#undef _PATH_DEVNULL
+#define _PATH_DEVNULL   "/dev/null"
+
+/* Define to tty device node path */
+#undef _PATH_TTY
+#define _PATH_TTY       "/dev/tty"
+
+/* Define to 2 if the system does not provide POSIX.1 features except with
+   this defined. */
+#undef _POSIX_1_SOURCE
+
+/* Define to 1 if you need to in order for `stat' and other things to work. */
+#undef _POSIX_SOURCE
 
 /* 64-bit operations are the same as 32-bit */
-/* #undef fstat64 */
+#undef fstat64
 
 /* 64-bit operations are the same as 32-bit */
-/* #undef lstat64 */
+#undef lstat64
 
 /* 64-bit operations are the same as 32-bit */
-/* #undef open64 */
+#undef open64
 
 /* klibc has bsd_signal instead of signal */
-/* #undef signal */
+#undef signal
 
 /* 64-bit operations are the same as 32-bit */
-/* #undef stat64 */
+#undef stat64

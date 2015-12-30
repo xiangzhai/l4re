@@ -39,7 +39,7 @@ void wake_up(wait_queue_head_t *wq);
 		l4_utcb_mr()->mr[0] = (l4_umword_t)&(wq);               \
 		l4_utcb_mr()->mr[1] = (l4_umword_t)&(wqe);	        \
 		r = l4_ipc(wait_thread, l4_utcb(), L4_SYSF_CALL,        \
-			   pthread_getl4cap(pthread_self()),            \
+			   pthread_l4_cap(pthread_self()),            \
                            l4_msgtag(0, 2, 0, 0),                       \
                            &dummy, L4_IPC_NEVER);                       \
 		if (l4_ipc_error(r, l4_utcb()))				\

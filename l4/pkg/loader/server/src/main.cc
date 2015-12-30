@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <l4/re/l4aux.h>
 #include <l4/re/error_helper>
+#include <l4/re/util/br_manager>
 #include <l4/sys/scheduler>
 #include <l4/sys/thread>
 #include <l4/cxx/iostream>
@@ -29,26 +30,6 @@ using L4Re::chksys;
 static Dbg info(Dbg::Info);
 static Dbg boot_info(Dbg::Boot);
 
-L4::Cap<void> Glbl::rcv_cap;
-
-namespace Gate_alloc {
-  L4Re::Util::Object_registry registry;
-}
-
-class Loop_hooks :
-  public L4::Ipc_svr::Ignore_errors,
-  public L4::Ipc_svr::Default_timeout,
-  public L4::Ipc_svr::Compound_reply
-{
-public:
-  static void setup_wait(L4::Ipc::Istream &istr, bool before_reply)
-  {
-    (void)before_reply;
-    istr.reset();
-    istr << L4::Ipc::Small_buf(Glbl::rcv_cap.cap(),  L4_RCV_ITEM_LOCAL_ID);
-    l4_utcb_br()->bdr = 0;
-  }
-};
 
 l4re_aux_t* l4re_aux;
 template< typename Reg >
@@ -58,10 +39,8 @@ private:
   Reg r;
 
 public:
-  int dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios)
+  l4_msgtag_t dispatch(l4_msgtag_t tag, l4_umword_t obj, l4_utcb_t *utcb)
   {
-    l4_msgtag_t tag;
-    ios >> tag;
     typename Reg::Value *o = 0;
 
     Dbg dbg(Dbg::Server);
@@ -73,7 +52,7 @@ public:
       {
 	dbg.cprintf("\n");
 	Dbg(Dbg::Warn).printf("unhandled exception...\n");
-	return -L4_ENOREPLY;
+	return l4_msgtag(-L4_ENOREPLY, 0, 0, 0);
       }
     else
       {
@@ -82,23 +61,28 @@ public:
 	if (!o)
 	  {
 	    dbg.cprintf(": invalid object\n");
-	    return -L4_ENOENT;
+	    return l4_msgtag(-L4_ENOENT, 0, 0, 0);
 	  }
 
 	dbg.cprintf(": object is a %s\n", typeid(*o).name());
-	int res = o->dispatch(obj, ios);
-	dbg.printf("reply = %d\n", res);
+	l4_msgtag_t res = o->dispatch(tag, obj, utcb);
+	dbg.printf("reply = %ld\n", res.label());
 	return res;
       }
 
     Dbg(Dbg::Warn).printf("Invalid message (tag.label=%ld)\n", tag.label());
-    return -L4_ENOSYS;
+    return l4_msgtag(-L4_ENOSYS, 0, 0, 0);
   }
 
 };
 
 
-static L4::Server<Loop_hooks> server(l4_utcb());
+static L4::Server<L4Re::Util::Br_manager_hooks> server(l4_utcb());
+
+namespace Gate_alloc {
+  L4Re::Util::Object_registry registry(&server);
+}
+
 
 int
 main(int argc, char **argv)
@@ -127,13 +111,12 @@ main(int argc, char **argv)
       auxp += 2;
     }
 
-  Glbl::rcv_cap = L4Re::Util::cap_alloc.alloc<void>();
   Region_map::global_init();
 
 
   L4Re::chkcap(Gate_alloc::registry.register_obj(Allocator::root_allocator(), "loader"));
 
-  server.loop(My_dispatcher<L4::Basic_registry>());
+  server.loop<L4::Runtime_error>(My_dispatcher<L4::Basic_registry>());
   }
   catch (L4::Runtime_error const &e)
     {

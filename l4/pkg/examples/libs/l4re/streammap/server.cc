@@ -19,7 +19,7 @@ static char page_to_map[L4_PAGESIZE] __attribute__((aligned(L4_PAGESIZE)));
 
 static L4Re::Util::Registry_server<> server;
 
-class Smap_server : public L4::Server_object
+class Smap_server : public L4::Server_object_t<Mapper>
 {
 public:
   int dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios);
@@ -32,7 +32,7 @@ Smap_server::dispatch(l4_umword_t, L4::Ipc::Iostream &ios)
   ios >> t;
 
   // We're only talking the Map_example protocol
-  if (t.label() != Protocol::Map_example)
+  if (t.label() != Mapper::Protocol)
     return -L4_EBADPROTO;
 
   L4::Opcode opcode;
@@ -40,7 +40,7 @@ Smap_server::dispatch(l4_umword_t, L4::Ipc::Iostream &ios)
 
   switch (opcode)
     {
-    case Opcode::Do_map:
+    case Mapper::Do_map:
       l4_addr_t snd_base;
       ios >> snd_base;
       // put something into the page to read it out at the other side

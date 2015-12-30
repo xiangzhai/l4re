@@ -11,6 +11,7 @@
 
 #include <l4/scout-gfx/layout_item>
 #include <l4/scout-gfx/widget>
+#include <l4/mag-gfx/geometry>
 
 namespace Scout_gfx {
 
@@ -45,12 +46,13 @@ class Chapter : public Document { };
  */
 class Center : public Parent_widget
 {
+  Orientation _orientation;
 public:
 
   /**
    * Constructor
    */
-  explicit Center(Widget *content = 0);
+  explicit Center(Widget *content = 0, Orientation orientation = Vert);
 
   /**
    * Element interface
@@ -93,7 +95,7 @@ public:
 class Anchor : public Spacer
 {
 public:
-  Anchor() : Spacer(0,0) {}
+  Anchor() : Spacer(0, 0) {}
   ~Anchor() {}
 
   static Document *chapter(Widget *w)
@@ -103,7 +105,7 @@ public:
 
     for (; w; w = w->parent())
       if (Chapter *c = dynamic_cast<Chapter *>(w))
-	return c;
+        return c;
 
     return 0;
   }

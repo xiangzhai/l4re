@@ -26,11 +26,13 @@ namespace L4Re { namespace Util {
 class Object_registry_gc : public Object_registry
 {
 public:
-  Object_registry_gc(L4::Cap<L4::Thread> server, L4::Cap<L4::Factory> factory)
-   : Object_registry(server, factory)
+  Object_registry_gc(L4::Ipc_svr::Server_iface *sif,
+                     L4::Cap<L4::Thread> server,
+                     L4::Cap<L4::Factory> factory)
+   : Object_registry(sif, server, factory)
   {}
 
-  L4::Cap<void> register_obj_with_gc(L4::Server_object *o, int refcnt)
+  L4::Cap<void> register_obj_with_gc(L4::Epiface *o, int refcnt)
   {
     int idx = get_free_slot();
     if (idx == -1)
@@ -70,7 +72,7 @@ public:
         }
   }
 
-  void ref_cnt_add(L4::Server_object *o, int d)
+  void ref_cnt_add(L4::Epiface *o, int d)
   {
     int idx;
     if ((idx = find_obj(o)) != -1)
@@ -79,7 +81,7 @@ public:
 
 private:
   enum { SLOTS = 100 };
-  L4::Server_object *objs[SLOTS];
+  L4::Epiface *objs[SLOTS];
   int ref_cnt[SLOTS];
   l4_cpu_time_t last_gc_run;
 
@@ -91,7 +93,7 @@ private:
     return -1;
   }
 
-  int find_obj(L4::Server_object *o)
+  int find_obj(L4::Epiface *o)
   {
     for (int i = 0; i < SLOTS; ++i)
       if (objs[i] == o)

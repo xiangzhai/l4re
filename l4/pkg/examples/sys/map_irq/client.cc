@@ -25,41 +25,36 @@ static int run()
   using L4Re::chksys;
   using L4Re::chkcap;
 
-  L4::Cap<L4::Irq> irq;
-  L4::Cap<L4::Ipc_gate> server;
-
   printf("Hello from ex_map_irq_client.\n");
 
   // allocate cap for IRQ
-  irq = chkcap(L4Re::Util::cap_alloc.alloc<L4::Irq>(),
-               "could not find a free cap slot");
+  L4::Cap<L4::Irq> irq = chkcap(L4Re::Util::cap_alloc.alloc<L4::Irq>(),
+                                "could not find a free cap slot");
   // create IRQ kernel object
-  chksys(L4Re::Env::env()->factory()->create_irq(irq),
-         "could not create a new IRQ kernel object");
+  chksys(L4Re::Env::env()->factory()->create(irq),
+         "create a new IRQ kernel object");
 
   // look out for server
-  server = chkcap(L4Re::Env::env()->get_cap<L4::Ipc_gate>("ex_map_irq"),
-                  "could not find 'ex_map_irq' in namespace");
+  L4::Cap<Irq_source> server;
+  server = chkcap(L4Re::Env::env()->get_cap<Irq_source>("ex_map_irq"),
+                  "get 'ex_map_irq' capability");
 
   // map irq to server
   printf("Mapping IRQ cap to server.\n");
-  L4::Ipc::Iostream s(l4_utcb());
-  s << L4::Opcode(Map_irq_opcodes::Map_irq) << irq;
-  chksys(s.call(server.cap()), "request failed");
-
-  // tell the server to start triggering us and how many times it should
-  // trigger the IRQ
-  s.reset();
-  s << L4::Opcode(Map_irq_opcodes::Start) << Nr_of_triggers;
-  chksys(s.call(server.cap()), "request failed");
+  chksys(server->map_irq(irq), "map irq");
 
   // attach to IRQ and wait for the server to trigger it
   chksys(irq->attach(0, L4Re::Env::env()->main_thread()),
-         "could not attach to IRQ");
+         "attach to IRQ");
+
+  // tell the server to start triggering us and how many times it should
+  // trigger the IRQ
+  chksys(server->start(Nr_of_triggers), "starting triggers");
+
 
   for (int i = 0; i < Nr_of_triggers; ++i)
     {
-      chksys(irq->receive(), "receive failed");
+      chksys(irq->receive(), "receiving IRQ");
       printf("Received IRQ.\n");
     }
 

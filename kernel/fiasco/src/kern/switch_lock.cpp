@@ -78,7 +78,6 @@ IMPLEMENTATION:
 
 #include <cassert>
 
-#include "cpu.h"
 #include "atomic.h"
 #include "cpu_lock.h"
 #include "lock_guard.h"
@@ -135,9 +134,10 @@ Switch_lock::Status NO_INSTRUMENT
 Switch_lock::test() const
 {
   auto guard = lock_guard(cpu_lock);
-  if (EXPECT_FALSE(!valid()))
+  Address o = access_once(&_lock_owner);
+  if (EXPECT_FALSE(o & 1))
     return Invalid;
-  return (_lock_owner  & ~1UL) ? Locked : Not_locked;
+  return o ? Locked : Not_locked;
 }
 
 /** Try to acquire the lock.
@@ -156,10 +156,11 @@ Switch_lock::try_lock()
   if (EXPECT_FALSE(!valid()))
     return Invalid;
 
-  bool ret = set_lock_owner(current());
+  Context *c = current();
+  bool ret = set_lock_owner(c);
 
   if (ret)
-    current()->inc_lock_cnt();	// Do not lose this lock if current is deleted
+    c->inc_lock_cnt();	// Do not lose this lock if current is deleted
 
   return ret ? Locked : Not_locked;
 }
@@ -179,6 +180,21 @@ Switch_lock::lock()
   return lock_dirty();
 }
 
+PRIVATE
+void NO_INSTRUMENT
+Switch_lock::help(Context *curr, Context *owner, Address owner_id)
+{
+  auto s = curr->switch_exec_helping(owner, Context::Helping, &_lock_owner,
+                                     owner_id);
+  if (s == Context::Switch::Failed)
+    {
+      if (curr->home_cpu() != current_cpu())
+        curr->schedule();
+      else
+        Proc::preemption_point();
+    }
+}
+
 /** Acquire the lock with priority inheritance.
  *  If the lock is occupied, enqueue in list of helpers and lend CPU 
  *  to current lock owner until we are the lock owner (see lock()).
@@ -188,17 +204,18 @@ Switch_lock::lock()
  *          #Invalid if the lock does not exist (see valid()).
  */
 PUBLIC
-inline NEEDS["cpu.h","context.h", "processor.h", Switch_lock::set_lock_owner]
+inline NEEDS["context.h", "processor.h", Switch_lock::set_lock_owner]
 Switch_lock::Status NO_INSTRUMENT
 Switch_lock::lock_dirty()
 {
   assert(cpu_lock.test());
 
-  if (!valid())
+  Mword o = access_once(&_lock_owner);
+  if (EXPECT_FALSE(o & 1))
     return Invalid;
 
-  // have we already the lock?
-  if ((_lock_owner & ~1UL) == Address(current()))
+  Context *c = current();
+  if (o == Address(c))
     return Locked;
 
   do
@@ -212,22 +229,12 @@ Switch_lock::lock_dirty()
           if (!o)
             break;
 
-          // Help lock owner until lock becomes free
-          //      while (test())
-          Context *c = current();
-          if (   c->switch_exec_helping((Context *)o, Context::Helping, &_lock_owner, o) == Context::Switch::Failed
-              && c->home_cpu() != current_cpu())
-            c->schedule();
-
-          Proc::preemption_point();
-
-          if (!valid())
-            return Invalid;
+          help(c, (Context *)o, o);
         }
     }
-  while (!set_lock_owner(current()));
+  while (!set_lock_owner(c));
   Mem::mp_wmb();
-  current()->inc_lock_cnt();   // Do not lose this lock if current is deleted
+  c->inc_lock_cnt();   // Do not lose this lock if current is deleted
   return Not_locked;
 }
 
@@ -292,7 +299,7 @@ Switch_lock::set_lock_owner(Context *o)
 
   if (have_no_locks)
     {
-      assert_kdb (current_cpu() == o->home_cpu());
+      assert (current_cpu() == o->home_cpu());
       for (;;)
         {
           if (EXPECT_FALSE(access_once(&o->_running_under_lock)))
@@ -302,7 +309,7 @@ Switch_lock::set_lock_owner(Context *o)
         }
     }
   else
-    assert_kdb (o->_running_under_lock);
+    assert (o->_running_under_lock);
 
   Mem::mp_wmb();
 
@@ -358,7 +365,7 @@ static inline
 void NO_INSTRUMENT
 Switch_lock::switch_dirty(Lock_context const &c) 
 {
-  assert_kdb (current() == c.owner);
+  assert (current() == c.owner);
 
   Context *h = c.owner->helper();
   /*
@@ -437,14 +444,13 @@ void NO_INSTRUMENT
 Switch_lock::wait_free()
 {
   auto guard = lock_guard(cpu_lock);
+  Context *c = current();
 
   assert (!valid());
 
-  // have we already the lock?
-  if ((_lock_owner & ~1UL) == (Address)current())
+  if ((_lock_owner & ~1UL) == (Address)c)
     {
       clear_lock_owner();
-      Context *c = current();
       c->dec_lock_cnt();
       return;
     }
@@ -458,10 +464,6 @@ Switch_lock::wait_free()
       if (!owner)
         break;
 
-      // Help lock owner until lock becomes free
-      //      while (test())
-      current()->switch_exec_helping(owner, Context::Helping, &_lock_owner, _owner);
-
-      Proc::preemption_point();
+      help(c, owner, _owner);
     }
 }

@@ -11,13 +11,15 @@
 #include <l4/sys/capability>
 #include <l4/re/dataspace>
 #include <l4/re/util/region_mapping>
-#include <l4/cxx/ipc_server>
+#include <l4/re/util/region_mapping_svr_2>
+#include <l4/sys/cxx/ipc_epiface>
 
 #include <l4/re/util/item_alloc>
 #include <l4/re/util/cap_alloc>
 #include <l4/re/error_helper>
 
 #include "slab_alloc.h"
+#include "debug.h"
 
 class Region_ops;
 
@@ -43,26 +45,45 @@ public:
 
 class Region_map
 : public L4Re::Util::Region_map<Region_handler, Slab_alloc>,
-  public L4::Server_object
+  public L4Re::Util::Rm_server<Region_map, Dbg>,
+  public L4::Epiface_t<Region_map, L4Re::Rm>
 {
 private:
   typedef L4Re::Util::Region_map<Region_handler, Slab_alloc> Base;
 
 public:
+  typedef L4::Cap<L4Re::Dataspace> Dataspace;
+  enum { Have_find = true };
+  static int validate_ds(L4::Ipc_svr::Server_iface *sif,
+                         L4::Ipc::Snd_fpage const & /*ds_cap*/, unsigned,
+                         L4::Cap<L4Re::Dataspace> *ds)
+  {
+    // XXX: must check that ds is from trusted allocator!
+    L4::Cap<L4Re::Dataspace> c = sif->rcv_cap<L4Re::Dataspace>(0);
+    if (!c)
+      return -L4_EINVAL;
+
+    sif->realloc_rcv_cap(0);
+
+    *ds = c;
+    return L4_EOK;
+  }
+
+  static l4_umword_t find_res(L4::Cap<void> const &ds) { return ds.cap(); }
+
   static void global_init();
 
   Region_map();
-  //void setup_wait(L4::Ipc::Istream &istr);
-  int handle_pagefault(L4::Ipc::Iostream &ios);
-  int handle_rm_request(L4::Ipc::Iostream &ios);
+  long op_io_page_fault(L4::Io_pager::Rights,
+                        l4_fpage_t io_pfa, l4_umword_t pc,
+                        L4::Ipc::Opt<l4_mword_t> &result,
+                        L4::Ipc::Opt<L4::Ipc::Snd_fpage> &);
+
   virtual ~Region_map() {}
 
   void init();
-  int dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios);
 
   void debug_dump(unsigned long function) const;
-private:
-  int reply_err(L4::Ipc::Iostream &ios);
 };
 
 

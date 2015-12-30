@@ -21,6 +21,8 @@
 #include <l4/re/rm>
 #include <l4/re/video/goos>
 #include <l4/re/util/video/goos_fb>
+#include <l4/re/util/br_manager>
+#include <l4/re/util/debug>
 
 #include <lua.h>
 #include <lauxlib.h>
@@ -73,7 +75,7 @@ private:
   My_reg(My_reg const &);
   void operator = (My_reg const &);
 
-  class Del_handler : public L4::Server_object
+  class Del_handler : public L4::Irqep_t<Del_handler>
   {
   private:
     Object_gc *gc;
@@ -81,17 +83,14 @@ private:
   public:
     explicit Del_handler(Object_gc *gc) : gc(gc) {}
 
-    int dispatch(l4_umword_t, L4::Ipc::Iostream &)
-    {
-      gc->gc_step();
-      return -L4_ENOREPLY;
-    }
+    void handle_irq()
+    { gc->gc_step(); }
   };
 
   L4::Cap<L4::Irq> _del_irq;
 
 public:
-  My_reg() : Registry()
+  My_reg(L4::Ipc_svr::Server_iface *sif) : Registry(sif)
   {
     _del_irq = register_irq_obj(new Del_handler(this));
     assert (_del_irq);
@@ -100,8 +99,12 @@ public:
 
   void add_gc_obj(Object *o)
   {
-    L4::Cap<L4::Kobject> c(o->obj_cap());
     Object_gc::add_obj(o);
+  }
+
+  void gc_obj(Object *o)
+  {
+    unregister_obj(o);
   }
 };
 
@@ -113,9 +116,8 @@ poll_input(Core_api_impl *core)
       i->poll_events();
 }
 
-static L4::Cap<void> rcv_cap;
-
-class Loop_hooks : public L4::Ipc_svr::Ignore_errors
+class Loop_hooks : public L4::Ipc_svr::Ignore_errors,
+  public L4Re::Util::Br_manager
 {
 public:
   l4_kernel_clock_t to;
@@ -127,7 +129,7 @@ public:
   l4_timeout_t timeout()
   { return l4_timeout(L4_IPC_TIMEOUT_0, l4_timeout_abs(to, 8)); }
 
-  void setup_wait(L4::Ipc::Istream &istr, L4::Ipc_svr::Reply_mode reply_mode)
+  void setup_wait(l4_utcb_t *utcb, L4::Ipc_svr::Reply_mode reply_mode)
   {
     if (to <= l4_kip_clock(l4re_kip())
 	&& reply_mode == L4::Ipc_svr::Reply_separate)
@@ -140,13 +142,10 @@ public:
 	to += 20000;
     }
 
-    istr.reset();
-    istr << L4::Ipc::Small_buf(rcv_cap.cap(), L4_RCV_ITEM_LOCAL_ID);
-    l4_utcb_br_u(istr.utcb())->bdr = 0;
-    l4_timeout_abs(to, 8);
+    Br_manager::setup_wait(utcb, reply_mode);
   }
 
-  L4::Ipc_svr::Reply_mode before_reply(long, L4::Ipc::Iostream &)
+  L4::Ipc_svr::Reply_mode before_reply(l4_msgtag_t, l4_utcb_t *)
   {
     if (to <= l4_kip_clock(l4re_kip()))
       return L4::Ipc_svr::Reply_separate;
@@ -154,8 +153,8 @@ public:
   }
 };
 
-static My_reg registry;
 static L4::Server<Loop_hooks> server(l4_utcb());
+static My_reg registry(&server);
 
 using L4Re::Util::Auto_cap;
 using L4Re::chksys;
@@ -209,8 +208,8 @@ int load_so_plugin(Core_api *core_api, char const *name)
   void *pl = dlopen(n, RTLD_LAZY);
   if (!pl)
     {
-      delete [] n;
       printf("ERROR: loading '%s': %s\n", n, dlerror());
+      delete [] n;
       return -1;
     }
   else
@@ -224,7 +223,8 @@ int load_so_plugin(Core_api *core_api, char const *name)
 
 static const luaL_Reg libs[] =
 {
-  { "", luaopen_base },
+  { "_G", luaopen_base },
+  {LUA_LOADLIBNAME, luaopen_package},
 // { LUA_IOLIBNAME, luaopen_io },
   { LUA_STRLIBNAME, luaopen_string },
   {LUA_LOADLIBNAME, luaopen_package},
@@ -233,9 +233,14 @@ static const luaL_Reg libs[] =
   { NULL, NULL }
 };
 
+struct Err : L4Re::Util::Err { Err() : L4Re::Util::Err(Fatal, "") {} };
+
 int run(int argc, char const *argv[])
 {
-  printf("Hello from MAG\n");
+  L4Re::Util::Dbg dbg;
+  Err p_err;
+
+  dbg.printf("Hello from MAG\n");
   L4Re::Env const *env = L4Re::Env::env();
 
   L4::Cap<L4Re::Video::Goos> fb
@@ -247,9 +252,11 @@ int run(int argc, char const *argv[])
 
   L4Re::Rm::Auto_region<char *> fb_addr;
   chksys(env->rm()->attach(&fb_addr, goos_fb.buffer()->size(),
-	L4Re::Rm::Search_addr, goos_fb.buffer(), 0, L4_SUPERPAGESHIFT));
+                           L4Re::Rm::Search_addr,
+                           L4::Ipc::make_cap_rw(goos_fb.buffer()),
+                           0, L4_SUPERPAGESHIFT));
 
-  printf("mapped frame buffer at %p\n", fb_addr.get());
+  dbg.printf("mapped frame buffer at %p\n", fb_addr.get());
 
   Screen_factory *f = dynamic_cast<Screen_factory*>(Screen_factory::set.find(view_i.pixel_info));
   if (!f)
@@ -262,21 +269,14 @@ int run(int argc, char const *argv[])
   Canvas *screen = f->create_canvas(fb_addr.get() + view_i.buffer_offset,
       Area(view_i.width, view_i.height), view_i.bytes_per_line);
 
-  view_i.dump(L4::cout)
-    << "  memory " << (void*)fb_addr.get()
-    << '-' << (void*)(fb_addr.get() + goos_fb.buffer()->size()) << '\n';
+  view_i.dump(dbg);
+  dbg.printf("  memory %p - %p\n", (void*)fb_addr.get(),
+             (void*)(fb_addr.get() + goos_fb.buffer()->size()));
 
   if (!screen)
     {
-      printf("ERROR: could not start screen driver for given video mode.\n"
-             "       Maybe unsupported pixel format... exiting\n");
-      exit(1);
-    }
-
-  rcv_cap = L4Re::Util::cap_alloc.alloc<void>();
-  if (!rcv_cap.is_valid())
-    {
-      printf("ERROR: Out of caps\n");
+      p_err.printf("ERROR: could not start screen driver for given video mode.\n"
+                   "       Maybe unsupported pixel format... exiting\n");
       exit(1);
     }
 
@@ -296,7 +296,7 @@ int run(int argc, char const *argv[])
 
   if (!lua)
     {
-      printf("ERROR: cannot allocate Lua state\n");
+      p_err.printf("ERROR: cannot allocate Lua state\n");
       exit(1);
     }
 
@@ -305,22 +305,21 @@ int run(int argc, char const *argv[])
 
   for (int i = 0; libs[i].func; ++i)
     {
-      lua_pushcfunction(lua, libs[i].func);
-      lua_pushstring(lua,libs[i].name);
-      lua_call(lua, 1, 0);
+      luaL_requiref(lua, libs[i].name, libs[i].func, 1);
+      lua_pop(lua, 1);
     }
 
 
   static Font label_font(&_binary_default_tff_start[0]);
   static View_stack vstack(screen, screen_view, &bg, &label_font);
   static User_state user_state(lua, &vstack, cursor);
-  static Core_api_impl core_api(&registry, lua, &user_state, rcv_cap, fb, &label_font);
+  static Core_api_impl core_api(&registry, lua, &user_state, fb, &label_font);
   Mag_server::core_api = &core_api;
 
   int err;
   if ((err = luaL_loadbuffer(lua, _binary_mag_lua_start, _binary_mag_lua_end - _binary_mag_lua_start, "@mag.lua")))
     {
-      fprintf(stderr, "lua error: %s.\n", lua_tostring(lua, -1));
+      p_err.printf("lua error: %s.\n", lua_tostring(lua, -1));
       lua_pop(lua, lua_gettop(lua));
       if (err == LUA_ERRSYNTAX)
 	throw L4::Runtime_error(L4_EINVAL, lua_tostring(lua, -1));
@@ -330,7 +329,7 @@ int run(int argc, char const *argv[])
 
   if ((err = lua_pcall(lua, 0, 1, 0)))
     {
-      fprintf(stderr, "lua error: %s.\n", lua_tostring(lua, -1));
+      p_err.printf("lua error: %s.\n", lua_tostring(lua, -1));
       lua_pop(lua, lua_gettop(lua));
       if (err == LUA_ERRSYNTAX)
 	throw L4::Runtime_error(L4_EINVAL, lua_tostring(lua, -1));
@@ -348,7 +347,7 @@ int run(int argc, char const *argv[])
         load_so_plugin(&core_api, argv[i]);
     }
 
-  server.loop(&registry);
+  server.loop<L4::Runtime_error>(&registry);
 
   return 0;
 }

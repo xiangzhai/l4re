@@ -7,6 +7,20 @@ EXTENSION class Context
 public:
   void vcpu_pv_switch_to_kernel(Vcpu_state *, bool);
   void vcpu_pv_switch_to_user(Vcpu_state *, bool);
+  /**
+   * This function returns an architecture specific mode for the
+   * address space used for this context within vCPU user-mode,
+   * for the given state in the return frame `rf`.
+   * The default return value for normal process address space is 0.
+   *
+   * \param rf         Pointer to the kernel entry/exit state used for this
+   *                   context.
+   * \retval 0     for normal process address space.
+   * \retval != 0  for architecture specific address space modes such as
+   *               guest vm mode.
+   */
+  template<typename USER_STATE>
+  unsigned vcpu_space_mode(USER_STATE const *rf) const;
 protected:
   Ku_mem_ptr<Vcpu_state> _vcpu_state;
 };
@@ -19,6 +33,10 @@ void Context::vcpu_pv_switch_to_kernel(Vcpu_state *, bool) {}
 
 IMPLEMENT_DEFAULT inline
 void Context::vcpu_pv_switch_to_user(Vcpu_state *, bool) {}
+
+IMPLEMENT_DEFAULT template<typename USER_STATE> inline
+unsigned Context::vcpu_space_mode(USER_STATE const *) const
+{ return 0; }
 
 PUBLIC inline
 Context::Ku_mem_ptr<Vcpu_state> const &

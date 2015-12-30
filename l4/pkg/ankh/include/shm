@@ -209,7 +209,7 @@ class Shm_receiver : public Shm_ringbuffer_user
 			: Shm_ringbuffer_user(base, chunk_name, signal_name)
 		{
 			l4shmc_rb_attach_receiver(_rb->buffer(),
-			                          pthread_getl4cap(pthread_self()));
+			                          pthread_l4_cap(pthread_self()));
 		}
 
 		virtual ~Shm_receiver()
@@ -266,7 +266,7 @@ class Shm_sender : public Shm_ringbuffer_user
 		{
 			int __attribute__((unused)) err
 			    = l4shmc_rb_attach_sender(_rb->buffer(), signal_name,
-			                              pthread_getl4cap(pthread_self()));
+			                              pthread_l4_cap(pthread_self()));
 			ASSERT_OK(err);
 		}
 

@@ -13,18 +13,7 @@
 #include <l4/re/error_helper>
 
 namespace {
-  class Trash : public L4::Server_object
-  {
-    int dispatch(l4_umword_t, L4::Ipc::Iostream &)
-    {
-      printf("GOT: stale request, drop it\n");
-      return -L4_EINVAL;
-    }
-  };
-
-  static Trash _trash;
-
-  class Del_handler : public L4::Server_object
+  class Del_handler : public L4::Irqep_t<Del_handler>
   {
   private:
     Registry *_r;
@@ -32,15 +21,13 @@ namespace {
   public:
     explicit Del_handler(Registry *r) : _r(r) {}
 
-    int dispatch(l4_umword_t, L4::Ipc::Iostream &)
-    {
-      _r->gc_step();
-      return -L4_ENOREPLY;
-    }
+    void handle_irq()
+    { _r->gc_step(); }
   };
 }
 
-Registry::Registry()
+Registry::Registry(L4::Ipc_svr::Server_iface *sif)
+: L4Re::Util::Object_registry(sif)
 {
   using L4Re::chkcap;
   L4::Cap<L4::Irq> _del_irq = chkcap(register_irq_obj(new Del_handler(this)));
@@ -92,10 +79,7 @@ Registry::gc_step()
         {
           if (0)
             printf("GC: object=%p\n", *n);
-          L4::Thread::Modify_senders todo;
-          todo.add(~3UL, reinterpret_cast<l4_umword_t>((L4::Server_object*)*n),
-                   ~0UL, reinterpret_cast<l4_umword_t>((L4::Server_object*)&_trash));
-          L4::Cap<L4::Thread>()->modify_senders(todo);
+          unregister_obj(*n);
           Server_object *o = *n;
           n = _life.erase(n);
           if (o->collected())

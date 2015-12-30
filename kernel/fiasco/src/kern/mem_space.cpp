@@ -1,6 +1,7 @@
 INTERFACE:
 
 #include "auto_quota.h"
+#include "cpu_mask.h"
 #include "paging.h"		// for page attributes
 #include "mem_layout.h"
 #include "member_offs.h"
@@ -43,7 +44,7 @@ public:
   typedef Addr::Order<0> V_order;
 
   // Each architecture must provide these members:
-  void switchin_context(Mem_space *from);
+  void switchin_context(Mem_space *from, unsigned mode = 0);
 
   /** Insert a page-table entry, or upgrade an existing entry with new
    *  attributes.
@@ -107,7 +108,7 @@ public:
   FIASCO_SPACE_VIRTUAL
   void v_set_access_flags(Vaddr virt, L4_fpage::Rights access_flags);
 
-  /** Set this memory space as the current on on this CPU. */
+  /** Set this memory space as the current on this CPU. */
   void make_current();
 
   static Mem_space *kernel_space()
@@ -199,12 +200,13 @@ private:
 //---------------------------------------------------------------------------
 INTERFACE [mp]:
 
-#include "cpu_mask.h"
-
 EXTENSION class Mem_space
 {
 public:
   enum { Need_xcpu_tlb_flush = true };
+
+private:
+  static Cpu_mask _tlb_active;
 };
 
 
@@ -249,7 +251,7 @@ PROTECTED static
 void
 Mem_space::add_global_page_size(Page_order o)
 {
-  assert_kdb (!_glbl_page_sizes_finished);
+  assert (!_glbl_page_sizes_finished);
   unsigned i;
   for (i = 0; i < _num_glbl_page_sizes; ++i)
     {
@@ -335,3 +337,47 @@ PUBLIC inline
 bool
 Mem_space::io_lookup (Address)
 { return false; }
+
+//----------------------------------------------------------------------------
+IMPLEMENTATION [!mp]:
+
+PUBLIC static inline
+void
+Mem_space::enable_tlb(Cpu_number)
+{}
+
+PUBLIC static inline
+void
+Mem_space::disable_tlb(Cpu_number)
+{}
+
+PUBLIC static inline
+Cpu_mask
+Mem_space::active_tlb()
+{
+  Cpu_mask c;
+  c.set(Cpu_number::boot_cpu());
+  return c;
+}
+
+// ----------------------------------------------------------
+IMPLEMENTATION [mp]:
+
+Cpu_mask Mem_space::_tlb_active;
+
+PUBLIC static inline
+Cpu_mask const &
+Mem_space::active_tlb()
+{ return _tlb_active; }
+
+PUBLIC static inline
+void
+Mem_space::enable_tlb(Cpu_number cpu)
+{ _tlb_active.atomic_set(cpu); }
+
+PUBLIC static inline
+void
+Mem_space::disable_tlb(Cpu_number cpu)
+{ _tlb_active.atomic_clear(cpu); }
+
+

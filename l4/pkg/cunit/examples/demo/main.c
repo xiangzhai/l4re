@@ -12,8 +12,8 @@
  * GNU General Public License 2.
  * Please see the COPYING-GPL-2 file for details.
  */
-#include <l4/cunit/CUnit.h>
-#include <l4/cunit/Basic.h>
+#include <CUnit.h>
+#include <Basic.h>
 #include <l4/log/log.h>
 
 static int init_suite_success(void) { return 0; }

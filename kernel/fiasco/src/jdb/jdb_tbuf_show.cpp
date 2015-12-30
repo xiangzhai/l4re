@@ -415,7 +415,7 @@ Jdb_tbuf_show::show_events(Mword n, Mword ref, Mword count, Unsigned8 mode,
 	  Jdb::write_ll_dec(&s_tsc_sc, utsc, false); s_tsc_sc.terminate();
 	  Jdb::write_tsc_s (&s_tsc_ss, utsc, false); s_tsc_ss.terminate();
 
-	  printf("%-3s%10lu.  %120.120s %13.13s (%14.14s)  %13.13s (%14.14s) kclk=%d\n",
+	  printf("%-3s%10lu.  %120.120s %13.13s (%14.14s)  %13.13s (%14.14s) kclk=%u\n",
 	         s, number, _buffer_str.begin()+y_offset, s_tsc_dc.begin(), s_tsc_ds.begin(),
                  s_tsc_sc.begin(), s_tsc_ss.begin(), kclock);
 	}
@@ -458,13 +458,13 @@ Jdb_tbuf_show::show_events(Mword n, Mword ref, Mword count, Unsigned8 mode,
 	      break;
 	    case Kclock_ref_mode:
 	      if (kclock == ref_kclock)
-		s.printf("%12u", 0);
+		s.printf("%12d", 0);
 	      else
 		{
 		  if (time_mode != 1)
 		    Jdb::write_ll_hex(&s, (Unsigned64)kclock-ref_kclock, true);
 		  else
-  		    s.printf("%+12d", kclock-ref_kclock);
+  		    s.printf("%+12d", (int)kclock-(int)ref_kclock);
 		}
 	      break;
 	    case Kclock_start_mode:
@@ -499,7 +499,7 @@ Jdb_tbuf_show::show_events(Mword n, Mword ref, Mword count, Unsigned8 mode,
 		  }
 	    }
 	  printf("%s%-*.*s %12s\033[m%s",
-	         c, Jdb_screen::width()-13, (int)Jdb_screen::width()-13,
+	         c, (int)Jdb_screen::width()-13, (int)Jdb_screen::width()-13,
 		 _buffer_str.begin() + y_offset, s.begin(), count != 1 ? "\n" : "");
 	}
        n++;

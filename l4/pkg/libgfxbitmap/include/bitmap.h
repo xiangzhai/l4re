@@ -84,7 +84,7 @@ gfxbitmap_convert_color(l4re_video_view_info_t *vi, gfxbitmap_color_t rgb);
  * \brief Fill a rectangular area with a color.
  *
  * \param vfb    Frame buffer.
- * \param fbi    Frame buffer information structure.
+ * \param vi     Frame buffer information structure.
  * \param x      X position of area.
  * \param y      Y position of area.
  * \param w      Width of area.
@@ -99,7 +99,7 @@ gfxbitmap_fill(l4_uint8_t *vfb, l4re_video_view_info_t *vi,
  * \brief Fill a rectangular area with a bicolor bitmap pattern.
  *
  * \param vfb    Frame buffer.
- * \param fbi    Frame buffer information structure.
+ * \param vi     Frame buffer information structure.
  * \param x      X position of area.
  * \param y      Y position of area.
  * \param w      Width of area.
@@ -108,20 +108,22 @@ gfxbitmap_fill(l4_uint8_t *vfb, l4re_video_view_info_t *vi,
  * \param fgc    Foreground color.
  * \param bgc    Background color.
  * \param offset Offsets.
- * \param mode   Mode (\see #pSLIM_BMAP_START_MSB and * \#pSLIM_BMAP_START_LSB).
+ * \param mode   Mode
+ *
+ * \see #pSLIM_BMAP_START_MSB and #pSLIM_BMAP_START_LSB.
  */
 void
 gfxbitmap_bmap(l4_uint8_t *vfb, l4re_video_view_info_t *vi,
                 l4_int16_t x, l4_int16_t y, l4_uint32_t w,
                 l4_uint32_t h, l4_uint8_t *bmap,
                 gfxbitmap_color_pix_t fgc, gfxbitmap_color_pix_t bgc,
-                struct gfxbitmap_offset* offset, l4_uint8_t mode);
+                struct gfxbitmap_offset *offset, l4_uint8_t mode);
 
 /**
  * \brief Set area from source area.
  *
  * \param vfb    Frame buffer.
- * \param fbi    Frame buffer information structure.
+ * \param vi     Frame buffer information structure.
  * \param x      X position of area.
  * \param y      Y position of area.
  * \param w      Width of area.
@@ -136,7 +138,7 @@ void
 gfxbitmap_set(l4_uint8_t *vfb, l4re_video_view_info_t *vi,
                l4_int16_t x, l4_int16_t y, l4_uint32_t w,
                l4_uint32_t h, l4_uint32_t xoffs, l4_uint32_t yoffs,
-               l4_uint8_t *pmap, struct gfxbitmap_offset* offset,
+               l4_uint8_t *pmap, struct gfxbitmap_offset *offset,
                l4_uint32_t pwidth);
 
 /**
@@ -144,7 +146,7 @@ gfxbitmap_set(l4_uint8_t *vfb, l4re_video_view_info_t *vi,
  *
  * \param dest   Destination frame buffer.
  * \param src    Source frame buffer.
- * \param fbi    Frame buffer information structure.
+ * \param vi     Frame buffer information structure.
  * \param x      Source X position of area.
  * \param y      Source Y position of area.
  * \param w      Width of area.

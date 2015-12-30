@@ -9,7 +9,8 @@
 #pragma once
 
 #include <l4/sys/capability>
-#include <l4/cxx/ipc_server>
+#include <l4/sys/vcon>
+#include <l4/sys/cxx/ipc_epiface>
 #include <l4/cxx/string>
 
 #include "local_service.h"
@@ -17,7 +18,7 @@
 
 namespace Ldr {
 
-class Log : public L4::Server_object
+class Log : public L4::Epiface_t<Log, L4::Vcon>
 {
 private:
   enum { Max_tag = 8 };
@@ -40,7 +41,26 @@ public:
   char const *tag() const { return _tag; }
   unsigned char color() const { return _color; }
 
-  int dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios);
+  int op_bind(L4::Icu::Rights, l4_umword_t,
+              L4::Ipc::Snd_fpage)
+  { return -L4_ENOSYS; }
+
+  int op_unbind(L4::Icu::Rights, l4_umword_t,
+                L4::Ipc::Snd_fpage)
+  { return -L4_ENOSYS; }
+  int op_info(L4::Icu::Rights, L4::Icu::_Info &)
+  { return -L4_ENOSYS; }
+  int op_msi_info(L4::Icu::Rights, unsigned, l4_uint64_t,
+                  l4_icu_msi_info_t &)
+  { return -L4_ENOSYS; }
+  int op_mask(L4::Icu::Rights, l4_umword_t)
+  { return -L4_ENOSYS; }
+  int op_unmask(L4::Icu::Rights, l4_umword_t)
+  { return -L4_ENOSYS; }
+  int op_set_mode(L4::Icu::Rights, l4_umword_t, l4_umword_t)
+  { return -L4_ENOSYS; }
+
+  l4_msgtag_t op_dispatch(l4_utcb_t *utcb, l4_msgtag_t tag, L4::Vcon::Rights);
 
   static int color_value(cxx::String const &col);
   virtual ~Log() {}

@@ -24,7 +24,7 @@ private:
   Obj_list _sweep;
 
 public:
-  Registry();
+  Registry(L4::Ipc_svr::Server_iface *sif);
 
   void gc_sweep();
   void gc_step();

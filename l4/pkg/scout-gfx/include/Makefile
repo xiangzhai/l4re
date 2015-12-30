@@ -10,12 +10,12 @@ EXTRA_TARGET := \
   doc/navbar \
   doc/token \
   doc/verbatim \
-  docview \
   document \
   event \
   factory \
   fade_icon \
   fader \
+  focus_mixin \
   fonts \
   grid_layout \
   horizontal_shadow \
@@ -23,6 +23,7 @@ EXTRA_TARGET := \
   layout_item \
   layout \
   loadbar \
+  message_observer \
   png_image \
   platform \
   pt_factory \

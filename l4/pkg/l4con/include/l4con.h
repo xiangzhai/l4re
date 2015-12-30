@@ -125,17 +125,33 @@
 
 #include <l4/sys/capability>
 #include <l4/re/console>
+#include <l4/sys/cxx/ipc_iface>
 
 class L4con : public L4::Kobject_t<L4con, L4Re::Console, 0x4100>
 {
 public:
-  class L4con_ {
-    public:
-      enum Opcodes {
-	Close, Pslim_fill, Pslim_copy, Puts, Puts_scale, Get_font_size
-      };
-  };
-  long close() const throw();
+  L4_INLINE_RPC(long, close, ());
+
+  L4_INLINE_RPC(long, pslim_fill, (int x, int y, int w, int h,
+                                   l4con_pslim_color_t color));
+
+  L4_INLINE_RPC(long, pslim_copy, (int x, int y, int w, int h,
+                                   l4_int16_t dx, l4_int16_t dy));
+
+  L4_INLINE_RPC(long, puts, (short x, short y, l4con_pslim_color_t fg_color,
+                             l4con_pslim_color_t bg_color,
+                             L4::Ipc::String<char> text));
+
+  L4_INLINE_RPC(long, puts_scale, (short x, short y,
+                                   l4con_pslim_color_t fg_color,
+                                   l4con_pslim_color_t bg_color,
+                                   short scale_x, short scale_y,
+                                   L4::Ipc::String<char> text));
+  L4_INLINE_RPC(long, get_font_size, (short *w, short *h));
+
+
+  typedef L4::Typeid::Rpcs<close_t, pslim_fill_t, pslim_copy_t,
+                           puts_t, puts_scale_t, get_font_size_t> Rpcs;
 };
 
 #endif

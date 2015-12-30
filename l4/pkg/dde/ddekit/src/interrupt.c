@@ -93,7 +93,7 @@ static int do_irq_attach(int irq)
     return -2;
 
   pthread_t pthread = (pthread_t)ddekit_thread_get_id(ddekit_irq_ctrl[irq].irq_thread);
-  l4_cap_idx_t thread_cap = pthread_getl4cap(pthread);
+  l4_cap_idx_t thread_cap = pthread_l4_cap(pthread);
   if (l4_msgtag_has_error(l4_irq_attach(ddekit_irq_ctrl[irq].irq_cap,
 			      irq, /*ddekit_irq_ctrl[irq].trigger, */ thread_cap)))
     return -3;
@@ -141,7 +141,7 @@ static void intloop(void *arg)
 {
 	struct intloop_params *params = arg;
 
-	printf("Thread 0x%lx for IRQ %d\n", l4_debugger_global_id(pthread_getl4cap(pthread_self())), params->irq);
+	printf("Thread 0x%lx for IRQ %d\n", l4_debugger_global_id(pthread_l4_cap(pthread_self())), params->irq);
 
 	/* wait for main thread thread to fill irqctrl structure */
 	ddekit_sem_down(params->started1);
@@ -314,7 +314,7 @@ void ddekit_interrupt_detach(int irq)
 	//ddekit_interrupt_disable(irq);
 	//ddekit_thread_terminate(ddekit_irq_ctrl[irq].irq_thread);
 	pthread_t _thread = (pthread_t)ddekit_thread_get_id(ddekit_irq_ctrl[irq].irq_thread);
-	l4_cap_idx_t thread_cap = pthread_getl4cap(_thread);
+	l4_cap_idx_t thread_cap = pthread_l4_cap(_thread);
 	l4_msgtag_t res = l4_ipc_send(thread_cap, l4_utcb(),
 	    			      l4_msgtag(0, 0, 0, 0), L4_IPC_NEVER);
 	if (l4_ipc_error(res, l4_utcb()))

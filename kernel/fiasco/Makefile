@@ -138,7 +138,9 @@ $(addprefix $(ALLBUILDDIR)/,$(TEST_TEMPLATES)):
 	$(call buildmakefile,$@)
 	cp $(TEMPLDIR)/globalconfig.out.$(patsubst $(ALLBUILDDIR)/%,%,$@)     \
 	   $@/globalconfig.out
+	INCLUDE_PPC32=y INCLUDE_SPARC=y                                       \
 	$(MAKE) -C $@ olddefconfig 2>&1 | tee -a $@/build.log
+	INCLUDE_PPC32=y INCLUDE_SPARC=y                                       \
 	$(MAKE) -C $@ 2>&1 | tee -a $@/build.log;                             \
 	if [ $${PIPESTATUS[0]} = 0 -o -e $@/buildcheck.ignore ];              \
 	then [ -z "$(KEEP_BUILD_DIRS)" ] && $(RM) -r $@;                      \
@@ -191,8 +193,10 @@ endef
 $(RANDBUILDDIRS):
 	cp -a $(RANDBUILDDIR)/build-templ $@
 	until                                                 \
-	  $(MAKE) -C $@ randconfig | tee -a $@/build.log;     \
-	  $(MAKE) -C $@ oldconfig  | tee -a $@/build.log;     \
+	  INCLUDE_PPC32=y INCLUDE_SPARC=y                     \
+	    $(MAKE) -C $@ randconfig | tee -a $@/build.log;   \
+	  INCLUDE_PPC32=y INCLUDE_SPARC=y                     \
+	    $(MAKE) -C $@ oldconfig  | tee -a $@/build.log;   \
 	do [ $${PIPESTATUS[0]} != 0 ]; done
 	+fn=$$(cat $@/globalconfig.out                        \
 	      | grep -e "^CONFIG_" | sort | sha1sum           \
@@ -234,7 +238,7 @@ randcheckstatloop:
 remotemake:
 	@r=$(word 1,$(REMOTEOPTS)); h=$${r%:*}; p=$${r#*:};                           \
 	ssh $$h mkdir -p $$p;                                                         \
-	rsync -aP Makefile src tool $$r;                                              \
+	rsync -aP --delete Makefile src tool $$r;                                              \
 	ssh $$h "cd $$p && make $(wordlist 2,$(words $(REMOTEOPTS)),$(REMOTEOPTS))";  \
 	echo "Returned from $$r."
 

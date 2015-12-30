@@ -73,7 +73,7 @@ static int create_threads(void)
       if (pthread_create(&t, NULL, thread_fn, NULL))
         return 1;
 
-      threads[i] = L4::Cap<L4::Thread>(pthread_getl4cap(t));
+      threads[i] = L4::Cap<L4::Thread>(pthread_l4_cap(t));
     }
   printf("Created %d threads.\n", NR_THREADS);
   return 0;

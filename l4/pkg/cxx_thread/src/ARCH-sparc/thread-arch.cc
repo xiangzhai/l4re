@@ -17,6 +17,8 @@ void L4_cxx_start(void)
 				"ta 6 \n");
 }
 
+void L4_cxx_kill(void);
+
 void L4_cxx_kill(void)
 {
   asm volatile (".global L4_Thread_kill_cxx_thread \n"

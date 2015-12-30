@@ -63,21 +63,3 @@ Vcon_client::vcon_get_attr(l4_vcon_attr_t *attr) throw()
   return 0;
 }
 
-int
-Vcon_client::dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios)
-{
-  l4_msgtag_t tag;
-  ios >> tag;
-
-  switch (tag.label())
-    {
-    case L4::Meta::Protocol:
-      return L4::Util::handle_meta_request<L4::Vcon>(ios);
-    case L4_PROTO_IRQ:
-      return Icu_svr::dispatch(obj, ios);
-    case L4_PROTO_LOG:
-      return My_vcon_svr::dispatch(obj, ios);
-    default:
-      return -L4_EBADPROTO;
-    }
-}

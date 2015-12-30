@@ -90,7 +90,7 @@ static void *ankhif_recv_fn(void *arg)
     l4shmc_ringbuf_t *rb = l4ankh_get_recvbuf();
 
     struct ankhif *ankhif = netif->state;
-    ankhif->config->recv_thread = pthread_getl4cap(pthread_self());
+    ankhif->config->recv_thread = pthread_l4_cap(pthread_self());
     err = l4ankh_prepare_recv(ankhif->config->recv_thread);
 
     printf("ANKHIF::Recv rb @ %p\n", rb);
@@ -449,7 +449,7 @@ int l4_lwip_init(int *argc, char **argv)
     printf("Initializing Ankh\n");
 #endif
 
-    cfg.send_thread =  pthread_getl4cap(pthread_self());
+    cfg.send_thread =  pthread_l4_cap(pthread_self());
     l4ankh_init();
 
     tcpip_init(NULL, NULL);

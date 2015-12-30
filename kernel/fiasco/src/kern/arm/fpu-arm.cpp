@@ -114,7 +114,6 @@ IMPLEMENTATION [arm && fpu]:
 #include <cstring>
 
 #include "fpu_state.h"
-#include "kdb_ke.h"
 #include "mem.h"
 #include "processor.h"
 #include "static_assert.h"
@@ -352,7 +351,7 @@ unsigned
 Fpu::state_align()
 { return 4; }
 
-PUBLIC static inline NEEDS["trap_state.h", "kdb_ke.h", Fpu::fpexc]
+PUBLIC static inline NEEDS["trap_state.h", <cassert>, Fpu::fpexc]
 void
 Fpu::save_user_exception_state(bool owner, Fpu_state *s, Trap_state *ts, Exception_state_user *esu)
 {
@@ -367,13 +366,13 @@ Fpu::save_user_exception_state(bool owner, Fpu_state *s, Trap_state *ts, Excepti
       Mword exc = Fpu::fpexc();
 
       esu->fpexc = exc;
-      if (exc & 0x80000000)
+      if (exc & FPEXC_EX)
         {
           esu->fpinst  = Fpu::fpinst();
           esu->fpinst2 = Fpu::fpinst2();
 
           if (!Proc::Is_hyp)
-            Fpu::fpexc(exc & ~0x80000000);
+            Fpu::fpexc(exc & ~FPEXC_EX);
         }
       return;
     }
@@ -384,17 +383,17 @@ Fpu::save_user_exception_state(bool owner, Fpu_state *s, Trap_state *ts, Excepti
       return;
     }
 
-  assert_kdb (s->state_buffer());
+  assert (s->state_buffer());
 
   Fpu_regs *fpu_regs = reinterpret_cast<Fpu_regs *>(s->state_buffer());
   esu->fpexc = fpu_regs->fpexc;
-  if (fpu_regs->fpexc & 0x80000000)
+  if (fpu_regs->fpexc & FPEXC_EX)
     {
       esu->fpinst  = fpu_regs->fpinst;
       esu->fpinst2 = fpu_regs->fpinst2;
 
       if (!Proc::Is_hyp)
-        fpu_regs->fpexc &= ~0x80000000;
+        fpu_regs->fpexc &= ~FPEXC_EX;
     }
 }
 
@@ -500,7 +499,7 @@ Fpu::disable()
 }
 
 
-IMPLEMENT
+IMPLEMENT_OVERRIDE
 void
 Fpu::restore_state(Fpu_state *s)
 {

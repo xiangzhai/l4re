@@ -9,5 +9,5 @@ WARNINGS        = $(WARNINGS_MEDIUM)
 
 vpath %.c $(SRC_DIR)/../contrib
 
+include $(PKGDIR)/lib/contrib/Makefile.libfdt
 include $(L4DIR)/mk/lib.mk
-include $(SRC_DIR)/../contrib/Makefile.libfdt

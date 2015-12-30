@@ -19,7 +19,7 @@
 #include <l4/sigma0/sigma0.h>
 #include <l4/util/util.h>
 #include <l4/sys/cache.h>
-#include <l4/vcpu/vcpu>
+#include <l4/vcpu/vcpu.h>
 #include <l4/sys/thread>
 
 #include <cstdio>
@@ -160,7 +160,7 @@ static void setup_linux(l4_vm_tz_state *vmstate)
 
   if (env->rm()->attach(&vm_image_addr, l4_round_page(vm_image_size),
                         L4Re::Rm::Search_addr | L4Re::Rm::Read_only,
-                        vm_ds_cap, 0, 0))
+                        L4::Ipc::make_cap_rw(vm_ds_cap)))
     error("Cannot attach vm image\n");
 
   if (!(initrd_cap = ns.query<L4Re::Dataspace>("rom/linux-initrd")))
@@ -170,7 +170,7 @@ static void setup_linux(l4_vm_tz_state *vmstate)
 
   if (env->rm()->attach(&initrd_addr, l4_round_page(initrd_size),
                         L4Re::Rm::Search_addr | L4Re::Rm::Read_only,
-                        initrd_cap, 0, 0))
+                        L4::Ipc::make_cap_rw(initrd_cap)))
     error("Cannot attach initrd image\n");
 
   // fixup Initrd size in ATAG structure
@@ -209,10 +209,11 @@ int main()
   if (l4sigma0_map_iomem(sigma0_cap.cap(), Ram_base, Ram_base, Ram_size, 1))
     error("Cannot map nonsecure memory\n");
 
-  L4vcpu::Vcpu *vcpu;
+  l4_vcpu_state_t *vcpu;
   l4_addr_t _vmstate;
 
-  int r = L4vcpu::Vcpu::ext_alloc(&vcpu, &_vmstate);
+  int r = l4vcpu_ext_alloc(&vcpu, &_vmstate, L4_BASE_TASK_CAP,
+                           l4re_global_env->rm);
   if (r)
     {
       printf("Failed to allocate virtualization data structures: %d\n", r);
@@ -221,9 +222,9 @@ int main()
 
   l4_vm_tz_state *vmstate = (l4_vm_tz_state *)_vmstate;
 
-  vcpu->task(vm);
-  vcpu->state()->set(L4_VCPU_F_FPU_ENABLED);
-  vcpu->saved_state()->set(L4_VCPU_F_USER_MODE | L4_VCPU_F_FPU_ENABLED);
+  vcpu->user_task =vm.cap();
+  vcpu->state |= L4_VCPU_F_FPU_ENABLED;
+  vcpu->saved_state |=  L4_VCPU_F_USER_MODE | L4_VCPU_F_FPU_ENABLED;
 
   setup_linux(vmstate);
 

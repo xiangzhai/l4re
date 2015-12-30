@@ -18,8 +18,11 @@
 #include <l4/mag-gfx/geometry>
 #include <l4/mag-gfx/canvas>
 
+#include <l4/scout-gfx/icon>
+#include <l4/scout-gfx/fonts>
 #include <l4/scout-gfx/widget>
 #include <l4/scout-gfx/factory>
+#include <l4/scout-gfx/style>
 
 #include <cstring>
 

@@ -45,7 +45,7 @@ exit_question()
   Proc::cli();
   exit_question_active = 1;
 
-  Pic::Status irqs = Pic::disable_all_save();
+  Unsigned16 irqs = Pic::disable_all_save();
   if (Config::getchar_does_hlt_works_ok)
     {
       Timer_tick::set_vectors_stop();
@@ -78,8 +78,6 @@ main_arch()
 {
   // console initialization
   set_exit_question(&exit_question);
-
-  //Pic::disable_all_save();
 }
 
 

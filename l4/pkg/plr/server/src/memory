@@ -291,7 +291,7 @@ namespace Romain
 			void         release() const                        { Ops::release(this); }
 
 
-			Region_handler_template operator + (long offset) throw()
+			Region_handler_template operator + (long offset) const throw()
 			{ Region_handler_template n = *this; n._offs += offset; return n; }
 
 			void unmap(l4_addr_t va, l4_addr_t ds_offs, l4_umword_t size) const throw()
@@ -578,7 +578,7 @@ namespace Romain
 			typedef L4::Cap<L4Re::Dataspace> Dataspace;
 			enum { Have_find = true };
 
-			static int validate_ds(L4::Ipc::Snd_fpage const &ds_cap,
+			static int validate_ds(void *, L4::Ipc::Snd_fpage const &ds_cap,
 			                       l4_umword_t, L4::Cap<L4Re::Dataspace> *ds)
 			{
 				/*

@@ -1,3 +1,5 @@
+#define LWIP_PREFIX_BYTEORDER_FUNCS 1
+
 #include <l4/l4re_vfs/vfs.h>
 #include <l4/l4re_vfs/backend>
 #include <l4/cxx/ref_ptr>
@@ -73,7 +75,10 @@ private:
 
   static void event_callback(netconn *conn, netconn_evt evt, u16_t len) throw();
 public:
-  Socket_file(netconn *conn = 0) throw() : _conn(conn) {}
+  Socket_file(netconn *conn = 0) throw()
+  : _conn(conn), _rcvevent(0), _sendevent(0), _errevent(0),
+    _lastdata(NULL), _lastoffset(0)
+  {}
 
   ~Socket_file() throw()
   {
@@ -125,27 +130,27 @@ inline netconn_type domain_to_netconn_type(int domain, int type)
 }
 
 inline socklen_t
-ip4_addr_port_to_sockaddr(ipX_addr_t const &addr, uint16_t port, sockaddr_in *saddr)
+ip4_addr_port_to_sockaddr(ip_addr_t const &addr, uint16_t port, sockaddr_in *saddr)
 {
   saddr->sin_family = AF_INET;
   saddr->sin_port = htons(port);
-  saddr->sin_addr.s_addr = addr.ip4.addr;
+  saddr->sin_addr.s_addr = addr.u_addr.ip4.addr;
   //memset(saddr->sin_zero, 0, SIN_ZERO_LEN);
   return sizeof(sockaddr_in);
 }
 
 inline socklen_t
-ip6_addr_port_to_sockaddr(ipX_addr_t const &addr, uint16_t port, sockaddr_in6 *saddr)
+ip6_addr_port_to_sockaddr(ip_addr_t const &addr, uint16_t port, sockaddr_in6 *saddr)
 {
   saddr->sin6_family = AF_INET6;
   saddr->sin6_port = htons((port));
   saddr->sin6_flowinfo = 0;
-  memcpy(&saddr->sin6_addr, &addr.ip6, sizeof(saddr->sin6_addr));
+  memcpy(&saddr->sin6_addr, &addr.u_addr.ip6, sizeof(saddr->sin6_addr));
   return sizeof(sockaddr_in6);
 }
 
 inline socklen_t
-ip_addr_port_to_sockaddr(bool ipv6, ipX_addr_t const &addr, uint16_t port, sockaddr *saddr)
+ip_addr_port_to_sockaddr(bool ipv6, ip_addr_t const &addr, uint16_t port, sockaddr *saddr)
 {
   if (ipv6)
     return ip6_addr_port_to_sockaddr(addr, port, reinterpret_cast<sockaddr_in6 *>(saddr));
@@ -154,22 +159,22 @@ ip_addr_port_to_sockaddr(bool ipv6, ipX_addr_t const &addr, uint16_t port, socka
 }
 
 inline void
-sockaddr_to_ip4_addr_port(ipX_addr_t *addr, uint16_t *port, sockaddr_in const *saddr)
+sockaddr_to_ip4_addr_port(ip_addr_t *addr, uint16_t *port, sockaddr_in const *saddr)
 {
   *port = ntohs(saddr->sin_port);
-  addr->ip4.addr = saddr->sin_addr.s_addr;
+  addr->u_addr.ip4.addr = saddr->sin_addr.s_addr;
   //memset(saddr->sin_zero, 0, SIN_ZERO_LEN);
 }
 
 inline void
-sockaddr_to_ip6_addr_port(ipX_addr_t *addr, uint16_t *port, sockaddr_in6 const *saddr)
+sockaddr_to_ip6_addr_port(ip_addr_t *addr, uint16_t *port, sockaddr_in6 const *saddr)
 {
   *port = ntohs(saddr->sin6_port);
-  memcpy(&addr->ip6, &saddr->sin6_addr, sizeof(saddr->sin6_addr));
+  memcpy(&addr->u_addr.ip6, &saddr->sin6_addr, sizeof(saddr->sin6_addr));
 }
 
 inline void
-sockaddr_to_ip_addr_port(ipX_addr_t *addr, uint16_t *port, sockaddr const *saddr)
+sockaddr_to_ip_addr_port(ip_addr_t *addr, uint16_t *port, sockaddr const *saddr)
 {
   if (saddr->sa_family == AF_INET6)
     sockaddr_to_ip6_addr_port(addr, port, reinterpret_cast<sockaddr_in6 const *>(saddr));
@@ -335,7 +340,7 @@ Socket_file::accept(sockaddr *addr, socklen_t *len) throw()
         }
     }
 
-  newsock = static_cast<Socket_file*>(newconn->priv);
+  newsock = cxx::ref_ptr(static_cast<Socket_file*>(newconn->priv));
 
 
   /* Prevent automatic window updates, we do this on our own! */
@@ -347,10 +352,10 @@ Socket_file::accept(sockaddr *addr, socklen_t *len) throw()
   if (addr)
     {
       sockaddr tempaddr;
-      ipX_addr_t naddr;
+      ip_addr_t naddr;
       u16_t port;
      /* get the IP address and port of the remote host */
-      err = netconn_peer(newconn, ipX_2_ip(&naddr), &port);
+      err = netconn_peer(newconn, &naddr, &port);
       if (err != ERR_OK)
         return -err_to_errno(err);
 
@@ -376,12 +381,12 @@ Socket_file::bind(sockaddr const *addr, socklen_t len) throw()
       || !sockaddr_aligned(addr))
     return -EIO;
 
-  ipX_addr_t local_addr;
+  ip_addr_t local_addr;
   u16_t local_port;
 
   sockaddr_to_ip_addr_port(&local_addr, &local_port, addr);
 
-  err_t err = netconn_bind(_conn, ipX_2_ip(&local_addr), local_port);
+  err_t err = netconn_bind(_conn, &local_addr, local_port);
   if (err != ERR_OK)
     return -err_to_errno(err);
 
@@ -403,10 +408,10 @@ Socket_file::connect(sockaddr const *addr, socklen_t len) throw()
     err = netconn_disconnect(_conn);
   else
     {
-      ipX_addr_t remote_addr;
+      ip_addr_t remote_addr;
       u16_t remote_port;
       sockaddr_to_ip_addr_port(&remote_addr, &remote_port, addr);
-      err = netconn_connect(_conn, ipX_2_ip(&remote_addr), remote_port);
+      err = netconn_connect(_conn, &remote_addr, remote_port);
     }
 
   if (err != ERR_OK)
@@ -523,19 +528,19 @@ Socket_file::recvfrom(void *_buf, size_t len, int flags, sockaddr *from, socklen
     if (done && from && fromlen)
       {
         u16_t port;
-        ipX_addr_t tmpaddr;
-        ipX_addr_t *fromaddr;
+        ip_addr_t tmpaddr;
+        ip_addr_t *fromaddr;
         sockaddr saddr;
         if (is_tcp)
           {
             fromaddr = &tmpaddr;
             /* @todo: this does not work for IPv6, yet */
-            netconn_getaddr(_conn, ipX_2_ip(fromaddr), &port, 0);
+            netconn_getaddr(_conn, fromaddr, &port, 0);
           }
         else
           {
             port = netbuf_fromport((struct netbuf *)buf);
-            fromaddr = netbuf_fromaddr_ipX((struct netbuf *)buf);
+            fromaddr = netbuf_fromaddr((struct netbuf *)buf);
           }
 
         socklen_t len = ip_addr_port_to_sockaddr(NETCONNTYPE_ISIPV6(netconn_type(_conn)), tmpaddr, port, &saddr);
@@ -602,7 +607,7 @@ Socket_file::sendto(void const *data, size_t size, int flags, sockaddr const *to
   else
     {
       remote_port = 0;
-      ipX_addr_set_any(NETCONNTYPE_ISIPV6(netconn_type(_conn)), &buf.addr);
+      ip_addr_set_any(NETCONNTYPE_ISIPV6(netconn_type(_conn)), &buf.addr);
     }
   netbuf_fromport(&buf) = remote_port;
 

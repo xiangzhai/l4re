@@ -7,6 +7,8 @@
  * Please see the COPYING-GPL-2 file for details.
  */
 #include <l4/scout-gfx/widget>
+#include <cstdio>
+
 
 namespace Scout_gfx {
 
@@ -67,7 +69,8 @@ void Parent_widget::forget(Widget *e)
   if (e->parent() == this)
     remove(e);
 
-  _parent->forget(e);
+  if(_parent)
+    _parent->forget(e);
 }
 
 
@@ -119,10 +122,58 @@ Parent_widget::find(Point const &p)
     {
       Widget *res  = e->find(np);
       if (res)
-	ret = res;
+        ret = res;
     }
 
   return ret;
+}
+
+Widget *
+Widget::root()
+{
+  if (!_parent || this == _parent)
+    return this;
+
+  return _parent->root();
+}
+
+Widget *
+Widget::next_widget(bool)
+{
+  if (!next)
+    //backtrack:
+    return _parent->next_widget(true);
+
+  return next;
+}
+
+Widget *
+Parent_widget::next_widget(bool bt)
+{
+  if (0) printf("Parent_widget::next()\n");
+  if (bt || !_first) //just used as flag
+    {
+      if (next)
+        {
+          if (0) printf("subtree searched -> next\n");
+          return next;
+        }
+      else
+        {
+          if (0) printf("backtracking\n");
+          if (!_parent || _parent == this)
+            return 0; //root: may be _null
+
+          return _parent->next_widget(1);
+        }
+    }
+  if (_first)
+    {
+      if (0) printf("descending\n");
+      return _first;
+    }
+  if (0) printf("@return\n");
+  return 0; //this should not happen - empty root
 }
 
 void

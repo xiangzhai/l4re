@@ -61,7 +61,8 @@ public:
   };
 };
 
-EXTENSION class PF {
+EXTENSION class PF
+{
 public:
   static Mword is_translation_error( Mword error );
   static Mword is_usermode_error( Mword error );

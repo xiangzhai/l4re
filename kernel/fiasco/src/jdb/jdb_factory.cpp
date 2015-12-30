@@ -23,7 +23,7 @@ public:
 
 IMPLEMENT
 Jdb_factory::Jdb_factory()
-  : Jdb_kobject_handler(Factory::static_kobj_type)
+  : Jdb_kobject_handler((Factory*)0)
 {
   Jdb_kobject::module()->register_handler(this);
 }
@@ -37,7 +37,7 @@ Jdb_factory::show_kobject(Kobject_common *, int )
 
 PUBLIC
 char const *
-Jdb_factory::kobject_type() const
+Jdb_factory::kobject_type(Kobject_common *) const
 {
   return JDB_ANSI_COLOR(yellow) "Factory" JDB_ANSI_COLOR(default);
 }
@@ -46,8 +46,8 @@ PUBLIC
 void
 Jdb_factory::show_kobject_short(String_buffer *buf, Kobject_common *o)
 {
-  Factory *t = Kobject::dcast<Factory*>(o);
-  buf->printf(" c=%ld l=%ld", t->current(), t->limit());
+  Factory *t = cxx::dyn_cast<Factory*>(o);
+  buf->printf(" c=%lu l=%lu", t->current(), t->limit());
 }
 
 static Jdb_factory jdb_factory INIT_PRIORITY(JDB_MODULE_INIT_PRIO);

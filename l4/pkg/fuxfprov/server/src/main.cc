@@ -25,8 +25,9 @@
 #include <l4/re/error_helper>
 #include <l4/re/util/cap_alloc>
 #include <l4/re/util/object_registry>
-#include <l4/re/protocols>
+#include <l4/re/dataspace>
 #include <l4/re/dataspace-sys.h>
+#include <l4/re/namespace>
 #include <l4/re/namespace-sys.h>
 #include <l4/re/mem_alloc>
 #include <l4/sys/factory>
@@ -44,9 +45,7 @@
 
 static const char *fprov_prefix = "ux";
 
-static L4Re::Util::Registry_server<> server(l4_utcb(),
-                                            L4Re::Env::env()->main_thread(),
-                                            L4Re::Env::env()->factory());
+static L4Re::Util::Registry_server<> server;
 
 enum {
   Max_search_paths = 20,
@@ -93,7 +92,7 @@ static void setup(int argc, char *argv[])
 }
 
 
-class Ds : public L4::Server_object
+class Ds : public L4::Server_object_t<L4Re::Dataspace>
 {
 public:
   explicit Ds(const char *fname);
@@ -284,7 +283,7 @@ int Ds::dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios)
   l4_msgtag_t tag;
   ios >> tag;
 
-  if (tag.label() != L4Re::Protocol::Dataspace)
+  if (tag.label() != L4Re::Dataspace::Protocol)
     return -L4_EBADPROTO;
 
   L4::Opcode op;
@@ -318,7 +317,7 @@ int Ds::dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios)
 
 // ------------------------------------------------------------------------
 
-class Fprov_server : public L4::Server_object
+class Fprov_server : public L4::Server_object_t<L4Re::Namespace>
 {
 public:
   Fprov_server();
@@ -464,7 +463,7 @@ Fprov_server::dispatch(l4_umword_t, L4::Ipc::Iostream &ios)
   l4_msgtag_t t;
   ios >> t;
 
-  if (t.label() != L4Re::Protocol::Namespace)
+  if (t.label() != L4Re::Namespace::Protocol)
     return -L4_EBADPROTO;
 
   l4_umword_t opcode;

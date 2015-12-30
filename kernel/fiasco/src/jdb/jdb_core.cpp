@@ -96,7 +96,7 @@ public:
   /**
    * Like strlen but do not count ESC sequences.
    */
-  static unsigned print_len(const char *s);
+  static int print_len(const char *s);
 
   static char esc_prompt[];
 
@@ -211,9 +211,9 @@ int Jdb_core::prompt_len()
 }
 
 IMPLEMENT
-unsigned Jdb_core::print_len(const char *s)
+int Jdb_core::print_len(const char *s)
 {
-  unsigned l = 0;
+  int l = 0;
   while (*s)
     {
       if (s[0] == '\033' && s[1] == '[')
@@ -261,9 +261,9 @@ int Jdb_core::set_prompt_color(char x)
     return 0;
 
   if (x >= 'A' && x <= 'Z')
-    snprintf(esc_prompt, sizeof(esc_prompt) - 1, "\033[%d;%dm", pc, 1);
+    snprintf(esc_prompt, sizeof(esc_prompt) - 1, "\033[%u;%dm", pc, 1);
   else
-    snprintf(esc_prompt, sizeof(esc_prompt) - 1, "\033[%dm", pc);
+    snprintf(esc_prompt, sizeof(esc_prompt) - 1, "\033[%um", pc);
 
   return 1;
 

@@ -40,12 +40,22 @@
 #define DOPECMD_WARN_TRUNC_RET_STR  11  /* return string was truncated */
 
 #ifdef __cplusplus
+
+#include <l4/re/event>
+#include <l4/sys/cxx/ipc_client>
+#include <l4/sys/cxx/ipc_types>
+#include <l4/sys/cxx/ipc_string>
+
 namespace Dope {
-  namespace Protocol {
-    enum Protocols { App = 0x1090, };
-  };
-  namespace Dope_app_ {
-    enum Opcodes { Cmd, Cmd_req, Vscreen_get_fb, Get_keystate };
+  struct Dope : L4::Kobject_t<Dope, L4Re::Event, 0x1090>
+  {
+    L4_INLINE_RPC(long, c_cmd, (L4::Ipc::String<> cmd));
+    L4_INLINE_RPC(long, c_cmd_req, (L4::Ipc::String<> cmd, L4::Ipc::String<char> *res));
+    L4_INLINE_RPC(long, c_vscreen_get_fb, (L4::Ipc::String<> cmd,
+                                           L4::Ipc::Out<L4::Cap<L4Re::Dataspace> > ds));
+    L4_INLINE_RPC(long, c_get_keystate, (long key, long *res));
+
+    typedef L4::Typeid::Rpcs<c_cmd_t, c_cmd_req_t, c_vscreen_get_fb_t, c_get_keystate_t> Rpcs;
   };
 };
 #endif

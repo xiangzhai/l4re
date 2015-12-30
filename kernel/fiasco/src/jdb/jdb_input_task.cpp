@@ -57,7 +57,7 @@ Jdb_input_task_addr::gotkey_complete_symbol(char *&str, int maxlen, int c)
 PUBLIC static
 Task *
 Jdb_input_task_addr::task()
-{ return Kobject::dcast<Task *>(_task); }
+{ return cxx::dyn_cast<Task *>(_task); }
 
 PUBLIC static
 Space *
@@ -95,7 +95,7 @@ Jdb_input_task_addr::action(void *&args, char const *&fmt, int &next_char)
     }
   else if (args == &_task)
     {
-      _space = Kobject::dcast<Task *>(_task);
+      _space = cxx::dyn_cast<Task *>(_task);
 
       if (_task && !space())
 	{

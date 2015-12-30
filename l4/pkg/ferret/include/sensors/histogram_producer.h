@@ -48,7 +48,6 @@ L4_INLINE void ferret_histo64_bin_set(ferret_histo64_t * histo, int bin,
  * Implementations
  **********************************************************************/
 
-#include <l4/log/l4log.h>
 #include <l4/util/atomic.h>
 
 

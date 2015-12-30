@@ -28,7 +28,7 @@ Romain::App_model::Const_dataspace Romain::App_model::open_file(char const *name
 	}
 
 	cxx::Ref_ptr<L4Re::Vfs::File> fp = L4Re::Vfs::vfs_ops->get_file(err);
-	MSG() << "file ptr @ " << fp;
+	MSG() << "file ptr @ " << fp.get();
 
 	Romain::App_model::Dataspace ds_cap = fp->data_space();
 	MSG() << "ds @ 0x" << std::hex << ds_cap.cap();

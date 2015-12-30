@@ -1,4 +1,4 @@
-AC_INIT(dash, 0.5.5.1)
+AC_INIT(dash, 0.5.8)
 AM_INIT_AUTOMAKE([foreign])
 AC_CONFIG_SRCDIR([src/main.c])
 
@@ -43,10 +43,50 @@ AC_ARG_ENABLE(glob, AS_HELP_STRING(--enable-glob, [Use glob(3) from libc]))
 dnl Checks for libraries.
 
 dnl Checks for header files.
-AC_CHECK_HEADERS(alloca.h)
+AC_CHECK_HEADERS(alloca.h paths.h)
+
+dnl Check for declarations
+AC_CHECK_DECL([_PATH_BSHELL],,AC_DEFINE_UNQUOTED([_PATH_BSHELL], "/bin/sh", [Define to system shell path]),[
+#ifdef HAVE_PATHS_H
+#include <paths.h>
+#endif
+])
+AC_CHECK_DECL([_PATH_DEVNULL],,AC_DEFINE_UNQUOTED([_PATH_DEVNULL], "/dev/null", [Define to devnull device node path]),[
+#ifdef HAVE_PATHS_H
+#include <paths.h>
+#endif
+])
+AC_CHECK_DECL([_PATH_TTY],,AC_DEFINE_UNQUOTED([_PATH_TTY], "/dev/tty", [Define to tty device node path]),[
+#ifdef HAVE_PATHS_H
+#include <paths.h>
+#endif
+])
+
+dnl Some systems lack isblank
+AC_CHECK_DECLS([isblank],,,[#include <ctype.h>])
+
+dnl Check for sizes of types
+AC_CHECK_SIZEOF([intmax_t])
+AC_CHECK_SIZEOF([long long int])
+
+dnl Select a fallback format string for intmax_t in case we don't find PRIdMAX
+if test "x$ac_cv_sizeof_intmax_t" = "x$ac_cv_sizeof_long_long_int"; then
+  intmax_fstr="lld"
+else
+  intmax_fstr="jd"
+fi
+
+dnl Check for PRIdMAX and define it to a fallback if not found
+AC_CHECK_DECL([PRIdMAX],,
+	[AC_DEFINE_UNQUOTED([PRIdMAX], "$intmax_fstr",
+				       [Define to printf format string for intmax_t])],
+        [
+#include <inttypes.h>
+])
 
 dnl Checks for library functions.
-AC_CHECK_FUNCS(bsearch getpwnam getrlimit imaxdiv isalpha killpg mempcpy \
+AC_CHECK_FUNCS(bsearch faccessat getpwnam getrlimit isalpha killpg \
+	       mempcpy \
 	       sigsetmask stpcpy strchrnul strsignal strtod strtoimax \
 	       strtoumax sysconf)
 
@@ -90,6 +130,11 @@ if test "$use_libedit" != "yes"; then
 	AC_DEFINE([SMALL], 1, [Define if you build with -DSMALL])
 else
 	export LIBS="$LIBS -ledit"
+fi
+AC_ARG_ENABLE(lineno, AS_HELP_STRING(--disable-lineno, \
+				     [Disable LINENO support]))
+if test "$enable_lineno" != "no"; then
+	AC_DEFINE([WITH_LINENO], 1, [Define if you build with -DWITH_LINENO])
 fi
 AC_CONFIG_FILES([Makefile src/Makefile])
 AC_OUTPUT

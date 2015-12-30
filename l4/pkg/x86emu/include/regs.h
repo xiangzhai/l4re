@@ -39,6 +39,8 @@
 #ifndef __X86EMU_REGS_H
 #define __X86EMU_REGS_H
 
+#include <l4/x86emu/types.h>
+
 /*---------------------- Macros and type definitions ----------------------*/
 
 #ifdef PACK

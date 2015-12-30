@@ -35,7 +35,7 @@ public:
   Single_page_alloc_static()
   {
     //L4::cerr << "Hello from alloc\n";
-    Cap<Dataspace> _mem = cap_alloc.alloc<Dataspace>();
+    _mem = cap_alloc.alloc<Dataspace>();
     if (!_mem.is_valid())
       chksys(-L4_ENOMEM, "could not allocate capability");
 
@@ -43,7 +43,9 @@ public:
     chksys(Env::env()->mem_alloc()->alloc(size, _mem),
            "backend storage data space");
 
-    chksys(Env::env()->rm()->attach(&_blob, size, Rm::Search_addr, _mem, 0),
+    chksys(Env::env()->rm()
+             ->attach(&_blob, size, Rm::Search_addr,
+                      L4::Ipc::make_cap_rw(_mem)),
            "attaching backend storage data space");
   }
 

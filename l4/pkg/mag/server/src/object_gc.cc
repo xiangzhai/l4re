@@ -13,19 +13,6 @@
 
 namespace Mag_server {
 
-namespace {
-  class Trash : public L4::Server_object
-  {
-    int dispatch(l4_umword_t, L4::Ipc::Iostream &)
-    {
-      printf("GOT: stale request, drop it\n");
-      return -L4_EINVAL;
-    }
-  };
-
-  static Trash _trash;
-}
-
 void
 Object_gc::gc_step()
 {
@@ -35,10 +22,7 @@ Object_gc::gc_step()
       if (!n->obj_cap() || !n->obj_cap().validate().label())
 	{
 	  //printf("GC: object=%p\n", *n);
-	  L4::Thread::Modify_senders todo;
-	  todo.add(~3UL, reinterpret_cast<l4_umword_t>((L4::Server_object*)*n),
-	           ~0UL, reinterpret_cast<l4_umword_t>((L4::Server_object*)&_trash));
-	  L4::Cap<L4::Thread>()->modify_senders(todo);
+          gc_obj(*n);
           Object *o = *n;
 	  n = _life.erase(n);
 	  o->destroy();

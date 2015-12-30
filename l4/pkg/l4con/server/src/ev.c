@@ -197,7 +197,7 @@ static void *ev_thread(void *d)
 {
   (void)d;
   l4re_event_buffer_consumer_process(&ev_buf, ev_irq,
-                                     pthread_getl4cap(pthread_self()), NULL,
+                                     pthread_l4_cap(pthread_self()), NULL,
                                      handle_event_ev);
   return NULL;
 }

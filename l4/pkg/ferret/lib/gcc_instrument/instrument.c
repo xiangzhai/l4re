@@ -44,7 +44,7 @@ void main_destructor(void)
  * implementations
  */
 ferret_list_local_t * __func_trace_list = NULL;
-l4_threadid_t (*ferret_gcc_instrument_myself_func)(void) = NULL;
+l4_cap_idx_t (*ferret_gcc_instrument_myself_func)(void) = NULL;
 
 void __cyg_profile_func_enter(void *func_address, void *callsite)
 {
@@ -89,7 +89,7 @@ void main_destructor(void)
 /* Set two function pointers and create sensor.
  */
 void ferret_gcc_instrument_init(void *(*alloc)(size_t s),
-                                l4_threadid_t (*myself)(void))
+                                l4_cap_idx_t (*myself)(void))
 {
     int ret;
     ferret_gcc_instrument_myself_func = myself;

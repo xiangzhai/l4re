@@ -100,7 +100,7 @@ wakeup(wait_queue_head_t *h)
       tid = e->tid;
       e   = e->next;
 
-      l4_ipc(tid, l4_utcb(), L4_SYSF_SEND, pthread_getl4cap(pthread_self()),
+      l4_ipc(tid, l4_utcb(), L4_SYSF_SEND, pthread_l4_cap(pthread_self()),
              l4_msgtag(0, 0, 0, 0), &dummy, L4_IPC_NEVER);
     }
   h->first = 0;
@@ -164,7 +164,7 @@ __wait_thread(void *ignore)
 	      dequeue_head(&main_queue, h);
 	      dbg("  main=%p\n", (void*)main_queue);
               l4_ipc(src, l4_utcb(), L4_SYSF_SEND,
-                     pthread_getl4cap(pthread_self()),
+                     pthread_l4_cap(pthread_self()),
                      l4_msgtag(0, 0, 0, 0), &dummy, L4_IPC_NEVER);
 	    }
 	}
@@ -197,7 +197,7 @@ wake_up(wait_queue_head_t *wq)
   l4_utcb_mr()->mr[0] = 0;
   l4_utcb_mr()->mr[1] = (l4_umword_t)(wq);
   l4_ipc(wait_thread, l4_utcb(), L4_SYSF_CALL,
-         pthread_getl4cap(pthread_self()),
+         pthread_l4_cap(pthread_self()),
          l4_msgtag(0, 2, 0, 0),
          &dummy, L4_IPC_NEVER);
 }
@@ -219,7 +219,7 @@ l4input_internal_wait_init(void)
   if (pthread_create(&t, &a, __wait_thread, NULL))
     return;
 
-  wait_thread = pthread_getl4cap(t);
+  wait_thread = pthread_l4_cap(t);
 
   pthread_attr_destroy(&a);
 }

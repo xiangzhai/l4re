@@ -11,9 +11,10 @@
 #include <l4/mag/server/view>
 #include <l4/mag/server/session>
 
+#include <l4/re/console>
 #include <l4/re/util/video/goos_svr>
 #include <l4/re/util/event_svr>
-#include <l4/cxx/ipc_server>
+#include <l4/sys/cxx/ipc_epiface>
 #include <l4/re/util/cap_alloc>
 #include <l4/re/rm>
 #include <l4/re/util/icu_svr>
@@ -22,8 +23,9 @@
 namespace Mag_server {
 
 class Client_fb
-: public View, public Session, public Object,
-  private L4Re::Util::Video::Goos_svr,
+: public View, public Session,
+  public L4::Epiface_t<Client_fb, L4Re::Console, Object>,
+  public L4Re::Util::Video::Goos_svr,
   public L4Re::Util::Icu_cap_array_svr<Client_fb>
 {
 private:
@@ -44,13 +46,12 @@ private:
     F_fb_focus          = 1 << 2,
   };
   unsigned _flags;
+
 public:
   int setup();
   void view_setup();
 
   explicit Client_fb(Core_api const *core);
-
-  L4::Cap<void> rcv_cap() const { return _core->rcv_cap(); }
 
   void toggle_shaded();
 
@@ -59,10 +60,11 @@ public:
   bool handle_core_event(Hid_report *e, Point const &mouse);
 
   int get_stream_info_for_id(l4_umword_t id, L4Re::Event_stream_info *info);
-  int get_abs_info(l4_umword_t id, unsigned naxes, unsigned *axes,
+  int get_abs_info(l4_umword_t id, unsigned naxes, unsigned const *axes,
                    L4Re::Event_absinfo *infos);
 
-  int dispatch(l4_umword_t obj, L4::Ipc::Iostream &s);
+  using L4Re::Util::Video::Goos_svr::op_info;
+  using Icu_svr::op_info;
   int refresh(int x, int y, int w, int h);
 
   Area visible_size() const;
@@ -78,11 +80,46 @@ public:
   void put_event(l4_umword_t stream, int type, int code, int value,
                  l4_uint64_t time);
 
-private:
-  int event_get(L4::Ipc::Iostream &s);
-  int event_get_stream_info_for_id(L4::Ipc::Iostream &s);
-  int event_get_axis_info(L4::Ipc::Iostream &s);
-  int event_dispatch(l4_umword_t, L4::Ipc::Iostream &s);
+  long op_get_buffer(L4Re::Event::Rights, L4::Ipc::Cap<L4Re::Dataspace> &ds)
+  {
+    _events.reset();
+    ds = L4::Ipc::Cap<L4Re::Dataspace>(_ev_ds.get(), L4_CAP_FPAGE_RW);
+    return L4_EOK;
+  }
+
+  long op_get_num_streams(L4Re::Event::Rights)
+  { return -L4_ENOSYS; }
+
+  long op_get_stream_info(L4Re::Event::Rights, int, L4Re::Event_stream_info &)
+  { return -L4_ENOSYS; }
+
+  long op_get_stream_info_for_id(L4Re::Event::Rights, l4_umword_t id,
+                                 L4Re::Event_stream_info &info)
+  { return get_stream_info_for_id(id, &info); }
+
+  long op_get_axis_info(L4Re::Event::Rights, l4_umword_t id,
+                        L4::Ipc::Array_in_buf<unsigned, unsigned long> const &axes,
+                        L4::Ipc::Array_ref<L4Re::Event_absinfo, unsigned long> &info)
+  {
+    unsigned naxes = cxx::min<unsigned>(L4RE_ABS_MAX, axes.length);
+
+    info.length = 0;
+
+    L4Re::Event_absinfo _info[naxes];
+    int r = get_abs_info(id, naxes, axes.data, _info);
+    if (r < 0)
+      return r;
+
+    for (unsigned i = 0; i < naxes; ++i)
+      info.data[i] = _info[i];
+
+    info.length = naxes;
+    return r;
+  }
+
+  long op_get_stream_state_for_id(L4Re::Event::Rights, l4_umword_t,
+                                  L4Re::Event_stream_state &)
+  { return -L4_ENOSYS; }
 };
 
 }

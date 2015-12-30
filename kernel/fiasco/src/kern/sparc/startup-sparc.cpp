@@ -1,7 +1,6 @@
 IMPLEMENTATION [sparc]:
 
 #include "banner.h"
-#include "boot_info.h"
 #include "config.h"
 #include "cpu.h"
 #include "kip_init.h"
@@ -20,7 +19,6 @@ void
 Startup::stage1()
 {
   Proc::cli();
-  Boot_info::init();
   Cpu::early_init();
   Config::init();
 }

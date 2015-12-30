@@ -1,14 +1,9 @@
-PKGDIR?= ../..
-L4DIR ?= $(PKGDIR)/../..
+PKGDIR     ?= ../..
+L4DIR      ?= $(PKGDIR)/../..
 
-# the name of your library
-TARGET	= $(PKGNAME)_sha1_ref.a $(PKGNAME)_sha1_ref.p.a
-SYSTEMS = x86 arm amd64
+TARGET      = $(PKGNAME)_sha1_ref.a $(PKGNAME)_sha1_ref.p.a
+SYSTEMS     = x86 arm amd64
 PC_FILENAME = $(PKGNAME)_sha1_ref
-
-# list your .c files here
-SRC_C	= sha1.c glue.c
-
-PRIVATE_INCDIR	= $(PKGDIR)/include
+SRC_C       = sha1.c glue.c
 
 include $(L4DIR)/mk/lib.mk

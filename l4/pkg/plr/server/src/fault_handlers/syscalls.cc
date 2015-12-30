@@ -22,6 +22,7 @@
 #include <l4/re/util/region_mapping_svr>
 #include <l4/sys/segment.h>
 #include <l4/sys/consts.h>
+#include <l4/cxx/ipc_stream>
 
 #define MSG() DEBUGf(Romain::Log::Faults)
 #define MSGt(t) DEBUGf(Romain::Log::Faults) << "[" << t->vcpu() << "] "
@@ -45,6 +46,7 @@ static Romain::SyscallHandler         nullhandler;
 static Romain::RegionManagingHandler  rm;
 static Romain::Scheduling             sched;
 static Romain::IrqHandler             irq;
+static Romain::IrqSenderHandler       irq_sender;
 
 Romain::Factory theObjectFactory;
 
@@ -115,6 +117,10 @@ Romain::SyscallObserver::notify(Romain::App_instance *i,
 				retval = irq.handle(i, t, tg, a);
 				break;
 
+			case L4_PROTO_IRQ_SENDER:
+				retval = irq_sender.handle(i, t, tg, a);
+				break;
+
 			case L4_PROTO_THREAD:
 				/* 
 				 * Each instance needs to perform its own
@@ -132,7 +138,7 @@ Romain::SyscallObserver::notify(Romain::App_instance *i,
 				}
 				break;
 
-			case L4Re::Protocol::Rm:
+                        case L4Re::Rm::Protocol:
 				/*
 				 * Region management is done only once as e.g.,
 				 * regions for attaching need to be replicated
@@ -142,7 +148,7 @@ Romain::SyscallObserver::notify(Romain::App_instance *i,
 				retval = rm.handle(i, t, tg, a);
 				break;
 
-			case L4Re::Protocol::Parent:
+                        case L4Re::Parent::Protocol:
 				/*
 				 * The parent protocol is only used for exitting.
 				 */
@@ -288,7 +294,7 @@ Romain::RegionManagingHandler::handle(Romain::App_instance* i,
 	{
 		Romain::Rm_guard r(a->rm(), i->id());
 		L4::Ipc::Iostream ios(utcb);
-		L4Re::Util::region_map_server<Romain::Region_map_server>(a->rm(), ios);
+		L4Re::Util::region_map_server<Romain::Region_map_server>((void*)0, a->rm(), ios);
 		t->vcpu()->r()->ax = 0;
 	}
 
@@ -428,7 +434,7 @@ Romain::Factory::handle(Romain::App_instance* inst,
 			create_irq(inst, t, tg, am, cap);
 			return Romain::Observer::Replicatable;
 
-		case L4Re::Protocol::Dataspace:
+                case L4Re::Dataspace::Protocol:
 			{
 			SyscallHandler::proxy_syscall(inst, t, tg, am);
 			return Romain::Observer::Replicatable;
@@ -487,12 +493,46 @@ Romain::IrqHandler::handle(Romain::App_instance* inst,
 	}
 
 	switch(op) {
+		case L4_IRQ_OP_TRIGGER:
+			DEBUGt(t) << ":: trigger";
+			//enter_kdebug("trigger");
+			irq->trigger();
+			break;
+		case L4_IRQ_OP_EOI:
+			DEBUGt(t) << ":: eoi";
+			tg->gateagent->trigger_agent(t);
+			break;
+	}
+
+	return Romain::Observer::Replicatable;
+}
+Romain::Observer::ObserverReturnVal
+Romain::IrqSenderHandler::handle(Romain::App_instance* inst,
+                                 Romain::App_thread* t,
+                                 Romain::Thread_group* tg,
+                                 Romain::App_model* am)
+{
+	l4_utcb_t *utcb = reinterpret_cast<l4_utcb_t*>(t->remote_utcb());
+	l4_umword_t op     = l4_utcb_mr_u(utcb)->mr[0];
+	l4_umword_t label  = l4_utcb_mr_u(utcb)->mr[1];
+	l4_umword_t cap    = t->vcpu()->r()->dx & L4_CAP_MASK;
+
+	L4::Cap<L4::Irq> irq(cap);
+
+	DEBUGt(t) << "IRQ: cap = " << std::hex << cap << " op = " << op; 
+
+	if (!theObjectFactory.is_irq(cap)) {
+		SyscallHandler::proxy_syscall(inst, t, tg, am);
+		return Romain::Observer::Replicatable;
+	}
+
+	switch(op) {
 		/*
 		 * For attach(), we cannot simply redirect to the gate
 		 * agent, because we need to modify the thread that is
 		 * attached to the IRQ
 		 */
-		case L4_IRQ_OP_ATTACH:
+		case L4_IRQ_SENDER_OP_ATTACH:
 			{
 				l4_umword_t attach_cap      = l4_utcb_mr_u(utcb)->mr[3] & L4_FPAGE_ADDR_MASK;
 				DEBUG() << "attach " << std::hex << (attach_cap >> L4_CAP_SHIFT);
@@ -511,19 +551,6 @@ Romain::IrqHandler::handle(Romain::App_instance* inst,
 				return Romain::Observer::Replicatable;
 			}
 			break;
-
-		case L4_IRQ_OP_TRIGGER:
-			DEBUGt(t) << ":: trigger";
-			//enter_kdebug("trigger");
-			irq->trigger();
-			break;
-		case L4_IRQ_OP_EOI:
-			DEBUGt(t) << ":: eoi";
-			tg->gateagent->trigger_agent(t);
-			break;
-
-		case L4_IRQ_OP_CHAIN:
-			enter_kdebug("irq::chain?");
 	}
 
 	return Romain::Observer::Replicatable;

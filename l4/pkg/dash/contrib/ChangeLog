@@ -1,3 +1,327 @@
+2014-09-26  Herbert Xu <herbert@gondor.apana.org.au>
+
+	* Small optimisation of command -pv change.
+	* Set command -p path to /usr/sbin:/usr/bin:/sbin:/bin.
+	* Change "characters" for printf precision to "bytes".
+	* Release 0.5.8.
+
+2014-09-26  Jonathan Nieder <jrnieder@gmail.com>
+
+	* Clarify "trap '' signals" syntax in manual page.
+
+2014-09-26  Adam Buchbinder <adam.buchbinder@gmail.com>
+
+	* Clarify that 0 and EXIT are both acceptable for exit traps.
+
+2014-09-26  Harald van Dijk <harald@gigawatt.nl>
+
+	* command: allow combining -p with -v.
+	* getjob: Fix off-by-one error for multiple of four job numbers
+
+2013-08-23  Herbert Xu <herbert@gondor.apana.org.au>
+
+	* Propagate EXP_QPAT in subevalvar.
+	* Initialise OPTIND after importing environment.
+	* Fixed argument parsing crash in test.
+
+2013-03-12  Peter Rosin <peda@lysator.liu.se>
+
+	* Add newline when tracing in poplocalvars.
+
+2013-01-10  Jérémie Courrèges-Anglas <jca+dash@wxcvbn.org>
+
+	* Markup fixes in manual for mandoc 1.12.1.
+
+2012-12-03  Harald van Dijk <harald@gigawatt.nl>
+
+	* Use PRIdMAX instead of %j in printf.
+
+2012-07-20  Kimo Rosenbaum <kimor79@yahoo.com>
+
+	* Fix typo for wait in manual.
+
+2012-06-09  Christoph Mathys <eraserix@gmail.com>
+
+	* Add support for ulimit -r.
+
+2012-03-11  Jim Meyering  <meyering@redhat.com>
+
+	* Avoid overflow for very long variable name.
+	$ perl -le 'print "v"x(2**31+1) ."=1"' | dash
+
+2012-02-25  Herbert Xu <herbert@gondor.apana.org.au>
+
+	* Sanitise environment variable names on entry.
+
+2011-08-17  David S. Miller <davem@davemloft.net>
+
+	* Allow building without LINEO support.
+	* Add top-level autogen.sh.
+
+2011-07-26  Harald van Dijk <harald@gigawatt.nl>
+
+	* Avoid imaxdiv when only one of the results is wanted.
+
+2010-07-09  maximilian attems <max@stro.at>
+
+	* Fix klibc DEBUG compilation.
+
+2011-07-09  Herbert Xu <herbert@gondor.apana.org.au>
+
+	* Merge SKIPFUNC/SKIPFILE and only clear SKIPFUNC when leaving dotcmd.
+
+2011-07-08  Herbert Xu <herbert@gondor.apana.org.au>
+
+	* Release 0.5.7.
+
+2011-07-07  Herbert Xu <herbert@gondor.apana.org.au>
+
+	* Optimize dash -c "command" to avoid a fork.
+	* Eliminate unnecessary promotion in echocmd.
+
+2011-05-25  Jim Meyering  <meyering@redhat.com>
+
+	* Avoid using undefined handler.
+
+2011-05-23  Jim Meyering  <meyering@redhat.com>
+
+	* Avoid gcc warning: variable 'oldstackp' set but not used.
+	* Avoid clang warning about dead store to "size".
+
+2011-05-22  Jonathan Nieder <jrnieder@gmail.com>
+
+	* Make outc an inline function.
+
+2011-05-02  Kalle Olavi Niemitalo <kon@iki.fi>
+
+	* Remove spurious space in descriptions of PS1, PS2, PS4.
+
+2011-04-10  Jonathan Nieder <jrnieder@gmail.com>
+ 
+	* Remove unused EV_BACKCMD flag.
+
+2011-03-15  Herbert Xu <herbert@gondor.apana.org.au>
+
+	* Fix clobbering of checkkwd.
+
+2011-03-15  Jonathan Nieder <jrnieder@gmail.com>
+
+	* Free IFS state after here document expansion.
+	* Use va_copy when reusing a va_list.
+
+2011-03-15  Harald van Dijk <harald@gigawatt.nl>
+
+	* Let funcnode refer to a function definition, not its first command.
+	* Improve LINENO support.
+
+2011-03-15  Brian Koropoff <bkoropoff@gmail.com>
+
+	* Port to Solaris.
+
+2011-03-11  Herbert Xu <herbert@gondor.apana.org.au>
+
+	* Fix backslash handling in read(1).
+
+2011-03-10  Jonathan Nieder <jrnieder@gmail.com>
+
+	* Dotcmd should exit with zero when doing nothing.
+
+2011-03-10  Herbert Xu <herbert@gondor.apana.org.au>
+
+	* Fix CTLESC clobbering by read(1).
+
+2011-03-10  Brian Koropoff <bkoropoff@gmail.com>
+
+	* Port to AIX.
+
+2011-03-10  Jilles Tjoelker <jilles@stack.nl>
+
+	* Replace GPL noclobberopen code with the FreeBSD version.
+	* Do not split the result of tilde expansion.
+
+2010-11-28  Maciej Żenczykowski <zenczykowski@gmail.com>
+
+	* Mark status as volatile in exitshell.
+
+2010-11-28  Jonathan Nieder <jrnieder@gmail.com>
+
+	* Use EXEXIT in place of EXEXEC.
+	* Stop documenting EXSHELLPROC.
+
+2010-11-28  Gerrit Pape <pape@smarden.org>
+
+	* Use exit status 127 when the script to run does not exist.
+
+2010-11-28  Philipp Weis <pweis@pweis.com>
+
+	* Document optional open parenthesis for case patterns.
+
+2010-11-28  Herbert Xu <herbert@gondor.apana.org.au>
+
+	* Fixed trap/return regression due to SKIPEVAL removal.
+	* Allow the originator of EXERROR to set the exit status.
+	* Free IFS state in evalbackcmd.
+
+2010-10-18  Herbert Xu <herbert@gondor.apana.org.au>
+
+	* Fix ifsfirst/ifslastp leak in casematch.
+
+2010-10-07  Herbert Xu <herbert@gondor.apana.org.au>
+
+	* Fix EXEXEC status clobbering.
+
+2010-09-08  Herbert Xu <herbert@gondor.apana.org.au>
+
+	* Fix ifsfirst/ifslastp leak.
+	* Fix trailing field bug in read(1).
+
+2010-09-08  maximilian attems <max@stro.at>
+
+	* Debug compile fix.
+
+2010-09-08  Jilles Tjoelker <jilles@stack.nl>
+
+	* Fix varinit ordering that broke fc.
+
+2010-07-06  Gerrit Pape <pape@smarden.org>
+
+	* Check exit for eval NSUBSHELL.
+
+2010-07-06  Herbert Xu <herbert@gondor.apana.org.au>
+
+	* Fix loss of variables when hash collides.
+	* Removed dead code for eval NPIPE.
+
+2010-06-28  Gerrit Pape <pape@smarden.org>
+
+	* Don't clear eflag in evalbackcmd.
+
+2010-05-29  Herbert Xu <herbert@gondor.apana.org.au>
+
+	* Continue after EINTR in read(1) with no pending signals.
+
+2010-05-27  Jilles Tjoelker <jilles@stack.nl>
+
+	* Force fork if any trap is set, not just on EXIT.
+	* Fix corruption of redirections with byte 0x81.
+
+2010-05-27  Herbert Xu <herbert@gondor.apana.org.au>
+
+	* Fix poplocalvar on abnormal exit from function.
+	* Do not poplocalvars prematurely on regular utilities.
+	* Move null redirect checks into caller.
+	* Fix popredir on abnormal exit from built-in.
+	* Fix wait regression where it does not wait for all jobs.
+
+2010-05-26  Herbert Xu <herbert@gondor.apana.org.au>
+
+	* Replace cmdenviron with localvars.
+
+2010-05-25  Herbert Xu <herbert@gondor.apana.org.au>
+
+	* Fix poplocalvar leak.
+	* Move unsetvar functionality into setvareq.
+
+2010-05-24  Herbert Xu <herbert@gondor.apana.org.au>
+
+	* Add localvars nesting, local now fails outside functions.
+
+2010-05-03  Gerrit Pape <pape@smarden.org>
+
+	* Fix command -- crash.
+
+2010-04-15  H. Peter Anvin <hpa@zytor.com>
+
+	* Fix for job control off warning.
+
+2010-04-02  Herbert Xu <herbert@gondor.apana.org.au>
+
+	* Use faccessat if available.
+
+2010-04-02  Herbert Xu <herbert@gondor.apana.org.au>
+
+	* Make trap signal name/number errors non-fatal.
+	* Release 0.5.6.
+
+2010-04-02  maximilian attems <max@stro.at>
+
+	* Use TMPDIR in mkbuiltins.
+
+2010-03-10  Jilles Tjoelker <jilles@stack.nl>
+
+	* Fix logical or result value.
+
+2010-03-09  Herbert Xu <herbert@gondor.apana.org.au>
+
+	* Fix binary operator parsing.
+
+2009-11-26  Herbert Xu <herbert@gondor.apana.org.au>
+
+	* Fix off-by-one recordregion in readcmd.
+
+2009-09-28  Jim Meyering  <meyering@redhat.com>
+
+	don't read-uninitialized for \177 in a here-doc
+	A DEL (0177, dec 127) byte in a here-document would cause dash to
+	access uninitialized memory at the end of one of the syntax.c tables,
+	since those tables are sized to accommodate a maximum index of
+	BASESYNTAX + 126.  Make the generated tables one byte larger.
+	printf ':<<\\E\n\200y\nE'|./dash
+	* src/mksyntax.c (filltable): Use 258, not 257 as the size,
+	so that BASESYNTAX(=130) + 127 is a valid index.
+	(print): Likewise.
+	Don't emit explicit array dimension in declaration.
+
+2009-08-31  Eric Blake <ebb9@byu.net>
+
+	* Avoid compiler warnings on isdigit.
+
+2009-08-31  Matthew Burgess <matthew@linuxfromscratch.org>
+
+	* Add another missing LC_COLLATE to mkbuiltins.
+
+2009-08-31  Herbert Xu <herbert@gondor.apana.org.au>
+
+	* Fix NUL termination in readcmd.
+	* Lookup PWD after going through CDPATH.
+
+2009-08-11  Herbert Xu <herbert@gondor.apana.org.au>
+
+	* Pass EV_TESTED into evalcmd.
+	* Revert SKIPEVAL into EXEXIT.
+
+2009-08-11  Rocky Bernstein <rocky.bernstein@gmail.com>
+
+	* Add preliminary LINENO support.
+
+2009-08-11  Stefan Potyra <stefan.potyra@informatik.uni-erlangen.de>
+
+	* Honor tab as IFS whitespace when splitting fields in readcmd.
+
+2009-06-30  Herbert Xu <herbert@gondor.apana.org.au>
+
+	* Do not truncate file for FROMTO redirection.
+
+2009-06-27  Herbert Xu <herbert@gondor.apana.org.au>
+
+	* Fix quoted pattern patch breakage.
+
+2009-05-23  Herbert Xu <herbert@gondor.apana.org.au>
+
+	* Fix incorrect savefd conversions.
+
+2009-02-22  Herbert Xu <herbert@gondor.apana.org.au>
+
+	* Fix dowait signal race.
+	* Remove EXSIG.
+	* Do not close stderr when /dev/tty fails to open.
+	* Allow newlines after var name in for statements.
+	* Use CHKNL to parse case statements.
+
+2009-02-22  Gerrit Pape <pape@smarden.org>
+
+	* Update manual page to differentiate dash from ash.
+
 2009-01-14  Herbert Xu <herbert@gondor.apana.org.au>
 
 	* Add arith_yacc.h to dash_SOURCES.

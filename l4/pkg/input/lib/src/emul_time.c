@@ -18,7 +18,7 @@
  */
 
 /* L4 */
-#if !defined(ARCH_arm) && !defined(ARCH_sparc)
+#if defined(ARCH_x86) || defined(ARCH_amd64) || defined(ARCH_ppc32)
 #include <l4/util/rdtsc.h>     /* XXX x86 specific */
 #endif
 #include <l4/util/util.h>

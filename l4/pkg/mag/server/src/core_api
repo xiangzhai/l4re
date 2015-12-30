@@ -26,9 +26,9 @@ private:
 
 public:
   Core_api_impl(Registry *r, lua_State *lua, User_state *u,
-                L4::Cap<void> rcvc, L4::Cap<L4Re::Video::Goos> fb,
+                L4::Cap<L4Re::Video::Goos> fb,
                 Mag_gfx::Font const *label_font)
-  : Core_api(lua, u, rcvc, fb, label_font), _reg(r), _input(0)
+  : Core_api(lua, u, fb, label_font), _reg(r), _input(0)
   {}
 
   void add_input_source(Input_source *i);

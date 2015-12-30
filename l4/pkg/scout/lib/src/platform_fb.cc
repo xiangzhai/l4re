@@ -1,8 +1,8 @@
 #include <l4/re/env>
 #include <cstdio>
-#include <iostream>
 #include <pthread.h>
 
+#include <l4/re/util/debug>
 #include <l4/re/event>
 #include <l4/re/console>
 #include <l4/re/rm>
@@ -256,7 +256,7 @@ public:
 
     _ev_ds = cap_alloc.alloc<L4Re::Dataspace>();
     _ev_irq = cap_alloc.alloc<L4::Irq>();
-    chksys(L4Re::Env::env()->factory()->create_irq(_ev_irq.get()));
+    chksys(L4Re::Env::env()->factory()->create(_ev_irq.get()));
     chksys(e->get_buffer(_ev_ds.get()));
     chksys(L4Re::Env::env()->rm()->attach(&_ev_ds_addr, _ev_ds->size(),
            L4Re::Rm::Search_addr, _ev_ds.get(), 0, L4_PAGESHIFT));
@@ -552,9 +552,10 @@ Re_pf::Re_pf(Rect const &sz)
   chksys(e->rm()->attach(&_fb_addr, _fb_ds->size(), L4Re::Rm::Search_addr,
                          _fb_ds.get(), 0, L4_SUPERPAGESHIFT));
 
-  _view_info.dump(std::cout)
-     << "  memory " << (void*)_fb_addr.get()
-     << '-' << (void*)(_fb_addr.get() + _fb_ds->size()) << '\n';
+  L4Re::Util::Dbg dbg;
+  _view_info.dump(dbg);
+  dbg.printf("  memory %p-%p\n", (void*)_fb_addr.get(),
+             (void*)(_fb_addr.get() + _fb_ds->size()));
 
   _timer.start(_screen);
 

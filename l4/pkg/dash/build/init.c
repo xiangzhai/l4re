@@ -6,12 +6,13 @@
 #include "mystring.h"
 #include "init.h"
 #include "eval.h"
+#include "expand.h"
 #include <stdio.h>
 #include "input.h"
 #include "error.h"
 #include "parser.h"
 #include "redir.h"
-#include <signal.h>
+#include "trap.h"
 #include "output.h"
 #include "memalloc.h"
 #include <unistd.h>
@@ -24,16 +25,12 @@
 
 #undef  ATABSIZE
 #define ATABSIZE 39
+#undef  ARITH_MAX_PREC
+#define ARITH_MAX_PREC 8
 #undef  CD_PHYSICAL
 #define CD_PHYSICAL 1
 #undef  CD_PRINT
 #define CD_PRINT 2
-#undef  EV_EXIT
-#define EV_EXIT 01		/* exit after evaluating tree */
-#undef  EV_TESTED
-#define EV_TESTED 02		/* exit status is checked; ignore -e flag */
-#undef  EV_BACKCMD
-#define EV_BACKCMD 04		/* command executing within back quotes */
 #undef  CMDTABLESIZE
 #define CMDTABLESIZE 31		/* should be prime */
 #undef  ARB
@@ -70,6 +67,8 @@
 #define DOWAIT_NORMAL 0
 #undef  DOWAIT_BLOCK
 #define DOWAIT_BLOCK 1
+#undef  DOWAIT_WAITCMD
+#define DOWAIT_WAITCMD 2
 #undef  MAXMBOXES
 #define MAXMBOXES 10
 #undef  PROFILE
@@ -159,17 +158,14 @@ extern int parselleft;		/* copy of parsefile->lleft */
 extern struct parsefile basepf;	/* top level input file */
 extern char basebuf[IBUFSIZ];	/* buffer for top level input file */
 
-extern int tokpushback;		/* last token pushed back */
-
 struct redirtab {
 	struct redirtab *next;
 	int renamed[10];
-	int nullredirs;
 };
 
 extern struct redirtab *redirlist;
-extern int nullredirs;
 
+extern struct localvar_list *localvar_stack;
 extern char **environ;
 
 
@@ -188,7 +184,8 @@ init() {
 
       /* from trap.c: */
       {
-	      signal(SIGCHLD, SIG_DFL);
+	      sigmode[SIGCHLD - 1] = S_DFL;
+	      setsignal(SIGCHLD);
       }
 
       /* from output.c: */
@@ -207,10 +204,13 @@ init() {
 
 	      initvar();
 	      for (envp = environ ; *envp ; envp++) {
-		      if (strchr(*envp, '=')) {
+		      p = endofname(*envp);
+		      if (p != *envp && *p == '=') {
 			      setvareq(*envp, VEXPORT|VTEXTFIXED);
 		      }
 	      }
+
+	      setvarint("OPTIND", 1, 0);
 
 	      fmtstr(ppid + 5, sizeof(ppid) - 5, "%ld", (long) getppid());
 	      setvareq(ppid, VTEXTFIXED);
@@ -240,6 +240,11 @@ reset() {
 	      loopnest = 0;
       }
 
+      /* from expand.c: */
+      {
+	      ifsfree();
+      }
+
       /* from input.c: */
       {
 	      parselleft = parsenleft = 0;	/* clear input buffer */
@@ -257,12 +262,7 @@ reset() {
 	      /*
 	       * Discard all saved file descriptors.
 	       */
-	      for (;;) {
-		      nullredirs = 0;
-		      if (!redirlist)
-			      break;
-		      popredir(0);
-	      }
+	      unwindredir(0);
       }
 
       /* from output.c: */
@@ -279,5 +279,10 @@ reset() {
 		      memout.buf = NULL;
 	      }
 #endif
+      }
+
+      /* from var.c: */
+      {
+	      unwindlocalvars(0);
       }
 }

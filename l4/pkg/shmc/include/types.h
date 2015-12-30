@@ -7,6 +7,7 @@
  */
 /**
  * \internal
+ * \file
  */
 #pragma once
 

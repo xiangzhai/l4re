@@ -8,10 +8,11 @@
  */
 #pragma once
 
-#include <l4/cxx/ipc_server>
+#include <l4/re/mem_alloc>
+#include <l4/sys/cxx/ipc_epiface>
 #include <l4/cxx/list>
 
-class Allocator : public L4::Server_object
+class Allocator : public L4::Epiface_t<Allocator, L4Re::Mem_alloc>
 {
 private:
   long _sched_prio_limit;
@@ -24,8 +25,8 @@ public:
 
   virtual ~Allocator();
 
-  int dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios);
-  int disp_factory(l4_umword_t, L4::Ipc::Iostream &ios);
+  int op_create(L4::Factory::Rights r, L4::Ipc::Cap<void> &res,
+                long type, L4::Ipc::Varg_list<> &&args);
 
   static Allocator *root_allocator();
 };

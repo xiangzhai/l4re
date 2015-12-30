@@ -25,9 +25,9 @@ namespace Mag_server {
 Plugin *Plugin::_first;
 
 Core_api::Core_api(lua_State *lua, User_state *u,
-                   L4::Cap<void> rcvc, L4::Cap<L4Re::Video::Goos> fb,
+                   L4::Cap<L4Re::Video::Goos> fb,
 		   Mag_gfx::Font const *label_font)
-: _ust(u), _rcv_cap(rcvc), _fb(fb), _lua(lua), _label_font(label_font)
+: _ust(u), _fb(fb), _lua(lua), _label_font(label_font)
 {
 }
 
@@ -55,19 +55,23 @@ namespace {
 }
 
 void
-Core_api::set_session_options(Session *s, L4::Ipc::Istream &ios,
+Core_api::set_session_options(Session *s, L4::Ipc::Varg_list_ref args,
                               Session::Property_handler const *extra) const
 {
-  L4::Ipc::Varg opt;
-  while (ios.get(&opt))
+  for (;;)
     {
+      L4::Ipc::Varg opt = args.next();
+      if (!opt.tag())
+        break;
+
       if (!opt.is_of<char const *>())
 	{
 	  printf("skipping non string argument for session!\n");
 	  continue;
 	}
 
-      cxx::String a(opt.value<char const *>(), opt.length());
+      // opt without zero terminator
+      cxx::String a(opt.value<char const *>(), opt.length() - 1);
 
       if (!handle_option(s, _default_session_props, a)
 	  && !handle_option(s, extra, a))

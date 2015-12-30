@@ -59,11 +59,18 @@ TARGET_PIC        := $(filter     %.p.a,$(TARGET_LIB))
 
 TARGET_STANDARD   := $(filter-out $(TARGET_SHARED) $(TARGET_PIC), $(TARGET_LIB))
 
+$(call GENERATE_PER_TARGET_RULES,$(TARGET_STANDARD))
+$(call GENERATE_PER_TARGET_RULES,$(TARGET_PIC) $(TARGET_SHARED),.s)
+
 TARGET_PROFILE  := $(patsubst %.a,%.pr.a,\
 			$(filter $(BUILD_PROFILE),$(TARGET_STANDARD)))
 TARGET_PROFILE_SHARED := $(filter %.so,$(TARGET_PROFILE))
 TARGET_PROFILE_PIC := $(patsubst %.a,%.p.a,\
 			$(filter $(BUILD_PIC),$(TARGET_PROFILE)))
+
+$(call GENERATE_PER_TARGET_RULES,$(TARGET_PROFILE),.pr)
+$(call GENERATE_PER_TARGET_RULES,$(TARGET_PROFILE_PIC) $(TARGET_PROFILE_SHARED),.pr)
+
 TARGET	+= $(TARGET_$(OSYSTEM))
 TARGET	+= $(TARGET_PROFILE) $(TARGET_PROFILE_SHARED) $(TARGET_PROFILE_PIC)
 
@@ -125,7 +132,7 @@ $(filter-out $(LINK_INCR) %.so %.o.a %.o.pr.a, $(TARGET)):%.a: $(OBJS)
 	@$(AR_MESSAGE)
 	$(VERBOSE)[ -d "$(dir $@)" ] || $(MKDIR) $(dir $@)
 	$(VERBOSE)$(RM) $@
-	$(VERBOSE)$(AR) crs $@ $(OBJS)
+	$(VERBOSE)$(AR) crs$(if $(filter %.thin.a,$@),T) $@ $(OBJS)
 	@$(BUILT_MESSAGE)
 
 # shared lib

@@ -17,33 +17,22 @@
 #include <l4/re/util/object_registry>
 #include <l4/re/util/icu_svr>
 #include <l4/re/util/vcon_svr>
+#include <l4/re/util/br_manager>
 #include <l4/sys/irq>
 #include <l4/util/util.h>
 
 #include <cstdlib>
 #include <cstdio>
+#include <stdarg.h>
 
+#include <l4/cxx/ipc_server>
+#include <l4/sys/cxx/ipc_legacy>
 
-static L4::Cap<void> srv_rcv_cap;
-
-class Loop_hooks :
-  public L4::Ipc_svr::Ignore_errors,
-  public L4::Ipc_svr::Default_timeout,
-  public L4::Ipc_svr::Compound_reply
-{
-public:
-  void setup_wait(L4::Ipc::Istream &istr, bool)
-  {
-    istr.reset();
-    istr << L4::Ipc::Small_buf(srv_rcv_cap.cap(), L4_RCV_ITEM_LOCAL_ID);
-    l4_utcb_br_u(istr.utcb())->bdr = 0;
-  }
-};
 
 using L4Re::Env;
 using L4Re::Util::Registry_server;
 
-static Registry_server<Loop_hooks> server(l4_utcb(),
+static Registry_server<L4Re::Util::Br_manager_hooks> server(l4_utcb(),
                                           Env::env()->main_thread(),
                                           Env::env()->factory());
 
@@ -53,7 +42,7 @@ using L4Re::Util::Icu_cap_array_svr;
 class Serial_drv :
   public Vcon_svr<Serial_drv>,
   public Icu_cap_array_svr<Serial_drv>,
-  public L4::Server_object
+  public L4::Server_object_t<L4::Vcon>
 {
 public:
   Serial_drv();
@@ -64,12 +53,17 @@ public:
   int vcon_write(const char *buffer, unsigned size);
   unsigned vcon_read(char *buffer, unsigned size);
 
-  L4::Cap<void> rcv_cap() { return srv_rcv_cap; }
-
   int handle_irq();
 
   bool init();
-  int dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios);
+
+  // FIXME: this breaks IRQ handling need an extra object for this!
+  L4_RPC_LEGACY_DISPATCH(L4::Vcon);
+  int dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios)
+  { return dispatch<L4::Ipc::Iostream>(obj, ios); }
+
+  void serprintf(char const *fmt, ...)
+    __attribute__((format(printf, 2, 3)));
 
 private:
   bool _running;
@@ -128,6 +122,20 @@ Serial_drv::handle_irq()
   return L4_EOK;
 }
 
+void
+Serial_drv::serprintf(const char *fmt, ...)
+{
+  va_list l;
+  va_start(l, fmt);
+  char buf[200];
+  unsigned len = vsnprintf(buf, sizeof(buf), fmt, l);
+  buf[sizeof(buf) - 1] = 0;
+
+  if (running())
+    _uart->write(buf, len > sizeof(buf) ? sizeof(buf) : len);
+  va_end(l);
+}
+
 bool
 Serial_drv::init()
 {
@@ -154,13 +162,13 @@ Serial_drv::init()
   _uart_irq = L4Re::Util::cap_alloc.alloc<L4::Irq>();
   if (!_uart_irq.is_valid())
     {
-      printf("serial-drv: Alloc capability for uart-irq failed.\n");
+      serprintf("serial-drv: Alloc capability for uart-irq failed.\n");
       return false;
     }
 
   if (l4io_request_irq(irq_num, _uart_irq.cap()))
     {
-      printf("serial-drv: request uart-irq from l4io failed\n");
+      serprintf("serial-drv: request uart-irq from l4io failed\n");
       return false;
     }
 
@@ -168,27 +176,21 @@ Serial_drv::init()
   if (l4_error(_uart_irq->attach((l4_umword_t)static_cast<L4::Server_object *>(this),
 	  L4Re::Env::env()->main_thread())))
     {
-      printf("serial-drv: attach to uart-irq failed.\n");
+      serprintf("serial-drv: attach to uart-irq failed.\n");
       return false;
     }
 
   if ((l4_ipc_error(_uart_irq->unmask(), l4_utcb())))
     {
-      printf("serial-drv: unmask uart-irq failed.\n");
+      serprintf("serial-drv: unmask uart-irq failed.\n");
       return false;
     }
   _uart->enable_rx_irq(true);
 
-  srv_rcv_cap = L4Re::Util::cap_alloc.alloc<void>();
-  if (!srv_rcv_cap.is_valid())
-    {
-      printf("serial-drv: Alloc capability for rcv-cap failed.\\n");
-      return false;
-    }
-  
   return true;
 }
 
+#if 0
 int
 Serial_drv::dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios)
 {
@@ -197,14 +199,19 @@ Serial_drv::dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios)
   switch (tag.label())
     {
     case L4_PROTO_IRQ:
-      if (!L4Re::Util::Icu_svr<Serial_drv>::dispatch(obj, ios))
-	return handle_irq();
+        {
+          int r = L4Re::Util::Icu_svr<Serial_drv>::dispatch(obj, ios);
+          if (r)
+            return r;
+	  return handle_irq();
+        }
     case L4_PROTO_LOG:
       return L4Re::Util::Vcon_svr<Serial_drv>::dispatch(obj, ios);
     default:
       return -L4_EBADPROTO;
     }
 }
+#endif
 
 int main()
 {

@@ -23,9 +23,8 @@ blow_up(l4_sched_cpu_set_t const &src, unsigned char gran)
 {
   l4_sched_cpu_set_t n;
   gran &= sizeof(l4_umword_t) * 8 - 1;
-  unsigned char og = src.granularity & (sizeof(l4_umword_t) * 8 - 1);
-  n.granularity = gran;
-  n.offset = src.offset & (~0UL << og);
+  unsigned char og = src.granularity() & (sizeof(l4_umword_t) * 8 - 1);
+  n.set(gran, src.offset() & (~0UL << og));
   n.map = 0;
   for (unsigned i = 0; i < sizeof(l4_umword_t) * 8; ++i)
     if (src.map & (1UL << (i >> (og - gran))))
@@ -38,8 +37,8 @@ static
 l4_sched_cpu_set_t operator & (l4_sched_cpu_set_t const &a, l4_sched_cpu_set_t const &b)
 {
   l4_sched_cpu_set_t _a, _b;
-  unsigned char const ga = a.granularity & (sizeof(l4_umword_t) * 8 - 1);
-  unsigned char const gb = b.granularity & (sizeof(l4_umword_t) * 8 - 1);
+  unsigned char const ga = a.granularity() & (sizeof(l4_umword_t) * 8 - 1);
+  unsigned char const gb = b.granularity() & (sizeof(l4_umword_t) * 8 - 1);
   if (ga < gb)
     {
       _b = blow_up(b, ga);
@@ -56,7 +55,7 @@ l4_sched_cpu_set_t operator & (l4_sched_cpu_set_t const &a, l4_sched_cpu_set_t c
       _b = b;
     }
 
-  long ofs_dif = _a.offset - _b.offset;
+  long ofs_dif = _a.offset() - _b.offset();
   long unsigned abs_ofs_dif;
   if (ofs_dif < 0)
     abs_ofs_dif = -ofs_dif;
@@ -95,8 +94,7 @@ Sched_proxy::rescan_cpus()
   l4_sched_cpu_set_t c;
   l4_umword_t max = 0;
   c.map = 0;
-  c.offset = 0;
-  c.granularity = 0;
+  c.gran_offset = 0;
 
   int e = l4_error(L4Re::Env::env()->scheduler()->info(&max, &c));
 
@@ -118,8 +116,8 @@ int
 Sched_proxy::info(l4_umword_t *cpu_max, l4_sched_cpu_set_t *cpus)
 {
   *cpu_max = _max_cpus;
-  unsigned char g = cpus->granularity & (sizeof(l4_umword_t) * 8 - 1);
-  l4_umword_t offs = cpus->offset & (~0UL << g);
+  unsigned char g = cpus->granularity() & (sizeof(l4_umword_t) * 8 - 1);
+  l4_umword_t offs = cpus->offset() & (~0UL << g);
   if (offs >= _max_cpus)
     return -L4_ERANGE;
 
@@ -144,7 +142,7 @@ int
 Sched_proxy::run_thread(L4::Cap<L4::Thread> thread, l4_sched_param_t const &sp)
 {
   l4_sched_param_t s = sp;
-  s.prio = std::min(sp.prio + _prio_offset, _prio_limit);
+  s.prio = std::min(sp.prio + _prio_offset, (l4_umword_t)_prio_limit);
   s.affinity = sp.affinity & _cpus;
 #if 0
   printf("loader[%p] run_thread: o=%u scheduler affinity = %lx sp.m=%lx sp.o=%u sp.g=%u\n",
@@ -156,7 +154,7 @@ Sched_proxy::run_thread(L4::Cap<L4::Thread> thread, l4_sched_param_t const &sp)
 }
 
 int
-Sched_proxy::idle_time(l4_sched_cpu_set_t const &)
+Sched_proxy::idle_time(l4_sched_cpu_set_t const &, l4_kernel_clock_t &)
 { return -L4_ENOSYS; }
 
 
@@ -166,7 +164,7 @@ Sched_proxy::received_thread(L4::Ipc::Snd_fpage const &fp)
   if (!fp.cap_received())
     return L4::Cap<L4::Thread>::Invalid;
 
-  return L4::cap_cast<L4::Thread>(Glbl::rcv_cap);
+  return server_iface()->rcv_cap<L4::Thread>(0);
 }
 
 void
@@ -177,10 +175,10 @@ Sched_proxy::restrict_cpus(l4_umword_t cpus)
 }
 
 
-class Cpu_hotplug_server : public L4::Server_object
+class Cpu_hotplug_server : public L4::Irqep_t<Cpu_hotplug_server>
 {
 public:
-  int dispatch(l4_umword_t, L4::Ipc::Iostream &)
+  void handle_irq()
   {
     typedef Sched_proxy::List List;
     for (List::Const_iterator i = Sched_proxy::_list.begin();
@@ -190,7 +188,6 @@ public:
         i->rescan_cpus();
         i->hotplug_event();
       }
-    return 0;
   }
 
   Cpu_hotplug_server()

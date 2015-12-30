@@ -12,7 +12,6 @@
 #include "vcon_fe_base.h"
 
 #include <l4/re/util/object_registry>
-#include <l4/cxx/ipc_server>
 
 class Vcon_fe : public Vcon_fe_base
 {

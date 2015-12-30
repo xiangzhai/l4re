@@ -1,6 +1,5 @@
 IMPLEMENTATION [arm]:
 
-#include "boot_info.h"
 #include "config.h"
 
 IMPLEMENT inline

@@ -43,7 +43,6 @@ Kmem_alloc::Kmem_alloc()
   // The -Wframe-larger-than= warning for this function is known and
   // no problem, because the function runs only on our boot stack.
   Mword alloc_size = Config::KMEM_SIZE;
-  a->init(Mem_layout::Pmem_start);
   Mem_region_map<64> map;
   unsigned long available_size = create_free_map(Kip::k(), &map);
 
@@ -51,6 +50,12 @@ Kmem_alloc::Kmem_alloc()
   if (available_size < (1 << 18))
     panic("Kmem_alloc: No kernel memory available (%ld)\n",
           available_size);
+
+  Mem_region last = map[map.length() - 1];
+  if (last.end - Mem_layout::Sdram_phys_base < Config::kernel_mem_max)
+    a->init(Mem_layout::Map_base);
+  else
+    a->init(Mem_layout::Pmem_start);
 
   for (int i = map.length() - 1; i >= 0 && alloc_size > 0; --i)
     {

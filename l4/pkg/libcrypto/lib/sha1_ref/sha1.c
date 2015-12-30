@@ -29,7 +29,7 @@
  *
  */
 
-#include "private/sha1.h"
+#include <l4/crypto/private/sha1.h>
 
 /*
  *  Define the SHA1 circular left shift macro

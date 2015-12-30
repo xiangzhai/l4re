@@ -40,21 +40,23 @@
 #include <l4/sys/factory>
 #include <l4/sys/typeinfo_svr>
 #include <l4/cxx/exceptions>
+#include <l4/sys/cxx/ipc_epiface>
 
 #include <l4/cxx/minmax>
 
-#include <l4/re/protocols>
+#include <l4/re/console>
 #include <l4/re/util/object_registry>
 #include <l4/re/util/video/goos_svr>
 #include <l4/re/util/event_svr>
 #include <l4/re/util/event_buffer>
+#include <l4/re/util/br_manager>
 #include <l4/re/c/event.h>
 #include <l4/re/video/goos>
 #include <l4/cxx/string>
 
 #include <l4/sys/debugger.h>
 #include <pthread-l4.h>
-
+#define INFO(x...) x
 static struct userstate_services *userstate;
 static struct thread_services    *thread;
 static struct appman_services    *appman;
@@ -86,14 +88,7 @@ static L4Re::Util::Object_registry *dope_registry;
 
 // ------------------------------------------------------------------------
 
-static L4::Cap<void> rcv_cap()
-{
-  static L4::Cap<void> _rcv = L4Re::Util::cap_alloc.alloc<void>();
-  return _rcv;
-}
-
-class Dope_base : public L4Re::Util::Event_svr<Dope_base>,
-                  public L4::Server_object
+class Dope_base : public L4Re::Util::Event_svr<Dope_base>
 {
 protected:
   s32 app_id;
@@ -108,8 +103,9 @@ protected:
 public:
   void event_cb(l4re_event_t *e, unsigned nr_events);
   static Dope_base *get_obj(s32 ai);
-  static L4::Cap<void> rcv_cap() { return ::rcv_cap(); }
   void reset_event_buffer() { evbuf.reset(); }
+
+  virtual L4::Ipc_svr::Server_iface *server_iface() const = 0;
 
 private:
   static void check_appid(s32 ai);
@@ -210,17 +206,47 @@ void Dope_base::event_cb(l4re_event_t *e, unsigned nr_events)
 
 // ------------------------------------------------------------------------
 
-class Dope_app : public Dope_base
+class Dope_app :
+  public Dope_base,
+  public L4::Epiface_t<Dope_app, Dope::Dope>
 {
 public:
   explicit Dope_app(const char *configstr);
-  int dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios);
-  int dispatch_dope_app(l4_umword_t, L4::Ipc::Iostream &ios);
 
-  int client_cmd(L4::Ipc::Iostream &ios);
-  int client_cmd_req(L4::Ipc::Iostream &ios);
-  int client_vscreen_get_fb(L4::Ipc::Iostream &ios);
-  int client_get_keystate(L4::Ipc::Iostream &ios);
+  L4::Ipc_svr::Server_iface *server_iface() const
+  { return L4::Epiface::server_iface(); }
+
+  long op_c_cmd(Dope::Dope::Rights, L4::Ipc::Array_in_buf<char, unsigned long> const &c)
+  { return this->cmd(c.data); }
+
+  long op_c_cmd_req(Dope::Dope::Rights,
+                    L4::Ipc::Array_in_buf<char, unsigned long> const &c,
+                    L4::Ipc::Array_ref<char, unsigned long> &res)
+  {
+    cmd_ret(c.data, res.data, res.length);
+    res.length = strlen(res.data);
+    return 0;
+  }
+
+  long op_c_vscreen_get_fb(Dope::Dope::Rights,
+                           L4::Ipc::Array<char const, unsigned long> const &s,
+                           L4::Ipc::Cap<L4Re::Dataspace> &ds)
+  {
+    char buf[40];
+    char res[50];
+
+    snprintf(buf, sizeof(buf), "%s.map()", s.data);
+    cmd_ret(buf, res, sizeof(res));
+    l4_cap_idx_t x = strtoul(&res[3], NULL, 0);
+    ds = L4::Ipc::make_cap(L4::Cap<L4Re::Dataspace>(x), L4_CAP_FPAGE_RW);
+    return L4_EOK;
+  }
+
+  long op_c_get_keystate(Dope::Dope::Rights, long key, long &res)
+  {
+    res = userstate->get_keystate(key);
+    return -L4_EOK;
+  }
 };
 
 Dope_app::Dope_app(const char *configstr)
@@ -250,124 +276,26 @@ Dope_app::Dope_app(const char *configstr)
   INFO(printf("Server(init_app): application init request. appname=%s\n", appname));
 }
 
-int Dope_app::client_cmd(L4::Ipc::Iostream &ios)
-{
-  unsigned long len;
-  char buf_in[256];
-
-  len = sizeof(buf_in);
-  ios >> L4::Ipc::buf_cp_in(buf_in, len);
-  buf_in[len] = 0;
-
-  cmd(buf_in);
-  return -L4_EOK;
-}
-
-int Dope_app::client_cmd_req(L4::Ipc::Iostream &ios)
-{
-  unsigned long len;
-  char buf_in[256];
-  char buf_out[256];
-
-  len = sizeof(buf_in);
-  ios >> L4::Ipc::buf_cp_in(buf_in, len);
-  buf_in[len] = 0;
-
-  cmd_ret(buf_in, buf_out, sizeof(buf_out));
-
-  len = strlen(buf_out);
-  if (len >= sizeof(buf_out))
-    {
-      len = sizeof(buf_out) - 1;
-      buf_out[sizeof(buf_out) - 1] = 0;
-    }
-
-  ios << L4::Ipc::buf_cp_out(buf_out, len);
-
-  return -L4_EOK;
-}
-
-int Dope_app::client_vscreen_get_fb(L4::Ipc::Iostream &ios)
-{
-  unsigned long len;
-  char buf_in[30];
-  char buf[40];
-
-  len = sizeof(buf_in);
-  ios >> L4::Ipc::buf_cp_in(buf_in, len);
-  buf_in[len] = 0;
-
-  snprintf(buf, sizeof(buf), "%s.map()", buf_in);
-  cmd_ret(buf, buf_in, sizeof(buf_in));
-  l4_cap_idx_t x = strtoul(&buf_in[3], NULL, 0);
-  L4::Cap<L4Re::Dataspace> ds = L4::Cap<L4Re::Dataspace>(x);
-  ios << ds;
-  return -L4_EOK;
-}
-
-int Dope_app::client_get_keystate(L4::Ipc::Iostream &ios)
-{
-  long x;
-  ios >> x; // get keycode
-  x = userstate->get_keystate(x);
-  ios << x; // send state
-  return -L4_EOK;
-}
-
-int Dope_app::dispatch_dope_app(l4_umword_t, L4::Ipc::Iostream &ios)
-{
-  L4::Opcode op;
-  ios >> op;
-
-  switch (op)
-    {
-    case Dope::Dope_app_::Cmd:
-      return client_cmd(ios);
-    case Dope::Dope_app_::Cmd_req:
-      return client_cmd_req(ios);
-    case Dope::Dope_app_::Vscreen_get_fb:
-      return client_vscreen_get_fb(ios);
-    case Dope::Dope_app_::Get_keystate:
-      return client_get_keystate(ios);
-    default:
-      return -L4_ENOSYS;
-    };
-}
-
-int Dope_app::dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios)
-{
-  l4_msgtag_t tag;
-  ios >> tag;
-
-  switch (tag.label())
-    {
-    case Dope::Protocol::App:
-      return dispatch_dope_app(obj, ios);
-    case L4Re::Protocol::Event:
-    case L4_PROTO_IRQ:
-      return L4Re::Util::Event_svr<Dope_base>::dispatch(obj, ios);
-    default:
-      return -L4_EBADPROTO;
-    };
-}
-
-
 // ------------------------------------------------------------------------
 
-class Dope_fb : public L4Re::Util::Video::Goos_svr,
-                public Dope_base
+class Dope_fb :
+  public L4Re::Util::Video::Goos_svr,
+  public Dope_base,
+  public L4::Epiface_t<Dope_fb, L4Re::Console>
 {
 public:
-  explicit Dope_fb(L4::Ipc::Istream &is);
-  int dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios);
+  using L4Re::Util::Video::Goos_svr::op_info;
+  using Dope_base::op_info;
+
+  explicit Dope_fb(L4::Ipc::Varg_list_ref is);
+  L4::Ipc_svr::Server_iface *server_iface() const
+  { return L4::Epiface::server_iface(); }
 
   virtual int refresh(int x, int y, int w, int h);
 };
 
-Dope_fb::Dope_fb(L4::Ipc::Istream &is)
+Dope_fb::Dope_fb(L4::Ipc::Varg_list_ref is)
 {
-  L4::Ipc::Varg opt;
-
   unsigned xpos = 20, ypos = 20;
   char appname[80] = "fb";
 
@@ -376,7 +304,7 @@ Dope_fb::Dope_fb(L4::Ipc::Istream &is)
 
   dope_registry->register_obj(this);
 
-  while (is.get(&opt))
+  for (L4::Ipc::Varg opt = is.next(); !opt.is_nil(); opt = is.next())
     {
       if (!opt.is_of<char const *>())
         {
@@ -507,97 +435,43 @@ int Dope_fb::refresh(int x, int y, int w, int h)
   return L4_EOK;
 }
 
-int Dope_fb::dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios)
-{
-  l4_msgtag_t tag;
-  ios >> tag;
-
-  switch (tag.label())
-    {
-    case L4Re::Protocol::Goos:
-       return L4Re::Util::Video::Goos_svr::dispatch(obj, ios);
-    case L4Re::Protocol::Event:
-    case L4_PROTO_IRQ:
-       return L4Re::Util::Event_svr<Dope_base>::dispatch(obj, ios);
-    default:
-       return -L4_EBADPROTO;
-    }
-}
-
 // ------------------------------------------------------------------------
 
-class Controller : public L4::Server_object
+class Controller : public L4::Epiface_t<Controller, L4::Factory>
 {
 public:
-  int dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios);
-};
-
-int
-Controller::dispatch(l4_umword_t, L4::Ipc::Iostream &ios)
-{
-  l4_msgtag_t tag;
-  ios >> tag;
-
-  switch (tag.label())
-    {
-    case L4::Meta::Protocol:
-      return L4::Util::handle_meta_request<L4::Factory>(ios);
-    case L4::Factory::Protocol:
-      break;
-    default:
-      return -L4_EBADPROTO;
-    }
-
-  L4::Factory::Proto op;
-  ios >> op;
-
-  try
-    {
-      switch (op)
-	{
-	default:
-	  printf("Invalid object type requested\n");
-	  return -L4_ENODEV;
-
-	case L4Re::Video::Goos::Protocol:
-	    {
-              L4::Ipc::Istream_copy cp_is = ios;
-	      Dope_fb *x = new Dope_fb(cp_is);
-	      ios << x->obj_cap();
-	      return L4_EOK;
-	    }
-	case 0: // dope iface
-	    {
-              L4::Ipc::Varg arg;
-              ios >> arg;
-              if (!arg.is_of<char const*>())
-                return -L4_EINVAL;
-              unsigned long size = 100;
-              char s[size];
-              strncpy(s, arg.value<char const*>(), cxx::min<int>(size, arg.length()));
-              s[size] = 0;
-	      Dope_app *x = new Dope_app(s);
-	      ios << x->obj_cap();
-	      return L4_EOK;
-	    }
-	}
-    }
-  catch (L4::Runtime_error const &e)
-    {
-      return e.err_no();
-    }
-}
-
-struct My_loop_hooks :
-  public L4::Ipc_svr::Ignore_errors,
-  public L4::Ipc_svr::Default_timeout,
-  public L4::Ipc_svr::Compound_reply
-{
-  void setup_wait(L4::Ipc::Istream &istr, L4::Ipc_svr::Reply_mode)
+  long op_create(L4::Factory::Rights r, L4::Ipc::Cap<void> &obj,
+                 l4_umword_t type, L4::Ipc::Varg_list<> &&args)
   {
-    istr.reset();
-    istr << L4::Ipc::Small_buf(rcv_cap().cap(), L4_RCV_ITEM_LOCAL_ID);
-    l4_utcb_br_u(istr.utcb())->bdr = 0;
+    if (!(r & L4_CAP_FPAGE_S))
+      return -L4_EPERM;
+
+    switch (type)
+      {
+      default:
+        printf("Invalid object type requested\n");
+        return -L4_ENODEV;
+
+      case L4Re::Video::Goos::Protocol:
+          {
+            Dope_fb *x = new Dope_fb(args);
+            obj = L4::Ipc::make_cap(x->obj_cap(), L4_CAP_FPAGE_RWD);
+            return L4_EOK;
+          }
+      case 0: // dope iface
+          {
+            L4::Ipc::Varg arg = args.next();
+            if (!arg.is_of<char const*>())
+              return -L4_EINVAL;
+            unsigned long size = 100;
+            char s[size];
+            strncpy(s, arg.value<char const*>(), cxx::min<int>(size, arg.length()));
+            s[size] = 0;
+            Dope_app *x = new Dope_app(s);
+            obj = L4::Ipc::make_cap(x->obj_cap(), L4_CAP_FPAGE_RWD);
+            return L4_EOK;
+          }
+      }
   }
 };
 
@@ -606,16 +480,17 @@ static void *server_thread(void *)
 {
   static Controller ctrl;
 
-  l4_debugger_set_object_name(pthread_getl4cap(pthread_self()), "dope-srv");
+  l4_debugger_set_object_name(pthread_l4_cap(pthread_self()), "dope-srv");
 
+  static L4::Server<L4Re::Util::Br_manager_hooks> dope_server(l4_utcb());
   dope_registry = new L4Re::Util::Object_registry
-      (L4::Cap<L4::Thread>(pthread_getl4cap(pthread_self())),
+      (&dope_server,
+       L4::Cap<L4::Thread>(pthread_l4_cap(pthread_self())),
        L4Re::Env::env()->factory());
 
   if (!dope_registry)
     return NULL;
 
-  static L4::Server<My_loop_hooks> dope_server(l4_utcb());
 
   if (!dope_registry->register_obj(&ctrl, "dope").is_valid())
     {
@@ -624,7 +499,7 @@ static void *server_thread(void *)
     }
 
   INFO(printf("Server(server_thread): entering server loop\n"));
-  dope_server.loop(dope_registry);
+  dope_server.loop<L4::Runtime_error>(dope_registry);
 
   return NULL;
 }

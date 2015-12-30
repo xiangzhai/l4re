@@ -37,7 +37,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#ifdef HAVE_PATHS_H
 #include <paths.h>
+#endif
 
 /*
  * When commands are first encountered, they are entered in a hash table.
@@ -94,7 +96,7 @@ STATIC void clearcmdentry(int);
 STATIC struct tblentry *cmdlookup(const char *, int);
 STATIC void delete_cmd_entry(void);
 STATIC void addcmdentry(char *, struct cmdentry *);
-STATIC int describe_command(struct output *, char *, int);
+STATIC int describe_command(struct output *, char *, const char *, int);
 
 
 /*
@@ -141,7 +143,7 @@ shellexec(char **argv, const char *path, int idx)
 	exitstatus = exerrno;
 	TRACE(("shellexec failed for %s, errno %d, suppressint %d\n",
 		argv[0], e, suppressint ));
-	exerror(EXEXEC, "%s: %s", argv[0], errmsg(e, E_EXEC));
+	exerror(EXEXIT, "%s: %s", argv[0], errmsg(e, E_EXEC));
 	/* NOTREACHED */
 }
 
@@ -688,14 +690,14 @@ addcmdentry(char *name, struct cmdentry *entry)
  */
 
 void
-defun(char *name, union node *func)
+defun(union node *func)
 {
 	struct cmdentry entry;
 
 	INTOFF;
 	entry.cmdtype = CMDFUNCTION;
 	entry.u.func = copyfunc(func);
-	addcmdentry(name, &entry);
+	addcmdentry(func->ndefun.text, &entry);
 	INTON;
 }
 
@@ -725,21 +727,23 @@ typecmd(int argc, char **argv)
 	int err = 0;
 
 	for (i = 1; i < argc; i++) {
-		err |= describe_command(out1, argv[i], 1);
+		err |= describe_command(out1, argv[i], NULL, 1);
 	}
 	return err;
 }
 
 STATIC int
-describe_command(out, command, verbose)
+describe_command(out, command, path, verbose)
 	struct output *out;
 	char *command;
+	const char *path;
 	int verbose;
 {
 	struct cmdentry entry;
 	struct tblentry *cmdp;
 	const struct alias *ap;
-	const char *path = pathval();
+
+	path = path ?: pathval();
 
 	if (verbose) {
 		outstr(command, out);
@@ -838,6 +842,7 @@ commandcmd(argc, argv)
 		VERIFY_BRIEF = 1,
 		VERIFY_VERBOSE = 2,
 	} verify = 0;
+	const char *path = NULL;
 
 	while ((c = nextopt("pvV")) != '\0')
 		if (c == 'V')
@@ -848,10 +853,12 @@ commandcmd(argc, argv)
 		else if (c != 'p')
 			abort();
 #endif
+		else
+			path = defpath;
 
 	cmd = *argptr;
 	if (verify && cmd)
-		return describe_command(out1, cmd, verify - VERIFY_BRIEF);
+		return describe_command(out1, cmd, path, verify - VERIFY_BRIEF);
 
 	return 0;
 }

@@ -11,7 +11,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include <stdint.h>
+#include <fcntl.h>
+#include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -147,8 +148,12 @@ static int isoperand(char **);
 static int newerf(const char *, const char *);
 static int olderf(const char *, const char *);
 static int equalf(const char *, const char *);
+#ifdef HAVE_FACCESSAT
+static int test_file_access(const char *, int);
+#else
 static int test_st_mode(const struct stat64 *, int);
 static int bash_group_member(gid_t);
+#endif
 
 static inline intmax_t getn(const char *s)
 {
@@ -263,9 +268,13 @@ aexpr(enum token n)
 static int
 nexpr(enum token n)
 {
-	if (n == UNOT)
-		return !nexpr(t_lex(++t_wp));
-	return primary(n);
+	if (n != UNOT)
+		return primary(n);
+
+	n = t_lex(t_wp + 1);
+	if (n != EOI)
+		t_wp++;
+	return !nexpr(n);
 }
 
 static int
@@ -295,6 +304,14 @@ primary(enum token n)
 			return strlen(*t_wp) != 0;
 		case FILTT:
 			return isatty(getn(*t_wp));
+#ifdef HAVE_FACCESSAT
+		case FILRD:
+			return test_file_access(*t_wp, R_OK);
+		case FILWR:
+			return test_file_access(*t_wp, W_OK);
+		case FILEX:
+			return test_file_access(*t_wp, X_OK);
+#endif
 		default:
 			return filstat(*t_wp, n);
 		}
@@ -364,12 +381,14 @@ filstat(char *nm, enum token mode)
 		return 0;
 
 	switch (mode) {
+#ifndef HAVE_FACCESSAT
 	case FILRD:
 		return test_st_mode(&s, R_OK);
 	case FILWR:
 		return test_st_mode(&s, W_OK);
 	case FILEX:
 		return test_st_mode(&s, X_OK);
+#endif
 	case FILEXIST:
 		return 1;
 	case FILREG:
@@ -469,6 +488,12 @@ equalf (const char *f1, const char *f2)
 		b1.st_ino == b2.st_ino);
 }
 
+#ifdef HAVE_FACCESSAT
+static int test_file_access(const char *path, int mode)
+{
+	return !faccessat(AT_FDCWD, path, mode, AT_EACCESS);
+}
+#else	/* HAVE_FACCESSAT */
 /*
  * Similar to what access(2) does, but uses the effective uid and gid.
  * Doesn't make the mistake of telling root that any file is executable.
@@ -519,3 +544,4 @@ bash_group_member(gid_t gid)
 
 	return (0);
 }
+#endif	/* HAVE_FACCESSAT */

@@ -12,19 +12,18 @@
 #define CWORD 0			/* character is nothing special */
 #define CNL 1			/* newline character */
 #define CBACK 2			/* a backslash character */
-#define CDBACK 3		/* a backslash character in double quotes */
-#define CSQUOTE 4		/* single quote */
-#define CDQUOTE 5		/* double quote */
-#define CENDQUOTE 6		/* a terminating quote */
-#define CBQUOTE 7		/* backwards single quote */
-#define CVAR 8			/* a dollar sign */
-#define CENDVAR 9		/* a '}' character */
-#define CLP 10			/* a left paren in arithmetic */
-#define CRP 11			/* a right paren in arithmetic */
-#define CEOF 12			/* end of file */
-#define CCTL 13			/* like CWORD, except it must be escaped */
-#define CSPCL 14		/* these terminate a word */
-#define CIGN 15			/* character should be ignored */
+#define CSQUOTE 3		/* single quote */
+#define CDQUOTE 4		/* double quote */
+#define CENDQUOTE 5		/* a terminating quote */
+#define CBQUOTE 6		/* backwards single quote */
+#define CVAR 7			/* a dollar sign */
+#define CENDVAR 8		/* a '}' character */
+#define CLP 9			/* a left paren in arithmetic */
+#define CRP 10			/* a right paren in arithmetic */
+#define CEOF 11			/* end of file */
+#define CCTL 12			/* like CWORD, except it must be escaped */
+#define CSPCL 13		/* these terminate a word */
+#define CIGN 14			/* character should be ignored */
 
 /* Syntax classes for is_ functions */
 #define ISDIGIT 01		/* a digit */

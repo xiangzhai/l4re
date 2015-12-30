@@ -32,7 +32,7 @@ SECTIONS {
     _initkip_start = .;
     KEEP(*(.initkip.version))
     KEEP(*(.initkip.features))
-    KEEP(*(.initkip.features.fini))
+    KEEP(*(.initkip.features.end))
     _initkip_end = .;
     . = ALIGN(4K);
   } : kip = 0

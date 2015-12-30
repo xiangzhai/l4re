@@ -33,8 +33,8 @@ __END_DECLS
 } while(0)
 
 #define LOG_Enter(a...) do {			\
-  if(0)LOG_format_check("called "a);		\
-  LOG_log(__func__, "called "a);		\
+  if(0)LOG_format_check("called " a);		\
+  LOG_log(__func__, "called " a);		\
 } while(0)
 
 #define LOGk(a...) do {				\

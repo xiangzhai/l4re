@@ -19,7 +19,7 @@
 #include <stdint.h>
 
 /* local includes */
-#include "cbc.h"
+#include <l4/crypto/cbc.h>
 
 /*
  * *****************************************************************

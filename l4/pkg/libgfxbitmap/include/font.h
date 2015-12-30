@@ -93,7 +93,7 @@ gfxbitmap_font_data(gfxbitmap_font_t font, unsigned c);
  * \brief Render a string to a framebuffer.
  *
  * \param fb      Pointer to frame buffer.
- * \param fbi     Frame buffer info structure.
+ * \param vi      Frame buffer info structure.
  * \param font    Font.
  * \param text    Text string.
  * \param len     Length of the text string.
@@ -112,7 +112,7 @@ gfxbitmap_font_text(void *fb, l4re_video_view_info_t *vi,
  * \brief Render a string to a framebuffer, including scaling.
  *
  * \param fb      Pointer to frame buffer.
- * \param fbi     Frame buffer info structure.
+ * \param vi      Frame buffer info structure.
  * \param font    Font.
  * \param text    Text string.
  * \param len     Length of the text string.

@@ -71,7 +71,7 @@ static const short nodesize[26] = {
       SHELL_ALIGN(sizeof (struct nfor)),
       SHELL_ALIGN(sizeof (struct ncase)),
       SHELL_ALIGN(sizeof (struct nclist)),
-      SHELL_ALIGN(sizeof (struct narg)),
+      SHELL_ALIGN(sizeof (struct ndefun)),
       SHELL_ALIGN(sizeof (struct narg)),
       SHELL_ALIGN(sizeof (struct nfile)),
       SHELL_ALIGN(sizeof (struct nfile)),
@@ -168,6 +168,9 @@ calcsize(n)
 	    calcsize(n->nclist.next);
 	    break;
       case NDEFUN:
+	    calcsize(n->ndefun.body);
+	    funcstringsize += strlen(n->ndefun.text) + 1;
+	    break;
       case NARG:
 	    sizenodelist(n->narg.backquote);
 	    funcstringsize += strlen(n->narg.text) + 1;
@@ -227,6 +230,7 @@ copynode(n)
 	    new->ncmd.redirect = copynode(n->ncmd.redirect);
 	    new->ncmd.args = copynode(n->ncmd.args);
 	    new->ncmd.assign = copynode(n->ncmd.assign);
+	    new->ncmd.linno = n->ncmd.linno;
 	    break;
       case NPIPE:
 	    new->npipe.cmdlist = copynodelist(n->npipe.cmdlist);
@@ -237,6 +241,7 @@ copynode(n)
       case NSUBSHELL:
 	    new->nredir.redirect = copynode(n->nredir.redirect);
 	    new->nredir.n = copynode(n->nredir.n);
+	    new->nredir.linno = n->nredir.linno;
 	    break;
       case NAND:
       case NOR:
@@ -255,10 +260,12 @@ copynode(n)
 	    new->nfor.var = nodesavestr(n->nfor.var);
 	    new->nfor.body = copynode(n->nfor.body);
 	    new->nfor.args = copynode(n->nfor.args);
+	    new->nfor.linno = n->nfor.linno;
 	    break;
       case NCASE:
 	    new->ncase.cases = copynode(n->ncase.cases);
 	    new->ncase.expr = copynode(n->ncase.expr);
+	    new->ncase.linno = n->ncase.linno;
 	    break;
       case NCLIST:
 	    new->nclist.body = copynode(n->nclist.body);
@@ -266,6 +273,10 @@ copynode(n)
 	    new->nclist.next = copynode(n->nclist.next);
 	    break;
       case NDEFUN:
+	    new->ndefun.body = copynode(n->ndefun.body);
+	    new->ndefun.text = nodesavestr(n->ndefun.text);
+	    new->ndefun.linno = n->ndefun.linno;
+	    break;
       case NARG:
 	    new->narg.backquote = copynodelist(n->narg.backquote);
 	    new->narg.text = nodesavestr(n->narg.text);

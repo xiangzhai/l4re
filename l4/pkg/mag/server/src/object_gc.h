@@ -33,6 +33,8 @@ public:
   void gc_sweep();
   void gc_step();
   void add_obj(Object *o) { o->enqueue(&_life); }
+
+  virtual void gc_obj(Object *o) = 0;
 };
 
 }

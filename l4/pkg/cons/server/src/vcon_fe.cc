@@ -13,10 +13,10 @@
 Vcon_fe::Vcon_fe(L4::Cap<L4::Vcon> con, L4Re::Util::Object_registry *r)
 : Vcon_fe_base(con, r)
 {
-  L4Re::chksys(_vcon->bind(0, L4::cap_cast<L4::Irq>(obj_cap())),
+  L4Re::chksys(_vcon->bind(0, obj_cap()),
                "binding to input IRQ");
 
-  l4_vcon_attr_t attr;
+  l4_vcon_attr_t attr = { 0, 0, 0 };
   _vcon->get_attr(&attr);
   attr.l_flags &= ~(L4_VCON_ECHO | L4_VCON_ICANON);
   attr.o_flags &= ~(L4_VCON_ONLCR | L4_VCON_OCRNL | L4_VCON_ONLRET);

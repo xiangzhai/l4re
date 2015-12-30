@@ -27,7 +27,7 @@
  * A very simple server object, just providing the
  * shared memory data space and an IRQ object to send a notification.
  */
-class My_server_obj : public L4::Server_object
+class My_server_obj : public L4::Server_object_t<L4::Kobject>
 {
 private:
   /**
@@ -83,7 +83,7 @@ int My_server_obj::dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios)
  * This provides a kind of interrupt handler integrated in our
  * server.
  */
-class Shm_observer : public L4::Server_object
+class Shm_observer : public L4::Irq_handler_object
 {
 private:
   /**
@@ -157,7 +157,7 @@ static char *get_ds(L4::Cap<L4Re::Dataspace> *_ds)
   char *_addr = 0;
   err =  L4Re::Env::env()->rm()->attach(&_addr, (*_ds)->size(),
                                         L4Re::Rm::Search_addr,
-                                        *_ds);
+                                        L4::Ipc::make_cap_rw(*_ds));
   if (err < 0)
     {
       printf("Error attaching data space: %s\n", l4sys_errtostr(err));

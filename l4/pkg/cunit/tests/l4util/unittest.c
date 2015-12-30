@@ -7,8 +7,8 @@
  * Please see the COPYING-GPL-2 file for details.                             *
  ******************************************************************************/
 
-#include <l4/cunit/CUnit.h>
-#include <l4/cunit/Basic.h>
+#include <CUnit.h>
+#include <Basic.h>
 #include <l4/log/macros.h>
 
 #include <l4/util/atomic.h>

@@ -13,19 +13,7 @@ typedef unsigned int __u32;
 //typedef signed long long __s64;
 //typedef unsigned long long __u64;
 
-#if defined (ARCH_x86)
-#define BITS_PER_LONG 32
-#elif defined (ARCH_amd64)
-#define BITS_PER_LONG 64
-#elif defined (ARCH_arm)
-#define BITS_PER_LONG 32
-#elif defined (ARCH_ppc32)
-#define BITS_PER_LONG 32
-#elif defined (ARCH_sparc)
-#define BITS_PER_LONG 32
-#else
-#define Add this arch here
-#endif
+#define BITS_PER_LONG (__SIZEOF_LONG__ * 8)
 
 //typedef signed char s8;
 typedef unsigned char u8;

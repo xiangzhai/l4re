@@ -32,8 +32,8 @@ public:
   : Be_file_stream(), _event(this), _s(v) {}
   ~in_ops() throw() {}
 
-  int bind_irq(unsigned irq, L4::Cap<L4::Irq> const &irq_cap) throw()
-  { return l4_error(L4::cap_reinterpret_cast<L4::Icu>(L4Re::Env::env()->log())->bind(irq, irq_cap)); }
+  int bind_irq(unsigned irq, L4::Cap<L4::Triggerable> const &irq_cap) throw()
+  { return l4_error(L4Re::Env::env()->log()->bind(irq, irq_cap)); }
 
   ssize_t readv(struct iovec const *iov, int cnt) throw()
   {

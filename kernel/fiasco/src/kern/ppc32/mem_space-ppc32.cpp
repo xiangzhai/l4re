@@ -66,7 +66,6 @@ IMPLEMENTATION [ppc32]:
 #include <cstring>
 #include <cstdio>
 #include "cpu.h"
-#include "kdb_ke.h"
 #include "l4_types.h"
 #include "mem_layout.h"
 #include "paging.h"

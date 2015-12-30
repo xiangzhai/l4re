@@ -36,7 +36,7 @@ void *to_thread(void *arg)
 	if (o->want_cancel())
 		return NULL;
 
-	l4_debugger_set_object_name(pthread_getl4cap(pthread_self()), "romain::timout");
+	l4_debugger_set_object_name(pthread_l4_cap(pthread_self()), "romain::timout");
 
 #if EVENT_LOGGING
 	Measurements::GenericEvent* ev = Romain::globalLogBuf->next();

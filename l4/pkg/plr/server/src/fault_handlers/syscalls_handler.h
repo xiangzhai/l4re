@@ -72,5 +72,6 @@ SpecificSyscallHandler(Scheduling);
 SpecificSyscallHandler(ThreadHandler);
 SpecificSyscallHandler(RegionManagingHandler);
 SpecificSyscallHandler(IrqHandler);
+SpecificSyscallHandler(IrqSenderHandler);
 
 }

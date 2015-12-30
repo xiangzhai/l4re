@@ -22,6 +22,8 @@
 #include <l4/dde/ddekit/lock.h>
 #include <l4/dde/ddekit/memory.h>
 #include <l4/dde/ddekit/printf.h>
+#include <l4/dde/ddekit/c++/memory.h>
+#include <l4/dde/ddekit/c++/lock.h>
 
 namespace DDEKit
 {

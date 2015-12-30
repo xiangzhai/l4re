@@ -35,7 +35,7 @@ int Ferret::SensorDir::dispatch(l4_umword_t, L4::Ipc::Iostream &ios)
 	/* 
 	 * Label sanity check
 	 */
-	if ((tag.label() != Client) && (tag.label() != Monitor))
+	if ((tag.label() != Client::Protocol) && (tag.label() != Monitor::Protocol))
 		return L4_EBADPROTO;
 
 	/*
@@ -43,10 +43,10 @@ int Ferret::SensorDir::dispatch(l4_umword_t, L4::Ipc::Iostream &ios)
 	 */
 	switch (tag.label())
 	{
-		case Client:
+		case Client::Protocol:
 			return dispatch_client(ios);
 			break;
-		case Monitor:
+		case Monitor::Protocol:
 			return dispatch_monitor(ios);
 			break;
 		default:
@@ -57,7 +57,7 @@ int Ferret::SensorDir::dispatch(l4_umword_t, L4::Ipc::Iostream &ios)
 
 int Ferret::SensorDir::dispatch_monitor(L4::Ipc::Iostream &ios)
 {
-	int opcode;
+	L4::Opcode opcode;
 	int ret = -L4_ENOSYS;
 	uint16_t maj, min, inst;
 	Sensor *s;
@@ -70,7 +70,7 @@ int Ferret::SensorDir::dispatch_monitor(L4::Ipc::Iostream &ios)
 #endif
 	switch(opcode)
 	{
-		case Attach:
+		case Monitor::Attach:
 			s = _reg.lookup(maj, min, inst);
 			if (s) {
 				std::cout << "Found " << *s << "\n";
@@ -86,7 +86,7 @@ int Ferret::SensorDir::dispatch_monitor(L4::Ipc::Iostream &ios)
 				ret = -L4_ENOENT;
 			}
 			break;
-		case Detach:
+		case Monitor::Detach:
 			s = _reg.lookup(maj, min, inst);
 			if (s) {
 				s->dec();
@@ -104,7 +104,7 @@ int Ferret::SensorDir::dispatch_monitor(L4::Ipc::Iostream &ios)
 				ret = -L4_ENOENT;
 			}
 			break;
-		case List:
+		case Monitor::List:
 			std::cout << "list\n";
 			ios << ret;
 			break;
@@ -116,7 +116,7 @@ int Ferret::SensorDir::dispatch_monitor(L4::Ipc::Iostream &ios)
 
 int Ferret::SensorDir::dispatch_client(L4::Ipc::Iostream &ios)
 {
-	int opcode;
+	L4::Opcode opcode;
 	uint16_t maj, min, inst, typ;
 	uint32_t flags;
 	Sensor *sensor = 0;
@@ -132,7 +132,7 @@ int Ferret::SensorDir::dispatch_client(L4::Ipc::Iostream &ios)
 	int ret = -L4_ENOSYS;
 	switch(opcode)
 	{
-		case Create:
+		case Client::Create:
 			{
 				unsigned e_size = 0, e_num = 0;
 				switch(typ)
@@ -213,7 +213,7 @@ int Ferret::SensorDir::dispatch_client(L4::Ipc::Iostream &ios)
 			ret = 0;
 			break;
 
-		case Free:
+		case Client::Free:
 			sensor = _reg.lookup(maj, min, inst);
 			sensor->dec();
 			if (sensor->refcount() == 0) {
@@ -225,7 +225,7 @@ int Ferret::SensorDir::dispatch_client(L4::Ipc::Iostream &ios)
 
 			break;
 
-		case NewInstance:
+		case Client::NewInstance:
 			// XXX create a new instance of a sensor
 			break;
 		default:

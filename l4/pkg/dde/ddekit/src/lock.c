@@ -16,7 +16,7 @@
 #include <l4/dde/ddekit/panic.h>
 #include <l4/dde/ddekit/assert.h>
 
-#include <pthread-l4.h> // pthread_getl4cap
+#include <pthread-l4.h> // pthread_l4_cap
 #include <bits/pthreadtypes.h> // mutex->__m_owner
 
 #include "internals.h"

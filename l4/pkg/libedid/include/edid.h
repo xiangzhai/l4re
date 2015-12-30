@@ -10,6 +10,8 @@
  */
 #pragma once
 
+#include <l4/sys/compiler.h>
+
 /**
  * \defgroup libedid EDID parsing functionality
  * @{

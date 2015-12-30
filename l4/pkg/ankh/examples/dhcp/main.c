@@ -24,7 +24,7 @@ int main(int argc, char **argv)
 {
 	if (l4ankh_init())
 	  return 1;
-	l4_cap_idx_t c = pthread_getl4cap(pthread_self());
+	l4_cap_idx_t c = pthread_l4_cap(pthread_self());
 
 	static struct option long_opts[] = {
 		{"bufsize", 1, 0, BUF_SIZE },

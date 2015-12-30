@@ -47,7 +47,7 @@ setup_uart_io_port(Regs *, Address, int)
 //------------------------------------------------------------------------
 IMPLEMENTATION [libuart && serial]:
 
-IMPLEMENT
+IMPLEMENT_OVERRIDE
 bool
 Kernel_uart::init_for_mode(Init_mode init_mode)
 {

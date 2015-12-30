@@ -17,13 +17,13 @@ using L4Re::chksys;
 
 void *Async_vcon_fe::setup()
 {
-  int err = l4_error(_vcon->bind(0, L4::cap_cast<L4::Irq>(obj_cap())));
+  int err = l4_error(_vcon->bind(0, obj_cap()));
 
   if (err == -L4_EBADPROTO)
     printf("WARNING: frontend without input\n");
 
   // we just do not care about errors here too
-  l4_vcon_attr_t attr;
+  l4_vcon_attr_t attr = { 0, 0, 0 };
   _vcon->get_attr(&attr);
   attr.l_flags &= ~(L4_VCON_ECHO | L4_VCON_ICANON);
   attr.o_flags &= ~(L4_VCON_ONLCR | L4_VCON_OCRNL | L4_VCON_ONLRET);

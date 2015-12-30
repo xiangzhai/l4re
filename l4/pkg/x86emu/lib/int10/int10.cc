@@ -643,7 +643,7 @@ x86emu_int10_set_vbemode(int mode, l4util_mb_vbe_ctrl_t *ctrl_info,
   X86EMU_exec();
   // error check missing ?
   printf("VBE mode 0x%x successfully set.\n", mode);
-  return 0;
+  return mode;
 }
 
 int

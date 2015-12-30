@@ -9,7 +9,7 @@
  */
 #pragma once
 
-#include <l4/cxx/ipc_server>
+#include <l4/sys/cxx/ipc_epiface>
 #include <l4/cxx/ref_ptr>
 #include <l4/cxx/hlist>
 #include <l4/re/util/object_registry>
@@ -20,7 +20,7 @@ namespace Mag_server {
 
 class Object_gc;
 
-class Object : public L4::Server_object, public cxx::H_list_item
+class Object : public L4::Epiface, public cxx::H_list_item
 {
 private:
   friend class Object_gc;
@@ -52,6 +52,10 @@ inline Object::~Object() {}
 class Registry : protected L4Re::Util::Object_registry
 {
 public:
+  Registry(L4::Ipc_svr::Server_iface *sif)
+  : L4Re::Util::Object_registry(sif)
+  {}
+
   L4::Cap<void> register_obj(cxx::Ref_ptr<Object> o)
   {
     L4::Cap<void> r = L4Re::Util::Object_registry::register_obj(o.ptr());

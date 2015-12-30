@@ -11,6 +11,5 @@
 #include <l4/sys/capability>
 
 namespace Glbl {
-extern L4::Cap<void> rcv_cap;
 extern char log_buffer[1024];
 }

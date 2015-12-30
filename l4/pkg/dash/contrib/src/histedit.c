@@ -33,7 +33,9 @@
  */
 
 #include <sys/param.h>
+#ifdef HAVE_PATHS_H
 #include <paths.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -371,7 +373,7 @@ histcmd(int argc, char **argv)
 				}
 
 				evalstring(strcpy(stalloc(strlen(s) + 1), s),
-					   ~0);
+					   0);
 				if (displayhist && hist) {
 					/*
 					 *  XXX what about recursive and
@@ -396,7 +398,7 @@ histcmd(int argc, char **argv)
 		editcmd = stalloc(strlen(editor) + strlen(editfile) + 2);
 		sprintf(editcmd, "%s %s", editor, editfile);
 		/* XXX - should use no JC command */
-		evalstring(editcmd, ~0);
+		evalstring(editcmd, 0);
 		INTON;
 		readcmdfile(editfile);	/* XXX - should read back - quick tst */
 		unlink(editfile);

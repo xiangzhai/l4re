@@ -69,9 +69,9 @@ static void ankh_activate()
 
 	L4::Ipc::Iostream s(l4_utcb());
 
-	s << l4_umword_t(Ankh::Opcode::Activate);
+	s << L4::Opcode(Ankh::Svc::Activate);
 	
-	l4_msgtag_t res = s.call(ankh_server.cap(), Ankh::Protocol::Ankh);
+	l4_msgtag_t res = s.call(ankh_server.cap(), Ankh::Svc::Protocol);
 	ASSERT_EQUAL(l4_ipc_error(res, l4_utcb()), 0);
 	
 	printf("activated Ankh connection.\n");
@@ -246,9 +246,9 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	int global_id = l4_debugger_global_id(pthread_getl4cap(pthread_self()));
+	int global_id = l4_debugger_global_id(pthread_l4_cap(pthread_self()));
 	std::cout << "My TID = 0x" << std::hex << global_id << std::dec << "\n";
-	l4_debugger_set_object_name(pthread_getl4cap(pthread_self()), "morpork.main");
+	l4_debugger_set_object_name(pthread_l4_cap(pthread_self()), "morpork.main");
 	//std::cout << "Ready to contact Ankh.\n";
 
 	get_shm_area(ankh_session);

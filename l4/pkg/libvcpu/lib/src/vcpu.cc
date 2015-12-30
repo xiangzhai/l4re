@@ -22,7 +22,7 @@
 #include <cstring>
 
 L4_CV void
-l4vcpu_print_state(l4_vcpu_state_t *vcpu,
+l4vcpu_print_state(l4_vcpu_state_t const *vcpu,
                    const char *prefix) L4_NOTHROW
 {
   printf("%svcpu=%p state=%x savedstate=%x label=%lx\n",

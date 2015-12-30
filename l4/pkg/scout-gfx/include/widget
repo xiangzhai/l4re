@@ -39,6 +39,7 @@ protected:
     int takes_focus : 1; ///< Widget highlights mouse focus
     int findable    : 1; ///< Regard element in find function
     int visible     : 1; ///< Widget is visible
+    int keyb_focusable : 1; ///< Widget can receive keyboard focus
   } _flags;
 
 public:
@@ -51,6 +52,7 @@ public:
     _flags.selected = 0;
     _flags.findable = 1;
     _flags.visible = 1;
+    _flags.keyb_focusable = 0;
   }
 
   virtual ~Widget();
@@ -76,9 +78,12 @@ public:
   void visible(bool flag) { _flags.visible = flag; }
   bool visible() const { return _flags.visible; }
 
+  virtual bool is_keyb_focusable() const { return _flags.keyb_focusable; }
+  virtual void keyb_focus(bool) {};
+
   virtual void draw(Canvas *c, Point const &p) = 0;
   virtual Widget *find(Point const &p);
-  //virtual Widget *find_child(Point const &p);
+
   virtual void fill_cache(Mag_gfx::Pixel_info const *) {}
   virtual void flush_cache(Mag_gfx::Pixel_info const *) {}
 
@@ -138,6 +143,20 @@ public:
       return this;
     return 0;
   }
+
+  /**
+   * \returns the root of a Widget hierarchy.
+   */
+  Widget *root();
+
+  /**
+   * \returns the next Widget of the hierarchy in pre-order DFS
+   *
+   * \param bt: This flag sets the search in back-tracking mode.
+   *            The bt flag is primarily used internally and defaults for a
+   *            regular depth-first search to false.
+   */
+  virtual Widget *next_widget(bool bt = false);
 };
 
 class Parent_widget : public Widget
@@ -152,6 +171,12 @@ private:
 public:
 
   Parent_widget() : Widget(), _first(0), _last(0), _child_layout(0) {}
+
+  ~Parent_widget()
+  {
+    for (Widget *e = _first; e; e = e->next)
+      e->parent(0);
+  }
 
   Layout *child_layout() const { return _child_layout; }
   /**
@@ -233,8 +258,12 @@ public:
   void draw(Canvas *c, Point const &p);
   Widget *find(Point const &p);
   virtual Widget *find_child(Point const &p);
+  Widget *next_widget(bool bt = false);
 };
 
+/**
+ * translates widget-relative coordinates to parent coordinates
+ */
 inline
 Point
 Widget::map_to_parent(Point const &po, Widget *p) const
@@ -245,4 +274,4 @@ Widget::map_to_parent(Point const &po, Widget *p) const
   return _parent->map_to_parent(po + _pos, p);
 }
 
-}
+} //namespace Scout_gfx

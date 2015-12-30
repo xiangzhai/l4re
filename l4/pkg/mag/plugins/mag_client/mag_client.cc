@@ -8,14 +8,12 @@
  * Please see the COPYING-GPL-2 file for details.
  */
 #include <l4/re/env>
-#include <l4/re/protocols>
 #include <l4/re/namespace>
 #include <l4/re/event_enums.h>
-#include <l4/cxx/ipc_server>
+#include <l4/re/event-sys.h>
 #include <l4/re/error_helper>
 #include <l4/re/rm>
 #include <l4/re/dataspace>
-#include <l4/re/mem_alloc>
 #include <l4/re/util/video/goos_svr>
 #include <l4/re/util/event_svr>
 #include <l4/re/util/icu_svr>
@@ -49,7 +47,9 @@ using Mag_gfx::Texture;
 using Mag_gfx::Area;
 using L4Re::chksys;
 
-class Mag_client : public Object, private Plugin
+class Mag_client :
+  public L4::Epiface_t<Mag_client, L4::Factory, Object>,
+  private Plugin
 {
 private:
   Core_api const *_core;
@@ -59,19 +59,22 @@ public:
   char const *type() const { return "Mag client"; }
   void start(Core_api *core);
 
-  int dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios);
   void destroy();
+  long op_create(L4::Factory::Rights rights, L4::Ipc::Cap<void> &obj,
+                 l4_mword_t proto, L4::Ipc::Varg_list<> const &args);
 };
 
 class Client_buffer;
 class Client_view;
 
 class Mag_goos
-: public Session, public Object,
+: public Session,
+  public L4::Epiface_t<Mag_goos, L4Re::Console, Object>,
   public L4Re::Util::Icu_cap_array_svr<Mag_goos>
 {
 private:
   typedef L4Re::Util::Icu_cap_array_svr<Mag_goos> Icu_svr;
+  typedef L4Re::Video::Goos::Rights Goos_rights;
 
   Core_api const *_core;
   L4Re::Util::Auto_cap<L4Re::Dataspace>::Cap _ev_ds;
@@ -85,39 +88,87 @@ private:
   Buffer_vector _buffers;
   View_vector _views;
 
-  int screen_dispatch(l4_umword_t, L4::Ipc::Iostream &ios);
-  int event_dispatch(l4_umword_t, L4::Ipc::Iostream &ios);
+public:
+  long op_info(Goos_rights, L4Re::Video::Goos::Info &i);
 
-  int screen_info(L4::Ipc::Iostream &ios);
-  int screen_create_buffer(L4::Ipc::Iostream &ios);
-  int screen_create_view(L4::Ipc::Iostream &ios);
-  int screen_delete_view(L4::Ipc::Iostream &ios);
-  int screen_get_buffer(L4::Ipc::Iostream &ios);
-  int screen_view_info(L4::Ipc::Iostream &ios);
-  int screen_view_set_info(L4::Ipc::Iostream &ios);
-  int screen_view_stack(L4::Ipc::Iostream &ios);
-  int screen_view_refresh(L4::Ipc::Iostream &ios);
-  int screen_refresh(L4::Ipc::Iostream &ios);
+  long op_get_static_buffer(Goos_rights, unsigned idx,
+                            L4::Ipc::Cap<L4Re::Dataspace> &ds);
 
-  int event_get(L4::Ipc::Iostream &ios);
-  int event_get_stream_info_for_id(L4::Ipc::Iostream &ios);
-  int event_get_axis_info(L4::Ipc::Iostream &ios);
+  long op_create_buffer(Goos_rights, unsigned long, L4::Ipc::Cap<L4Re::Dataspace> &);
+
+  long op_delete_buffer(Goos_rights, unsigned)
+  { return -L4_ENOSYS; }
+
+  long op_create_view(Goos_rights);
+
+  long op_delete_view(Goos_rights, unsigned);
+
+  long op_view_info(Goos_rights, unsigned idx, L4Re::Video::View::Info &info);
+
+  long op_set_view_info(Goos_rights, unsigned, L4Re::Video::View::Info const &);
+
+  long op_view_stack(Goos_rights, unsigned view, unsigned pivot, bool behind);
+
+  long op_view_refresh(Goos_rights, unsigned idx, int x, int y, int w, int h);
+
+  long op_refresh(Goos_rights, int x, int y, int w, int h);
+
+  long op_get_buffer(L4Re::Event::Rights, L4::Ipc::Cap<L4Re::Dataspace> &ds)
+  {
+    _events.reset();
+    ds = L4::Ipc::Cap<L4Re::Dataspace>(_ev_ds.get(), L4_CAP_FPAGE_RW);
+    return L4_EOK;
+  }
+
+  long op_get_num_streams(L4Re::Event::Rights)
+  { return -L4_ENOSYS; }
+
+  long op_get_stream_info(L4Re::Event::Rights, int, L4Re::Event_stream_info &)
+  { return -L4_ENOSYS; }
+
+  long op_get_stream_info_for_id(L4Re::Event::Rights, l4_umword_t id,
+                                 L4Re::Event_stream_info &info)
+  { return _core->user_state()->get_input_stream_info_for_id(id, &info); }
+
+  long op_get_axis_info(L4Re::Event::Rights, l4_umword_t id,
+                        L4::Ipc::Array_in_buf<unsigned, unsigned long> const &axes,
+                        L4::Ipc::Array_ref<L4Re::Event_absinfo, unsigned long> &info)
+  {
+    unsigned naxes = cxx::min<unsigned>(L4RE_ABS_MAX, axes.length);
+
+    info.length = 0;
+
+    L4Re::Event_absinfo _info[naxes];
+    int r = _core->user_state()->get_input_axis_info(id, naxes, axes.data, _info, 0);
+    if (r < 0)
+      return r;
+
+    for (unsigned i = 0; i < naxes; ++i)
+      info.data[i] = _info[i];
+
+    info.length = naxes;
+    return r;
+  }
+
+  long op_get_stream_state_for_id(L4Re::Event::Rights, l4_umword_t,
+                                  L4Re::Event_stream_state &)
+  { return -L4_ENOSYS; }
+
+
 
 public:
   Mag_goos(Core_api const *core);
 
+  using Icu_svr::op_info;
+
   void put_event(Hid_report *e, bool trigger);
   void put_event(l4_umword_t stream, int type, int code, int value,
                  l4_uint64_t time);
-  int dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios);
-
-  L4::Cap<void> rcv_cap() const { return _core->rcv_cap(); }
 
   void destroy();
 
   static void set_default_background(Session *_s, Property_handler const *, cxx::String const &);
 };
-
 
 class Client_buffer : public cxx::Ref_obj
 {
@@ -150,7 +201,7 @@ private:
 
   void swap_textures()
   {
-    register Texture *tmp = _front_txt;
+    Texture *tmp = _front_txt;
     asm volatile ("" : : : "memory");
     _front_txt = _back_txt;
     _back_txt = tmp;
@@ -160,7 +211,6 @@ public:
   Client_view(Core_api const *core, Mag_goos *screen);
   virtual ~Client_view();
 
-  int dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios);
   void draw(Canvas *, View_stack const *, Mode) const;
   void handle_event(Hid_report *e, Point const &mouse, bool core_dev);
 
@@ -323,7 +373,8 @@ Mag_goos::Mag_goos(Core_api const *core)
   _ev_ds = L4Re::Util::cap_alloc.alloc<L4Re::Dataspace>();
 
   chksys(e->mem_alloc()->alloc(L4_PAGESIZE, _ev_ds.get()));
-  chksys(e->rm()->attach(&_ev_ds_m, L4_PAGESIZE, L4Re::Rm::Search_addr, _ev_ds.get()));
+  chksys(e->rm()->attach(&_ev_ds_m, L4_PAGESIZE, L4Re::Rm::Search_addr,
+                         L4::Ipc::make_cap_rw(_ev_ds.get())));
 
   _events = L4Re::Event_buffer(_ev_ds_m.get(), L4_PAGESIZE);
 }
@@ -353,125 +404,36 @@ namespace {
     };
 };
 
-int
-Mag_client::dispatch(l4_umword_t, L4::Ipc::Iostream &ios)
+long
+Mag_client::op_create(L4::Factory::Rights, L4::Ipc::Cap<void> &obj,
+                      l4_mword_t proto, L4::Ipc::Varg_list<> const &args)
 {
-  l4_msgtag_t tag;
-  ios >> tag;
+  if (!L4::kobject_typeid<L4Re::Console>()->has_proto(proto))
+    return -L4_ENODEV;
 
-  switch (tag.label())
-    {
-    case L4::Meta::Protocol:
-      return L4Re::Util::handle_meta_request<L4::Factory>(ios);
-    case L4::Factory::Protocol:
-      if (L4::kobject_typeid<L4Re::Console>()->
-	    has_proto(L4::Ipc::read<L4::Factory::Proto>(ios)))
-	{
-	  L4::Ipc::Istream_copy cp_is = ios;
+  cxx::Ref_ptr<Mag_goos> cf(new Mag_goos(_core));
+  _core->set_session_options(cf.get(), args, _opts);
 
-	  cxx::Ref_ptr<Mag_goos> cf(new Mag_goos(_core));
-	  _core->set_session_options(cf.get(), cp_is, _opts);
+  _core->register_session(cf.get());
+  _core->registry()->register_obj(cf);
+  cf->obj_cap()->dec_refcnt(1);
 
-	  _core->register_session(cf.get());
-	  _core->registry()->register_obj(cf);
-	  cf->obj_cap()->dec_refcnt(1);
-
-	  ios <<  L4::Ipc::Snd_fpage(cf->obj_cap(), L4_CAP_FPAGE_RWSD);
-	  return L4_EOK;
-	}
-      return -L4_ENODEV;
-    default:
-      return -L4_EBADPROTO;
-    }
+  obj = L4::Ipc::make_cap(cf->obj_cap(), L4_CAP_FPAGE_RWSD);
+  return L4_EOK;
 }
+
 
 void
 Mag_client::destroy()
 {
 }
 
-int
-Mag_goos::dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios)
-{
-  l4_msgtag_t tag;
-  ios >> tag;
-
-  switch (tag.label())
-    {
-    case L4::Meta::Protocol:
-      return L4Re::Util::handle_meta_request<L4Re::Console>(ios);
-    case L4Re::Protocol::Goos:
-      return screen_dispatch(obj, ios);
-    case L4Re::Protocol::Event:
-      return event_dispatch(obj, ios);
-    case L4_PROTO_IRQ:
-      return Icu_svr::dispatch(obj, ios);
-    default:
-      return -L4_EBADPROTO;
-    }
-}
-
-inline int
-Mag_goos::event_get(L4::Ipc::Iostream &ios)
-{
-  _events.reset();
-  ios << L4::Ipc::Snd_fpage(_ev_ds.get().fpage(L4_CAP_FPAGE_RW));
-  return L4_EOK;
-}
-
-inline int
-Mag_goos::event_get_stream_info_for_id(L4::Ipc::Iostream &ios)
-{
-  L4Re::Event_stream_info info;
-  l4_umword_t id;
-
-  ios >> id;
-  int i = _core->user_state()->get_input_stream_info_for_id(id, &info);
-  if (i < 0)
-    return i;
-
-  ios.put(info);
-  return i;
-}
-
-inline int
-Mag_goos::event_get_axis_info(L4::Ipc::Iostream &ios)
-{
-  l4_umword_t id;
-  long unsigned naxes = L4RE_ABS_MAX;
-  unsigned axes[L4RE_ABS_MAX];
-  ios >> id >> L4::Ipc::buf_cp_in(axes, naxes);
-  L4Re::Event_absinfo infos[naxes];
-  int i = _core->user_state()->get_input_axis_info(id, naxes, axes, infos, 0);
-  if (i < 0)
-    return i;
-
-  ios << L4::Ipc::buf_cp_out(infos, naxes);
-  return i;
-}
-
-
-int
-Mag_goos::event_dispatch(l4_umword_t, L4::Ipc::Iostream &ios)
-{
-  L4::Opcode op;
-  ios >> op;
-  switch (op)
-    {
-    case L4Re::Event_::Get: return event_get(ios);
-    case L4Re::Event_::Get_stream_info_for_id: return event_get_stream_info_for_id(ios);
-    case L4Re::Event_::Get_axis_info: return event_get_axis_info(ios);
-    default: return -L4_ENOSYS;
-    }
-}
-
-inline int
-Mag_goos::screen_info(L4::Ipc::Iostream &ios)
+inline long
+Mag_goos::op_info(Goos_rights, L4Re::Video::Goos::Info &i)
 {
   using L4Re::Video::Color_component;
   using L4Re::Video::Goos;
 
-  Goos::Info i;
   Area a = _core->user_state()->vstack()->canvas()->size();
   Pixel_info const *mag_pi = _core->user_state()->vstack()->canvas()->type();
   i.width = a.w();
@@ -484,28 +446,22 @@ Mag_goos::screen_info(L4::Ipc::Iostream &ios)
   i.num_static_buffers = 0;
   i.pixel_info = *mag_pi;
 
-  ios.put(i);
-
   return L4_EOK;
 }
 
-inline int
-Mag_goos::screen_create_buffer(L4::Ipc::Iostream &ios)
+inline long
+Mag_goos::op_create_buffer(Goos_rights, unsigned long size,
+                           L4::Ipc::Cap<L4Re::Dataspace> &ds)
 {
-  unsigned long size;
-  ios >> size;
-
   cxx::Ref_ptr<Client_buffer> b(new Client_buffer(_core, size));
   _buffers.push_back(b);
   b->index = _buffers.size() - 1;
-
-  ios << L4::Ipc::Snd_fpage(b->ds_cap(), L4_CAP_FPAGE_RW);
-
+  ds = L4::Ipc::Cap<L4Re::Dataspace>(b->ds_cap(), L4_CAP_FPAGE_RW);
   return b->index;
 }
 
-inline int
-Mag_goos::screen_create_view(L4::Ipc::Iostream &)
+inline long
+Mag_goos::op_create_view(Goos_rights)
 {
   cxx::Auto_ptr<Client_view> v(new Client_view(_core, this));
   unsigned idx = 0;
@@ -521,11 +477,9 @@ Mag_goos::screen_create_view(L4::Ipc::Iostream &)
   return _views.size() - 1;
 }
 
-inline int
-Mag_goos::screen_delete_view(L4::Ipc::Iostream &ios)
+inline long
+Mag_goos::op_delete_view(Goos_rights, unsigned idx)
 {
-  unsigned idx;
-  ios >> idx;
   if (idx >= _views.size())
     return -L4_ERANGE;
 
@@ -533,23 +487,20 @@ Mag_goos::screen_delete_view(L4::Ipc::Iostream &ios)
   return L4_EOK;
 }
 
-inline int
-Mag_goos::screen_get_buffer(L4::Ipc::Iostream &ios)
+inline long
+Mag_goos::op_get_static_buffer(Goos_rights, unsigned idx,
+                               L4::Ipc::Cap<L4Re::Dataspace> &ds)
 {
-  unsigned idx;
-  ios >> idx;
   if (idx >= _buffers.size())
     return -L4_ERANGE;
 
-  ios << _buffers[idx]->ds_cap();
+  ds = L4::Ipc::Cap<L4Re::Dataspace>(_buffers[idx]->ds_cap(), L4_CAP_FPAGE_RW);
   return L4_EOK;
 }
 
-inline int
-Mag_goos::screen_view_info(L4::Ipc::Iostream &ios)
+inline long
+Mag_goos::op_view_info(Goos_rights, unsigned idx, L4Re::Video::View::Info &info)
 {
-  unsigned idx;
-  ios >> idx;
   if (idx >= _views.size())
     return -L4_ERANGE;
 
@@ -557,24 +508,19 @@ Mag_goos::screen_view_info(L4::Ipc::Iostream &ios)
 
   L4Re::Video::View::Info vi;
   vi.view_index = idx;
-  cv->get_info(&vi);
-  ios.put(vi);
+  cv->get_info(&info);
 
   return L4_EOK;
 }
 
-inline int
-Mag_goos::screen_view_set_info(L4::Ipc::Iostream &ios)
+inline long
+Mag_goos::op_set_view_info(Goos_rights, unsigned idx,
+                           L4Re::Video::View::Info const &vi)
 {
-  unsigned idx;
-  ios >> idx;
   if (idx >= _views.size())
     return -L4_ERANGE;
 
   Client_view *cv = _views[idx].get();
-
-  L4Re::Video::View::Info vi;
-  ios.get(vi);
 
   cxx::Weak_ptr<Client_buffer> cb(0);
   if (vi.has_set_buffer())
@@ -589,15 +535,11 @@ Mag_goos::screen_view_set_info(L4::Ipc::Iostream &ios)
   return L4_EOK;
 }
 
-inline int
-Mag_goos::screen_view_stack(L4::Ipc::Iostream &ios)
+inline long
+Mag_goos::op_view_stack(Goos_rights, unsigned cvi, unsigned pvi, bool behind)
 {
   Client_view *pivot = 0;
   Client_view *cv;
-  bool behind;
-  unsigned cvi, pvi;
-
-  ios >> cvi >> pvi >> behind;
 
   if (cvi >= _views.size())
     return -L4_ERANGE;
@@ -620,13 +562,9 @@ Mag_goos::screen_view_stack(L4::Ipc::Iostream &ios)
   return L4_EOK;
 }
 
-inline int
-Mag_goos::screen_view_refresh(L4::Ipc::Iostream &ios)
+inline long
+Mag_goos::op_view_refresh(Goos_rights, unsigned idx, int x, int y, int w, int h)
 {
-  unsigned idx;
-  int x, y, w, h;
-  ios >> idx >> x >> y >> w >> h;
-
   if (idx >= _views.size())
     return -L4_ERANGE;
 
@@ -636,38 +574,12 @@ Mag_goos::screen_view_refresh(L4::Ipc::Iostream &ios)
   return L4_EOK;
 }
 
-inline int
-Mag_goos::screen_refresh(L4::Ipc::Iostream &ios)
+inline long
+Mag_goos::op_refresh(Goos_rights, int x, int y, int w, int h)
 {
-  int x, y, w, h;
-  ios >> x >> y >> w >> h;
-
   _core->user_state()->vstack()->refresh_view(0, 0, Rect(Point(x,y), Area(w,h)));
 
   return L4_EOK;
-}
-
-int
-Mag_goos::screen_dispatch(l4_umword_t, L4::Ipc::Iostream &ios)
-{
-  using namespace L4Re::Video;
-  L4::Opcode op;
-  ios >> op;
-
-  switch (op)
-    {
-    case Goos_::Info: return screen_info(ios);
-    case Goos_::Create_buffer:return screen_create_buffer(ios);
-    case Goos_::Create_view: return screen_create_view(ios);
-    case Goos_::Delete_view: return screen_delete_view(ios);
-    case Goos_::Get_buffer: return screen_get_buffer(ios);
-    case Goos_::View_info: return screen_view_info(ios);
-    case Goos_::View_set_info: return screen_view_set_info(ios);
-    case Goos_::View_stack: return screen_view_stack(ios);
-    case Goos_::View_refresh: return screen_view_refresh(ios);
-    case Goos_::Screen_refresh: return screen_refresh(ios);
-    default: return -L4_ENOSYS;
-    }
 }
 
 void
@@ -685,8 +597,9 @@ Client_buffer::Client_buffer(Core_api const *, unsigned long size)
   _ds = L4Re::Util::cap_alloc.alloc<L4Re::Dataspace>();
 
   L4Re::chksys(L4Re::Env::env()->mem_alloc()->alloc(_size, _ds.get()));
-  L4Re::chksys(L4Re::Env::env()->rm()->attach(&dsa, _size,
-	L4Re::Rm::Search_addr, _ds.get()));
+  L4Re::chksys(L4Re::Env::env()->rm()
+                 ->attach(&dsa, _size, L4Re::Rm::Search_addr,
+                          L4::Ipc::make_cap_rw(_ds.get())));
 
   _texture_mem = dsa;
 }

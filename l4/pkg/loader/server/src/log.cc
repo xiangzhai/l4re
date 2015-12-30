@@ -10,7 +10,6 @@
  */
 #include <l4/re/log>
 #include <l4/re/log-sys.h>
-#include <l4/re/protocols>
 #include <l4/sys/kdebug.h>
 #include <l4/cxx/minmax>
 
@@ -38,28 +37,29 @@ static void mycpy(char **buf, int *rem, char const *s, int l)
 
 static char msgbuf[4096];
 
-int
-Ldr::Log::dispatch(l4_umword_t, L4::Ipc::Iostream &ios)
+l4_msgtag_t
+Ldr::Log::op_dispatch(l4_utcb_t *utcb, l4_msgtag_t tag, L4::Vcon::Rights)
 {
-  l4_msgtag_t tag;
-  ios >> tag;
+  if (tag.words() < 2)
+    return l4_msgtag(-L4_EINVAL, 0, 0, 0);
 
-  if (tag.label() != L4_PROTO_LOG)
-    return -L4_EBADPROTO;
-
-  L4::Opcode op;
-
-  // get opcode out of the message stream
-  ios >> op;
+  l4_msg_regs_t *m = l4_utcb_mr_u(utcb);
+  L4::Opcode op = m->mr[0];
 
   // we only have one opcode
   if (op != L4Re::Log_::Print)
-    return -L4_ENOSYS;
+    return l4_msgtag(-L4_ENOSYS, 0, 0, 0);
 
   char *msg = Glbl::log_buffer;
   unsigned long len_msg = sizeof(Glbl::log_buffer);
 
-  ios >> L4::Ipc::buf_cp_in(msg, len_msg);
+  if (len_msg > (tag.words() - 2) * sizeof(l4_umword_t))
+    len_msg = (tag.words() - 2) * sizeof(l4_umword_t);
+
+  if (len_msg > m->mr[1])
+    len_msg = m->mr[1];
+
+  memcpy(msg, &m->mr[2], len_msg);
 
   int rem = sizeof(msgbuf);
   while (len_msg > 0 && msg[0])
@@ -122,7 +122,7 @@ Ldr::Log::dispatch(l4_umword_t, L4::Ipc::Iostream &ios)
     my_outnstring("\033[0m", 4);
 
   // and finally done
-  return -L4_ENOREPLY;
+  return l4_msgtag(-L4_ENOREPLY, 0, 0, 0);
 }
 
 

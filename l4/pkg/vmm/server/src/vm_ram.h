@@ -1,8 +1,16 @@
+/*
+ * (c) 2013-2014 Alexander Warg <warg@os.inf.tu-dresden.de>
+ *     economic rights: Technische Universität Dresden (Germany)
+ *
+ * This file is part of TUD:OS and distributed under the terms of the
+ * GNU General Public License 2.
+ * Please see the COPYING-GPL-2 file for details.
+ */
 #pragma once
 
 #include <l4/sys/l4int.h>
 
-#include "virtio.h"
+#include <l4/l4virtio/virtqueue>
 
 namespace Vmm {
 
@@ -13,7 +21,7 @@ protected:
 
 public:
   template<typename T>
-  T *access(Virtio::Ptr<T> p) const { return (T*)(p.get() + _offset); }
+  T *access(L4virtio::Ptr<T> p) const { return (T*)(p.get() + _offset); }
 
   l4_addr_t vm_start() const { return _vm_start; }
   l4_size_t size() const { return _size; }

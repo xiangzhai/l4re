@@ -57,50 +57,26 @@ void
 Name_space::free_dynamic_entry(Names::Entry *n)
 {
   free(const_cast<char*>(n->name().start()));
-  assert (!n->next_link());
   delete static_cast<Ldr::Entry*>(n);
 }
 
 int
-Name_space::get_capability(L4::Ipc::Snd_fpage const &cap_fp, L4::Cap<void> *cap,
-                           L4::Server_object **so)
+Name_space::get_epiface(l4_umword_t data, bool is_local, L4::Epiface **lo)
 {
-  if (cap_fp.id_received())
-    {
-      L4::Server_object *o = L4::Basic_registry::find(cap_fp.data());
-      if (!o)
-	return -L4_EINVAL;
+  if (is_local)
+    return -L4_EINVAL;
 
-      if (so)
-	*so = o;
+  *lo = L4::Basic_registry::find(data);
 
-      *cap = o->obj_cap();
-      return 0;
-    }
-
-  if (cap_fp.cap_received())
-    {
-      *cap = Glbl::rcv_cap;
-      return 0;
-    }
-
-  return -L4_EINVAL;
+  return (*lo) ? L4_EOK : -L4_EINVAL;
 }
 
 int
-Name_space::save_capability(L4::Cap<void> *cap)
+Name_space::copy_receive_cap(L4::Cap<void> *cap)
 {
-  if (*cap != Glbl::rcv_cap)
-    return 0;
+  *cap = server_iface()->get_rcv_cap(0);
 
-  L4::Cap<void> nc = L4Re::Util::cap_alloc.alloc<void>();
-
-  if (!nc.is_valid())
-    return -L4_ENOMEM;
-
-  nc.move(Glbl::rcv_cap);
-  *cap = nc;
-  return 0;
+  return server_iface()->realloc_rcv_cap(0);
 }
 
 void
@@ -108,6 +84,10 @@ Name_space::free_capability(L4::Cap<void> cap)
 {
   L4Re::Util::cap_alloc.free(cap);
 }
+
+void
+Name_space::free_epiface(L4::Epiface *)
+{ /* nothing to do */ }
 
 }
 

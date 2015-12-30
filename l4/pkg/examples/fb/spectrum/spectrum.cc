@@ -18,6 +18,7 @@
 #include <l4/re/c/util/video/goos_fb.h>
 #else
 #include <l4/re/util/video/goos_fb>
+#include <l4/sys/semaphore>
 #include <l4/re/util/event>
 #include <l4/event/event>
 #endif
@@ -93,7 +94,7 @@ static inline unsigned color_val(unsigned w, unsigned peak_point, unsigned val)
 namespace {
 struct Ev_loop : public Event::Event_loop
 {
-  Ev_loop(L4::Cap<L4::Irq> irq, int prio) : Event::Event_loop(irq, prio) {}
+  Ev_loop(L4::Cap<L4::Semaphore> irq, int prio) : Event::Event_loop(irq, prio) {}
   void handle();
 };
 
@@ -126,10 +127,10 @@ int main(void)
 
    bpp = fbi.pixel_info.bits_per_pixel();
 
-   if (event.init(L4::cap_dynamic_cast<L4Re::Event>(gfb.goos())))
+   if (event.init<L4::Semaphore>(L4::cap_dynamic_cast<L4Re::Event>(gfb.goos())))
      return 4;
 
-   Ev_loop event_hdl(event.irq(), 4);
+   Ev_loop event_hdl(L4::cap_cast<L4::Semaphore>(event.irq()), 4);
    if (!event_hdl.attached())
      return 5;
    event_hdl.start();

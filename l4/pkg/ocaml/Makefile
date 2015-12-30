@@ -1,9 +1,3 @@
-PKGDIR	= .
-L4DIR	?= $(PKGDIR)/../..
+L4DIR ?= ../..
 
-TARGET = build
-
-include $(PKGDIR)/mk/defs.mk
-include $(PKGDIR)/mk/checktools.mk
-
-include $(L4DIR)/mk/subdir.mk
+include $(L4DIR)/mk/project.mk

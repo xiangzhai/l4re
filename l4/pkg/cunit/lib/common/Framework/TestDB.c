@@ -69,11 +69,11 @@
 #include "dde_support.h"
 #endif /* DDE_LINUX */
 
-#include <l4/cunit/CUnit.h>
-#include <l4/cunit/MyMem.h>
-#include <l4/cunit/TestDB.h>
-#include <l4/cunit/TestRun.h>
-#include <l4/cunit/Util.h>
+#include <CUnit.h>
+#include <MyMem.h>
+#include <TestDB.h>
+#include <TestRun.h>
+#include <Util.h>
 
 /*
  *  Global/Static Definitions

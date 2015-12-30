@@ -42,6 +42,7 @@ SECTIONS {
     *(.bootstrap.text .bootstrap.text.* .bootstrap.gnu.linkonce.t.*)
     *(.bootstrap.fini)
 
+    *(.bootstrap.initcall*)
     *(.bootstrap.rodata .bootstrap.rodata.* .bootstrap.gnu.linkonce.r.*)
     *(.bootstrap.data .bootstrap.data.* .bootstrap.gnu.linkonce.d.*)
     *(.bootstrap.anno)
@@ -63,7 +64,7 @@ SECTIONS {
     _initkip_start = .;
     KEEP(*(.initkip.version))
     KEEP(*(.initkip.features))
-    KEEP(*(.initkip.features.fini))
+    KEEP(*(.initkip.features.end))
     _initkip_end = .;
     . = ALIGN(4K);
   } : kip = 0

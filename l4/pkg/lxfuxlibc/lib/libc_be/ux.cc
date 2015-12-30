@@ -100,12 +100,12 @@ Ux_dir::get_entry(const char *name, int flags, mode_t mode,
   if (S_ISDIR(sb.st_mode))
     {
       //printf("open '%s' as directory\n", name);
-      *file = new Ux_dir(fd);
+      *file = cxx::ref_ptr(new Ux_dir(fd));
     }
   else
     {
       //printf("open '%s' as file\n", name);
-      *file = new Ux_file(fd);
+      *file = cxx::ref_ptr(new Ux_file(fd));
     }
 
   if (!*file)
@@ -306,7 +306,7 @@ public:
     if (fd < 0)
       return fd;
 
-    *dir = new Ux_dir(fd);
+    *dir = cxx::ref_ptr(new Ux_dir(fd));
     if (!*dir)
       return -ENOMEM;
     return 0;

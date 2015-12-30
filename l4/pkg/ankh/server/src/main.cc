@@ -10,7 +10,6 @@
 #include <l4/re/namespace>
 #include <l4/re/util/cap_alloc>
 #include <l4/re/util/object_registry>
-#include <l4/re/protocols>
 #include <l4/re/util/meta>
 #include <l4/cxx/ipc_server>
 #include <l4/cxx/std_exc_io>
@@ -31,7 +30,7 @@ int Ankh::ServerSession::dispatch(l4_umword_t, L4::Ipc::Iostream &ios)
 	ios >> t;
 	int ret = -1;
 
-	if (t.label() != Ankh::Protocol::Ankh)
+	if (t.label() != Ankh::Svc::Protocol)
 		return -L4_EBADPROTO;
 
 	L4::Opcode op;
@@ -39,12 +38,12 @@ int Ankh::ServerSession::dispatch(l4_umword_t, L4::Ipc::Iostream &ios)
 
 	switch(op)
 	{
-		case Ankh::Opcode::Activate:
+		case Ankh::Svc::Activate:
 			ret = shm_create();
 			activate();
 			break;
 
-		case Ankh::Opcode::Deactivate:
+		case Ankh::Svc::Deactivate:
 			deactivate();
 			break;
 
@@ -58,7 +57,7 @@ int Ankh::ServerSession::dispatch(l4_umword_t, L4::Ipc::Iostream &ios)
 
 
 
-class Ankh_server : public L4::Server_object
+class Ankh_server : public L4::Server_object_t<L4::Factory>
 {
 	public: 
 		int dispatch(l4_umword_t, L4::Ipc::Iostream &ios);
@@ -75,7 +74,7 @@ int Ankh_server::dispatch(l4_umword_t, L4::Ipc::Iostream &ios)
 		 * Used by Ned to find out our supported protocols
 		 */
 		case L4::Meta::Protocol:
-			return L4Re::Util::handle_meta_request<L4::Factory>(ios);
+			return dispatch_meta_request(ios);
 
 		/*
 		 * Factory protocol to create new sessions
@@ -134,7 +133,7 @@ EXTERN_C void enable_ux_self()
 {
 	l4_thread_control_start();
 	l4_thread_control_ux_host_syscall(1);
-	l4_thread_control_commit(pthread_getl4cap(pthread_self()));
+	l4_thread_control_commit(pthread_l4_cap(pthread_self()));
 }
 
 
@@ -149,7 +148,7 @@ EXTERN_C int packet_deliver(void *packet, unsigned len, char const * const dev, 
 
 	assert(packet != 0);
 	unsigned cnt = 0;
-	int c = l4_debugger_global_id(pthread_getl4cap(pthread_self()));
+	int c = l4_debugger_global_id(pthread_l4_cap(pthread_self()));
 
 #if 0
 	Ankh::Util::print_mac(static_cast<unsigned char*>(packet));
@@ -191,8 +190,8 @@ int main()
 	server.registry()->register_obj(&ankh, "ankh_service");
 	std::cout << "Registered @ registry.\n";
 
-	std::cout << "Gooood Morning Ankh-Morpoooooork! TID = 0x" << std::hex << l4_debugger_global_id(pthread_getl4cap(pthread_self())) << std::dec << "\n";
-	l4_debugger_set_object_name(pthread_getl4cap(pthread_self()), "ankh.main");
+	std::cout << "Gooood Morning Ankh-Morpoooooork! TID = 0x" << std::hex << l4_debugger_global_id(pthread_l4_cap(pthread_self())) << std::dec << "\n";
+	l4_debugger_set_object_name(pthread_l4_cap(pthread_self()), "ankh.main");
 
 	try
 	{

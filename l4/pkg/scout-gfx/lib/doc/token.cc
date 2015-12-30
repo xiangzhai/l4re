@@ -27,8 +27,9 @@ Token::Token(Style *style, const char *str, int len)
   if (!_style)
     return
 ;
+  //offset compensates for the outline-offset in draw()
   _size = Area(_style->font->str_w(str, len) + _style->font->str_w(" ", 1),
-      _style->font->str_h(str, len));
+      _style->font->str_h(str, len)) + Area(2,2);
 }
 
 void Token::draw(Canvas *c, Point const &p)

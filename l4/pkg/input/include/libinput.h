@@ -80,7 +80,7 @@ L4_CV int l4input_flush(void *buffer, int count);
 L4_CV int l4input_pcspkr(int tone);
 
 L4_CV int l4evdev_stream_info_for_id(l4_umword_t id, l4re_event_stream_info_t *si);
-L4_CV int l4evdev_absinfo(l4_umword_t id, unsigned naxes, unsigned *axes, l4re_event_absinfo_t *infos);
+L4_CV int l4evdev_absinfo(l4_umword_t id, unsigned naxes, const unsigned *axes, l4re_event_absinfo_t *infos);
 
 EXTERN_C_END
 

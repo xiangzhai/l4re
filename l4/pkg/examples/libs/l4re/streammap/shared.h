@@ -9,15 +9,9 @@
 
 #pragma once
 
+#include <l4/sys/capability>
 
-namespace Opcode {
-enum Opcodes {
-  Do_map
-};
-};
-
-namespace Protocol {
-enum Protocols {
-  Map_example
-};
+struct Mapper : public L4::Kobject_t<Mapper, L4::Kobject>
+{
+  enum Opcodes { Do_map };
 };

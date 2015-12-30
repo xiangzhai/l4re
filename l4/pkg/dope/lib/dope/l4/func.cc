@@ -14,8 +14,6 @@
 #include <l4/re/util/cap_alloc>
 #include <l4/re/env>
 
-#include <l4/cxx/ipc_stream>
-
 extern l4_cap_idx_t dope_server;
 
 int dope_req(char *res, unsigned long res_max, const char *cmd)
@@ -23,15 +21,11 @@ int dope_req(char *res, unsigned long res_max, const char *cmd)
   if (!cmd || l4_is_invalid_cap(dope_server))
     return -1;
 
-  L4::Ipc::Iostream io(l4_utcb());
-  io << L4::Opcode(Dope::Dope_app_::Cmd_req) << cmd;
-
-  l4_msgtag_t r = io.call(dope_server, Dope::Protocol::App);
-
-  io >> L4::Ipc::buf_cp_in(res, res_max);
-
+  L4::Cap<Dope::Dope> svr(dope_server);
+  L4::Ipc::String<char> r(res_max, res);
+  int e = svr->c_cmd_req(cmd, &r);
   res[res_max] = 0;
-  return l4_error(r);
+  return e;
 }
 
 
@@ -56,11 +50,8 @@ int dope_cmd(const char *cmd)
   if (!cmd || l4_is_invalid_cap(dope_server))
     return -1;
 
-  L4::Ipc::Iostream io(l4_utcb());
-  io << L4::Opcode(Dope::Dope_app_::Cmd) << cmd;
-
-  l4_msgtag_t r = io.call(dope_server, Dope::Protocol::App);
-  return l4_error(r);
+  L4::Cap<Dope::Dope> svr(dope_server);
+  return svr->c_cmd(cmd);
 }
 
 int dope_cmdf(const char *format, ...)
@@ -81,17 +72,13 @@ int dope_cmdf(const char *format, ...)
 
 void *dope_vscr_get_fb(const char *s)
 {
-  L4::Ipc::Iostream io(l4_utcb());
+  L4::Cap<Dope::Dope> svr(dope_server);
   L4::Cap<L4Re::Dataspace> ds;
-
   ds = L4Re::Util::cap_alloc.alloc<L4Re::Dataspace>();
 
-  io << L4::Opcode(Dope::Dope_app_::Vscreen_get_fb) << s;
-  io << L4::Ipc::Small_buf(ds.cap(), 0);
+  int r = svr->c_vscreen_get_fb(s, ds);
 
-  l4_msgtag_t r = io.call(dope_server, Dope::Protocol::App);
-
-  if (l4_error(r))
+  if (r < 0)
     return 0;
 
   long sz = ds->size();
@@ -116,14 +103,11 @@ void vscr_server_waitsync(void *x)
 
 long dope_get_keystate(long keycode)
 {
-  L4::Ipc::Iostream io(l4_utcb());
-  io << L4::Opcode(Dope::Dope_app_::Get_keystate) << keycode;
-  l4_msgtag_t r = io.call(dope_server, Dope::Protocol::App);
-
-  if (l4_error(r))
+  L4::Cap<Dope::Dope> svr(dope_server);
+  int r = svr->c_get_keystate(keycode, &keycode);
+  if (r < 0)
     return 0;
 
-  io >> keycode;
   return keycode;
 }
 

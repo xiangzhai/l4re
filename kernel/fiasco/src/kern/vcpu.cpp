@@ -23,7 +23,7 @@ public:
     Sf_irq_pending = 0x01,
   };
 
-  Trap_state _ts;
+  Trex _regs;
   Syscall_frame _ipc_regs;
 
   Unsigned16 state;

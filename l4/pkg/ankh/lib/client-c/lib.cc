@@ -69,8 +69,8 @@ l4ankh_open(char *shm_name, int bufsize) L4_NOTHROW
 		return err;
 
 	L4::Ipc::Iostream s(l4_utcb());
-	s << l4_umword_t(Ankh::Opcode::Activate);
-	l4_msgtag_t res = s.call(ankh_server.cap(), Ankh::Protocol::Ankh);
+	s << L4::Opcode(Ankh::Svc::Activate);
+	l4_msgtag_t res = s.call(ankh_server.cap(), Ankh::Svc::Protocol);
 	if (res.has_error())
 		return res.label();
 

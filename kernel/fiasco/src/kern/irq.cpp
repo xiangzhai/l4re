@@ -15,26 +15,21 @@ class Thread;
     it provides a registry that ensures that only one receiver can sign up
     to receive interrupt IPC messages.
  */
-class Irq : public Irq_base, public Kobject
+class Irq : public Irq_base, public cxx::Dyn_castable<Irq, Kobject>
 {
   MEMBER_OFFSET();
-  FIASCO_DECLARE_KOBJ();
-
-private:
   typedef Slab_cache Allocator;
 
 public:
   enum Op
   {
-    Op_eoi_1      = 0,
-    Op_attach     = 1,
-    Op_trigger    = 2,
-    Op_chain      = 3,
-    Op_eoi_2      = 4,
+    Op_eoi_1      = 0, // Irq_sender + Irq_semaphore
+    Op_compat_attach     = 1,
+    Op_trigger    = 2, // Irq_sender + Irq_mux + Irq_semaphore
+    Op_compat_chain      = 3,
+    Op_eoi_2      = 4, // Icu + Irq_sender + Irq_semaphore
+    Op_compat_detach     = 5,
   };
-
-private:
-  Irq(Irq&);
 
 protected:
   Ram_quota *_q;
@@ -50,10 +45,10 @@ class Irq_sender
   public Ipc_sender<Irq_sender>
 {
 public:
-  Mword kobject_size() const { return sizeof(*this); }
-
-private:
-  Irq_sender(Irq_sender &);
+  enum Op {
+    Op_attach = 0,
+    Op_detach = 1
+  };
 
 protected:
   Smword _queued;
@@ -72,6 +67,10 @@ private:
 class Irq_muxer : public Kobject_h<Irq_muxer, Irq>, private Irq_chip
 {
 public:
+  enum Ops {
+    Op_chain = 0
+  };
+
   int set_mode(Mword, Irq_chip::Mode) { return 0; }
   bool is_edge_triggered(Mword) const { return false; }
   void switch_mode(bool)
@@ -92,6 +91,7 @@ public:
 
 private:
   Smword _mask_cnt;
+  Spin_lock<> _mux_lock;
 };
 
 //-----------------------------------------------------------------------------
@@ -104,7 +104,6 @@ IMPLEMENTATION:
 #include "entry_frame.h"
 #include "globals.h"
 #include "ipc_sender.h"
-#include "kdb_ke.h"
 #include "kmem_slab.h"
 #include "lock_guard.h"
 #include "minmax.h"
@@ -114,11 +113,9 @@ IMPLEMENTATION:
 #include "l4_buf_iter.h"
 #include "vkey.h"
 
-FIASCO_DEFINE_KOBJ(Irq);
-
 namespace {
 static Irq_base *irq_base_dcast(Kobject_iface *o)
-{ return Kobject::dcast<Irq*>(o); }
+{ return cxx::dyn_cast<Irq*>(o); }
 
 struct Irq_base_cast
 {
@@ -129,6 +126,27 @@ struct Irq_base_cast
 static Irq_base_cast register_irq_base_cast;
 }
 
+PROTECTED inline
+L4_msg_tag
+Irq::dispatch_irq_proto(Unsigned16 op, bool may_unmask)
+{
+  switch (op)
+    {
+    case Op_eoi_1:
+    case Op_eoi_2:
+      if (may_unmask)
+        unmask();
+      return L4_msg_tag(L4_msg_tag::Schedule); // no reply
+
+    case Op_trigger:
+      log();
+      hit(0);
+      return L4_msg_tag(L4_msg_tag::Schedule); // no reply
+
+    default:
+      return commit_result(-L4_err::ENosys);
+    }
+}
 
 PUBLIC
 void
@@ -163,11 +181,18 @@ void
 Irq_muxer::unbind(Irq_base *irq)
 {
   Irq_base *n;
-  for (n = this; n->_next && n->_next != irq; n = n->_next)
-    ;
+    {
+      auto g = lock_guard(_mux_lock);
+      for (n = this; n->_next && n->_next != irq; n = n->_next)
+        ;
 
-  assert (n->_next == irq);
-  n->_next = n->_next->_next;
+      if (n->_next != irq)
+        return; // someone else was faster
+
+      // dequeue
+      n->_next = n->_next->_next;
+    }
+
   if (irq->masked())
     static_cast<Irq_chip&>(*this).unmask(0);
 
@@ -216,7 +241,8 @@ Irq_muxer::handle(Upstream_irq const *ui)
 
 PUBLIC explicit
 Irq_muxer::Irq_muxer(Ram_quota *q = 0)
-: Kobject_h<Irq_muxer, Irq>(q), _mask_cnt(0)
+: Kobject_h<Irq_muxer, Irq>(q), _mask_cnt(0),
+  _mux_lock(Spin_lock<>::Unlocked)
 {
   hit_func = &handler_wrapper<Irq_muxer>;
 }
@@ -225,47 +251,39 @@ PUBLIC
 void
 Irq_muxer::destroy(Kobject ***rl)
 {
-  // FIXME: unchain IRQs
+  while (Irq_base *n = Irq_base::_next)
+    {
+      auto g  = lock_guard(n->irq_lock());
+      if (n->chip() == this)
+        unbind(n);
+    }
 
   Irq::destroy(rl);
 }
 
 PRIVATE
 L4_msg_tag
-Irq_muxer::sys_attach(L4_msg_tag const &tag, Utcb const *utcb, Syscall_frame * /*f*/,
-                Obj_space *o_space)
+Irq_muxer::sys_attach(L4_msg_tag tag, Utcb const *utcb, Syscall_frame *)
 {
-  L4_snd_item_iter snd_items(utcb, tag.words());
-
-  Irq *irq = 0;
-
-  if (tag.items() == 0)
-    return commit_result(-L4_err::EInval);
-
-  if (tag.items() && snd_items.next())
-    {
-      L4_fpage bind_irq(snd_items.get()->d);
-      if (EXPECT_FALSE(!bind_irq.is_objpage()))
-	return commit_error(utcb, L4_error::Overflow);
-
-      irq = Kobject::dcast<Irq*>(o_space->lookup_local(bind_irq.obj_index()));
-    }
-
+  Ko::Rights rights;
+  Irq *irq = Ko::deref<Irq>(&tag, utcb, &rights);
   if (!irq)
-    return commit_result(-L4_err::EInval);
+    return tag;
 
+  auto g = lock_guard(irq->irq_lock());
   irq->unbind();
 
   if (!irq->masked())
     {
       Smword old;
       do
-	old = _mask_cnt;
+        old = _mask_cnt;
       while (!mp_cas(&_mask_cnt, old, old + 1));
     }
 
   bind(irq, 0);
 
+  auto mg = lock_guard(_mux_lock);
   irq->Irq_base::_next = Irq_base::_next;
   Irq_base::_next = irq;
 
@@ -277,33 +295,42 @@ L4_msg_tag
 Irq_muxer::kinvoke(L4_obj_ref, L4_fpage::Rights /*rights*/, Syscall_frame *f,
                    Utcb const *utcb, Utcb *)
 {
-  register Context *const c_thread = ::current();
-  assert_opt (c_thread);
-  register Space *const c_space = c_thread->space();
-  assert_opt (c_space);
-
   L4_msg_tag tag = f->tag();
-
-  if (EXPECT_FALSE(tag.proto() != L4_msg_tag::Label_irq))
-    return commit_result(-L4_err::EBadproto);
 
   if (EXPECT_FALSE(tag.words() < 1))
     return commit_result(-L4_err::EInval);
 
-  switch ((utcb->values[0] & 0xffff))
+  Unsigned16 op = access_once(utcb->values + 0) & 0xffff;
+
+  switch (tag.proto())
     {
-    case Op_chain:
-      return sys_attach(tag, utcb, f, c_space);
-    case Op_trigger:
-      log();
-      hit(0);
-      return no_reply();
+    case L4_msg_tag::Label_irq:
+      // start BACKWARD COMPAT
+      switch (op)
+        {
+        case Op_compat_chain:
+          printf("KERNEL: backward compat IRQ-MUX chain, recompile your user code");
+          return sys_attach(tag, utcb, f);
+        default:
+          break;
+        }
+      // end BACKWARD COMPAT
+      return dispatch_irq_proto(op, false);
+
+    case L4_msg_tag::Label_irq_mux:
+      switch (op)
+        {
+        case Op_chain:
+          return sys_attach(tag, utcb, f);
+
+        default:
+          return commit_result(-L4_err::ENosys);
+        }
+
     default:
-      return commit_result(-L4_err::EInval);
+      return commit_result(-L4_err::EBadproto);
     }
 }
-
-
 
 /** Bind a receiver to this device interrupt.
     @param t the receiver that wants to receive IPC messages for this IRQ
@@ -570,35 +597,19 @@ Irq_sender::hit_edge_irq(Irq_base *i, Upstream_irq const *ui)
 
 PRIVATE
 L4_msg_tag
-Irq_sender::sys_attach(L4_msg_tag const &tag, Utcb const *utcb, Syscall_frame * /*f*/,
-                Obj_space *o_space)
+Irq_sender::sys_attach(L4_msg_tag tag, Utcb const *utcb,
+                       Syscall_frame *)
 {
-  L4_snd_item_iter snd_items(utcb, tag.words());
+  Thread *thread;
 
-  Thread *thread = 0;
-
-  if (tag.items() == 0)
+  if (tag.items())
     {
-      // detach
-      Reap_list rl;
-      free(_irq_thread, rl.list());
-      _irq_id = ~0UL;
-      cpu_lock.clear();
-      rl.del();
-      cpu_lock.lock();
-      return commit_result(0);
+      Ko::Rights rights;
+      thread = Ko::deref<Thread>(&tag, utcb, &rights);
+      if (!thread)
+        return tag;
     }
-
-  if (tag.items() && snd_items.next())
-    {
-      L4_fpage bind_thread(snd_items.get()->d);
-      if (EXPECT_FALSE(!bind_thread.is_objpage()))
-	return commit_error(utcb, L4_error::Overflow);
-
-      thread = Kobject::dcast<Thread_object*>(o_space->lookup_local(bind_thread.obj_index()));
-    }
-
-  if (!thread)
+  else
     thread = current_thread();
 
   if (alloc(thread))
@@ -610,41 +621,64 @@ Irq_sender::sys_attach(L4_msg_tag const &tag, Utcb const *utcb, Syscall_frame * 
   return commit_result(-L4_err::EInval);
 }
 
+PRIVATE
+L4_msg_tag
+Irq_sender::sys_detach()
+{
+  Reap_list rl;
+  free(_irq_thread, rl.list());
+  _irq_id = ~0UL;
+  cpu_lock.clear();
+  rl.del();
+  cpu_lock.lock();
+  return commit_result(0);
+}
+
 
 PUBLIC
 L4_msg_tag
 Irq_sender::kinvoke(L4_obj_ref, L4_fpage::Rights /*rights*/, Syscall_frame *f,
                     Utcb const *utcb, Utcb *)
 {
-  register Context *const c_thread = ::current();
-  assert_opt (c_thread);
-  register Space *const c_space = c_thread->space();
-  assert_opt (c_space);
-
   L4_msg_tag tag = f->tag();
-
-  if (EXPECT_FALSE(tag.proto() != L4_msg_tag::Label_irq))
-    return commit_result(-L4_err::EBadproto);
 
   if (EXPECT_FALSE(tag.words() < 1))
     return commit_result(-L4_err::EInval);
 
-  switch ((utcb->values[0] & 0xffff))
-    {
-    case Op_eoi_1:
-    case Op_eoi_2:
-      if (_queued < 1)
-	unmask();
+  Unsigned16 op = access_once(utcb->values + 0);
 
-      return no_reply();
-    case Op_attach: /* ATTACH, DETACH */
-      return sys_attach(tag, utcb, f, c_space);
-    case Op_trigger:
-      log();
-      hit(0);
-      return no_reply();
+  switch (tag.proto())
+    {
+    case L4_msg_tag::Label_irq:
+      // start BACKWARD COMPAT
+      switch (op)
+        {
+        case Op_compat_attach:
+          printf("KERNEL: backward compat IRQ attach, recompile your user code\n");
+          return sys_attach(tag, utcb, f);
+        case Op_compat_detach:
+          printf("KERNEL: backward compat IRQ detach, recompile your user code\n");
+          return sys_detach();
+        default:
+          break;
+        }
+      // end BACKWARD COMPAT
+      return dispatch_irq_proto(op, _queued < 1);
+
+    case L4_msg_tag::Label_irq_sender:
+      switch (op)
+        {
+        case Op_attach:
+          return sys_attach(tag, utcb, f);
+
+        case Op_detach:
+          return sys_detach();
+
+        default:
+          return commit_result(-L4_err::ENosys);
+        }
     default:
-      return commit_result(-L4_err::EInval);
+      return commit_result(-L4_err::EBadproto);
     }
 }
 
@@ -703,4 +737,31 @@ Irq::destroy(Kobject ***rl)
 {
   Irq_base::destroy();
   Kobject::destroy(rl);
+}
+
+namespace {
+static Kobject_iface * FIASCO_FLATTEN
+irq_sender_factory(Ram_quota *q, Space *,
+                   L4_msg_tag, Utcb const *,
+                   int *err)
+{
+  *err = L4_err::ENomem;
+  return Irq::allocate<Irq_sender>(q);
+}
+
+static Kobject_iface * FIASCO_FLATTEN
+irq_mux_factory(Ram_quota *q, Space *,
+                L4_msg_tag, Utcb const *,
+                int *err)
+{
+  *err = L4_err::ENomem;
+  return Irq::allocate<Irq_muxer>(q);
+}
+
+static inline void __attribute__((constructor)) FIASCO_INIT
+register_factory()
+{
+  Kobject_iface::set_factory(L4_msg_tag::Label_irq_sender, irq_sender_factory);
+  Kobject_iface::set_factory(L4_msg_tag::Label_irq_mux, irq_mux_factory);
+}
 }

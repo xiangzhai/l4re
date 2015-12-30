@@ -64,9 +64,9 @@ public:
   static void init(L4::Cap<L4Re::Mem_alloc> alloc);
   static void init_local_rm(Region_map *lrm);
 protected:
-  Single_page_alloc_base();
+  Single_page_alloc_base() {}
   static void *_alloc();
-  static void _free(void *p);
+  static void _free(void *) {}
 };
 
 template<typename A>

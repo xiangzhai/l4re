@@ -18,6 +18,7 @@
 #include <l4/util/bitops.h>
 #include <l4/re/c/rm.h>
 #include <l4/re/util/object_registry>
+#include <l4/re/util/br_manager>
 #include <l4/sys/factory>
 #include <l4/sys/ipc.h>
 #include <l4/sys/utcb.h>
@@ -30,7 +31,6 @@
 #include <l4/sys/scheduler>
 #include <l4/re/util/cap_alloc>
 #include <l4/re/env>
-#include <l4/re/protocols>
 #include <l4/re/dataspace>
 #include <l4/cxx/ipc_server>
 #include <l4/re/util/vcon_svr>
@@ -93,7 +93,8 @@ class svr
 
         enum { Have_find = true };
 
-        static int validate_ds(L4::Ipc::Snd_fpage const & ds_cap, unsigned flags,
+        static int validate_ds(L4::Ipc_svr::Server_iface *,
+                                L4::Ipc::Snd_fpage const & ds_cap, unsigned flags,
                                L4::Cap<L4Re::Dataspace> *ds)
         {
             if (dbg_ds) VG_(debugLog)(4, "vcap", "flags 0x%x\n", flags);
@@ -317,7 +318,8 @@ class rm
 
         rm(unsigned id) : _id(id) { }
 
-        int dispatch(l4_msgtag_t tag, l4_umword_t obj, L4::Ipc::Iostream &ios)
+        int dispatch(L4::Ipc_svr::Server_iface *svr_iface, l4_msgtag_t tag,
+                     l4_umword_t obj, L4::Ipc::Iostream &ios)
             throw()
         {
             int err;
@@ -326,8 +328,8 @@ class rm
                 case L4_PROTO_PAGE_FAULT:
                     return L4Re::Util::region_pf_handler<Vcap::Dbg>(this, ios);
 
-                case L4Re::Protocol::Rm:
-                    err = L4Re::Util::region_map_server<Vcap::Rm::svr>(this, ios);
+                case L4Re::Rm::Protocol:
+                    err = L4Re::Util::region_map_server<Vcap::Rm::svr>(svr_iface, this, ios);
                     if (dbg_rm) VG_(debugLog)(4, "vcap", "rm_server() returns %d\n", err);
                     return err;
 
@@ -776,7 +778,10 @@ class rm
 }; // Namespace Vcap
 
 
-class Vcap_object : public L4::Server_object
+struct Vcap_if : L4::Kobject_2t<Vcap_if, L4Re::Rm, L4::Kobject_2t<void, L4::Vcon, L4Re::Parent > >
+{};
+
+class Vcap_object : public L4::Server_object_t<Vcap_if>
 {
     private:
         Vcap::vcon_srv _log;
@@ -816,19 +821,20 @@ class Vcap_object : public L4::Server_object
 
                 case L4_PROTO_PAGE_FAULT:
                     //if (dbg_vcap) VG_(debugLog)(2, "vcap", "page fault\n");
-                    return _rm.dispatch(t, obj, ios);
+                    return _rm.dispatch(server_iface(), t, obj, ios);
 
-                case L4Re::Protocol::Rm:
-                    return _rm.dispatch(t, obj, ios);
+                case L4Re::Rm::Protocol:
+                    return _rm.dispatch(server_iface(), t, obj, ios);
 
-                case L4Re::Protocol::Parent:
+                case L4Re::Parent::Protocol:
                     if (dbg_vcap) VG_(debugLog)(2, "vcap", "parent protocol\n");
                     enter_kdebug("parent");
                     return -L4_ENOSYS;
 
                 case L4_PROTO_IRQ:
+                    // FIXME: why is the RM server called for IRQs protocol
                     if (dbg_vcap) VG_(debugLog)(2, "vcap", "irq protocol\n");
-                    return _rm.dispatch(t, obj, ios);
+                    return _rm.dispatch(server_iface(), t, obj, ios);
 
                 case L4_PROTO_EXCEPTION:
                     return handle_exception();
@@ -857,7 +863,6 @@ int vcap_running = 0;
  */
 static Vcap_object valgrind_obj(VRMcap_valgrind);
 static Vcap_object client_obj(VRMcap_client);
-L4::Cap<void> Vcap::Loop_hooks::rcv_cap;
 
 /*
  * Main VRM function
@@ -869,21 +874,8 @@ static void vcap_thread_fn(void *) L4_NOTHROW
 
     Vcap::Rm::Region_ops::init();
 
-    Vcap::Loop_hooks::rcv_cap = L4Re::Util::cap_alloc.alloc<void>();
-    if (!Vcap::Loop_hooks::rcv_cap.is_valid()) {
-        VG_(debugLog)(0, "vcap","Error allocating rcv cap.\n");
-        enter_kdebug("ERROR");
-    }
-    else {
-        VG_(debugLog)(1, "vcap","Global rcv cap: %lx\n",
-                      Vcap::Loop_hooks::rcv_cap.cap());
-    }
-
-    L4Re::Util::Object_registry registry(vcap_thread,
-                                         L4Re::Env::env()->factory());
-
-    L4Re::Util::Registry_server<Vcap::Loop_hooks> server(l4_utcb(), vcap_thread,
-                                                         L4Re::Env::env()->factory());
+    L4Re::Util::Registry_server<L4Re::Util::Br_manager_hooks>
+      server(l4_utcb(), vcap_thread, L4Re::Env::env()->factory());
 
     server.registry()->register_obj(&valgrind_obj);
     server.registry()->register_obj(&client_obj);

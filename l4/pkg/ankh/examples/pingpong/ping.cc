@@ -89,9 +89,9 @@ static void ankh_activate()
 
 	L4::Ipc::Iostream s(l4_utcb());
 
-	s << l4_umword_t(Ankh::Opcode::Activate);
+	s << L4::Opcode(Ankh::Svc::Activate);
 
-	l4_msgtag_t res = s.call(ankh_server.cap(), Ankh::Protocol::Ankh);
+	l4_msgtag_t res = s.call(ankh_server.cap(), Ankh::Svc::Protocol);
 	ASSERT_EQUAL(l4_ipc_error(res, l4_utcb()), 0);
 
 	printf("activated Ankh connection.\n");
@@ -322,14 +322,14 @@ static void setup_debug_names(std::string const &name)
 {
 	std::cout << "I am " << name << "\n";
 
-	std::cout << "My TID = 0x" << std::hex << l4_debugger_global_id(pthread_getl4cap(pthread_self()))
+	std::cout << "My TID = 0x" << std::hex << l4_debugger_global_id(pthread_l4_cap(pthread_self()))
 	          << std::dec << "\n";
 	//std::cout << "Ready to contact Ankh.\n";
 	char const *c = name.c_str();
 	for ( ; *c++ != '/'; ) ;
 
 	std::cout << c << "\n";
-	l4_debugger_set_object_name(pthread_getl4cap(pthread_self()), c);
+	l4_debugger_set_object_name(pthread_l4_cap(pthread_self()), c);
 
 }
 

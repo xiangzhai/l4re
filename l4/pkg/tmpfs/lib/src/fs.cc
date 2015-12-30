@@ -326,7 +326,7 @@ Tmpfs_dir::get_entry(const char *name, int flags, mode_t mode,
   Ref_ptr<Node> path;
   if (!*name)
     {
-      *file = this;
+      *file = cxx::ref_ptr(this);
       return 0;
     }
 
@@ -351,9 +351,9 @@ Tmpfs_dir::get_entry(const char *name, int flags, mode_t mode,
     }
 
   if (path->is_dir())
-    *file = new Tmpfs_dir(cxx::ref_ptr_static_cast<Pers_dir>(path));
+    *file = cxx::ref_ptr(new Tmpfs_dir(cxx::ref_ptr_static_cast<Pers_dir>(path)));
   else
-    *file = new Tmpfs_file(cxx::ref_ptr_static_cast<Pers_file>(path));
+    *file = cxx::ref_ptr(new Tmpfs_file(cxx::ref_ptr_static_cast<Pers_file>(path)));
 
   if (!*file)
     return -ENOMEM;

@@ -267,7 +267,7 @@ static int scan_key(void)
 static int kp_irq_func(void)
 {
   l4_cap_idx_t irq_cap = l4re_util_cap_alloc();
-  l4_cap_idx_t thread_cap = pthread_getl4cap(_pthread);
+  l4_cap_idx_t thread_cap = pthread_l4_cap(_pthread);
   l4_msgtag_t tag;
 
   l4_debugger_set_object_name(thread_cap, "kp-omap3.irq");

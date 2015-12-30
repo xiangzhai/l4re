@@ -31,10 +31,10 @@ func_smap_call(L4::Cap<void> const &server)
       return 1;
     }
 
-  s << l4_umword_t(Opcode::Do_map)
+  s << L4::Opcode(Mapper::Do_map)
     << (l4_addr_t)addr;
   s << L4::Ipc::Rcv_fpage::mem((l4_addr_t)addr, L4_PAGESHIFT, 0);
-  int r = l4_error(s.call(server.cap(), Protocol::Map_example));
+  int r = l4_error(s.call(server.cap(), Mapper::Protocol));
   if (r)
     return r; // failure
 

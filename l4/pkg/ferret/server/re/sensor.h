@@ -109,7 +109,7 @@ namespace Ferret
 	 * Server implementation. The sensor directory manages clients (event producers)
 	 * and monitors (event consumers).
 	 */
-	class SensorDir : public L4::Server_object
+	class SensorDir : public L4::Server_object_t<Ding>
 	{
 		public:
 			SensorDir(void);

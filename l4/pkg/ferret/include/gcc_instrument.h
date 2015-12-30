@@ -15,11 +15,12 @@
 #define __FERRET_INCLUDE_GCC_INSTRUMENT_H
 
 #include <l4/sys/types.h>
+#include <stddef.h>
 
 /* Set function pointer for get_threadid-function and create sensor.
  */
 L4_CV void ferret_gcc_instrument_init(void *(*alloc)(size_t s),
-                                      l4_threadid_t (*myself)(void))
+                                      l4_cap_idx_t (*myself)(void))
     __attribute__ ((no_instrument_function));
 
 #endif

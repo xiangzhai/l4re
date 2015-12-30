@@ -84,7 +84,7 @@
 	})
 
 #define BCD_TO_BIN(val)		((val)=((val)&15) + ((val)>>4)*10)
-#define BIN_TO_BCD(val)		((val)=(((val)/10)<<4) + (val)%10)
+#define BIN_TO_BCD(val)		((((val)/10)<<4) + (val)%10)
 
 /* Converts Gregorian date to seconds since 1970-01-01 00:00:00.
  * Assumes input in normal date format, i.e. 1980-12-31 23:59:59
@@ -122,25 +122,11 @@ mktime (l4_uint32_t year, l4_uint32_t mon, l4_uint32_t day,
  * Get current time from CMOS and initialize values.
  */
 static int
-get_base_time_x86(void)
+get_base_time_x86(l4_uint64_t *offset)
 {
   l4_uint32_t year, mon, day, hour, min, sec;
-  l4_uint32_t seconds_since_1970;
   l4_cpu_time_t current_tsc;
-  l4_uint32_t current_s, current_ns;
   long i;
-
-  //l4util_cli();
-  //fiasco_watchdog_disable();
-
-  if ((i = l4io_request_ioport(RTC_PORT(0), 2)))
-    {
-      printf("Could not get required port %x and %x, error: %lx\n",
-             RTC_PORT(0), RTC_PORT(0) + 1, i);
-      return 1;
-    }
-
-
   /* The Linux interpretation of the CMOS clock register contents:
    * When the Update-In-Progress (UIP) flag goes from 1 to 0, the
    * RTC registers show the second which has precisely just started.
@@ -184,29 +170,190 @@ get_base_time_x86(void)
   if ((year += 1900) < 1970)
     year += 100;
 
-  l4_tsc_to_s_and_ns(current_tsc, &current_s, &current_ns);
-
-  seconds_since_1970        = mktime(year, mon, day, hour, min, sec);
-  system_time_offs_rel_1970 = seconds_since_1970 - current_s;
-
-
-  /* Free I/O space at RMGR (cli/sti mapped L4_WHOLE_IOADDRESS_SPACE) */
-//  rmgr_free_fpage(l4_iofpage(0, L4_WHOLE_IOADDRESS_SPACE, 0));
-  /* Unmap I/O space. RMGR should do it but can't because I/O mappings
-   * are not stored in Fiasco's mapping database */
-//  l4_fpage_unmap(l4_iofpage(0, L4_WHOLE_IOADDRESS_SPACE, 0),
-//			    L4_FP_FLUSH_PAGE | L4_FP_ALL_SPACES);
-
+  l4_uint64_t seconds_since_1970 = mktime(year, mon, day, hour, min, sec);
   printf("Date:%02d.%02d.%04d Time:%02d:%02d:%02d\n",
 	  day, mon, year, hour, min, sec);
 
+  *offset = seconds_since_1970 * 1000000000 - l4_tsc_to_ns(current_tsc);
   return 0;
 }
 
+struct rtc_time {
+	int tm_sec;
+	int tm_min;
+	int tm_hour;
+	int tm_mday;
+	int tm_mon;
+	int tm_year;
+	int tm_wday;
+	int tm_yday;
+	int tm_isdst;
+};
 
-get_base_time_func_t
-init_x86(void)
+static inline void gettime(l4_uint32_t *s, l4_uint32_t *ns)
 {
-  return get_base_time_x86;
+  if (l4_scaler_tsc_to_ns == 0)
+    l4_calibrate_tsc(l4re_kip());
+  l4_tsc_to_s_and_ns(l4_rdtsc(), s, ns);
 }
 
+/*
+ * taken from Linux 3.17
+ */
+#define LEAPS_THRU_END_OF(y) ((y)/4 - (y)/100 + (y)/400)
+static inline bool is_leap_year(unsigned int year)
+{
+	return (!(year % 4) && (year % 100)) || !(year % 400);
+}
+static const unsigned char rtc_days_in_month[] = {
+	31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
+};
+
+#define LEAPS_THRU_END_OF(y) ((y)/4 - (y)/100 + (y)/400)
+
+/*
+ * The number of days in the month.
+ */
+static int rtc_month_days(unsigned int month, unsigned int year)
+{
+	return rtc_days_in_month[month] + (is_leap_year(year) && month == 1);
+}
+
+/*
+ * Convert seconds since 01-01-1970 00:00:00 to Gregorian date.
+ */
+static void rtc_time_to_tm(unsigned long time, struct rtc_time *tm)
+{
+	unsigned int month, year;
+	int days;
+
+	days = time / 86400;
+	time -= (unsigned int) days * 86400;
+
+	/* day of the week, 1970-01-01 was a Thursday */
+	tm->tm_wday = (days + 4) % 7;
+
+	year = 1970 + days / 365;
+	days -= (year - 1970) * 365
+		+ LEAPS_THRU_END_OF(year - 1)
+		- LEAPS_THRU_END_OF(1970 - 1);
+	if (days < 0) {
+		year -= 1;
+		days += 365 + is_leap_year(year);
+	}
+	tm->tm_year = year - 1900;
+	tm->tm_yday = days + 1;
+
+	for (month = 0; month < 11; month++) {
+		int newdays;
+
+		newdays = days - rtc_month_days(month, year);
+		if (newdays < 0)
+			break;
+		days = newdays;
+	}
+	tm->tm_mon = month;
+	tm->tm_mday = days + 1;
+
+	tm->tm_hour = time / 3600;
+	time -= tm->tm_hour * 3600;
+	tm->tm_min = time / 60;
+	tm->tm_sec = time - tm->tm_min * 60;
+
+	tm->tm_isdst = 0;
+}
+
+/* Set the current date and time in the real time clock. */
+static inline int __set_rtc_time(struct rtc_time *time)
+{
+	unsigned char mon, day, hrs, min, sec;
+	unsigned char save_control, save_freq_select;
+	unsigned int yrs;
+
+	yrs = time->tm_year;
+	mon = time->tm_mon + 1;   /* tm_mon starts at zero */
+	day = time->tm_mday;
+	hrs = time->tm_hour;
+	min = time->tm_min;
+	sec = time->tm_sec;
+
+	if (yrs > 255)	/* They are unsigned */
+		return -L4_EINVAL;
+
+	/* These limits and adjustments are independent of
+	 * whether the chip is in binary mode or not.
+	 */
+	if (yrs > 169)
+		return -L4_EINVAL;
+
+	if (yrs >= 100)
+		yrs -= 100;
+
+	if (!(CMOS_READ(RTC_CONTROL) & RTC_DM_BINARY)
+	    || RTC_ALWAYS_BCD) {
+		sec = BIN_TO_BCD(sec);
+		min = BIN_TO_BCD(min);
+		hrs = BIN_TO_BCD(hrs);
+		day = BIN_TO_BCD(day);
+		mon = BIN_TO_BCD(mon);
+		yrs = BIN_TO_BCD(yrs);
+	}
+
+	save_control = CMOS_READ(RTC_CONTROL);
+	CMOS_WRITE((save_control|RTC_SET), RTC_CONTROL);
+	save_freq_select = CMOS_READ(RTC_FREQ_SELECT);
+	CMOS_WRITE((save_freq_select|RTC_DIV_RESET2), RTC_FREQ_SELECT);
+
+	CMOS_WRITE(yrs, RTC_YEAR);
+	CMOS_WRITE(mon, RTC_MONTH);
+	CMOS_WRITE(day, RTC_DAY_OF_MONTH);
+	CMOS_WRITE(hrs, RTC_HOURS);
+	CMOS_WRITE(min, RTC_MINUTES);
+	CMOS_WRITE(sec, RTC_SECONDS);
+
+	CMOS_WRITE(save_control, RTC_CONTROL);
+	CMOS_WRITE(save_freq_select, RTC_FREQ_SELECT);
+
+	return 0;
+}
+
+struct X86_rtc : Rtc
+{
+  bool probe()
+  {
+    printf("probe x86 RTC\n");
+    if (long i = l4io_request_ioport(RTC_PORT(0), 2))
+      {
+        printf("Could not get required port %x and %x, error: %lx\n",
+               RTC_PORT(0), RTC_PORT(0) + 1, i);
+        return false;
+      }
+
+    l4_calibrate_tsc(l4re_kip());
+    return true;
+  };
+
+  /**
+   * Take the given offset to 01-01-1970, calculate the current time using the
+   * TSC, and write it into the rtc.
+   */
+  int set_time(l4_uint64_t offset)
+  {
+    l4_uint32_t s, ns, current_time;
+    l4_uint32_t offset_ns = offset % 1000000000;
+    l4_uint32_t offset_s = offset / 1000000000;
+    do {
+        gettime(&s, &ns);
+    } while ((offset_ns  / 8) != (ns / 8));
+    current_time = offset_s + s;
+    struct rtc_time time;
+    rtc_time_to_tm(current_time, &time);
+    return __set_rtc_time(&time);
+  }
+
+  int get_time(l4_uint64_t *nsec_offset_1970)
+  { return get_base_time_x86(nsec_offset_1970); }
+
+};
+
+static X86_rtc _x86_rtc;

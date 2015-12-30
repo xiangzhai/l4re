@@ -82,7 +82,15 @@ valgrind_conf:
 # are still up-to-date
 check_rediff:
 	@shacmd=shasum; command -v $$shacmd 2>&1 /dev/null || shacmd=sha1sum; \
-	cd $(PKGDIR)/.. && $$shacmd -c $(SRC_DIR)/ext-checksums
+	cd $(PKGDIR)/.. && $$shacmd -c $(SRC_DIR)/ext-checksums; \
+	if [ $$? != 0 ]; then \
+	  echo "Current checksums:"; \
+	  while read c f; do \
+	    $$shacmd $$f; \
+	  done < $(SRC_DIR)/ext-checksums; \
+	  exit 1; \
+	fi
+
 
 .PHONY = valgrind_conf valgrind_build
 

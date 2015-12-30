@@ -56,7 +56,7 @@ L4_CV void dope_process_event(l4re_event_t *ev, void *data);
 L4_CV void dope_eventloop(void)
 {
   l4re_event_buffer_consumer_process(&ev_buf, ev_irq,
-                                     pthread_getl4cap(pthread_self()), NULL,
+                                     pthread_l4_cap(pthread_self()), NULL,
                                      dope_process_event);
 }
 

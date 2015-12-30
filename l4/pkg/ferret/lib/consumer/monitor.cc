@@ -48,11 +48,11 @@ int ferret_attach(l4_cap_idx_t srv,
     L4::Cap<L4Re::Dataspace> ds = L4Re::Util::cap_alloc.alloc<L4Re::Dataspace>();
 
 	L4::Ipc::Iostream s(l4_utcb());
-	s << l4_umword_t(Attach);
+	s << L4::Opcode(Ferret::Monitor::Attach);
 	s << major << minor << instance;
 	s << L4::Ipc::Small_buf(ds.cap(), 0);
 
-	l4_msgtag_t res = s.call(srv, /* Protocol = */ Monitor);
+	l4_msgtag_t res = s.call(srv, Ferret::Monitor::Protocol);
 	if (l4_ipc_error(res, l4_utcb()))
 	{
 		std::cout << "IPC error in " << __func__ << "()\n";
@@ -116,10 +116,10 @@ int ferret_detach(l4_cap_idx_t srv,
                   uint16_t instance, void ** addr)
 {
 	L4::Ipc::Iostream s(l4_utcb());
-	s << l4_umword_t(Detach);
+	s << L4::Opcode(Ferret::Monitor::Detach);
 	s << major << minor << instance;
 
-	l4_msgtag_t res = s.call(srv, /* Protocol = */ Monitor);
+	l4_msgtag_t res = s.call(srv, Ferret::Monitor::Protocol);
 	if (l4_ipc_error(res, l4_utcb()))
 	{
 		std::cout << "IPC error in " << __func__ << "()\n";

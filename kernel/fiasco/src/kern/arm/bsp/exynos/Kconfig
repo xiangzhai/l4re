@@ -1,6 +1,7 @@
 # PF: EXYNOS
 # PFDESCR: Samsung Exynos
 # PFDEPENDS: ARM
+# PFSELECT: HAVE_ARM_SECMONIF_NONE HAVE_ARM_SECMONIF_MC
 
 config PF_EXYNOS4
         bool
@@ -86,6 +87,7 @@ choice
 
 config PF_EXYNOS_TIMER_MCT
 	bool "Multi-core timer"
+	depends on !CPU_VIRT
 
 config PF_EXYNOS_TIMER_MP
 	bool "MP timer"
@@ -93,6 +95,7 @@ config PF_EXYNOS_TIMER_MP
 
 config PF_EXYNOS_TIMER_PWM
 	bool "PWM timer"
+	depends on !CPU_VIRT
 
 config PF_EXYNOS_TIMER_GEN
         bool "ARM Generic Timer"

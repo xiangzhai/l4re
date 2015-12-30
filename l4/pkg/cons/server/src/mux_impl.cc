@@ -416,6 +416,10 @@ Mux_i::handle_vcon_input(cxx::String const &buf)
               clear_seq_print(false);
               do_trigger |= inject_to_read_buffer('');
               break;
+            case 'z':
+              clear_seq_print(false);
+              do_trigger |= inject_to_read_buffer('');
+              break;
             case 'c':
               clear_seq_print(false);
               do_trigger |= inject_to_read_buffer(3);

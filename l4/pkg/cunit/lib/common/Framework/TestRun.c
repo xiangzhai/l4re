@@ -81,10 +81,10 @@
 #include "dde_support.h"
 #endif
 
-#include <l4/cunit/CUnit.h>
-#include <l4/cunit/MyMem.h>
-#include <l4/cunit/TestDB.h>
-#include <l4/cunit/TestRun.h>
+#include <CUnit.h>
+#include <MyMem.h>
+#include <TestDB.h>
+#include <TestRun.h>
 
 static CU_BOOL   f_bTestIsRunning = CU_FALSE; /**< Flag for whether a test run is in progress */
 static CU_pSuite f_pCurSuite = NULL;          /**< Pointer to the suite currently being run. */

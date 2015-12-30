@@ -66,11 +66,11 @@
 #include "dde_support.h"
 #endif
 
-#include <l4/cunit/CUnit.h>
-#include <l4/cunit/TestDB.h>
-#include <l4/cunit/Util.h>
-#include <l4/cunit/TestRun.h>
-#include <l4/cunit/Basic.h>
+#include <CUnit.h>
+#include <TestDB.h>
+#include <Util.h>
+#include <TestRun.h>
+#include <Basic.h>
 
 /** Pointer to the currently running suite. */
 static CU_pSuite f_pRunningSuite = NULL;

@@ -1,5 +1,7 @@
 INTERFACE:
 
+#include <cxx/static_vector>
+
 class Mem_desc
 {
 public:
@@ -45,14 +47,11 @@ public:
 
   char const *version_string() const;
 
-  // returns the 1st address beyond all available physical memory
-  Address main_memory_high() const;
-
 private:
   static Kip *global_kip asm ("GLOBAL_KIP");
 };
 
-#define L4_KERNEL_INFO_MAGIC (0x4BE6344CL) /* "L4µK" */
+#define L4_KERNEL_INFO_MAGIC (0x4BE6344CL) /* "L4ÂµK" */
 
 //============================================================================
 IMPLEMENTATION:
@@ -106,11 +105,11 @@ PUBLIC inline ALWAYS_INLINE
 bool Mem_desc::valid() const
 { return type() && start() < end(); }
 
-PUBLIC inline ALWAYS_INLINE
+PRIVATE inline ALWAYS_INLINE
 Mem_desc *Kip::mem_descs()
 { return (Mem_desc*)(((Address)this) + (_mem_info >> (MWORD_BITS/2))); }
 
-PUBLIC inline
+PRIVATE inline
 Mem_desc const *Kip::mem_descs() const
 { return (Mem_desc const *)(((Address)this) + (_mem_info >> (MWORD_BITS/2))); }
 
@@ -118,8 +117,19 @@ PUBLIC inline ALWAYS_INLINE
 unsigned Kip::num_mem_descs() const
 { return _mem_info & ((1UL << (MWORD_BITS/2))-1); }
 
+PUBLIC inline NEEDS[Kip::num_mem_descs, Kip::mem_descs] ALWAYS_INLINE
+cxx::static_vector<Mem_desc>
+Kip::mem_descs_a()
+{ return cxx::static_vector<Mem_desc>(mem_descs(), num_mem_descs()); }
+
+PUBLIC inline NEEDS[Kip::num_mem_descs, Kip::mem_descs] ALWAYS_INLINE
+cxx::static_vector<Mem_desc const>
+Kip::mem_descs_a() const
+{ return cxx::static_vector<Mem_desc const>(mem_descs(), num_mem_descs()); }
+
+
 PUBLIC inline
-void Kip::num_mem_descs (unsigned n)
+void Kip::num_mem_descs(unsigned n)
 {
   _mem_info = (_mem_info & ~((1UL << (MWORD_BITS/2))-1)
 	       | (n & ((1UL << (MWORD_BITS/2))-1)));
@@ -128,16 +138,12 @@ void Kip::num_mem_descs (unsigned n)
 PUBLIC
 Mem_desc *Kip::add_mem_region(Mem_desc const &md)
 {
-  Mem_desc *m = mem_descs();
-  Mem_desc *end = m + num_mem_descs();
-  for (;m<end;++m)
-    {
-      if (m->type() == Mem_desc::Undefined)
-	{
-	  *m = md;
-	  return m;
-	}
-    }
+  for (auto &m: mem_descs_a())
+    if (m.type() == Mem_desc::Undefined)
+      {
+        m = md;
+        return &m;
+      }
 
   // Add mem region failed -- must be a Fiasco startup problem.  Bail out.
   panic("Too few memory descriptors in KIP");
@@ -169,10 +175,10 @@ char const *Kip::version_string() const
   return reinterpret_cast <char const *> (this) + (offset_version_strings << 4);
 }
 
-asm(".section .initkip.version, \"a\", %progbits        \n"	\
-    ".string \"" CONFIG_KERNEL_VERSION_STRING "\"       \n"	\
+asm(".section .initkip.version, \"a\", %progbits        \n"
+    ".string \"" CONFIG_KERNEL_VERSION_STRING "\"       \n"
     ".previous                                          \n");
 
-asm(".section .initkip.features.fini, \"a\", %progbits  \n"	\
-    ".string \"\"                                       \n"	\
+asm(".section .initkip.features.end, \"a\", %progbits   \n"
+    ".string \"\"                                       \n"
     ".previous                                          \n");

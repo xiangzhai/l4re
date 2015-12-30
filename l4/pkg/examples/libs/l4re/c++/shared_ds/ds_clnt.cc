@@ -67,7 +67,8 @@ int main()
    */
   char *addr = 0;
   int err = L4Re::Env::env()->rm()->attach(&addr, ds->size(),
-                                           L4Re::Rm::Search_addr, ds);
+                                           L4Re::Rm::Search_addr,
+                                           L4::Ipc::make_cap_rw(ds));
   if (err < 0)
     {
       printf("Error attaching data space: %s\n", l4sys_errtostr(err));

@@ -11,7 +11,6 @@
  * GNU General Public License 2.
  * Please see the COPYING-GPL-2 file for details.
  */
-#include <l4/sys/user_locks.h>
 
 #undef  FERRET_LLIST_LOCK
 #undef  FERRET_LLIST_UNLOCK

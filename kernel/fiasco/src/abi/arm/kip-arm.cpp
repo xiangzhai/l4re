@@ -17,7 +17,8 @@ public:
     {
       struct
       {
-        Unsigned32 MIDR, CTR, ID_MMFR0, ID_ISAR0;
+        Unsigned32 MIDR, CTR, TCMTR, TLBTR, MPIDR, REVIDR;
+        Unsigned32 ID_PFR[2], ID_DFR0, ID_AFR0, ID_MMFR[4], ID_ISAR[6];
       } cpuinfo;
     } arch;
     Unsigned32 pad[3];

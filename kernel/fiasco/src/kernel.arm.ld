@@ -59,7 +59,7 @@ SECTIONS {
     _initkip_start = .;
     KEEP(*(.initkip.version))
     KEEP(*(.initkip.features))
-    KEEP(*(.initkip.features.fini))
+    KEEP(*(.initkip.features.end))
     _initkip_end = .;
     . = ALIGN(4K);
   }
@@ -216,7 +216,7 @@ SECTIONS {
 
   ivt_start = ADDR(.bss) + SIZEOF(.bss) - phys_offset;
   .excp 0xffff0000 : AT (ivt_start) {
-    *(.vect .excp.text)
+    KEEP (*(.vect)) *(.excp.text)
     *(.vect.extra)
   }
 

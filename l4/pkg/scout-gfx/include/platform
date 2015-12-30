@@ -10,6 +10,7 @@
 #pragma once
 
 #include <l4/mag-gfx/geometry>
+#include <l4/scout-gfx/event>
 
 namespace Scout_gfx {
 

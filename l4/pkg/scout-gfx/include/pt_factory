@@ -24,9 +24,14 @@ class Factory :
   public Mag_gfx::Mem::Factory<PT>
 {
 public:
-  Scout_gfx::Icon *create_icon(void const *rgba, Area const &size)
+  Scout_gfx::Icon *create_icon(void const *rgba, Area const &size, bool fade)
   {
-    Fade_icon<PT> *i = new Fade_icon<PT>();
+    Icon<PT> *i;
+    if (fade)
+      i = new Fade_icon<PT>();
+    else
+      i = new Icon<PT>();
+
     if (rgba)
       i->rgba(rgba, size);
     return i;

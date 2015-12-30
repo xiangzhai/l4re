@@ -10,7 +10,9 @@
 
 ferret_time_t ferret_rel_utime()
 {
-	l4_cap_idx_t c = pthread_getl4cap(pthread_self());
-	l4_thread_stats_time(c);
-	return (ferret_time_t)l4_utcb_mr()->mr[0];
+	l4_cap_idx_t c = pthread_l4_cap(pthread_self());
+	l4_kernel_clock_t t;
+	if (l4_error(l4_thread_stats_time(c, &t)))
+		return (ferret_time_t)~0ULL;
+	return (ferret_time_t)t;
 }

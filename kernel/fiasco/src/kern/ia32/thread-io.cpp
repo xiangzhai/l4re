@@ -174,23 +174,34 @@ Thread::handle_io_page_fault(Trap_state *ts)
 	  // consecutive exception
 	  ts->_cr2 = io_page;
 
-	  if (EXPECT_FALSE(state() & Thread_alien))
+	  if (EXPECT_FALSE((state() & Thread_alien)
+                           || vcpu_exceptions_enabled(vcpu_state().access())))
 	    {
 	      // special case for alien tasks: Don't generate pagefault but
 	      // send (pagefault) exception to pager.
-	      ts->_trapno = 14;
+	      ts->_trapno = 13;
+              ts->_err = 0;
+              _recover_jmpbuf = 0;
 	      if (send_exception(ts))
 		return 1;
-	      else
+              else
 		return 2; // fail, don't send exception again
-	    }
+            }
 
           bool ipc_code = handle_page_fault_pager(_pager, io_page,
                                                   io_error_code,
                                                   L4_msg_tag::Label_io_page_fault);
 
           if (ipc_code)
-	    return 1;
+            {
+              _recover_jmpbuf = 0;
+              return 1;
+            }
+
+          // send IO-Port fault allways as trap 13 even if it comes from a PF
+          // on the IO bitmap (would be trap 14 with io flex page in cr2)
+          ts->_trapno = 13;
+          ts->_err = 0;
         }
     }
   return 0; // fail

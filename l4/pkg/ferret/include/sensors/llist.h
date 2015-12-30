@@ -14,6 +14,8 @@
 #ifndef __FERRET_INCLUDE_SENSORS_LLIST_H_
 #define __FERRET_INCLUDE_SENSORS_LLIST_H_
 
+#include <l4/ferret/types.h>
+
 #define FERRET_LLIST_MAX_COUNT   16*1024*1024  // arbitrary, but large limit
 #define FERRET_LLIST_MAX_ELEMENT 4096          // arbitrary, but large limit
 

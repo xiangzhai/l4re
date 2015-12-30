@@ -44,9 +44,9 @@ class LogicalCPUMap
 
 	static void* topology_scanner(void* data)
 	{
-		l4_debugger_set_object_name(pthread_getl4cap(pthread_self()), "romain::topscan");
+		l4_debugger_set_object_name(pthread_l4_cap(pthread_self()), "romain::topscan");
 		LogicalCPUMap *m = reinterpret_cast<LogicalCPUMap*>(data);
-		L4::Cap<L4::Thread> thread(pthread_getl4cap(pthread_self()));
+		L4::Cap<L4::Thread> thread = Pthread::L4::cap(pthread_self());
 
 		for (unsigned cpu = 0; cpu < m->num_cpus(); ++cpu) {
 			l4_sched_param_t sp = l4_sched_param(2);
@@ -144,7 +144,7 @@ class CounterLog
 
 		void loginit()
 		{
-			L4::Cap<L4::Thread> thread(pthread_getl4cap(pthread_self()));
+			L4::Cap<L4::Thread> thread = Pthread::L4::cap(pthread_self());
 
 			/* #1: Setup counters. */
 			for (unsigned cpu = 0; cpu < map->num_cpus(); ++cpu) {
@@ -157,7 +157,7 @@ class CounterLog
 
 		void *logwork()
 		{
-			L4::Cap<L4::Thread> thread(pthread_getl4cap(pthread_self()));
+			L4::Cap<L4::Thread> thread = Pthread::L4::cap(pthread_self());
 			/* #2 Counter read loop */
 			for (unsigned cpu = 0; cpu < map->num_cpus(); ++cpu) {
 				l4_sched_param_t sp = l4_sched_param(4);

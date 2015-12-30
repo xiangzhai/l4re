@@ -1667,7 +1667,7 @@ vc_pf_handler(l4_addr_t pf_addr)
     }
 #endif
 
-  printf("page fault in unknown vc (addr="l4_addr_fmt"\n", pf_addr);
+  printf("page fault in unknown vc (addr=" l4_addr_fmt "\n", pf_addr);
   enter_kdebug("stop");
 }
 

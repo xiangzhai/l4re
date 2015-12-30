@@ -39,30 +39,3 @@ Vcon_fe_base::handle_pending_input()
     ;
 }
 
-int
-Vcon_fe_base::dispatch(l4_umword_t, L4::Ipc::Iostream &ios)
-{
-  l4_msgtag_t tag;
-  ios >> tag;
-
-  switch (tag.label())
-    {
-    case 0:
-        {
-          char buf[30];
-          const int sz = sizeof(buf);
-          int r;
-
-          do
-            {
-              r = _vcon->read(buf, sz);
-              if (_input && r > 0)
-                _input->input(cxx::String(buf, r > sz ? sz : r));
-            }
-          while (r > sz);
-        }
-      return L4_EOK;
-    default:
-      return -L4_EBADPROTO;
-    }
-}

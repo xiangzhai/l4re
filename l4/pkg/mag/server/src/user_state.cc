@@ -418,7 +418,7 @@ User_state::get_input_stream_info_for_id(l4_umword_t id, Input_info *info) const
 {
   lua_State *l = _l;
   int top = lua_gettop(l);
-  lua_getfield(l, LUA_GLOBALSINDEX, "input_source_info");
+  lua_getglobal(l, "input_source_info");
   lua_pushinteger(l, id);
   if (lua_pcall(l, 1, 2, 0))
     {
@@ -462,12 +462,12 @@ User_state::get_input_stream_info_for_id(l4_umword_t id, Input_info *info) const
 }
 
 int
-User_state::get_input_axis_info(l4_umword_t id, unsigned naxes, unsigned *axis,
+User_state::get_input_axis_info(l4_umword_t id, unsigned naxes, unsigned const *axis,
                                 Input_absinfo *info, unsigned char *ax_mode) const
 {
   lua_State *l = _l;
   int top = lua_gettop(l);
-  lua_getfield(l, LUA_GLOBALSINDEX, "input_source_abs_info");
+  lua_getglobal(l, "input_source_abs_info");
   lua_pushinteger(l, id);
   for (unsigned i = 0; i < naxes; ++i)
     lua_pushinteger(l, axis[i]);

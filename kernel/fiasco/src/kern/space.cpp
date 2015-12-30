@@ -93,15 +93,13 @@ public:
 
   Caps caps() const { return _caps; }
 
+  void switchin_context(Space *from, unsigned mode = 0);
 
 protected:
   Space(Ram_quota *q, Mem_space::Dir_type* pdir, Caps c)
   : Mem_space(q, pdir), _caps(c) {}
 
   const Caps _caps;
-
-private:
-  void switchin_ldt() const;
 
 protected:
   typedef cxx::S_list<Ku_mem> Ku_mem_list;
@@ -112,8 +110,8 @@ protected:
 //---------------------------------------------------------------------------
 IMPLEMENTATION:
 
+#include "assert.h"
 #include "atomic.h"
-#include "kdb_ke.h"
 #include "lock_guard.h"
 #include "config.h"
 #include "globalconfig.h"
@@ -152,16 +150,11 @@ Space::find_ku_mem(User<void>::Ptr p, unsigned size)
   return 0;
 }
 
-PUBLIC inline NEEDS["kdb_ke.h"]
+IMPLEMENT_DEFAULT inline
 void
-Space::switchin_context(Space *from)
+Space::switchin_context(Space *from, unsigned mode)
 {
-  assert_kdb (this);
-  if (this != from)
-    {
-      Mem_space::switchin_context(from);
-      switchin_ldt();
-    }
+  Mem_space::switchin_context(from, mode);
 }
 
 

@@ -33,7 +33,7 @@ static inline void libc_backend_rtc_get_s_and_ns(l4_uint32_t *s, l4_uint32_t *ns
   l4_tsc_to_s_and_ns(l4_rdtsc(), s, ns);
 }
 
-#elif defined(ARCH_arm) || defined(ARCH_ppc32) || defined(ARCH_sparc)
+#else
 
 static inline void libc_backend_rtc_init(void)
 {
@@ -47,8 +47,6 @@ static inline void libc_backend_rtc_get_s_and_ns(l4_uint32_t *s, l4_uint32_t *ns
   *ns = (c % 1000000) * 1000;
 }
 
-#else
-#error Unknown architecture
 #endif
 
 #endif /* ! __RTC__LIB__LIBC_BACKEND__TIME__GETTIME_H__ */

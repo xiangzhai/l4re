@@ -53,7 +53,7 @@ Jdb_kobject_name *Jdb_kobject_name::_names;
 
 
 PUBLIC
-unsigned
+int
 Jdb_kobject_name::max_len()
 { return sizeof(_name); }
 
@@ -99,9 +99,9 @@ Jdb_kobject_name::operator delete (void *p)
 
 PUBLIC
 void
-Jdb_kobject_name::name(const char *name)
+Jdb_kobject_name::name(char const *name)
 {
-  unsigned i = 0;
+  int i = 0;
   for (; name[i] && i < max_len(); ++i)
     _name[i] = name[i];
 
@@ -122,7 +122,6 @@ Jdb_kobject_name::name()
 class Jdb_name_hdl : public Jdb_kobject_handler
 {
 public:
-  Jdb_name_hdl() : Jdb_kobject_handler(0) {}
   virtual bool show_kobject(Kobject_common *, int) { return true; }
   virtual ~Jdb_name_hdl() {}
 };

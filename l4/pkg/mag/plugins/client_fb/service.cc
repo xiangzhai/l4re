@@ -7,16 +7,13 @@
  * GNU General Public License 2.
  * Please see the COPYING-GPL-2 file for details.
  */
-#include <l4/cxx/ipc_server>
 #include <l4/re/util/object_registry>
 #include <l4/re/env>
-#include <l4/re/protocols>
 #include <l4/re/console>
 #include <l4/re/util/cap_alloc>
 #include <l4/re/error_helper>
 #include <l4/re/rm>
 #include <l4/re/dataspace>
-#include <l4/re/mem_alloc>
 #include <l4/re/util/meta>
 
 #include <cstdio>
@@ -57,39 +54,27 @@ namespace {
     };
 };
 
-int
-Service::dispatch(l4_umword_t, L4::Ipc::Iostream &ios)
+long
+Service::op_create(L4::Factory::Rights, L4::Ipc::Cap<void> &obj,
+                   l4_mword_t proto, L4::Ipc::Varg_list<> const &args)
 {
-  l4_msgtag_t tag;
-  ios >> tag;
+  if (!L4::kobject_typeid<L4Re::Console>()->has_proto(proto))
+    return -L4_ENODEV;
 
-  switch (tag.label())
-    {
-    case L4::Meta::Protocol:
-      return L4Re::Util::handle_meta_request<L4::Factory>(ios);
-    case L4::Factory::Protocol:
-      if (L4::kobject_typeid<L4Re::Console>()->
-	    has_proto(L4::Ipc::read<L4::Factory::Proto>(ios)))
-	{
-	  L4::Ipc::Istream_copy cp_is = ios;
-	  cxx::Ref_ptr<Client_fb> x(new Client_fb(_core));
-	  _core->set_session_options(x.get(), cp_is, _client_fb_opts);
-	  x->setup();
+  cxx::Ref_ptr<Client_fb> x(new Client_fb(_core));
+  _core->set_session_options(x.get(), args, _client_fb_opts);
+  x->setup();
 
-	  _core->register_session(x.get());
-	  ust()->vstack()->push_top(x.get());
-          x->view_setup();
+  _core->register_session(x.get());
+  ust()->vstack()->push_top(x.get());
+  x->view_setup();
 
-	  reg()->register_obj(x);
-	  x->obj_cap()->dec_refcnt(1);
-	  ios << x->obj_cap();
-	  return 0;
-	}
-      return -L4_ENODEV;
-    default:
-      return -L4_EBADPROTO;
-    }
+  reg()->register_obj(x);
+  x->obj_cap()->dec_refcnt(1);
+  obj = L4::Ipc::make_cap(x->obj_cap(), L4_CAP_FPAGE_RWSD);
+  return 0;
 }
+
 
 void
 Service::destroy()

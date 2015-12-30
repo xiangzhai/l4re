@@ -67,7 +67,6 @@ IMPLEMENTATION [ia32 || ux || amd64]:
 #include <cstring>
 #include <cstdio>
 #include "cpu.h"
-#include "kdb_ke.h"
 #include "l4_types.h"
 #include "mem_layout.h"
 #include "paging.h"
@@ -403,7 +402,7 @@ Mem_space::page_unmap(Address, Address)
 
 IMPLEMENT inline NEEDS["kmem.h", "logdefs.h"]
 void
-Mem_space::switchin_context(Mem_space *from)
+Mem_space::switchin_context(Mem_space *from, unsigned)
 {
   // FIXME: this optimization breaks SMP task deletion, an idle thread
   // may run on an already deleted page table

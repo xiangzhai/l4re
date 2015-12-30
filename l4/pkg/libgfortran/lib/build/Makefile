@@ -6,23 +6,43 @@ PC_FILENAMES	= libgfortran
 
 # The -fallow-leading-underscore is only needed for some Fortran
 # files, but it does not hurt for all the others.
-CFLAGS         += -fcx-fortran-rules -ftree-vectorize -funroll-loops
+CFLAGS         += -fcx-fortran-rules
 FFLAGS         += -fno-underscoring -fimplicit-none -fno-repack-arrays \
-                  -fallow-leading-underscore \
-                  -ftree-vectorize -funroll-loops
+                  -fallow-leading-underscore
 
 include $(L4DIR)/mk/Makeconf
 
-REQUIRES_LIBS = libc_be_sig libc_support_misc libstdc++ libc
+REQUIRES_LIBS = libc_be_sig libc_support_misc libstdc++ libc libquadmath
 
 include $(SRC_DIR)/Makefile.dist-c
 include $(SRC_DIR)/Makefile.dist-f
+
+i_matmul_c  = $(filter generated/matmul_i%,$(C_FILES)) \
+	      $(filter generated/matmul_r%,$(C_FILES)) \
+	      $(filter generated/matmul_c%,$(C_FILES))
+i_matmull_c = $(filter generated/matmul_l%,$(C_FILES))
+
+$(foreach f,$(eval CFLAGS_$(f) = -ftree-vectorize -funroll-loops),$(i_matmul_c))
+$(foreach f,$(eval CFLAGS_$(f) = -funroll-loops),$(i_matmull_c))
+
+IEEE_FFLAGS = -Wno-unused-dummy-argument -Wno-c-binding-type \
+              -ffree-line-length-0 -fallow-leading-underscore
+
+FFLAGS_ieee/ieee_arithmetic.o   = $(IEEE_FFLAGS)
+FFLAGS_ieee/ieee_exceptions.o   = $(IEEE_FFLAGS)
+FFLAGS_ieee/ieee_features.o     = $(IEEE_FFLAGS)
+
+FFLAGS_ieee/ieee_arithmetic.s.o = $(IEEE_FFLAGS)
+FFLAGS_ieee/ieee_exceptions.s.o = $(IEEE_FFLAGS)
+FFLAGS_ieee/ieee_features.s.o   = $(IEEE_FFLAGS)
 
 SRC_C_libgfortran.a      = $(C_FILES)
 SRC_F_libgfortran.a      = $(F_FILES)
 SRC_C_libgfortran.so     = $(C_FILES)
 SRC_F_libgfortran.so     = $(F_FILES)
 SRC_C_libgfortranbegin.a = fmain.c
+
+$(SRC_DIR)/Makefile: $(SRC_DIR)/Makefile.dist-c $(SRC_DIR)/Makefile.dist-f
 
 CONTRIB_DIR     = $(SRC_DIR)/../contrib
 PRIVATE_INCDIR  = $(SRC_DIR) $(SRC_DIR)/include $(CONTRIB_DIR)

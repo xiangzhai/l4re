@@ -11,19 +11,21 @@
 #include <l4/re/env>
 #include <l4/re/dataspace>
 #include <l4/re/namespace>
-#include <l4/re/protocols>
 #include <l4/re/error_helper>
 #include <l4/re/util/cap_alloc>
 #include <l4/re/util/env_ns>
 #include <l4/re/util/object_registry>
+#include <l4/re/util/br_manager>
 #include <l4/re/dataspace-sys.h>
 #include <l4/re/namespace-sys.h>
 #include <l4/re/mem_alloc>
 #include <l4/re/util/meta>
 #include <l4/sys/factory>
-#include <l4/cxx/ipc_server>
 #include <l4/cxx/iostream>
 #include <l4/cxx/list>
+
+#include <l4/sys/cxx/ipc_epiface>
+#include <l4/sys/cxx/ipc_server_loop>
 
 #include <cstdlib>
 #include <cstdio>
@@ -31,38 +33,62 @@
 
 static bool verbose;
 
-static L4Re::Util::Registry_server<> server(l4_utcb(),
-                                            L4Re::Env::env()->main_thread(),
-                                            L4Re::Env::env()->factory());
+static L4Re::Util::Registry_server<L4Re::Util::Br_manager_hooks> server;
 
 // ------------------------------------------------------------------------
 
-class Fprov_server : public L4::Server_object
+class Fprov_server : public L4::Epiface_t<Fprov_server, L4Re::Namespace>
 {
   struct Dir_entry : public cxx::List_item
-    {
-    public:
-      typedef T_iter<Dir_entry> Iterator;
+  {
+  public:
+    typedef T_iter<Dir_entry> Iterator;
 
-      Dir_entry()
-	: name(0), addr(0), size(0), ds(L4_INVALID_CAP)
-	{}
-      char *name;
-      unsigned long addr;
-      unsigned long size;
-      L4::Cap<L4Re::Dataspace> ds;
-    };
+    Dir_entry()
+    : name(0), addr(0), size(0), ds(L4_INVALID_CAP)
+    {}
+
+    char *name;
+    unsigned name_len;
+    unsigned long addr;
+    unsigned long size;
+    L4::Cap<L4Re::Dataspace> ds;
+  };
 
 public:
   Fprov_server(L4::Cap<L4Re::Dataspace> ds);
-  int dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios);
+
+  // server interface ------------------------------------------
+  int op_query(L4Re::Namespace::Rights,
+               L4::Ipc::Array_in_buf<char, unsigned long> const &name,
+               L4::Ipc::Snd_fpage &res, L4::Ipc::Opt<L4::Opcode> &,
+               L4::Ipc::Opt<L4::Ipc::Array_ref<char, unsigned long> > &)
+  {
+    return get_file(name.data, name.length, res);
+  }
+
+  int op_link(L4Re::Namespace::Rights, unsigned,
+                  L4::Ipc::Array_ref<char const, unsigned long> const &,
+                  L4::Ipc::Snd_fpage,
+                  L4::Ipc::Array_ref<char const, unsigned long> const &)
+  { return -L4_EPERM; }
+
+  int op_register_obj(L4Re::Namespace::Rights, unsigned,
+                      L4::Ipc::Array_ref<char const, unsigned long> const &,
+                      L4::Ipc::Snd_fpage &)
+  { return -L4_EPERM; }
+
+  int op_unlink(L4Re::Namespace::Rights,
+                L4::Ipc::Array_ref<char const, unsigned long> const &)
+  { return -L4_EPERM; }
 
 private:
-  enum {
+  enum
+  {
     Max_filename_len = 1024,
   };
 
-  int get_file(char const *filename, L4::Ipc::Iostream &ios);
+  int get_file(char const *filename, unsigned len, L4::Ipc::Snd_fpage &res);
 
   L4::Cap<L4Re::Dataspace> _ds;
   l4_addr_t _addr;
@@ -70,12 +96,14 @@ private:
 };
 
 Fprov_server::Fprov_server(L4::Cap<L4Re::Dataspace> ds)
-  : _ds(ds), _addr(0), _dir(0)
+: _ds(ds), _addr(0), _dir(0)
 {
   int ret;
 
   _addr = 0;
-  if ((ret = L4Re::Env::env()->rm()->attach(&_addr, ds->size(), L4Re::Rm::Search_addr, ds, 0, 0)))
+  if ((ret = L4Re::Env::env()->rm()
+               ->attach(&_addr, ds->size(), L4Re::Rm::Search_addr,
+                        L4::Ipc::make_cap_rw(ds))))
     {
       printf("Attach of dataspace failed with error %d\n", ret);
       return;
@@ -95,6 +123,7 @@ Fprov_server::Fprov_server(L4::Cap<L4Re::Dataspace> ds)
       entry->size = (*off);
       off++;
       entry->name = (char *)(_addr + (*off));
+      entry->name_len = strlen(entry->name);
       off++;
       if (verbose)
         printf("[0x%08lx: 0x%08lx] %s\n", entry->addr, entry->addr + entry->size, entry->name);
@@ -105,15 +134,19 @@ Fprov_server::Fprov_server(L4::Cap<L4Re::Dataspace> ds)
 }
 
 int
-Fprov_server::get_file(char const *filename, L4::Ipc::Iostream &ios)
+Fprov_server::get_file(char const *filename, unsigned len, L4::Ipc::Snd_fpage &res)
 {
-  //printf("Open file:%s\n", filename);
+  if (0)
+    printf("Open file '%.*s'\n", len, filename);
   Dir_entry *dir_entry = 0;
   // find the dir entry for the file
   for (Dir_entry::Iterator i = _dir; *i; ++i)
     {
-      //if (!strcmp(i->name, filename))
-      if (strstr(i->name, filename))
+      // compare from end
+      if (i->name_len < len)
+        continue;
+
+      if (!strncmp(i->name + (i->name_len - len), filename, len))
 	{
 	  dir_entry = *i;
 	  break;
@@ -122,15 +155,15 @@ Fprov_server::get_file(char const *filename, L4::Ipc::Iostream &ios)
 
   if (!dir_entry)
     {
-      printf("File not found: <%s>\n", filename);
+      printf("File not found: <%.*s>\n", len, filename);
       return -L4_ENODEV;
     }
 
   if (dir_entry->ds.is_valid())
     {
       if (verbose)
-        printf("file already open: <%s>\n", filename);
-      ios << L4::Ipc::Snd_fpage(dir_entry->ds.fpage(L4_FPAGE_RO));
+        printf("file already open: <%.*s>\n", len, filename);
+      res = L4::Ipc::Snd_fpage(dir_entry->ds.fpage(L4_FPAGE_RO));
       return 0;
     }
 
@@ -157,58 +190,39 @@ Fprov_server::get_file(char const *filename, L4::Ipc::Iostream &ios)
     }
   dir_entry->ds = file_ds;
 
-  ios << L4::Ipc::Snd_fpage(file_ds.fpage(L4_FPAGE_RO));
+  res = L4::Ipc::Snd_fpage(file_ds.fpage(L4_FPAGE_RO));
 
   return 0;
 }
 
-int
-Fprov_server::dispatch(l4_umword_t, L4::Ipc::Iostream &ios)
-{
-  l4_msgtag_t t;
-  ios >> t;
-
-  if (t.label() == L4::Meta::Protocol)
-    return L4Re::Util::handle_meta_request<L4Re::Namespace>(ios);
-
-  if (t.label() != L4Re::Protocol::Namespace)
-    return -L4_EBADPROTO;
-
-  l4_umword_t opcode;
-  ios >> opcode;
-
-  switch (opcode)
-    {
-    case L4Re::Namespace_::Query:
-        {
-          char filename[Max_filename_len];
-          unsigned long len = Max_filename_len;
-          ios >> L4::Ipc::buf_cp_in(filename, len);
-          filename[len] = 0;
-
-          return get_file(filename, ios);
-        }
-      break;
-    case L4Re::Namespace_::Register:
-      printf("Does not register anything, it's readonly!\n");
-      return -L4_EPERM;
-    default:
-      return -L4_ENOSYS;
-    };
-}
 
 // ------------------------------------------------------------------------
 
-class Fprov_service : public L4::Server_object
+class Fprov_service : public L4::Epiface_t<Fprov_service, L4::Factory>
 {
-  enum {
+  enum
+  {
       Name_size = 256,
   };
 
 public:
   Fprov_service() {};
-  int dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios);
-  static Fprov_server *create_server(const char *filename);
+  long op_create(L4::Factory::Rights, L4::Ipc::Cap<void> &res,
+                   l4_umword_t type, L4::Ipc::Varg_list<> &&args)
+  {
+    if (type != 0 && type != L4Re::Namespace::Protocol)
+      return -L4_ENODEV;
+
+    L4::Ipc::Varg name = args.next();
+    if (!name.is_of<char const *>())
+      return -L4_EINVAL;
+
+    Fprov_server *server = Fprov_service::create_server(name.value<char const *>());
+    res = L4::Ipc::make_cap(server->obj_cap(), L4_CAP_FPAGE_RWSD);
+    return L4_EOK;
+  }
+
+  static Fprov_server *create_server(char const *filename);
 };
 
 Fprov_server *
@@ -226,45 +240,6 @@ Fprov_service::create_server(const char *filename)
     }
 
   return new Fprov_server(ds_cap);
-}
-
-int
-Fprov_service::dispatch(l4_umword_t, L4::Ipc::Iostream &ios)
-{
-  l4_msgtag_t t;
-  ios >> t;
-
-  switch (t.label())
-    {
-    case L4::Meta::Protocol:
-      return L4::Util::handle_meta_request<L4::Factory>(ios);
-    case L4::Factory::Protocol:
-      break;
-    default:
-      return -L4_EBADPROTO;
-    }
-
-  switch (L4::Ipc::read<L4::Factory::Proto>(ios))
-    {
-    case L4Re::Namespace::Protocol:
-    case 0:
-        {
-	  unsigned long name_size = Name_size;
-	  static char config[Name_size];
-
-	  ios >> L4::Ipc::buf_cp_in(config, name_size);
-	  config[name_size] = 0;
-
-	  Fprov_server *server = Fprov_service::create_server(config);
-	  if (!server)
-	    return -L4_ENODEV;
-	  ios << server->obj_cap();
-	  return L4_EOK;
-        }
-
-    default:
-      return -L4_ENODEV;
-    };
 }
 
 static void setup(int argc, char *argv[])
@@ -288,13 +263,10 @@ static void setup(int argc, char *argv[])
 
       Fprov_server *server = Fprov_service::create_server(fs_name);
 
-      if (!server)
-        continue;
-
       if (!::server.registry()->register_obj(server, reg_name))
-	printf("Failed to register filesystem under name %s\n", reg_name);
+	printf("Failed to register filesystem under name '%s'\n", reg_name);
       else
-	printf("Registered filesystem %s under name:%s\n", fs_name, reg_name);
+	printf("Registered filesystem '%s' under %s:%s\n", fs_name, fs_name, reg_name);
     }
 }
 

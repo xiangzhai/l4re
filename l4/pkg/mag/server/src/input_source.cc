@@ -19,7 +19,7 @@ void
 Input_source::post_event(L4Re::Event_buffer::Event const *e)
 {
   lua_State *l = _core->lua_state();
-  lua_getfield(l, LUA_GLOBALSINDEX, "handle_event");
+  lua_getglobal(l, "handle_event");
   lua_createtable(l, 6, 0);
   lua_pushinteger(l, e->payload.type);
   lua_rawseti(l, -2, 1);
@@ -27,9 +27,9 @@ Input_source::post_event(L4Re::Event_buffer::Event const *e)
   lua_rawseti(l, -2, 2);
   lua_pushinteger(l, e->payload.value);
   lua_rawseti(l, -2, 3);
-  lua_pushnumber(l, e->time);
+  lua_pushinteger(l, e->time);
   lua_rawseti(l, -2, 4);
-  lua_pushlightuserdata(l, (void*)(e->payload.stream_id));
+  lua_pushinteger(l, e->payload.stream_id);
   lua_rawseti(l, -2, 5);
   lua_rawgeti(l, LUA_REGISTRYINDEX, _ref);
   lua_rawseti(l, -2, 6);

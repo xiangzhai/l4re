@@ -11,9 +11,9 @@
 #include <l4/mag-gfx/clip_guard>
 
 namespace Scout_gfx {
-  /**
-   * Constructor
-   */
+/**
+ * Constructor
+ */
 Document::Document()
 : toc(0), title("")
 {
@@ -35,10 +35,13 @@ Document::remove(Widget *e)
 }
 
 
-Center::Center(Widget *content)
+Center::Center(Widget *content, Orientation orient)
+: _orientation(orient)
 {
-  set_child_layout(Box_layout::create_vert());
-  child_layout()->set_alignment(Mag_gfx::Align_h_center);
+  if (_orientation == Vert)
+    set_child_layout(Box_layout::create_vert());
+  else
+    set_child_layout(Box_layout::create_horz());
 
   if (content)
     append(content);
@@ -49,7 +52,7 @@ void
 Center::append(Widget *c)
 {
   Parent_widget::append(c);
-  c->set_alignment(Mag_gfx::Align_h_center);
+  c->set_alignment(Mag_gfx::Align_center);
   child_layout()->add_item(c);
 }
 

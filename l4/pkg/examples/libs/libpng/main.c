@@ -55,7 +55,7 @@ int main(int argc, char **argv)
     return 10;
 
   int png_w, png_h;
-  libpng_get_size_mem(bildmem, l4re_ds_size(bild), &png_w, &png_h);
+  libpng_get_size_mem(bildmem, st.st_size, &png_w, &png_h);
 
   printf("PNG: %dx%d\n", png_w, png_h);
 
@@ -72,7 +72,7 @@ int main(int argc, char **argv)
     }
 
   libpng_render_mem(bildmem, (void *)vidmem,
-                    l4re_ds_size(bild),
+                    st.st_size,
                     l4re_ds_size(l4re_util_video_goos_fb_buffer(&gfb)),
                     &fbi);
 

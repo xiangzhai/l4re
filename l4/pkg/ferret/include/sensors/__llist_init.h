@@ -1,4 +1,5 @@
 /**
+ * \internal
  * \file   ferret/include/sensors/__llist_init.h
  * \brief  locked list init functions.
  *
@@ -12,7 +13,7 @@
  * Please see the COPYING-GPL-2 file for details.
  */
 #if FERRET_LLIST_MAGIC != ahK6eeNa
-#error Do not directly include this file, use a propper wrapper!
+#error Do not directly include this file, use a proper wrapper!
 #endif
 #undef FERRET_LLIST_MAGIC
 

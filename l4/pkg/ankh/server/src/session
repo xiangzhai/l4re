@@ -3,6 +3,7 @@
 
 #include <l4/cxx/ipc_server>
 #include <l4/shmc/shmc.h>
+#include <l4/ankh/protocol>
 #include <l4/ankh/session>
 #include <l4/ankh/shm>
 #include <pthread-l4.h>
@@ -90,7 +91,7 @@ namespace Ankh
 	/*
 	 * Server-side representation of a session.
 	 */
-	class ServerSession : public L4::Server_object,
+	class ServerSession : public L4::Server_object_t<Ankh::Svc>,
 	                      public Ankh::Session
 	{
 		private:

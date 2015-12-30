@@ -18,6 +18,8 @@ void L4_cxx_start(void)
                 "trap                               \n");
 }
 
+void L4_cxx_kill(void);
+
 void L4_cxx_kill(void)
 {
   asm volatile (".align 4                          \n"

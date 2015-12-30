@@ -34,13 +34,14 @@
  *	@(#)mystring.h	8.2 (Berkeley) 5/4/95
  */
 
-#include <stdint.h>
+#include <inttypes.h>
 #include <string.h>
 
 extern const char snlfmt[];
 extern const char spcstr[];
 extern const char dolatstr[];
 #define DOLATSTRLEN 6
+extern const char qchars[];
 extern const char illnum[];
 extern const char homestr[];
 

@@ -25,7 +25,7 @@
 #include <l4/dde/ddekit/memory.h>
 #include <l4/dde/ddekit/panic.h>
 #include <l4/dde/ddekit/printf.h>
-#include <l4/util/macros.h>
+#include <l4/sys/kdebug.h>
 #include <pthread-l4.h>
 
 #include "config.h"

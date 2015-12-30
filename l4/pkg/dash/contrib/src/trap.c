@@ -69,22 +69,25 @@
 
 
 /* trap handler commands */
-char *trap[NSIG];
+static char *trap[NSIG];
+/* number of non-null traps */
+int trapcnt;
 /* current value of signal */
-static char sigmode[NSIG - 1];
+char sigmode[NSIG - 1];
 /* indicates specified signal received */
-char gotsig[NSIG - 1];
+static char gotsig[NSIG - 1];
 /* last pending signal */
 volatile sig_atomic_t pendingsigs;
-/* do we generate EXSIG events */
-int exsig;
+/* received SIGCHLD */
+int gotsigchld;
 
 extern char *signal_names[];
 
 #ifdef mkinit
-INCLUDE <signal.h>
+INCLUDE "trap.h"
 INIT {
-	signal(SIGCHLD, SIG_DFL);
+	sigmode[SIGCHLD - 1] = S_DFL;
+	setsignal(SIGCHLD);
 }
 #endif
 
@@ -118,17 +121,25 @@ trapcmd(int argc, char **argv)
 	else
 		action = *ap++;
 	while (*ap) {
-		if ((signo = decode_signal(*ap, 0)) < 0)
-			sh_error("%s: bad trap", *ap);
+		if ((signo = decode_signal(*ap, 0)) < 0) {
+			outfmt(out2, "trap: %s: bad trap\n", *ap);
+			return 1;
+		}
 		INTOFF;
 		if (action) {
 			if (action[0] == '-' && action[1] == '\0')
 				action = NULL;
-			else
+			else {
+				if (*action)
+					trapcnt++;
 				action = savestr(action);
+			}
 		}
-		if (trap[signo])
+		if (trap[signo]) {
+			if (*trap[signo])
+				trapcnt--;
 			ckfree(trap[signo]);
+		}
 		trap[signo] = action;
 		if (signo != 0)
 			setsignal(signo);
@@ -149,16 +160,17 @@ clear_traps(void)
 {
 	char **tp;
 
+	INTOFF;
 	for (tp = trap ; tp < &trap[NSIG] ; tp++) {
 		if (*tp && **tp) {	/* trap not NULL or SIG_IGN */
-			INTOFF;
 			ckfree(*tp);
 			*tp = NULL;
 			if (tp != &trap[0])
 				setsignal(tp - trap);
-			INTON;
 		}
 	}
+	trapcnt = 0;
+	INTON;
 }
 
 
@@ -206,6 +218,9 @@ setsignal(int signo)
 #endif
 		}
 	}
+
+	if (signo == SIGCHLD)
+		action = S_CATCH;
 
 	t = &sigmode[signo - 1];
 	tsig = *t;
@@ -271,10 +286,16 @@ ignoresig(int signo)
 void
 onsig(int signo)
 {
+	if (signo == SIGCHLD) {
+		gotsigchld = 1;
+		if (!trap[SIGCHLD])
+			return;
+	}
+
 	gotsig[signo - 1] = 1;
 	pendingsigs = signo;
 
-	if (exsig || (signo == SIGINT && !trap[SIGINT])) {
+	if (signo == SIGINT && !trap[SIGINT]) {
 		if (!suppressint)
 			onint();
 		intpending = 1;
@@ -288,8 +309,7 @@ onsig(int signo)
  * handlers while we are executing a trap handler.
  */
 
-int
-dotrap(void)
+void dotrap(void)
 {
 	char *p;
 	char *q;
@@ -308,13 +328,11 @@ dotrap(void)
 		p = trap[i + 1];
 		if (!p)
 			continue;
-		evalstring(p, SKIPEVAL);
+		evalstring(p, 0);
 		exitstatus = savestatus;
 		if (evalskip)
-			return evalskip;
+			break;
 	}
-
-	return 0;
 }
 
 
@@ -348,7 +366,7 @@ exitshell(void)
 {
 	struct jmploc loc;
 	char *p;
-	int status;
+	volatile int status;
 
 #ifdef HETIO
 	hetio_reset_term();
@@ -363,6 +381,7 @@ exitshell(void)
 	handler = &loc;
 	if ((p = trap[0])) {
 		trap[0] = NULL;
+		evalskip = 0;
 		evalstring(p, 0);
 	}
 out:

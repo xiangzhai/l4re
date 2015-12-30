@@ -22,7 +22,7 @@ static timerArgs global_arg;
 void *timerThread(void *argp)
 {
 	char const *name = "Romain::timer";
-	L4::Cap<L4::Thread> self(pthread_getl4cap(pthread_self()));
+	L4::Cap<L4::Thread> self = Pthread::L4::cap(pthread_self());
 	l4_debugger_set_object_name(self.cap(), name);
 
 	l4_sched_param_t sp = l4_sched_param(2);

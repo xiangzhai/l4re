@@ -1,7 +1,9 @@
 #pragma once
 
+#define LWIP_L4 1
+
 #define LWIP_DEBUG 0
-#define LWIP_PREFIX_BYTEORDER_FUNCS 1
+//#define LWIP_PREFIX_BYTEORDER_FUNCS 1
 
 /**
  * LWIP_PRIV_NETCONN_MEMBER==1: if you need a 'void *priv' in struct
@@ -603,3 +605,5 @@
 #ifndef MEMP_NUM_SYS_TIMEOUT
 #define MEMP_NUM_SYS_TIMEOUT            16
 #endif
+
+#define LWIP_TIMEVAL_PRIVATE 0

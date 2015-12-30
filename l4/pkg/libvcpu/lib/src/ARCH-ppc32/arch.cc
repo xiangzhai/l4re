@@ -19,7 +19,7 @@
 
 #include <stdio.h>
 
-void l4vcpu_print_state_arch(l4_vcpu_state_t *vcpu,
+void l4vcpu_print_state_arch(l4_vcpu_state_t const *vcpu,
                              const char *prefix) L4_NOTHROW
 {
   (void)vcpu;

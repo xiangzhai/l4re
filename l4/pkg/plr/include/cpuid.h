@@ -1,7 +1,6 @@
 #pragma once
 
 #include <l4/sys/types.h>
-#include "constants.h"
 
 struct CPU_id
 {
@@ -86,6 +85,7 @@ public:
     }
 
 
+#if 0
     static l4_umword_t num_cpus()
     {
         if (CPUID::max_cpuid() < CPUID::TOPOLOGY) {
@@ -96,6 +96,7 @@ public:
         a = CPUID::cpuid(CPUID::TOPOLOGY, &a, &b, &c, &d);
         return b;
     }
+#endif
 
 
 

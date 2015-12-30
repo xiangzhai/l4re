@@ -74,7 +74,7 @@ ddekit_thread_t *ddekit_thread_setup_myself(const char *name) {
 
 	strcpy(pname, name);
 
-	l4_debugger_set_object_name(pthread_getl4cap(pthread_self()), td->name);
+	l4_debugger_set_object_name(pthread_l4_cap(pthread_self()), td->name);
 
 	pthread_setspecific(tlskey_thread, td);
 

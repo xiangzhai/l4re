@@ -257,6 +257,7 @@ Controller::cmd_help(Mux *mux, int, Arg *)
   mux->printf("   Ctrl-E .     - Disconnect\n");
   mux->printf("   Ctrl-E e     - Inject Ctrl-E\n");
   mux->printf("   Ctrl-E c     - Inject Ctrl-C\n");
+  mux->printf("   Ctrl-E z     - Inject Ctrl-Z\n");
   mux->printf("   Ctrl-E q     - Inject ESC\n");
   mux->printf("   Ctrl-E l     - Inject Break sequence\n");
   mux->printf("\nGlobal key shortcuts:\n");

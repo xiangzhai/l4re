@@ -14,13 +14,10 @@
 
 #include <l4/re/util/icu_svr>
 #include <l4/re/util/vcon_svr>
-
-// FIXME: we need generally a better way for handling such server global
-// information
-extern L4::Cap<void> rcv_cap;
+#include <l4/re/util/object_registry>
 
 class Vcon_client
-: public Server_object,
+: public L4::Epiface_t<Vcon_client, L4::Vcon, Server_object>,
   public L4Re::Util::Icu_cap_array_svr<Vcon_client>,
   public L4Re::Util::Vcon_svr<Vcon_client>,
   public Client
@@ -29,13 +26,11 @@ public:
   typedef L4Re::Util::Icu_cap_array_svr<Vcon_client> Icu_svr;
   typedef L4Re::Util::Vcon_svr<Vcon_client> My_vcon_svr;
 
-  Vcon_client(std::string const &name, int color, size_t bufsz, Key key)
+  Vcon_client(std::string const &name, int color, size_t bufsz, Key key,
+              L4Re::Util::Object_registry *)
   : Icu_svr(1, &_irq),
     Client(name, color, 512, bufsz < 512 ? _dfl_obufsz : bufsz, key)
   {}
-
-  int dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios);
-  static L4::Cap<void> rcv_cap() { return ::rcv_cap; }
 
   void vcon_write(const char *buffer, unsigned size) throw();
   unsigned vcon_read(char *buffer, unsigned size) throw();

@@ -94,6 +94,11 @@ Mword
 Thread::user_flags() const
 { return regs()->flags(); }
 
+PRIVATE static inline
+Mword
+Thread::sanitize_user_flags(Mword flags)
+{ return (flags & ~(EFLAGS_IOPL | EFLAGS_NT)) | EFLAGS_IF; }
+
 /** Check if the pagefault occured at a special place: At some places in the
     kernel we want to ensure that a specific address is mapped. The regular
     case is "mapped", the exception or slow case is "not mapped". The fastest
@@ -114,7 +119,7 @@ Thread::pagein_tcb_request(Return_frame *regs)
   if (*(Unsigned8*)new_ip == 0x48) // REX.W
     new_ip += 1;
 
-  register Unsigned16 op = *(Unsigned16*)new_ip;
+  Unsigned16 op = *(Unsigned16*)new_ip;
   //LOG_MSG_3VAL(current(),"TCB", op, new_ip, 0);
   if ((op & 0xc0ff) == 0x8b) // Context::is_tcb_mapped() and Context::state()
     {
@@ -250,9 +255,14 @@ Thread::handle_slow_trap(Trap_state *ts)
 
   switch (handle_io_page_fault(ts))
     {
-    case 1: goto success;
-    case 2: goto fail;
-    default: break;
+    case 1:
+      _recover_jmpbuf = 0;
+      goto success;
+    case 2:
+      _recover_jmpbuf = 0;
+      goto fail;
+    default:
+      break;
     }
 
   ip = ts->ip();
@@ -331,43 +341,14 @@ thread_page_fault(Address pfa, Mword error_code, Address ip, Mword flags,
 
   Thread *t = current_thread();
   // Pagefault in user mode or interrupts were enabled
-  if (PF::is_usermode_error(error_code))
-    {
-      if (t->vcpu_pagefault(pfa, error_code, ip))
-        return 1;
+  if (EXPECT_TRUE(PF::is_usermode_error(error_code))
+      && t->vcpu_pagefault(pfa, error_code, ip))
+    return 1;
 
-      Proc::sti();
-    }
-  else if(flags & EFLAGS_IF)
+  if(EXPECT_TRUE(PF::is_usermode_error(error_code))
+     || (flags & EFLAGS_IF)
+     || !Kmem::is_kmem_page_fault(pfa, error_code))
     Proc::sti();
-
-  // Pagefault in kernel mode and interrupts were disabled
-  else
-    {
-      // page fault in kernel memory region
-      if (Kmem::is_kmem_page_fault(pfa, error_code))
-	{
-	  // We've interrupted a context in the kernel with disabled interrupts,
-	  // the page fault address is in the kernel region, the error code is
-	  // "not mapped" (as opposed to "access error"), and the region is
-	  // actually valid (that is, mapped in Kmem's shared page directory,
-	  // just not in the currently active page directory)
-	  // Remain cli'd !!!
-	}
-      else if (!Kmem::is_kmem_page_fault(pfa, error_code))
-	{
-          // No error -- just enable interrupts.
-	  Proc::sti();
-	}
-      else
-	{
-          // Error: We interrupted a cli'd kernel context touching kernel space
-	  if (!Thread::log_page_fault())
-	    printf("*P[%lx,%lx,%lx] ", pfa, error_code & 0xffff, ip);
-
-	  kdb_ke ("page fault in cli mode");
-	}
-    }
 
   return t->handle_page_fault(pfa, error_code, ip, regs);
 }
@@ -467,7 +448,7 @@ Thread::_hw_virt_arch_init_vcpu_state(Vcpu_state *vcpu_state)
   // currently we do nothing for SVM here
 }
 
-IMPLEMENT
+IMPLEMENT_OVERRIDE
 bool
 Thread::arch_ext_vcpu_enabled()
 {
@@ -477,7 +458,7 @@ Thread::arch_ext_vcpu_enabled()
 //----------------------------------------------------------------------------
 IMPLEMENTATION [ia32]:
 
-IMPLEMENT inline NEEDS[Thread::_hw_virt_arch_init_vcpu_state]
+IMPLEMENT_OVERRIDE inline NEEDS[Thread::_hw_virt_arch_init_vcpu_state]
 void
 Thread::arch_init_vcpu_state(Vcpu_state *vcpu_state, bool ext)
 {
@@ -488,7 +469,7 @@ Thread::arch_init_vcpu_state(Vcpu_state *vcpu_state, bool ext)
 //----------------------------------------------------------------------------
 IMPLEMENTATION [amd64]:
 
-IMPLEMENT inline NEEDS[Thread::_hw_virt_arch_init_vcpu_state]
+IMPLEMENT_OVERRIDE inline NEEDS[Thread::_hw_virt_arch_init_vcpu_state]
 void
 Thread::arch_init_vcpu_state(Vcpu_state *vcpu_state, bool ext)
 {
@@ -739,7 +720,7 @@ Thread::handle_int3(Trap_state *ts)
 	  printf("%02lx", ts->value() & 0xff);
 	  break;
 	case 11: // l4kd_outdec
-	  printf("%ld", ts->value());
+	  printf("%lu", ts->value());
 	  break;
 	case 31: // Watchdog
 	  switch (ts->value2())

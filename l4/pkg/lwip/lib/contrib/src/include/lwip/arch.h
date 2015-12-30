@@ -1,8 +1,8 @@
 /*
  * Copyright (c) 2001-2004 Swedish Institute of Computer Science.
- * All rights reserved. 
- * 
- * Redistribution and use in source and binary forms, with or without modification, 
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification,
  * are permitted provided that the following conditions are met:
  *
  * 1. Redistributions of source code must retain the above copyright notice,
@@ -11,29 +11,30 @@
  *    this list of conditions and the following disclaimer in the documentation
  *    and/or other materials provided with the distribution.
  * 3. The name of the author may not be used to endorse or promote products
- *    derived from this software without specific prior written permission. 
+ *    derived from this software without specific prior written permission.
  *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED 
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT 
- * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, 
- * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT 
- * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING 
- * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY 
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT
+ * SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+ * OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+ * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
  * OF SUCH DAMAGE.
  *
  * This file is part of the lwIP TCP/IP stack.
- * 
+ *
  * Author: Adam Dunkels <adam@sics.se>
  *
  */
-#ifndef __LWIP_ARCH_H__
-#define __LWIP_ARCH_H__
+#ifndef LWIP_HDR_ARCH_H
+#define LWIP_HDR_ARCH_H
+
 
 /* [L4] Commented out to avoid clashes with the definitions in libc. */
-#if 0
+#ifndef LWIP_L4
 #ifndef LITTLE_ENDIAN
 #define LITTLE_ENDIAN 1234
 #endif
@@ -41,7 +42,7 @@
 #ifndef BIG_ENDIAN
 #define BIG_ENDIAN 4321
 #endif
-#endif
+#endif /* L4 */
 
 #include "arch/cc.h"
 
@@ -67,14 +68,30 @@ extern "C" {
 #define PACK_STRUCT_END
 #endif /* PACK_STRUCT_END */
 
+#ifndef PACK_STRUCT_STRUCT
+#define PACK_STRUCT_STRUCT
+#endif /* PACK_STRUCT_STRUCT */
+
 #ifndef PACK_STRUCT_FIELD
 #define PACK_STRUCT_FIELD(x) x
 #endif /* PACK_STRUCT_FIELD */
 
+/* Used for struct fields of u8_t,
+ * where some compilers warn that packing is not necessary */
+#ifndef PACK_STRUCT_FLD_8
+#define PACK_STRUCT_FLD_8(x) PACK_STRUCT_FIELD(x)
+#endif /* PACK_STRUCT_FLD_8 */
+
+/* Used for struct fields of that are packed structs themself,
+ * where some compilers warn that packing is not necessary */
+#ifndef PACK_STRUCT_FLD_S
+#define PACK_STRUCT_FLD_S(x) PACK_STRUCT_FIELD(x)
+#endif /* PACK_STRUCT_FLD_S */
+
 
 #ifndef LWIP_UNUSED_ARG
 #define LWIP_UNUSED_ARG(x) (void)x
-#endif /* LWIP_UNUSED_ARG */ 
+#endif /* LWIP_UNUSED_ARG */
 
 
 #ifdef LWIP_PROVIDE_ERRNO
@@ -207,27 +224,6 @@ extern "C" {
 #define  ENOMEDIUM      123  /* No medium found */
 #define  EMEDIUMTYPE    124  /* Wrong medium type */
 
-
-#define ENSROK                    0 /* DNS server returned answer with no data */
-#define ENSRNODATA              160 /* DNS server returned answer with no data */
-#define ENSRFORMERR             161 /* DNS server claims query was misformatted */
-#define ENSRSERVFAIL            162 /* DNS server returned general failure */
-#define ENSRNOTFOUND            163 /* Domain name not found */
-#define ENSRNOTIMP              164 /* DNS server does not implement requested operation */
-#define ENSRREFUSED             165 /* DNS server refused query */
-#define ENSRBADQUERY            166 /* Misformatted DNS query */
-#define ENSRBADNAME             167 /* Misformatted domain name */
-#define ENSRBADFAMILY           168 /* Unsupported address family */
-#define ENSRBADRESP             169 /* Misformatted DNS reply */
-#define ENSRCONNREFUSED         170 /* Could not contact DNS servers */
-#define ENSRTIMEOUT             171 /* Timeout while contacting DNS servers */
-#define ENSROF                  172 /* End of file */
-#define ENSRFILE                173 /* Error reading file */
-#define ENSRNOMEM               174 /* Out of memory */
-#define ENSRDESTRUCTION         175 /* Application terminated lookup */
-#define ENSRQUERYDOMAINTOOLONG  176 /* Domain name is too long */
-#define ENSRCNAMELOOP           177 /* Domain name is too long */
-
 #ifndef errno
 extern int errno;
 #endif
@@ -238,4 +234,4 @@ extern int errno;
 }
 #endif
 
-#endif /* __LWIP_ARCH_H__ */
+#endif /* LWIP_HDR_ARCH_H */

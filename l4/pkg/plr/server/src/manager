@@ -71,20 +71,20 @@ namespace Romain
 			}
 			for (unsigned i = 0; i < max; ++i) {
 				if (cpus.map & (1 << i))
-					ret += (1 << cpus.granularity);
+					ret += (1 << cpus.granularity());
 			}
 			return ret;
 		}
 
 		static void* topology_scanner(void* data)
 		{
-			l4_debugger_set_object_name(pthread_getl4cap(pthread_self()), "romain::topscan");
+			l4_debugger_set_object_name(pthread_l4_cap(pthread_self()), "romain::topscan");
 
 			for (l4_umword_t cpu = 0; cpu < fiasco_count_online_cpus(); ++cpu) {
 				Romain::LogicalCPUMap *m = reinterpret_cast<Romain::LogicalCPUMap*>(data);
 
 				//INFO() << "CPU " << cpu;
-				L4::Cap<L4::Thread> thread(pthread_getl4cap(pthread_self()));
+				L4::Cap<L4::Thread> thread = Pthread::L4::cap(pthread_self());
 				l4_sched_param_t sp = l4_sched_param(2);
 				sp.affinity = l4_sched_cpu_set(cpu, 0);
 				chksys(L4Re::Env::env()->scheduler()->run_thread(thread, sp));

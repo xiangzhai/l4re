@@ -377,5 +377,5 @@ void ddekit_init_timers(void)
 	timer_thread_ddekit = ddekit_thread_create(ddekit_timer_thread, NULL,
 											   "ddekit.timer", 0);
 	Assert(timer_thread_ddekit);
-	timer_cap = pthread_getl4cap((pthread_t)ddekit_thread_get_id(timer_thread_ddekit));
+	timer_cap = pthread_l4_cap((pthread_t)ddekit_thread_get_id(timer_thread_ddekit));
 }

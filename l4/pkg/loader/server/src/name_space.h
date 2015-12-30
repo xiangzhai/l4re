@@ -7,6 +7,7 @@
  * Please see the COPYING-GPL-2 file for details.
  */
 #include <l4/re/util/name_space_svr>
+#include <l4/sys/cxx/ipc_epiface>
 
 namespace Ldr {
 
@@ -22,29 +23,20 @@ public:
   void operator delete(void *b) { ::operator delete(b); }
 };
 
-class Name_space : public L4::Server_object,
+class Name_space : public L4::Epiface_t<Name_space, L4Re::Namespace>,
                    public Names::Name_space
 {
 public:
-
-  int dispatch(l4_umword_t obj, L4::Ipc::Iostream &ios)
-  {
-    enum { Max_name = 2048 };
-    static char buffer[Max_name];
-
-    return Names::Name_space::dispatch(obj, ios, buffer, Max_name);
-  }
-
   Name_space();
   ~Name_space();
 
   // server support ----------------------------------------
-  int get_capability(L4::Ipc::Snd_fpage const &cap_fp, L4::Cap<void> *cap,
-                     L4::Server_object **);
-  int save_capability(L4::Cap<void> *cap);
-  void free_capability(L4::Cap<void> cap);
-  Entry *alloc_dynamic_entry(Names::Name const &n, unsigned flags);
-  void free_dynamic_entry(Names::Entry *e);
+  int get_epiface(l4_umword_t data, bool is_local, L4::Epiface **lo) override;
+  int copy_receive_cap(L4::Cap<void> *cap) override;
+  void free_capability(L4::Cap<void> cap) override;
+  void free_epiface(L4::Epiface *epiface) override;
+  Entry *alloc_dynamic_entry(Names::Name const &n, unsigned flags) override;
+  void free_dynamic_entry(Names::Entry *e) override;
 
   // internally used to register bootfs files, name spaces...
   int register_obj(Names::Name const &name, Names::Obj const &o,

@@ -14,6 +14,9 @@
 #ifndef __FERRET_INCLUDE_FPAGES_H_
 #define __FERRET_INCLUDE_FPAGES_H_
 
+#include <l4/sys/compiler.h>
+#include <inttypes.h>
+
 L4_CV int ferret_fpages_request(int ksem, uint16_t major, uint16_t minor,
                                 uint16_t instance);
 

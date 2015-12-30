@@ -64,7 +64,7 @@
  */
 
 /* values returned by readtoken */
-#include "token.h"
+#include "token_vars.h"
 
 
 
@@ -86,14 +86,13 @@ struct heredoc *heredoclist;	/* list of here documents to read */
 int doprompt;			/* if set, prompt the user */
 int needprompt;			/* true if interactive and at start of line */
 int lasttoken;			/* last token read */
-MKINIT int tokpushback;		/* last token pushed back */
+int tokpushback;		/* last token pushed back */
 char *wordtext;			/* text of last word returned by readtoken */
 int checkkwd;
 struct nodelist *backquotelist;
 union node *redirnode;
 struct heredoc *heredoc;
 int quoteflag;			/* set if (part of) last token was quoted */
-int startlinno;			/* line # where last token started */
 
 
 STATIC union node *list(int);
@@ -211,6 +210,7 @@ list(int nlflag)
 				parseheredoc();
 			else
 				pungetc();		/* push back EOF on input */
+			tokpushback++;
 			return n1;
 		default:
 			if (nlflag == 1)
@@ -304,9 +304,12 @@ command(void)
 	union node *redir, **rpp;
 	union node **rpp2;
 	int t;
+	int savelinno;
 
 	redir = NULL;
 	rpp2 = &redir;
+
+	savelinno = plinno;
 
 	switch (readtoken()) {
 	default:
@@ -356,8 +359,9 @@ TRACE(("expecting DO got %s %s\n", tokname[got], got == TWORD ? wordtext : ""));
 			synerror("Bad for loop variable");
 		n1 = (union node *)stalloc(sizeof (struct nfor));
 		n1->type = NFOR;
+		n1->nfor.linno = savelinno;
 		n1->nfor.var = wordtext;
-		checkkwd = CHKKWD | CHKALIAS;
+		checkkwd = CHKNL | CHKKWD | CHKALIAS;
 		if (readtoken() == TIN) {
 			app = &ap;
 			while (readtoken() == TWORD) {
@@ -383,7 +387,7 @@ TRACE(("expecting DO got %s %s\n", tokname[got], got == TWORD ? wordtext : ""));
 			 * Newline or semicolon here is optional (but note
 			 * that the original Bourne shell only allowed NL).
 			 */
-			if (lasttoken != TNL && lasttoken != TSEMI)
+			if (lasttoken != TSEMI)
 				tokpushback++;
 		}
 		checkkwd = CHKNL | CHKKWD | CHKALIAS;
@@ -395,6 +399,7 @@ TRACE(("expecting DO got %s %s\n", tokname[got], got == TWORD ? wordtext : ""));
 	case TCASE:
 		n1 = (union node *)stalloc(sizeof (struct ncase));
 		n1->type = NCASE;
+		n1->ncase.linno = savelinno;
 		if (readtoken() != TWORD)
 			synexpect(TWORD);
 		n1->ncase.expr = n2 = (union node *)stalloc(sizeof (struct narg));
@@ -402,10 +407,8 @@ TRACE(("expecting DO got %s %s\n", tokname[got], got == TWORD ? wordtext : ""));
 		n2->narg.text = wordtext;
 		n2->narg.backquote = backquotelist;
 		n2->narg.next = NULL;
-		do {
-			checkkwd = CHKKWD | CHKALIAS;
-		} while (readtoken() == TNL);
-		if (lasttoken != TIN)
+		checkkwd = CHKNL | CHKKWD | CHKALIAS;
+		if (readtoken() != TIN)
 			synexpect(TIN);
 		cpp = &n1->ncase.cases;
 next_case:
@@ -447,6 +450,7 @@ next_case:
 	case TLP:
 		n1 = (union node *)stalloc(sizeof (struct nredir));
 		n1->type = NSUBSHELL;
+		n1->nredir.linno = savelinno;
 		n1->nredir.n = list(0);
 		n1->nredir.redirect = NULL;
 		t = TRP;
@@ -479,6 +483,7 @@ redir:
 		if (n1->type != NSUBSHELL) {
 			n2 = (union node *)stalloc(sizeof (struct nredir));
 			n2->type = NREDIR;
+			n2->nredir.linno = savelinno;
 			n2->nredir.n = n1;
 			n1 = n2;
 		}
@@ -496,6 +501,7 @@ simplecmd(void) {
 	union node *vars, **vpp;
 	union node **rpp, *redir;
 	int savecheckkwd;
+	int savelinno;
 
 	args = NULL;
 	app = &args;
@@ -505,6 +511,7 @@ simplecmd(void) {
 	rpp = &redir;
 
 	savecheckkwd = CHKALIAS;
+	savelinno = plinno;
 	for (;;) {
 		checkkwd = savecheckkwd;
 		switch (readtoken()) {
@@ -548,7 +555,9 @@ simplecmd(void) {
 					synerror("Bad function name");
 				n->type = NDEFUN;
 				checkkwd = CHKNL | CHKKWD | CHKALIAS;
-				n->narg.next = command();
+				n->ndefun.text = n->narg.text;
+				n->ndefun.linno = plinno;
+				n->ndefun.body = command();
 				return n;
 			}
 			/* fall through */
@@ -563,6 +572,7 @@ out:
 	*rpp = NULL;
 	n = (union node *)stalloc(sizeof (struct ncmd));
 	n->type = NCMD;
+	n->ncmd.linno = savelinno;
 	n->ncmd.args = args;
 	n->ncmd.assign = vars;
 	n->ncmd.redirect = redir;
@@ -678,6 +688,7 @@ STATIC int
 readtoken(void)
 {
 	int t;
+	int kwd = checkkwd;
 #ifdef DEBUG
 	int alreadyseen = tokpushback;
 #endif
@@ -688,7 +699,7 @@ top:
 	/*
 	 * eat newlines
 	 */
-	if (checkkwd & CHKNL) {
+	if (kwd & CHKNL) {
 		while (t == TNL) {
 			parseheredoc();
 			t = xxreadtoken();
@@ -702,7 +713,7 @@ top:
 	/*
 	 * check for keywords
 	 */
-	if (checkkwd & CHKKWD) {
+	if (kwd & CHKKWD) {
 		const char *const *pp;
 
 		if ((pp = findkwd(wordtext))) {
@@ -740,8 +751,6 @@ out:
  *	quoted.
  * If the token is TREDIR, then we set redirnode to a structure containing
  *	the redirection.
- * In all cases, the variable startlinno is set to the number of the line
- *	on which the token starts.
  *
  * [Change comment:  here documents and internal procedures]
  * [Readtoken shouldn't have any arguments.  Perhaps we should make the
@@ -765,7 +774,6 @@ xxreadtoken(void)
 	if (needprompt) {
 		setprompt(2);
 	}
-	startlinno = plinno;
 	for (;;) {	/* until token or start of word found */
 		c = pgetc_macro();
 		switch (c) {
@@ -778,7 +786,7 @@ xxreadtoken(void)
 			continue;
 		case '\\':
 			if (pgetc() == '\n') {
-				startlinno = ++plinno;
+				plinno++;
 				if (doprompt)
 					setprompt(2);
 				continue;
@@ -845,7 +853,7 @@ readtoken1(int firstc, char const *syntax, char *eofmark, int striptabs)
 {
 	int c = firstc;
 	char *out;
-	int len;
+	size_t len;
 	struct nodelist *bqlist;
 	int quotef;
 	int dblquote;
@@ -857,7 +865,6 @@ readtoken1(int firstc, char const *syntax, char *eofmark, int striptabs)
 	/* syntax before arithmetic */
 	char const *uninitialized_var(prevsyntax);
 
-	startlinno = plinno;
 	dblquote = 0;
 	if (syntax == DQSYNTAX)
 		dblquote = 1;
@@ -903,13 +910,13 @@ readtoken1(int firstc, char const *syntax, char *eofmark, int striptabs)
 				break;
 			/* backslash */
 			case CBACK:
-			case CDBACK:
 				c = pgetc2();
 				if (c == PEOF) {
 					USTPUTC(CTLESC, out);
 					USTPUTC('\\', out);
 					pungetc();
 				} else if (c == '\n') {
+					plinno++;
 					if (doprompt)
 						setprompt(2);
 				} else {
@@ -1011,7 +1018,6 @@ endword:
 	if (syntax != BASESYNTAX && eofmark == NULL)
 		synerror("Unterminated quoted string");
 	if (varnest != 0) {
-		startlinno = plinno;
 		/* { */
 		synerror("Missing '}'");
 	}
@@ -1339,7 +1345,6 @@ parsebackq: {
 
 			case PEOF:
 			case PEOA:
-			        startlinno = plinno;
 				synerror("EOF in backquote substitution");
 
 			case '\n':
@@ -1475,6 +1480,7 @@ synexpect(int token)
 STATIC void
 synerror(const char *msg)
 {
+	errlinno = plinno;
 	sh_error("Syntax error: %s", msg);
 	/* NOTREACHED */
 }

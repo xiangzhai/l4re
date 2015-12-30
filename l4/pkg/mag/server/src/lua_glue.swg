@@ -24,7 +24,7 @@
   else 
     {
       SWIG_contract_assert(lua_isinteger(L, $input), "argument must be a number")
-      $1 = Mag_server::Valua<int>(lua_tointeger(L, $input));
+      $1 = Mag_server::Value<int>(lua_tointeger(L, $input));
     }
 %}
 
@@ -119,7 +119,9 @@ static int lua_session_iterator(lua_State *L)
 %include <server/valuator>
 
 %apply unsigned *OUTPUT { unsigned *bus, unsigned *vendor, unsigned *product, unsigned *version };
-%include <l4re/include/event>
+#define L4_RPC(a, b, c...)
+#define L4_RPC_NF(a, b, c...)
+%include <l4re-core/l4re/include/event>
 %clear unsigned *bus, unsigned *vendor, unsigned *product, unsigned *version;
 %include <axis_buf.h>
 
@@ -210,7 +212,15 @@ public:
   {
     return self->get(idx);
   }
-};
+
+  void __setitem__(unsigned idx, Mag_server::Value<int> v)
+  {
+    if (v.valid())
+      self->set(idx, v.val());
+    else
+      self->inv(idx);
+  }
+}
 
 %extend Mag_server::Hid_report
 {
@@ -271,7 +281,7 @@ public:
     vp->view(self->vstack()->find(self->mouse_pos()));
   }
 
-  %apply int *OUTPUT {int *w, int*h};
+  %apply int *OUTPUT {int *w, int *h};
   void screen_size(int *w, int *h)
   {
     Mag_gfx::Area s = self->vstack()->canvas()->size();
@@ -289,9 +299,11 @@ public:
 };
 
 %nodefaultctor;
-%typemap(in) ORIG_l4_umword_t = l4_umword_t;
-%typemap(in,checkfn="lua_isuserdata") l4_umword_t id
+
+%typemap(in) l4_umword_t USERDATA;
+%typemap(in,checkfn="lua_isuserdata") l4_umword_t USERDATA
 %{ $1 = (l4_umword_t)lua_touserdata(L, $input); %}
+
 
 class Mag_server::Input_source
 {};
@@ -299,10 +311,9 @@ class Mag_server::Input_source
 %extend Mag_server::Input_source
 {
 public:
-
   int get_stream_info(l4_umword_t id, L4Re::Event_stream_info **OUTPUT)
   {
-    *OUTPUT = new L4Re::Event_stream_info;
+    *OUTPUT = new L4Re::Event_stream_info();
     return self->get_stream_info(id, *OUTPUT);
   }
 
@@ -329,8 +340,8 @@ public:
     i->mode = 0;
     return res;
   }
-  %typemap(in) l4_umword_t id = ORIG_l4_umword_t;
 };
+
 
 namespace Mag_server {
 %typemap(out) Session_list * {

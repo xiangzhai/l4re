@@ -16,9 +16,6 @@
 #include <l4/re/env>
 #include <l4/re/util/object_registry>
 
-#include <l4/cxx/ipc_server>
-
-
 namespace Gate_alloc {
 
   extern L4Re::Util::Object_registry registry;

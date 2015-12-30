@@ -8,8 +8,8 @@ PC_LIBS_libpthread_rep := -lpthread_rep
 
 SYSTEMS = x86-l4f
 
-CONTRIBDIR = $(PKGDIR)/../uclibc/lib/contrib/uclibc
-ORIGDIR    = $(PKGDIR)/../uclibc/lib/libpthread/src
+CONTRIBDIR = $(PKGDIR)/../l4re-core/uclibc/lib/contrib/uclibc
+ORIGDIR    = $(PKGDIR)/../l4re-core/uclibc/lib/libpthread/src
 LDSODIR    = $(CONTRIBDIR)/ldso/ldso
 
 SRC_CC      = manager.cc l4.cc

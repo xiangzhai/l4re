@@ -406,7 +406,7 @@ static void detach_region(DetachJob *dj)
 
 static void *detach_thread(void *arg)
 {
-	l4_debugger_set_object_name(pthread_getl4cap(pthread_self()), "romain::detacher");
+	l4_debugger_set_object_name(pthread_l4_cap(pthread_self()), "romain::detacher");
 
 	while (1) {
 		sem_wait(&detach_full);

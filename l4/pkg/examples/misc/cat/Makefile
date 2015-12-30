@@ -1,5 +1,5 @@
-PKGDIR          ?= ../../..
-L4DIR           ?= $(PKGDIR)/..
+PKGDIR          ?= ../..
+L4DIR           ?= $(PKGDIR)/../..
 
 TARGET           = cat 
 SRC_C            = cat.c

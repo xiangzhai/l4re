@@ -44,7 +44,7 @@ static void *thread_producer(void *d)
   CHK(l4shmc_add_signal(&shmarea, "prod", &s_one));
 
   CHK(l4shmc_attach_signal_to(&shmarea, "done",
-                              pthread_getl4cap(pthread_self()), 10000, &s_done));
+                              pthread_l4_cap(pthread_self()), 10000, &s_done));
 
   // connect chunk and signal
   CHK(l4shmc_connect_chunk_signal(&p_one, &s_one));
@@ -88,7 +88,7 @@ static void *thread_consume(void *d)
 
   // attach signal to this thread
   CHK(l4shmc_attach_signal_to(&shmarea, "prod",
-                              pthread_getl4cap(pthread_self()), 10000, &s_one));
+                              pthread_l4_cap(pthread_self()), 10000, &s_one));
 
   // connect chunk and signal
   CHK(l4shmc_connect_chunk_signal(&p_one, &s_one));

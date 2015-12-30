@@ -73,9 +73,9 @@
 #ifndef CUNIT_TESTRUN_H_SEEN
 #define CUNIT_TESTRUN_H_SEEN
 
-#include <l4/cunit/CUnit.h>
-#include <l4/cunit/CUError.h>
-#include <l4/cunit/TestDB.h>
+#include <CUnit.h>
+#include <CUError.h>
+#include <TestDB.h>
 
 #ifdef __cplusplus
 extern "C" {

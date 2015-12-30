@@ -44,7 +44,7 @@ static void *thread1_fn(void *arg)
       /* To an L4 IPC call, i.e. send a message to thread2 and wait for a
        * reply from thread2. The '1' in the msgtag denotes that we want to
        * transfer one word of our message registers (i.e. MR0). No timeout. */
-      tag = l4_ipc_call(pthread_getl4cap(t2), l4_utcb(),
+      tag = l4_ipc_call(pthread_l4_cap(t2), l4_utcb(),
                         l4_msgtag(0, 1, 0, 0), L4_IPC_NEVER);
       /* Check for IPC error, if yes, print out the IPC error code, if not,
        * print the received result. */

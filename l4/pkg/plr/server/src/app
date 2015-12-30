@@ -771,7 +771,7 @@ class App_thread
 		{
 			INFO() << "   Halting VCPU " << std::hex << vcpu();
 			l4_sched_param_t sp = l4_sched_param(0);
-			if (pthread_getl4cap(pthread_self()) != vcpu_cap().cap()) {
+			if (pthread_l4_cap(pthread_self()) != vcpu_cap().cap()) {
 			chksys(L4Re::Env::env()->scheduler()->run_thread(vcpu_cap(), sp));
 		}
 		}

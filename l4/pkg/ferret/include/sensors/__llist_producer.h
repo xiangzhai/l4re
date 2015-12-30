@@ -1,4 +1,5 @@
 /**
+ * \internal
  * \file   ferret/include/sensors/__llist_producer.h
  * \brief  locked list producer functions.
  *
@@ -12,12 +13,11 @@
  * Please see the COPYING-GPL-2 file for details.
  */
 #if FERRET_LLIST_MAGIC != ahK6eeNa
-#error Do not directly include this file, use a propper wrapper!
+#error Do not directly include this file, use a proper wrapper!
 #endif
 #undef FERRET_LLIST_MAGIC
 
-#include <l4/sys/compiler.h>
-#include <l4/sys/ipc.h>
+#include <l4/sys/types.h>
 
 EXTERN_C_BEGIN
 

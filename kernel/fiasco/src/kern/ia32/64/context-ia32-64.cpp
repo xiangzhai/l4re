@@ -4,7 +4,7 @@ EXTENSION class Context
 {
 protected:
   Mword _gs_base, _fs_base;
-  Unsigned32 _ds;
+  Unsigned16 _ds;
 
 public:
   Mword fs_base() const { return _fs_base; }
@@ -89,7 +89,7 @@ void
 Context::store_segments()
 {}
 
-IMPLEMENT inline
+IMPLEMENT_OVERRIDE inline
 void
 Context::vcpu_pv_switch_to_kernel(Vcpu_state *vcpu, bool current)
 {
@@ -136,7 +136,7 @@ Context::vcpu_pv_switch_to_kernel(Vcpu_state *vcpu, bool current)
     Cpu::wrmsr(_gs_base, MSR_GS_BASE);
 }
 
-IMPLEMENT inline
+IMPLEMENT_OVERRIDE inline
 void
 Context::vcpu_pv_switch_to_user(Vcpu_state *vcpu, bool current)
 {

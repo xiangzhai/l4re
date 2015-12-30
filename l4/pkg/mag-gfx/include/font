@@ -16,8 +16,9 @@
 
 namespace Mag_gfx {
 
-struct Font
+class Font
 {
+public:
   unsigned char const *img;
   l4_int32_t const *wtab, *otab;
   int w, h;

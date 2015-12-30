@@ -348,7 +348,7 @@ Mem_space::v_delete_htab(Address pte_addr, unsigned page_attribs = Page_all_attr
 
 IMPLEMENT inline NEEDS["kmem.h"]
 void
-Mem_space::switchin_context(Mem_space *from)
+Mem_space::switchin_context(Mem_space *from, unsigned)
 {
   if(dir() == Kmem::dir())
     return;

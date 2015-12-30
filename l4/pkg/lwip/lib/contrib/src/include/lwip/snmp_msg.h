@@ -32,8 +32,8 @@
  * Author: Christiaan Simons <christiaan.simons@axon.tv>
  */
 
-#ifndef __LWIP_SNMP_MSG_H__
-#define __LWIP_SNMP_MSG_H__
+#ifndef LWIP_HDR_SNMP_MSG_H
+#define LWIP_HDR_SNMP_MSG_H
 
 #include "lwip/opt.h"
 #include "lwip/snmp.h"
@@ -90,8 +90,8 @@ struct snmp_varbind
 
   /* object value ASN1 type */
   u8_t value_type;
-  /* object value length (in u8_t) */
-  u8_t value_len;
+  /* object value length */
+  u16_t value_len;
   /* object value */
   void *value;
 
@@ -226,6 +226,8 @@ struct snmp_msg_pstat
   ip_addr_t sip;
   /* source UDP port */
   u16_t sp;
+  /* incoming snmp version */
+  u8_t version;
   /* request type */
   u8_t rt;
   /* request ID */
@@ -241,7 +243,7 @@ struct snmp_msg_pstat
   /* one out of MSG_EMPTY, MSG_DEMUX, MSG_INTERNAL, MSG_EXTERNAL_x */
   u8_t state;
   /* saved arguments for MSG_EXTERNAL_x */
-  struct mib_external_node *ext_mib_node;
+  const struct mib_external_node *ext_mib_node;
   struct snmp_name_ptr ext_name_ptr;
   struct obj_def ext_object_def;
   struct snmp_obj_id ext_oid;
@@ -265,9 +267,11 @@ struct snmp_msg_trap
   ip_addr_t dip;
 
   /* source enterprise ID (sysObjectID) */
-  struct snmp_obj_id *enterprise;
+  const struct snmp_obj_id *enterprise;
   /* source IP address, raw network order format */
   u8_t sip_raw[4];
+  /* source IP address length */
+  u8_t sip_raw_len;
   /* generic trap code */
   u32_t gen_trap;
   /* specific trap code */
@@ -282,18 +286,19 @@ struct snmp_msg_trap
 
 /** Agent Version constant, 0 = v1 oddity */
 extern const s32_t snmp_version;
-/** Agent default "public" community string */
-extern const char snmp_publiccommunity[7];
+/** Agent community string */
+extern const char *snmp_community;
+#if SNMP_COMMUNITY_EXT
+/** Agent community string for write access */
+extern const char *snmp_community_write;
+/** Agent community string for sending traps */
+extern const char *snmp_community_trap;
+#endif /* SNMP_COMMUNITY_EXT */
 
 extern struct snmp_msg_trap trap_msg;
 
-/** Agent setup, start listening to port 161. */
-void snmp_init(void);
-void snmp_trap_dst_enable(u8_t dst_idx, u8_t enable);
-void snmp_trap_dst_ip_set(u8_t dst_idx, ip_addr_t *dst);
-
 /** Varbind-list functions. */
-struct snmp_varbind* snmp_varbind_alloc(struct snmp_obj_id *oid, u8_t type, u8_t len);
+struct snmp_varbind* snmp_varbind_alloc(struct snmp_obj_id *oid, u8_t type, u16_t len);
 void snmp_varbind_free(struct snmp_varbind *vb);
 void snmp_varbind_list_free(struct snmp_varbind_root *root);
 void snmp_varbind_tail_add(struct snmp_varbind_root *root, struct snmp_varbind *vb);
@@ -302,7 +307,7 @@ struct snmp_varbind* snmp_varbind_tail_remove(struct snmp_varbind_root *root);
 /** Handle an internal (recv) or external (private response) event. */
 void snmp_msg_event(u8_t request_id);
 err_t snmp_send_response(struct snmp_msg_pstat *m_stat);
-err_t snmp_send_trap(s8_t generic_trap, struct snmp_obj_id *eoid, s32_t specific_trap);
+err_t snmp_send_trap(s8_t generic_trap, const struct snmp_obj_id *eoid, s32_t specific_trap);
 void snmp_coldstart_trap(void);
 void snmp_authfail_trap(void);
 
@@ -312,4 +317,4 @@ void snmp_authfail_trap(void);
 
 #endif /* LWIP_SNMP */
 
-#endif /* __LWIP_SNMP_MSG_H__ */
+#endif /* LWIP_HDR_SNMP_MSG_H */

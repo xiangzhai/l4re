@@ -8,13 +8,3 @@
  */
 #pragma once
 
-#include <l4/cxx/ipc_server>
-#include <l4/cxx/string>
-
-namespace Ldr {
-class Local_service : public L4::Server_object
-{
-public:
-  virtual L4::Server_object *open(int argc, cxx::String const *argv) = 0;
-};
-}

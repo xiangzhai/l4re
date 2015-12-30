@@ -36,8 +36,21 @@
 #	@(#)mkbuiltins	8.2 (Berkeley) 5/4/95
 
 tempfile=tempfile
-if ! type tempfile > /dev/null 2>&1; then
-	tempfile='mktemp /tmp/mkbuiltins.XXXXXX'
+if ! type tempfile > /dev/null 2>&1 && ! type mktemp > /dev/null 2>&1; then
+	_my_tempfile()
+	{
+		local index=0
+		while test -f "${TMPDIR:-/tmp}/builtin.$$.$index"; do
+			index=`expr $index + 1`
+		done
+
+		touch "${TMPDIR:-/tmp}/builtin.$$.$index"
+		echo "${TMPDIR:-/tmp}/builtin.$$.$index"
+	}
+
+	tempfile="_my_tempfile"
+elif ! type tempfile > /dev/null 2>&1; then
+	tempfile="mktemp ${TMPDIR:-/tmp}/builtin.XXXXXX"
 fi
 
 trap 'rm -f $temp $temp2' EXIT
@@ -71,7 +84,8 @@ awk '{	for (i = 2 ; i <= NF ; i++) {
 			opt = substr($2, 2)
 			$2 = $3
 		}
-		printf "\t{ \"%s\", %s, %d },\n", $1, $2,
+		printf "\t{ \"%s\", %s, %d },\n", $1,
+			(opt ~ /n/) ? "NULL" : $2,
 			(opt ~ /s/) + (opt ~ /[su]/) * 2 + (opt ~ /a/) * 4
 	}'
 echo '};'
@@ -83,7 +97,7 @@ cat <<\!
  */
 
 !
-sed 's/	-[a-z]*//' $temp2 | nl -v 0 | sort -u -k 3,3 |
+sed 's/	-[a-z]*//' $temp2 | nl -b a -v 0 | LC_COLLATE=C sort -u -k 3,3 |
 tr abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ |
 	awk '{	printf "#define %s (builtincmd + %d)\n", $3, $1}'
 printf '\n#define NUMBUILTINS %d\n' $(wc -l < $temp2)
