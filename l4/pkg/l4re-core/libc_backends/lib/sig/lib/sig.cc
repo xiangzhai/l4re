@@ -118,6 +118,8 @@ asm(
 "trap                            \n\t"
 #elif defined(ARCH_sparc)
 "ta 0x1                          \n\t"
+#elif defined(ARCH_mips)
+".long 0x04170010 # sigrie 0x10  \n\t"
 #else
 #error Unsupported arch!
 #endif
@@ -144,8 +146,13 @@ static void dump_rm()
 
 static bool setup_sig_frame(l4_exc_regs_t *u, int signum)
 {
+#if defined(ARCH_mips)
+  // put state + pointer to it on stack
+  ucontext_t *ucf = (ucontext_t *)(u->r[29] - sizeof(*ucf));
+#else
   // put state + pointer to it on stack
   ucontext_t *ucf = (ucontext_t *)(u->sp - sizeof(*ucf));
+#endif
 
   /* Check if memory access is fine */
   if (!range_ok((l4_addr_t)ucf, sizeof(*ucf)))
@@ -159,6 +166,12 @@ static bool setup_sig_frame(l4_exc_regs_t *u, int signum)
   u->r[1] = 0; // siginfo_t pointer, we do not have one right currently
   u->r[2] = (l4_umword_t)ucf;
   u->ulr  = (unsigned long)libc_be_sig_return_trap;
+#elif defined(ARCH_mips)
+  u->r[29] = (l4_umword_t)ucf;
+  u->r[0] = signum;
+  u->r[1] = 0; // siginfo_t pointer, we do not have one right currently
+  u->r[2] = (l4_umword_t)ucf;
+  u->epc  = (unsigned long)libc_be_sig_return_trap;
 #else
   u->sp = (l4_umword_t)ucf - sizeof(void *);
   *(l4_umword_t *)u->sp = (l4_umword_t)ucf;
@@ -186,12 +199,14 @@ int Sig_handling::op_exception(L4::Exception::Rights, l4_exc_regs_t &exc,
   l4_exc_regs_t *const u = &_u;
   int pc_delta = 0;
 
-#ifdef ARCH_arm
+#if defined(ARCH_arm) || defined(ARCH_mips)
   pc_delta = -4;
 #endif
 
 #ifdef ARCH_arm
   if ((u->err >> 26) == 0x3e)
+#elif defined(ARCH_mips)
+  if ((u->cause & 0x1ff) == 0x101)
 #elif defined(ARCH_ppc32)
   if ((u->err & 3) == 4)
 #else
@@ -227,8 +242,10 @@ int Sig_handling::op_exception(L4::Exception::Rights, l4_exc_regs_t &exc,
       // sig-return
       //printf("Sigreturn\n");
 
-#ifdef ARCH_arm
+#if defined(ARCH_arm)
       ucontext_t *ucf = (ucontext_t *)u->sp;
+#elif defined(ARCH_mips)
+      ucontext_t *ucf = (ucontext_t *)u->r[29];
 #else
       ucontext_t *ucf = (ucontext_t *)(u->sp + sizeof(l4_umword_t) * 3);
 #endif

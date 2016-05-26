@@ -620,7 +620,7 @@ Intel::Io_mmu::init(Cpu_number cpu)
       {
         iommus[units++].setup(cpu, i);
         if (i->segment != 0)
-          WARN("IOMMU: no proper support for PCI Segemnt Groups\n");
+          WARN("IOMMU: no proper support for PCI Segment Groups\n");
       }
 
   return true;

@@ -105,10 +105,8 @@ Moe_app_model::alloc_ds(unsigned long size) const
 l4_cap_idx_t Moe_app_model::push_initial_caps(l4_cap_idx_t s)
 {
   for (auto const &i : *root_name_space())
-    {
-      _stack.push(L4Re::Env::Cap_entry(i.name().start(), s));
-      s += L4_CAP_OFFSET;
-    }
+    _stack.push(L4Re::Env::Cap_entry(i.name().start(),
+                                     get_initial_cap(i.name().start(), &s)));
 
   return s;
 }
@@ -117,9 +115,9 @@ void Moe_app_model::map_initial_caps(L4::Cap<L4::Task> t, l4_cap_idx_t s)
 {
   for (auto const &i : *root_name_space())
     {
+      auto c = get_initial_cap(i.name().start(), &s);
       chksys(t->map(L4Re::This_task, i.cap().fpage(L4_CAP_FPAGE_RWS),
-                    L4::Cap<void>(s).snd_base()));
-      s += L4_CAP_OFFSET;
+                    L4::Cap<void>(c).snd_base()));
     }
 }
 
@@ -195,12 +193,20 @@ Moe_app_model::Moe_app_model(App_task *t, cxx::String const &prog,
 {
   enum
   {
+#ifdef ARCH_mips
+    Utcb_area_start        = 0x73000000, // this needs to be lower on MIPS
+#else
     Utcb_area_start        = 0xb3000000,
+#endif
     Default_max_threads    = 16,
   };
   // set default values for utcb area, values may be changed by loader
   _info.utcbs_start = Utcb_area_start;
   _info.utcbs_log2size  = l4util_log2(Default_max_threads * L4_UTCB_OFFSET);
+
+  // pimp the UTCB area at least to L4_PAGESIZE
+  if (_info.utcbs_log2size < L4_PAGESHIFT)
+    _info.utcbs_log2size  = L4_PAGESHIFT;
 
   extern char __L4_KIP_ADDR__[];
   // set default values for the application stack

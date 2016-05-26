@@ -27,17 +27,18 @@ class Initial_kobjects
 public:
   enum Initial_cap
   {
-    Task      = 1,
-    Factory   = 2,
-    Thread    = 3,
-    Pager     = 4,
-    Log       = 5,
-    Icu       = 6,
-    Scheduler = 7,
-    Iommu     = 8,
+    Task      =  1,
+    Factory   =  2,
+    Thread    =  3,
+    Pager     =  4,
+    Log       =  5,
+    Icu       =  6,
+    Scheduler =  7,
+    Iommu     =  8,
+    Jdb       = 10,
 
     First_alloc_cap = Log,
-    Num_alloc       = 5,
+    Num_alloc       = 6,
     End_alloc_cap   = First_alloc_cap + Num_alloc,
   };
 

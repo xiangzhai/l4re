@@ -228,7 +228,7 @@ l4_debugger_set_object_name_u(unsigned long cap,
     *s = *name;
   *s = 0;
   i = (i + sizeof(l4_umword_t) - 1) / sizeof(l4_umword_t);
-  return l4_invoke_debugger(cap, l4_msgtag(0, i, 0, 0), utcb);
+  return l4_invoke_debugger(cap, l4_msgtag(0, i + 1, 0, 0), utcb);
 }
 
 L4_INLINE unsigned long

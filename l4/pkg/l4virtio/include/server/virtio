@@ -176,6 +176,20 @@ public:
     ++_used->idx;
   }
 
+  template<typename ITER>
+  void consumed(ITER const &begin, ITER const &end)
+  {
+    l4_uint16_t added = 0;
+    l4_uint16_t idx = _used->idx;
+
+    for (auto elem = begin ; elem != end; ++elem, ++added)
+      _used->ring[(idx + added) & _idx_mask]
+        = Used_elem(elem->first._d - _desc, elem->second);
+
+    wmb();
+    _used->idx += added;
+  }
+
   template<typename QUEUE_OBSERVER>
   void finish(Head_desc &d, QUEUE_OBSERVER *o, l4_uint32_t len = 0)
   {
@@ -184,6 +198,12 @@ public:
     d._d = 0;
   }
 
+  template<typename ITER, typename QUEUE_OBSERVER>
+  void finish(ITER const &begin, ITER const &end, QUEUE_OBSERVER *o)
+  {
+    consumed(begin, end);
+    o->notify_queue(this);
+  }
 
   /**
    * \brief Set the 'no notify' flag for this queue.

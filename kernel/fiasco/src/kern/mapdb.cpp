@@ -419,8 +419,8 @@ PUBLIC inline
 Treemap::Page
 Treemap::round_to_page(Pcnt v) const
 {
-  return Page(cxx::int_value<Pcnt>(v + ((Pcnt(1) << _page_shift) - Pcnt(1))
-              >> _page_shift));
+  return Page(cxx::int_value<Pcnt>((v + ((Pcnt(1) << _page_shift) - Pcnt(1)))
+                                   >> _page_shift));
 }
 
 PUBLIC inline

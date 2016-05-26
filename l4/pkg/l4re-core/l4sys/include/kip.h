@@ -134,11 +134,12 @@ L4_INLINE l4_cpu_time_t
 l4_kip_clock(l4_kernel_info_t *kip) L4_NOTHROW
 {
   unsigned long h1, l;
-  unsigned long *c = (unsigned long *)&kip->_clock_val;
+  unsigned long *c;
 
   if (sizeof(unsigned long) == 8)
     return kip->_clock_val;
 
+  c = (unsigned long *)&kip->_clock_val;
   do
     {
       h1 = c[1];

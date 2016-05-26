@@ -50,11 +50,11 @@ Usermode::peek_at_addr (pid_t pid, Address addr, unsigned n)
 {
   Mword val;
 
-  if ((addr & sizeof (Mword) - 1) + n > sizeof (Mword))
+  if ((addr & (sizeof (Mword) - 1)) + n > sizeof (Mword))
     val = ptrace (PTRACE_PEEKTEXT, pid, addr, NULL);
   else
     val = ptrace (PTRACE_PEEKTEXT, pid, addr & ~(sizeof (Mword) - 1), NULL) >>
-          CHAR_BIT * (addr & sizeof (Mword) - 1);
+          CHAR_BIT * (addr & (sizeof (Mword) - 1));
 
   return val & (Mword) -1 >> CHAR_BIT * (sizeof (Mword) - n);
 }
@@ -262,7 +262,7 @@ Usermode::kip_syscall (Address eip)
   if ((eip & Config::PAGE_MASK) != Mem_layout::Syscalls || eip & 0xff)
     return 0;
 
-  Mword trap = 0x30 + (eip - Mem_layout::Syscalls >> 8);
+  Mword trap = 0x30 + ((eip - Mem_layout::Syscalls) >> 8);
 
   return Emulation::idt_vector (trap, true) ? trap : 0;
 }

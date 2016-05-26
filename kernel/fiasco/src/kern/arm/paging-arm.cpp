@@ -50,7 +50,7 @@ public:
     if (level == 0)
       return 20; // 1MB
     else
-      { // no tiny pages !!!
+      { // no tiny pages
         if ((*pte & 3) == 1)
           return 16;
         else
@@ -176,10 +176,8 @@ EXTENSION class K_pte_ptr
 {
   // we have virtually tagged caches so need a cache flush before enabling
   // a page table
-  enum { Need_cache_clean = false }; // we have virtuially tagged caches
+  enum { Need_cache_clean = false };
 };
-
-
 
 //---------------------------------------------------------------------------
 INTERFACE [arm && armv6plus && (mpcore || armca9)]:
@@ -443,8 +441,8 @@ Mword
 K_pte_ptr::_attribs(Page::Attr attr) const
 {
   static const unsigned short perms[] = {
-      0x1 << 10, // 0000: none, hmmm
-      0x1 << 10, // 000X: kernel rw (there is no ro)
+      0x1 << 10, // 0000: none
+      0x1 << 10, // 000X: kernel RW (there is no RO)
       0x1 << 10, // 00W0:
       0x1 << 10, // 00WX:
 
@@ -566,7 +564,6 @@ K_pte_ptr::del_rights(L4_fpage::Rights r)
       write_now(pte, p);
     }
 }
-
 
 //---------------------------------------------------------------------------
 IMPLEMENTATION [arm && !arm_lpae && (armv6 || armv7)]:
@@ -746,7 +743,6 @@ K_pte_ptr::del_rights(L4_fpage::Rights r)
       write_now(pte, p);
     }
 }
-
 
 //---------------------------------------------------------------------------
 IMPLEMENTATION [arm && arm_lpae && armv7]:
@@ -1037,8 +1033,6 @@ Pte_ptr::del_rights(L4_fpage::Rights r)
     write_now(pte, p);
 }
 
-
-
 //---------------------------------------------------------------------------
 IMPLEMENTATION [arm && (armv6 || armv7) && !arm_lpae]:
 
@@ -1065,13 +1059,11 @@ K_pte_ptr::set_attribs(Page::Attr attr)
   write_now(pte, p);
 }
 
-
-
 //---------------------------------------------------------------------------
 IMPLEMENTATION [arm && !arm_lpae]:
 
 IMPLEMENT inline
-Mword PF::is_translation_error( Mword error )
+Mword PF::is_translation_error(Mword error)
 {
   return (error & 0x0d/*FSR_STATUS_MASK*/) == 0x05/*FSR_TRANSL*/;
 }
@@ -1089,27 +1081,26 @@ Mword PF::is_translation_error(Mword error)
 IMPLEMENTATION [arm]:
 
 IMPLEMENT inline
-Mword PF::is_usermode_error( Mword error )
+Mword PF::is_usermode_error(Mword error)
 {
   return !((error >> 26) & 1);
 }
 
 IMPLEMENT inline
-Mword PF::is_read_error( Mword error )
+Mword PF::is_read_error(Mword error)
 {
   return !(error & (1 << 6));
 }
 
 IMPLEMENT inline NEEDS[PF::is_read_error]
-Mword PF::addr_to_msgword0( Address pfa, Mword error )
+Mword PF::addr_to_msgword0(Address pfa, Mword error)
 {
   Mword a = pfa & ~7;
-  if(is_translation_error( error ))
+  if (is_translation_error(error))
     a |= 1;
-  if(!is_read_error(error))
+  if (!is_read_error(error))
     a |= 2;
   if (!((error >> 26) & 0x04))
     a |= 4;
   return a;
 }
-

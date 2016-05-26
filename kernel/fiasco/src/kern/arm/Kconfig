@@ -4,12 +4,13 @@
 # ARCHSELECT:     BIT32
 # ARCHSELECT:     HAS_FPU_OPTION
 # ARCHSELECT:     FPU if CPU_VIRT
+# ARCHSELECT:     ARM_LPAE if CPU_VIRT
 # ARCHSELECT:     HAS_SERIAL_OPTION
-# ARCHSELECT:     HAS_VIRT_OBJ_SPACE_OPTION if !CPU_VIRT && (!ARM_V6PLUS || !ARM_1176 || ARM_1176_CACHE_ALIAS_FIX)
-# ARCHSELECT:     HAS_CPU_VIRT if ARM_EM_NS && ARM_LPAE
+# ARCHSELECT:     HAS_VIRT_OBJ_SPACE_OPTION if ARM_V6PLUS && !CPU_VIRT && !ARM_1176_CACHE_ALIAS_FIX
 #
 # ARCHDEFAULTPF: PF_INTEGRATOR
 
+# SECTION: GLOBAL
 
 config CAN_ARM_CPU_SA1100
 	bool
@@ -50,6 +51,12 @@ config CAN_ARM_CPU_CORTEX_A15
 config CAN_ARM_CACHE_L2CXX0
 	bool
 
+config DEFAULT_ARM_EM_TZ
+        bool
+
+config DEFAULT_ARM_EM_NS
+        bool
+
 config ARM_V6
 	def_bool y if ARM_1136 || ARM_1176 || ARM_MPCORE
 
@@ -60,6 +67,7 @@ config ARM_V7
 config ARM_V6PLUS
 	def_bool y if ARM_V6 || ARM_V7
 
+# SECTION: CPU
 
 choice
 	prompt "CPU"
@@ -119,6 +127,8 @@ config ARM_CORTEX_A15
 
 endchoice
 
+# SECTION: TARGET
+
 config HAVE_ARM_SECMONIF_NONE
 	bool
 
@@ -134,8 +144,10 @@ config ARM_ALIGNMENT_CHECK
 
 choice
 	prompt "Execution Model"
-	default ARM_EM_STD
 	depends on ARM
+        default ARM_EM_NS  if DEFAULT_ARM_EM_NS
+        default ARM_EM_TZ  if DEFAULT_ARM_EM_TZ
+        default ARM_EM_STD if !DEFAULT_ARM_EM_NS && !DEFAULT_ARM_EM_TZ
 
 config ARM_EM_STD
 	bool "Standard mode"
@@ -206,6 +218,8 @@ config ARM_1176_CACHE_ALIAS_FIX
 config ARM_CPU_ERRATA
         bool "Enable CPU errata workarounds"
         depends on ARM
+
+# SECTION: DEBUG
 
 menu "ARM debugging options"
 

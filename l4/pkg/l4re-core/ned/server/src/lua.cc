@@ -70,37 +70,48 @@ static const luaL_Reg libs[] =
   { NULL, NULL }
 };
 
-static char const *const options = "+i";
+static char const *const options = "+ie:";
 static struct option const loptions[] =
-{{"interactive", 0, NULL, 'i' },
- {0, 0, 0, 0}};
+  {
+    { "interactive", 0, NULL, 'i' },
+    { "noexit", 0, NULL, 1 },
+    { "execute", 1, NULL, 'e' },
+    { 0, 0, 0, 0 }
+  };
+
+static int
+execute_lua_buf(lua_State *l, char const *buf, size_t sz, char const *name)
+{
+  if (luaL_loadbuffer(l, buf, sz, name))
+    {
+      fprintf(stderr, "lua error: %s.\n", lua_tostring(l, -1));
+      lua_pop(l, lua_gettop(l));
+      return 1;
+    }
+
+  if (lua_pcall(l, 0, 1, 0))
+    {
+      fprintf(stderr, "lua error: %s.\n", lua_tostring(l, -1));
+      lua_pop(l, lua_gettop(l));
+      return 1;
+    }
+
+  lua_pop(l, lua_gettop(l));
+
+  return 0;
+}
 
 int lua(int argc, char const *const *argv)
 {
-
   printf("Ned says: Hi World!\n");
 
   bool interactive = false;
+  bool noexit = false;
 
   if (argc < 2)
     interactive = true;
 
-  int opt;
-  while ((opt = getopt_long(argc, const_cast<char *const*>(argv), options, loptions, NULL)) != -1)
-    {
-      switch (opt)
-	{
-	case 'i': interactive = true; break;
-	default: break;
-	}
-    }
-
-
-  if (optind >= argc)
-    interactive = true;
-
   lua_State *L;
-
   L = luaL_newstate();
 
   if (!L)
@@ -115,34 +126,59 @@ int lua(int argc, char const *const *argv)
   Lua::init_lua_cap(L);
   Lua::Lib::run_init(L);
 
-  if (luaL_loadbuffer(L, _binary_ned_lua_start, _binary_ned_lua_end - _binary_ned_lua_start, "@ned.lua"))
+  if (execute_lua_buf(L, _binary_ned_lua_start,
+                      _binary_ned_lua_end - _binary_ned_lua_start,
+                      "@ned.lua"))
+    return 0;
+
+  int opt;
+  while ((opt = getopt_long(argc, const_cast<char *const*>(argv),
+                            options, loptions, NULL)) != -1)
     {
-      printf("Ned: script: ---\n%.*s\n---", (int)(_binary_ned_lua_end - _binary_ned_lua_start), _binary_ned_lua_start);
-      fprintf(stderr, "lua error: %s.\n", lua_tostring(L, -1));
-      lua_pop(L, lua_gettop(L));
-      return 0;
+      switch (opt)
+        {
+        case 'i': interactive = true; break;
+        case 1: noexit = true; break;
+        case 'e':
+          {
+            int err = execute_lua_buf(L, optarg, strlen(optarg), optarg);
+            if (err)
+              fprintf(stderr, "Error executing cmdline statement\n");
+            break;
+          }
+        default: break;
+        }
     }
 
-  if (lua_pcall(L, 0, 1, 0))
+  if (optind >= argc)
+    interactive = true;
+
+  // everything following the first non-option argument is considered an
+  // argument for the Lua script and added to the 'arg' table
+  // The script name itself is passed as arg[0].
+  if (argc > optind)
     {
-      fprintf(stderr, "lua error: %s.\n", lua_tostring(L, -1));
-      lua_pop(L, lua_gettop(L));
-      return 0;
+      if (!_create_table(L))
+        {
+          fprintf(stderr, "lua error: %s.\n", lua_tostring(L, -1));
+          lua_pop(L, lua_gettop(L));
+          return 0;
+        }
+
+      unsigned arg_idx = 0;
+      for (int c = optind; c < argc; ++c, ++arg_idx)
+        {
+          lua_pushinteger(L, arg_idx);
+          lua_pushstring(L, argv[c]);
+          lua_settable(L, -3);
+        }
+      lua_setglobal(L, "arg");
     }
 
-  lua_pop(L, lua_gettop(L));
-
-  for (int c = optind; c < argc; ++c)
-    {
-      printf("Ned: loading file: '%s'\n", argv[c]);
-      int e = luaL_dofile(L, argv[c]);
-      if (e)
-	{
-	  char const *error = lua_tostring(L, -1);
-	  printf("Ned: ERROR: %s\n", error);
-	}
-      lua_pop(L, lua_gettop(L));
-    }
+  printf("Ned: loading file: '%s'\n", argv[optind]);
+  int e = luaL_dofile(L, argv[optind]);
+  if (e)
+    fprintf(stderr, "lua error: %s.\n", lua_tostring(L, -1));
 
   lua_gc(L, LUA_GCCOLLECT, 0);
 
@@ -154,34 +190,38 @@ int lua(int argc, char const *const *argv)
 #else
   printf("Ned: Interactive mode.\n");
   const char *cmd;
-  do {
-    cmd = readline((char*)"Ned: ");
+  for (;;)
+    {
+      cmd = readline((char *)"Ned: ");
 
-    //printf("INPUT: %s\n", cmd);
+      if (0)
+        printf("INPUT: %s\n", cmd);
 
-    if (!cmd)
-      break;
+      if (!cmd)
+        {
+          if (noexit)
+            continue;
+          break;
+        }
 
-    if (luaL_loadbuffer(L, cmd, strlen(cmd), "argument"))
-      {
-        fprintf(stderr, "lua couldn't parse '%s': %s.\n",
-                cmd, lua_tostring(L, -1));
-        lua_pop(L, 1);
-      }
-    else
-      {
-        if (lua_pcall(L, 0, 1, 0))
-          {
-            fprintf(stderr, "lua couldn't execute '%s': %s.\n",
-                    cmd, lua_tostring(L, -1));
-            lua_pop(L, 1);
-          }
-        else
-          lua_pop(L, lua_gettop(L));
-      }
-
-  //  cmd = 0;
-  } while (cmd);
+      if (luaL_loadbuffer(L, cmd, strlen(cmd), "argument"))
+        {
+          fprintf(stderr, "lua couldn't parse '%s': %s.\n",
+                  cmd, lua_tostring(L, -1));
+          lua_pop(L, 1);
+        }
+      else
+        {
+          if (lua_pcall(L, 0, 1, 0))
+            {
+              fprintf(stderr, "lua couldn't execute '%s': %s.\n",
+                      cmd, lua_tostring(L, -1));
+              lua_pop(L, 1);
+            }
+          else
+            lua_pop(L, lua_gettop(L));
+        }
+    }
 #endif
 
   return 0;

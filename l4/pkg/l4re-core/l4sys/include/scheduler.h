@@ -28,9 +28,13 @@
 /**
  * \defgroup l4_scheduler_api Scheduler
  * \ingroup  l4_kernel_object_api
- * \brief Scheduler object.
+ * \brief C interface of the Scheduler kernel object.
  *
- * <c>\#include <l4/sys/scheduler.h></c>
+ * The Scheduler interface allows a client to manage CPU resources. The API
+ * provides functions to query scheduler information, check the online state
+ * of CPUs, query CPU idle time and to start threads on defined CPU sets.
+ *
+ * \includefile{l4/sys/scheduler.h}
  */
 
 /**
@@ -83,9 +87,17 @@ l4_sched_cpu_set(l4_umword_t offset, unsigned char granularity,
                  l4_umword_t map L4_DEFAULT_PARAM(1)) L4_NOTHROW;
 
 /**
+ * \ingroup l4_scheduler_api
  * \copybrief L4::Scheduler::info
- * \param scheduler  Scheduler object.
- * \copydetails L4::Scheduler::info
+ * \param         scheduler  Scheduler object.
+ * \param[out]    cpu_max    Maximum number of CPUs ever available.
+ * \param[in,out] cpus       \a cpus.offset is first CPU of interest.
+ *                           \a cpus.granularity (see l4_sched_cpu_set_t).
+ *                           \a cpus.map Bitmap of online CPUs.
+ *
+ * \retval 0           Success.
+ * \retval -L4_EINVAL  The given CPU offset is larger than the maximum number
+ *                     of CPUs.
  */
 L4_INLINE l4_msgtag_t
 l4_scheduler_info(l4_cap_idx_t scheduler, l4_umword_t *cpu_max,
@@ -119,6 +131,7 @@ l4_sched_param(unsigned prio,
                l4_cpu_time_t quantum L4_DEFAULT_PARAM(0)) L4_NOTHROW;
 
 /**
+ * \ingroup l4_scheduler_api
  * \copybrief L4::Scheduler::run_thread
  * \param scheduler  Scheduler object.
  * \copydetails L4::Scheduler::run_thread
@@ -135,9 +148,9 @@ l4_scheduler_run_thread_u(l4_cap_idx_t scheduler, l4_cap_idx_t thread,
                           l4_sched_param_t const *sp, l4_utcb_t *utcb) L4_NOTHROW;
 
 /**
+ * \ingroup l4_scheduler_api
  * \copybrief L4::Scheduler::idle_time
  * \param scheduler   Scheduler object.
- * \param[out] us     Consumed time of thread in µs.
  * \copydetails L4::Scheduler::idle_time
  */
 L4_INLINE l4_msgtag_t
@@ -154,9 +167,13 @@ l4_scheduler_idle_time_u(l4_cap_idx_t scheduler, l4_sched_cpu_set_t const *cpus,
 
 
 /**
+ * \ingroup l4_scheduler_api
  * \copybrief L4::Scheduler::is_online
  * \param scheduler  Scheduler object.
- * \copydetails L4::Scheduler::is_online
+ * \param cpu        CPU number whose online status should be queried.
+ *
+ * \retval true   The CPU is online.
+ * \retval false  The CPU is offline
  */
 L4_INLINE int
 l4_scheduler_is_online(l4_cap_idx_t scheduler, l4_umword_t cpu) L4_NOTHROW;

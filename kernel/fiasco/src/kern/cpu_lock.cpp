@@ -42,7 +42,7 @@ public:
 
   /**
    * Acquire the CPU lock and return the old status.
-   * @return something else that 0 if the lock was already held and
+   * @return something else than 0 if the lock was already held and
    *   0 if it was not held. 
    */
   Status test_and_set();

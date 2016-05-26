@@ -49,14 +49,15 @@ public:
     cxx::int_null_chk<Caps>
   {
     Caps() = default;
-    explicit Caps(unsigned char v)
+    explicit constexpr Caps(unsigned char v)
     : cxx::int_type_base<unsigned char, Caps>(v) {}
 
-    static Caps none() { return Caps(0); }
-    static Caps mem() { return Caps(1); }
-    static Caps obj() { return Caps(2); }
-    static Caps io() { return Caps(4); }
-    static Caps all() { return Caps(7); }
+    static constexpr Caps none() { return Caps(0); }
+    static constexpr Caps mem() { return Caps(1); }
+    static constexpr Caps obj() { return Caps(2); }
+    static constexpr Caps io() { return Caps(4); }
+    static constexpr Caps threads() { return Caps(8); }
+    static constexpr Caps all() { return Caps(0xf); }
   };
 
   explicit Space(Ram_quota *q, Caps c) : Mem_space(q), _caps(c) {}
@@ -93,7 +94,7 @@ public:
 
   Caps caps() const { return _caps; }
 
-  void switchin_context(Space *from, unsigned mode = 0);
+  void switchin_context(Space *from);
 
 protected:
   Space(Ram_quota *q, Mem_space::Dir_type* pdir, Caps c)
@@ -152,9 +153,9 @@ Space::find_ku_mem(User<void>::Ptr p, unsigned size)
 
 IMPLEMENT_DEFAULT inline
 void
-Space::switchin_context(Space *from, unsigned mode)
+Space::switchin_context(Space *from)
 {
-  Mem_space::switchin_context(from, mode);
+  Mem_space::switchin_context(from);
 }
 
 

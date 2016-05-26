@@ -99,7 +99,6 @@ static void *ddekit_slab_allocate_new_region(long size, long mem_flags,
 	ddekit_printf("\033[33m%s - cap %lx\033[0m\n", __func__, ds.cap());
 #endif
 	if (!ds.is_valid()) {
-		enter_kdebug();
 		goto out;
 	}
 

@@ -98,6 +98,7 @@ config PF_UX
 endchoice
 
 # PF_INCLUDE
+# PF_SECTION: GLOBAL
 
 config ABI_VF
 	def_bool y
@@ -225,6 +226,8 @@ config AMD64_K10
 
 endchoice
 
+# PF_SECTION: CPU
+
 config CPU_VIRT
 	bool "Virtualization"
 	depends on HAS_CPU_VIRT
@@ -298,12 +301,8 @@ config WORKAROUND_AMD_FPU_LEAK
 	  harm to disable it.
 
 config REGPARM3
-	bool "Compile with regparm=3"
-	default y
+	def_bool y
 	depends on IA32 && PF_PC
-	help
-	  Compile Fiasco with -mregparm=3. This uses a different ABI and
-	  passes the first three arguments of a function call in registers.
 
 config FPU
 	bool "Enable FPU co-processor" if HAS_FPU_OPTION
@@ -311,6 +310,8 @@ config FPU
 	default y
 	help
 	  Enable this if your platform has hardware floating point support.
+
+# PF_SECTION: TARGET
 
 endmenu # target
 
@@ -442,6 +443,8 @@ config VIRT_OBJ_SPACE
 	depends on HAS_VIRT_OBJ_SPACE_OPTION
 	depends on !DISABLE_VIRT_OBJ_SPACE
 
+# PF_SECTION: KERNEL
+
 endmenu # kernel options
 
 menu "Debugging"
@@ -481,7 +484,7 @@ config LIST_ALLOC_SANITY
 	help
 	  When this option is enabled the low level memory allocator does
 	  extra sanity checks on its data structures before and after every
-	  operation. This can halp detect  flaws like double frees or memory
+	  operation. This can help detect flaws like double frees or memory
 	  corruption by other means.
 
 	  These tests are very expensive so only enable them if a problem
@@ -605,6 +608,8 @@ config WARN_ANY
 	bool "Show all kernel warnings"
 
 endchoice # warn levels
+
+# PF_SECTION: DEBUG
 
 endmenu # debugging
 

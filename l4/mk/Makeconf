@@ -78,6 +78,7 @@ dv               = $(if $(filter-out default undefined,$(origin $(1))),$(1)-defa
 
 $(call dv,AR)	 = $(CROSS_COMPILE)ar
 $(call dv,AS)	 = $(CROSS_COMPILE)as
+$(call dv,CPP)	 = $(CROSS_COMPILE)cpp
 AWKP		?= gawk --posix
 CCACHE          ?= ccache
 $(call dv,CC)    = $(if $(USE_CCACHE),$(CCACHE) )$(CC_$(BUILD_ARCH))

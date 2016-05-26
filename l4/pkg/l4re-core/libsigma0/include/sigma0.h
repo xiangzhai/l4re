@@ -118,20 +118,25 @@ L4_CV int l4sigma0_map_mem(l4_cap_idx_t sigma0,
 /**
  * \brief Request IO memory from sigma0.
  *
+ * \param sigma0  Capability to pager implementing the Sigma0 protocol.
+ * \param phys    The physical address to be requested (page aligned).
+ * \param virt    The virtual address where the memory should be mapped to
+ *                (page aligned).
+ * \param size    The size of the IO memory area to be mapped (multiple of
+ *                page size)
+ * \param cached  Requests cacheable IO memory if 1, and uncached if 0.
+ *
+ * \retval 0                     Success.
+ * \retval -L4SIGMA0_NOTALIGNED  `phys`, `virt`, or `size` are not aligned.
+ * \retval -L4SIGMA0_IPCERROR    IPC error.
+ * \retval -L4SIGMA0_NOFPAGE     No fpage received.
+ *
  * This function is similar to l4sigma0_map_mem(), the difference is that
  * it requests IO memory. IO memory is everything that is not known
  * to be normal RAM. Also ACPI tables or the BIOS memory is treated as IO
  * memory.
  *
- * \param sigma0 usually the thread id of sigma0.
- * \param phys  the physical address to be requested (page aligned).
- * \param virt  the virtual address where the memory should be mapped to
- *              (page aligned).
- * \param size  the size of the IO memory area to be mapped (multiple of
- *              page size)
- * \param cached requests cacheable IO memory if 1, and uncached if 0.
- *
- * \return 0 on success, !0 else (see l4sigma0_map_errstr()).
+ * See l4sigma0_map_errstr() to get a description of the return value.
  */
 L4_CV int l4sigma0_map_iomem(l4_cap_idx_t sigma0, l4_addr_t phys,
                              l4_addr_t virt, l4_addr_t size, int cached);

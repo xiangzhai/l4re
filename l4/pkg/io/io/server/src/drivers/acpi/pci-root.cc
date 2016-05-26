@@ -35,18 +35,18 @@ get_bus_range(ACPI_RESOURCE *res, void *ctxt)
   switch (res->Type)
     {
     case ACPI_RESOURCE_TYPE_ADDRESS16:
-      mi = res->Data.Address16.Minimum;
-      len = res->Data.Address16.AddressLength;
+      mi = res->Data.Address16.Address.Minimum;
+      len = res->Data.Address16.Address.AddressLength;
       break;
 
     case ACPI_RESOURCE_TYPE_ADDRESS32:
-      mi = res->Data.Address32.Minimum;
-      len = res->Data.Address32.AddressLength;
+      mi = res->Data.Address32.Address.Minimum;
+      len = res->Data.Address32.Address.AddressLength;
       break;
 
     case ACPI_RESOURCE_TYPE_ADDRESS64:
-      mi = res->Data.Address64.Minimum;
-      len = res->Data.Address64.AddressLength;
+      mi = res->Data.Address64.Address.Minimum;
+      len = res->Data.Address64.Address.AddressLength;
       break;
 
     default:
@@ -149,7 +149,10 @@ struct Acpi_pci_root_drv : Acpi_device_driver
         Hw::Pci::register_root_bridge(rb);
       }
     else
-      rb->set_host(device);
+      {
+        rb->set_host(device);
+        rb->num = bbn[0];
+      }
 
     device->add_feature(rb);
     return adev;

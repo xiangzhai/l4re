@@ -113,19 +113,19 @@ enum
    */
   L4_VM_VMX_VMCS_CR2                = 0x683e,
   /// VMCS offset of extended control register XCR0
-  L4_VM_VMX_VMCS_XCR0               = 0x6842,
+  L4_VM_VMX_VMCS_XCR0               = 0x2840,
   /// VMCS offset of system call flag mask MSR
-  L4_VM_VMX_VMCS_MSR_SYSCALL_MASK   = 0x6844,
+  L4_VM_VMX_VMCS_MSR_SYSCALL_MASK   = 0x2842,
   /// VMCS offset of IA32e mode system call target address MSR
-  L4_VM_VMX_VMCS_MSR_LSTAR          = 0x6846,
+  L4_VM_VMX_VMCS_MSR_LSTAR          = 0x2844,
   /// VMCS offset of IA32 mode system call target address MSR
-  L4_VM_VMX_VMCS_MSR_CSTAR          = 0x6848,
+  L4_VM_VMX_VMCS_MSR_CSTAR          = 0x2846,
   /// VMCS offset of auxiliary TSC signature MSR
-  L4_VM_VMX_VMCS_MSR_TSC_AUX        = 0x6850,
+  L4_VM_VMX_VMCS_MSR_TSC_AUX        = 0x2848,
   /// VMCS offset of system call target address MSR
-  L4_VM_VMX_VMCS_MSR_STAR           = 0x6852,
+  L4_VM_VMX_VMCS_MSR_STAR           = 0x284a,
   /// VMCS offset of GS base address swap target MSR
-  L4_VM_VMX_VMCS_MSR_KERNEL_GS_BASE = 0x6854,
+  L4_VM_VMX_VMCS_MSR_KERNEL_GS_BASE = 0x284c,
 };
 
 /**

@@ -30,7 +30,7 @@ void vrm_register_filename(int fd, Char *name)
 
     if (fd > _num_filenames) {
         VG_(printf)("fd out of range: %d\n",fd);
-        enter_kdebug();
+        return;
     }
 
     VG_(strncpy)(_filenames[fd], name, 50);
@@ -55,7 +55,7 @@ Char *vrm_get_filename(int fd)
 {
     if (fd < 0 || fd > _num_filenames) {
         VG_(printf)("fd out of range: %d\n",fd);
-        enter_kdebug();
+        return 0;
     }
 
     return _filenames[fd];

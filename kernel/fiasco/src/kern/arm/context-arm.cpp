@@ -183,7 +183,7 @@ IMPLEMENT_OVERRIDE inline
 void
 Context::arch_update_vcpu_state(Vcpu_state *vcpu)
 {
-  vcpu->host_tpidruro = _tpidruro;
+  vcpu->host.tpidruro = _tpidruro;
 }
 
 PRIVATE inline
@@ -228,7 +228,7 @@ IMPLEMENT_OVERRIDE inline
 void
 Context::arch_load_vcpu_kern_state(Vcpu_state *vcpu, bool do_load)
 {
-  _tpidruro = vcpu->host_tpidruro;
+  _tpidruro = vcpu->host.tpidruro;
   if (do_load)
     load_tpidruro();
 }
@@ -237,7 +237,7 @@ IMPLEMENT_OVERRIDE inline
 void
 Context::arch_load_vcpu_user_state(Vcpu_state *vcpu, bool do_load)
 {
-  _tpidruro = vcpu->user_tpidruro;
+  _tpidruro = vcpu->_regs.s.tpidruro;
   if (do_load)
     load_tpidruro();
 }

@@ -11,6 +11,8 @@
 #
 # ARCHDEFAULTPF: PF_LEON3
 
+# SECTION: CPU
+
 choice
 	prompt "CPU"
 	default LEON3      if SPARC

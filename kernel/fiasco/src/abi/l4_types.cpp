@@ -432,6 +432,7 @@ public:
     Label_irq_mux = -19L,      ///< Protocol for IRQ multiplexer objects.
     Label_semaphore = -20L,    ///< Protocol ID for semaphore objects.
     Label_iommu = -22L,        ///< Protocol ID for IOMMUs
+    Label_debugger = -23L,     ///< Protocol ID for the debugger
     Max_factory_label = Label_iommu,
   };
 private:
@@ -659,7 +660,7 @@ INTERFACE [ia32 || ux]:
 EXTENSION class L4_exception_ipc
 {
 public:
-  enum { Msg_size = 16 };
+  enum { Msg_size = 19 };
 };
 
 //----------------------------------------------------------------------------
@@ -677,7 +678,7 @@ INTERFACE [amd64]:
 EXTENSION class L4_exception_ipc
 {
 public:
-  enum { Msg_size = 23 };
+  enum { Msg_size = 26 };
 };
 
 //----------------------------------------------------------------------------

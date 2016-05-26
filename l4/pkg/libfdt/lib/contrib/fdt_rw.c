@@ -84,9 +84,9 @@ static int _fdt_rw_check_header(void *fdt)
 
 #define FDT_RW_CHECK_HEADER(fdt) \
 	{ \
-		int err; \
-		if ((err = _fdt_rw_check_header(fdt)) != 0) \
-			return err; \
+		int __err; \
+		if ((__err = _fdt_rw_check_header(fdt)) != 0) \
+			return __err; \
 	}
 
 static inline int _fdt_data_size(void *fdt)
@@ -100,6 +100,8 @@ static int _fdt_splice(void *fdt, void *splicepoint, int oldlen, int newlen)
 	char *end = (char *)fdt + _fdt_data_size(fdt);
 
 	if (((p + oldlen) < p) || ((p + oldlen) > end))
+		return -FDT_ERR_BADOFFSET;
+	if ((p < (char *)fdt) || ((end - oldlen + newlen) < (char *)fdt))
 		return -FDT_ERR_BADOFFSET;
 	if ((end - oldlen + newlen) > ((char *)fdt + fdt_totalsize(fdt)))
 		return -FDT_ERR_NOSPACE;

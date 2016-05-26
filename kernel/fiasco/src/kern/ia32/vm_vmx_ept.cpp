@@ -344,7 +344,7 @@ void
 Vm_vmx_ept::load_vm_memory(void *src)
 {
   load(Vmx::F_guest_cr3, src);
-  Vmx::vmwrite(0x201a, _ept_phys | 6 | (3 << 3));
+  Vmx::vmwrite(Vmx::F_ept_ptr, _ept_phys | 6 | (3 << 3));
 }
 
 PUBLIC inline

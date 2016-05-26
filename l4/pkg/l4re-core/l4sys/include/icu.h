@@ -193,7 +193,13 @@ typedef struct l4_icu_msi_info_t
  * \param irqnum  IRQ line at the ICU.
  * \param irq     IRQ object to bind to this ICU.
  *
- * \return Syscall return tag
+ * \return Syscall return tag. The caller should check the return value using
+ *         l4_error() to check for errors and to identify the correct method
+ *         for unmasking the interrupt.
+ *         Return values `< 0` indicate an error. A return value of `0` means a
+ *         direct unmask via the IRQ object using l4_irq_unmask(). A return
+ *         value of `1` means that the interrupt has to be unmasked via the ICU
+ *         using l4_icu_unmask().
  */
 L4_INLINE l4_msgtag_t
 l4_icu_bind(l4_cap_idx_t icu, unsigned irqnum, l4_cap_idx_t irq) L4_NOTHROW;

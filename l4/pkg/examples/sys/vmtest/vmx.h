@@ -20,7 +20,7 @@ public:
 protected:
   bool npt_available() { return true; }
   bool cpu_virt_capable();
-  void initialize_vmcb();
+  void initialize_vmcb(unsigned long_mode);
   unsigned handle_vmexit();
   void set_rax(l4_umword_t rax);
   void set_rsp(l4_umword_t rsp);
@@ -31,6 +31,7 @@ protected:
   void set_cr4(l4_umword_t cr4);
   void set_dr7(l4_umword_t dr7);
   void set_efer(l4_umword_t efer);
+  l4_umword_t get_rax();
   void enable_npt();
   void disable_npt();
 

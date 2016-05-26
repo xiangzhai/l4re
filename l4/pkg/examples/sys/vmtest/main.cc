@@ -39,6 +39,8 @@ static Cpu_vendor get_cpu_vendor()
 int main()
 {
   printf("Hello from vmtest\n");
+
+  printf("TAP TEST START\n");
   switch (get_cpu_vendor())
     {
     case Intel:
@@ -54,9 +56,11 @@ int main()
       }
       break;
     default:
-      printf("Unknown CPU. Bye.\n");
+      printf("# Unknown CPU. Bye.\n");
       return 1;
     }
+
+  printf("TAP TEST FINISH\n");
   return 0;
 }
 

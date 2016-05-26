@@ -499,7 +499,8 @@ Jdb_kobject::fmt_handler(char /*fmt*/, int *size, char const *cmd_str, void *arg
 
   *size = sizeof(void*);
 
-  while((c = Jdb_core::cmd_getchar(cmd_str)) != ' ' && c!=KEY_RETURN)
+  while((c = Jdb_core::cmd_getchar(cmd_str)) != ' ' && c != KEY_RETURN
+        && c != KEY_RETURN_2)
     {
       if(c==KEY_ESC)
 	return 3;

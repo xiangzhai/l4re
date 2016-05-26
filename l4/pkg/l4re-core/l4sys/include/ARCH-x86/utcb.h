@@ -41,7 +41,7 @@
 enum L4_utcb_consts_x86
 {
   /// Number if message registers used for exception IPC
-  L4_UTCB_EXCEPTION_REGS_SIZE    = 16,
+  L4_UTCB_EXCEPTION_REGS_SIZE    = 19,
 
   /// Total number of message register (MRs) available
   L4_UTCB_GENERIC_DATA_SIZE      = 63,
@@ -71,6 +71,8 @@ enum L4_utcb_consts_x86
  */
 typedef struct l4_exc_regs_t
 {
+  l4_umword_t es;      /**< es register */
+  l4_umword_t ds;      /**< ds register */
   l4_umword_t gs;      /**< gs register */
   l4_umword_t fs;      /**< fs register */
 
@@ -90,6 +92,7 @@ typedef struct l4_exc_regs_t
   l4_umword_t dummy1;  /**< dummy \internal */
   l4_umword_t flags;  /**< eflags */
   l4_umword_t sp;     /**< stack pointer */
+  l4_umword_t ss;     /**< ss register */
 } l4_exc_regs_t;
 
 #include_next <l4/sys/utcb.h>
@@ -106,7 +109,7 @@ L4_INLINE l4_utcb_t *l4_utcb_direct(void) L4_NOTHROW
   return utcb;
 }
 
-L4_INLINE l4_umword_t l4_utcb_exc_pc(l4_exc_regs_t *u) L4_NOTHROW
+L4_INLINE l4_umword_t l4_utcb_exc_pc(l4_exc_regs_t const *u) L4_NOTHROW
 {
   return u->ip;
 }
@@ -116,17 +119,22 @@ L4_INLINE void l4_utcb_exc_pc_set(l4_exc_regs_t *u, l4_addr_t pc) L4_NOTHROW
   u->ip = pc;
 }
 
-L4_INLINE l4_umword_t l4_utcb_exc_typeval(l4_exc_regs_t *u) L4_NOTHROW
+L4_INLINE void l4_utcb_exc_sp_set(l4_exc_regs_t *u, l4_addr_t sp) L4_NOTHROW
+{
+  u->sp = sp;
+}
+
+L4_INLINE l4_umword_t l4_utcb_exc_typeval(l4_exc_regs_t const *u) L4_NOTHROW
 {
   return u->trapno;
 }
 
-L4_INLINE int l4_utcb_exc_is_pf(l4_exc_regs_t *u) L4_NOTHROW
+L4_INLINE int l4_utcb_exc_is_pf(l4_exc_regs_t const *u) L4_NOTHROW
 {
   return u->trapno == 14;
 }
 
-L4_INLINE l4_addr_t l4_utcb_exc_pfa(l4_exc_regs_t *u) L4_NOTHROW
+L4_INLINE l4_addr_t l4_utcb_exc_pfa(l4_exc_regs_t const *u) L4_NOTHROW
 {
   return (u->pfa & ~3) | (u->err & 2);
 }

@@ -11,6 +11,7 @@ IMPLEMENTATION:
 #include "irq.h"
 #include "jdb_kobject.h"
 #include "kobject.h"
+#include "semaphore.h"
 #include "thread_state.h"
 #include "vlog.h"
 
@@ -103,7 +104,13 @@ Jdb_thread::print_partner(Thread *t, int task_format = 0)
       return;
     }
 
-  if (Kobject *o = Kobject::from_dbg(Kobject_dbg::pointer_to_obj(p)))
+  if (p == Semaphore::sem_partner())
+    {
+      printf("%*s ", task_format, "Sem");
+      // Actually getting the semaphore would require to scan all
+      // semaphores' wait lists to find t
+    }
+  else if (Kobject *o = Kobject::from_dbg(Kobject_dbg::pointer_to_obj(p)))
     {
       char flag = '?';
 

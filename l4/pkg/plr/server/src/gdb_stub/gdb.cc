@@ -222,7 +222,6 @@ bool Romain::GDBServerObserver::next_cmd()
 			return false;
 
 		case GDBInterrupt:
-			enter_kdebug("interrupt");
 			break;
 
 		case GDBAck:
@@ -232,7 +231,6 @@ bool Romain::GDBServerObserver::next_cmd()
 			} else {
 				MSG() << "Got ACK while not expecting one!";
 				++_bufptr;
-				//enter_kdebug("ACK");
 			}
 			return next_cmd();
 
@@ -247,14 +245,12 @@ bool Romain::GDBServerObserver::next_cmd()
 
 		default:
 			ERROR() << "invalid packet start: " << *_bufptr;
-			enter_kdebug("error");
 			break;
 	}
 
 	char const *eoc = 0;
 	if (!checksum_cmd(_bufptr, &eoc)) {
 		ERROR() << "Wrong checksum.";
-		enter_kdebug("csum");
 	}
 
 	_check(eoc - _bufptr <= 0, "cmd with 0 or negative size");
@@ -320,7 +316,6 @@ int Romain::GDBServerObserver::handle_cmd()
 		
 		default:
 			  INFO() << "Unhandled GDB command: " << cmd;
-			  enter_kdebug("Unhandled cmd");
 			  break;
 	}
 
@@ -392,14 +387,12 @@ void Romain::GDBServerObserver::gdb_select_thread(char const * const cmd)
 	if (*cmd == 'g') {
 	    if (atoi(cmd+1) > 0) {
 		ERROR() << "g cmd for thread" << atoi(cmd+1);
-		enter_kdebug();
 	    }
 		REPLY_OK;
 	}
 	else if (*cmd == 'c') {
     	if (atoi(cmd+1) > 0) {
 			ERROR() << "c cmd for thread" << atoi(cmd+1);
-			enter_kdebug();
 	    }
 	    UNSUPPORTED();
 	}
@@ -462,7 +455,6 @@ void Romain::GDBServerObserver::gdb_dump_mem(char const * const cmd)
 
 	if (sscanf(cmd, "%x,%x", &addr, &len) != 2) {
 		ERROR() << "Incorrectly matching memory read cmd: " << cmd;
-		enter_kdebug();
 	}
 
 	// XXX: so far we only support the gdb stub for the first running
@@ -522,7 +514,6 @@ void Romain::GDBServerObserver::gdb_continue(const char* cmd, bool withSignal)
 		signal_return(/*_notifyThread*/);
 	} else {
 		ERROR() << "continue from address? " << cmd;
-		enter_kdebug("c");
 	}
 }
 
@@ -540,7 +531,6 @@ void Romain::GDBServerObserver::gdb_step(const char* cmd, bool withSignal)
 	} else {
 		printf("step: '%s'\n", cmd);
 		ERROR() << "step from address not implemented!";
-		enter_kdebug();
 	}
 }
 
@@ -558,7 +548,6 @@ void Romain::GDBServerObserver::gdb_write_mem(char const* cmd, bool binaryData)
 	unsigned addr, len;
 	if (sscanf(cmd, "%x,%x", &addr, &len) != 2) {
 		ERROR() << "Invalid memory write cmd: " << cmd;
-		enter_kdebug();
 	}
 
 	if (!len) { // nothing to do
@@ -604,14 +593,12 @@ void Romain::GDBServerObserver::gdb_write_mem(char const* cmd, bool binaryData)
 #endif
 			if ((unsigned)(data_end - data_start + 1) > len) {
 				ERROR() << "Packet says it contains more data than it really does?";
-				enter_kdebug();
 			}
 			
 			MSG() << "memcpy(" << (void*)local_addr << ", "
 			        << (void*)data_start << ", " << len << ");";
 			memcpy((char*)local_addr, data_start, len);
 		} else {
-			enter_kdebug("M write");
 		}
 
 		REPLY_OK;
@@ -622,7 +609,6 @@ void Romain::GDBServerObserver::gdb_write_mem(char const* cmd, bool binaryData)
 void Romain::GDBServerObserver::gdb_read_register(char const* cmd)
 {
 	(void)cmd;
-	enter_kdebug("read_register");
 	UNSUPPORTED();
 }
 
@@ -655,7 +641,6 @@ void Romain::GDBServerObserver::gdb_write_register(char const *cmd)
 
 		default:
 			MSG() << "Unhandled reg number: " << regno;
-			//enter_kdebug("P");
 			break;
 	}
 	REPLY_PACKET("OK");

@@ -353,6 +353,14 @@ L4_INLINE unsigned l4_is_valid_cap(l4_cap_idx_t c) L4_NOTHROW;
  */
 L4_INLINE unsigned l4_capability_equal(l4_cap_idx_t c1, l4_cap_idx_t c2) L4_NOTHROW;
 
+/**
+ * Get the next capability selector after `c`.
+ * \param c  The capability selector for which the next selector shall be
+ *           computed.
+ * \returns The next capability selector after `c`.
+ */
+L4_INLINE l4_cap_idx_t l4_capability_next(l4_cap_idx_t c) L4_NOTHROW;
+
 /* ************************************************************************* */
 /* Implementation */
 
@@ -423,6 +431,9 @@ L4_INLINE unsigned l4_msgtag_is_sigma0(l4_msgtag_t t) L4_NOTHROW
 
 L4_INLINE unsigned l4_msgtag_is_io_page_fault(l4_msgtag_t t) L4_NOTHROW
 { return l4_msgtag_label(t) == L4_PROTO_IO_PAGE_FAULT; }
+
+L4_INLINE l4_cap_idx_t l4_capability_next(l4_cap_idx_t c) L4_NOTHROW
+{ return c + L4_CAP_OFFSET; }
 
 #include <l4/sys/__l4_fpage.h>
 #include <l4/sys/__timeout.h>

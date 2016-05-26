@@ -62,13 +62,8 @@ struct Auto_tlb_flush<Mem_space>
         return;
       }
 
-    for (unsigned i = 0; i < N_spaces; ++i)
-      {
-        if (spaces[i])
-          spaces[i]->tlb_flush(true);
-        else
-          return;
-      }
+    for (unsigned i = 0; i < N_spaces && spaces[i]; ++i)
+      spaces[i]->tlb_flush(true);
   }
 
   void global_flush()

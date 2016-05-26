@@ -152,6 +152,7 @@ formatter_default(String_buffer *buf, Tb_entry *tb, const char *tidstr, int tidl
       Tb_entry_ke_reg *e = static_cast<Tb_entry_ke_reg*>(tb);
       buf->printf("\"%s\" " L4_PTR_FMT " " L4_PTR_FMT " " L4_PTR_FMT " @ " L4_PTR_FMT,
                e->msg.str(), e->v[0], e->v[1], e->v[2], e->ip());
+      return;
     }
 
   fmt->print(buf, tb);

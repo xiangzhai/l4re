@@ -2,7 +2,7 @@
  * \file   uart_16550_dw.cc
  * \brief  Implementation of DW-based 16550 UART
  *
- * \author Adam Lackorznynski <adam@l4re.org>
+ * \author Adam Lackorzynski <adam@l4re.org>
  *
  */
 /*

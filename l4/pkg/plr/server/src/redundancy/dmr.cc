@@ -143,7 +143,6 @@ Romain::DMR::checksum_replicas(Romain::App_instance *i, Romain::Thread_group *tg
 				}
 			}
 			ERROR() << "Instances: " << _num_instances << " this inst " << idx << "\n";
-			//enter_kdebug("checksum");
 #endif
 			return false;
 		}
@@ -162,7 +161,6 @@ class RecoverAbort
 				used = true;
 				ERROR() << "Aborting after error.\n";
 				Romain::_the_instance_manager->show_stats();
-				enter_kdebug("abort");
 				throw("ERROR -> abort");
 			}
 
@@ -345,7 +343,6 @@ Romain::DMR::enter(Romain::App_instance *i, Romain::App_thread *t,
 				       << " " << thread->getleave();
 			}
 #endif
-			enter_kdebug();
 		}
 		l4_thread_yield();
 	}
@@ -586,7 +583,6 @@ void Romain::DMR::resume(Romain::App_instance *i, Romain::App_thread *t,
 	--_leave_count;
 	pthread_mutex_unlock(&_leave_mtx);
 
-	//enter_kdebug("DMR::resume");
 #endif
 }
 

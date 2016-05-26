@@ -115,7 +115,7 @@ Mem_space::sync_kernel()
 
 
 IMPLEMENT inline NEEDS ["kmem.h", <cstdio>]
-void Mem_space::switchin_context(Mem_space *from, unsigned)
+void Mem_space::switchin_context(Mem_space *from)
 {
   (void)from;
   printf("%s FIXME\n", __func__);
@@ -136,7 +136,7 @@ Mem_space::has_superpages()
 }
 
 //we flush tlb in htab implementation
-PUBLIC static inline NEEDS["mem_unit.h"]
+IMPLEMENT static inline NEEDS["mem_unit.h"]
 void
 Mem_space::tlb_flush(bool = false)
 {
@@ -252,7 +252,7 @@ Mem_space::v_insert(Phys_addr phys, Vaddr virt, Page_order size,
  */
 PUBLIC inline NEEDS ["paging.h"]
 Address
-Mem_space::virt_to_phys (Address virt) const
+Mem_space::virt_to_phys(Address virt) const
 {
   return dir()->virt_to_phys(virt);
 }

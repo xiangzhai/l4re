@@ -542,7 +542,6 @@ Thread::do_ipc(L4_msg_tag const &tag, bool have_send, Thread *partner,
       if (EXPECT_FALSE(!ok))
         {
           // send failed, so do not switch to receiver directly and skip receive phase
-          have_receive = false;
           regs->tag(L4_msg_tag(0, 0, L4_msg_tag::Error, 0));
         }
     }
@@ -719,9 +718,9 @@ Thread::exception(Kobject_iface *handler, Trap_state *ts, L4_fpage::Rights right
 
   saved_state.restore(utcb);
 
-  if (EXPECT_FALSE(r.tag().has_error()))
-    state_del(Thread_in_exception);
-  else if (r.tag().proto() == L4_msg_tag::Label_allow_syscall)
+  state_del(Thread_in_exception);
+  if (!r.tag().has_error()
+      && r.tag().proto() == L4_msg_tag::Label_allow_syscall)
     state_add(Thread_dis_alien);
 
   // restore original utcb_handler
@@ -896,7 +895,7 @@ Thread::transfer_msg_items(L4_msg_tag const &tag, Thread* snd, Utcb *snd_utcb,
                            L4_fpage::Rights rights)
 {
   // LOG_MSG_3VAL(current(), "map bd=", rcv_utcb->buf_desc.raw(), 0, 0);
-  Task *const rcv_t = nonull_static_cast<Task*>(rcv->space());
+  Ref_ptr<Task> rcv_t(nonull_static_cast<Task*>(rcv->space()));
   L4_buf_iter mem_buffer(rcv_utcb, rcv_utcb->buf_desc.mem());
   L4_buf_iter io_buffer(rcv_utcb, rcv_utcb->buf_desc.io());
   L4_buf_iter obj_buffer(rcv_utcb, rcv_utcb->buf_desc.obj());
@@ -961,7 +960,7 @@ Thread::transfer_msg_items(L4_msg_tag const &tag, Thread* snd, Utcb *snd_utcb,
         {
           assert (item->b.type() == L4_msg_item::Map);
           L4_fpage sfp(item->d);
-          *rcv_word = (item->b.raw() & ~0x0ff7) | (sfp.raw() & 0x0ff0);
+          *rcv_word = (item->b.raw() & ~0x0ff6) | (sfp.raw() & 0x0ff0);
 
           rcv_word += 2;
 
@@ -986,7 +985,7 @@ Thread::transfer_msg_items(L4_msg_tag const &tag, Thread* snd, Utcb *snd_utcb,
 
                   auto c_lock = lock_guard<Lock_guard_inverse_policy>(cpu_lock);
                   err = fpage_map(snd->space(), sfp,
-                                  rcv->space(), L4_fpage(buf->d), item->b, &rl);
+                                  rcv_t.get(), L4_fpage(buf->d), item->b, &rl);
                 }
 
               if (EXPECT_FALSE(!err.ok()))
@@ -1139,7 +1138,8 @@ Thread::remote_ipc_send(Ipc_remote_request *rq)
       break;
     }
 
-  if (rq->tag.transfer_fpu() && rq->partner->_utcb_handler || rq->partner->utcb().access()->inherit_fpu())
+  if ((rq->tag.transfer_fpu() && rq->partner->_utcb_handler)
+      || rq->partner->utcb().access()->inherit_fpu())
     rq->partner->spill_fpu_if_owner();
 
   // trigger remote_ipc_receiver_ready path, because we may need to grab locks

@@ -148,7 +148,7 @@ static Region_map *vrm_determine_local_rm_address()
     if (dbg_elf) VG_(printf)("opened: %ld\n", sr_Res(res));
     if (sr_isError(res)) {
         VG_(printf)("Error opening file: %ld\n", sr_Err(res));
-        enter_kdebug();
+        VG_(exit)(1);
     }
 
     int fd = sr_Res(res);
@@ -159,7 +159,7 @@ static Region_map *vrm_determine_local_rm_address()
 
     if (err) {
         VG_(printf)("error on fstat(): %d\n", err);
-        enter_kdebug();
+        VG_(exit)(1);
     }
 
     void *a = 0;

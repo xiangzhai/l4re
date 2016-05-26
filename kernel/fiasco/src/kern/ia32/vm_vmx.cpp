@@ -10,7 +10,7 @@ class Vmcs;
 class Vm_vmx_b : public Vm
 {
 protected:
-  static unsigned long resume_vm_vmx(Vcpu_state *regs)
+  static unsigned long resume_vm_vmx(Trex *regs)
     asm("resume_vm_vmx") __attribute__((__regparm__(3)));
 
   enum
@@ -188,7 +188,7 @@ Vm_vmx::load_vm_memory(void const *src)
 {
   if (sizeof(long) > sizeof(int))
     {
-      if (read<Mword>(src, 0x2806) & EFER_LME)
+      if (read<Mword>(src, Vmx::F_guest_efer) & EFER_LME)
         Vmx::vmwrite(Vmx::F_guest_cr3, (Mword)phys_dir());
       else
         WARN("VMX: No, not possible\n");
@@ -237,13 +237,13 @@ Vm_vmx_t<X>::load_guest_state(Cpu_number cpu, void *src)
 
   // check if the following bits are allowed to be set in entry_ctls
   if (entry_ctls.test(14)) // PAT load requested
-    load(0x2804, src);
+    load(Vmx::F_guest_pat, src);
 
   if (entry_ctls.test(15)) // EFER load requested
-    load(0x2806, src);
+    load(Vmx::F_guest_efer, src);
 
   if (entry_ctls.test(13)) // IA32_PERF_GLOBAL_CTRL load requested
-    load(0x2808, src);
+    load(Vmx::F_guest_perf_global_ctl, src);
 
   // this is Fiasco.OC internal state
 #if 0
@@ -255,7 +255,7 @@ Vm_vmx_t<X>::load_guest_state(Cpu_number cpu, void *src)
   load(0x4800, 0x482a, src);
 
   if (pinbased_ctls.test(6)) // activate vmx-preemption timer
-    load(0x482e, src);
+    load(Vmx::F_preempt_timer, src);
 
   // write natural-width fields
   load<Mword>(0x6800, src, vmx.info.cr0_defs);
@@ -287,7 +287,7 @@ Vm_vmx_t<X>::load_guest_state(Cpu_number cpu, void *src)
     load(Vmx::F_apic_access_addr, src);
 
   // exception bit map and pf error-code stuff
-  load<Unsigned32>(0x4004, src, vmx.info.exception_bitmap);
+  load<Unsigned32>(Vmx::F_exception_bitmap, src, vmx.info.exception_bitmap);
   load(0x4006, 0x4008, src);
 
   // vm entry control stuff
@@ -344,7 +344,7 @@ Vm_vmx_t<X>::store_guest_state(Cpu_number cpu, void *dest)
   // sysenter msr is not saved here, because we trap all msr accesses right now
   if (0)
     {
-      store(0x482a, dest);
+      store(Vmx::F_sysenter_cs, dest);
       store(0x6824, 0x6826, dest);
     }
 
@@ -472,7 +472,7 @@ Vm_vmx_t<X>::do_resume_vcpu(Context *ctxt, Vcpu_state *vcpu, void *vmcs_s)
 
   load_guest_xcr0(host_xcr0, guest_xcr0);
 
-  unsigned long ret = resume_vm_vmx(vcpu);
+  unsigned long ret = resume_vm_vmx(&vcpu->_regs);
   // vmread error?
   if (EXPECT_FALSE(ret))
     return -L4_err::EInval;
@@ -513,8 +513,8 @@ Vm_vmx_t<X>::do_resume_vcpu(Context *ctxt, Vcpu_state *vcpu, void *vmcs_s)
     case 1: // IRQ
       return 1;
     case 48: // EPT violation
-      store(0x2400, vmcs_s); // Guest phys
-      store(0x640a, vmcs_s); // Guest linear
+      store(Vmx::F_guest_phys, vmcs_s); // Guest phys
+      store(Vmx::F_guest_linear, vmcs_s); // Guest linear
       break;
     }
 

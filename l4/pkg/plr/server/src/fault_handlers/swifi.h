@@ -94,7 +94,6 @@ class AsmJitUser
 			MAP(AL, al); MAP(BL, bl); MAP(CL, cl); MAP(DL, dl);
 			default:
 				ERROR() << "I don't know a mapping for " << (l4_umword_t)t << " yet.\n";
-				enter_kdebug("mapping");
 				break;
 		}
 		return AsmJit::no_reg;
@@ -197,7 +196,7 @@ void BinaryOperation(ud_t ud, AsmJit::Assembler& as)
 			case  8: imm = ud.operand[1].lval.sbyte; break;
 			case 16: imm = ud.operand[1].lval.sword; break;
 			case 32: imm = ud.operand[1].lval.sdword; break;
-			case 64: enter_kdebug("64bit!"); break;
+			case 64: abort(); break;
 		}
 		// XXX: sign extension bug -> some of the opcodes
 		//      have immediates that are sign extended...
@@ -396,7 +395,6 @@ class ALUFlipEmulator : public Flipper,
 
 		if (!mnemonic_supported(_ud.mnemonic)) {
 			ERROR() << "Mnemonic " << _ud.mnemonic << " not yet supported.\n";
-			enter_kdebug("mnemonic");
 		}
 	}
 
@@ -410,7 +408,6 @@ class ALUFlipEmulator : public Flipper,
 			case e_flip_output: flip_output();      MSG() << "ALU::flip_out()"; return true;
 			default: break;
 		}
-		enter_kdebug("ALU::flip");
 		return true;
 	}
 
@@ -444,7 +441,6 @@ class ALUFlipEmulator : public Flipper,
 					_vcpu->r()->di ^= (1 << bit); break;
 				default:
 					ERROR() << "unhandled flip reg: " << _target.base << "\n";
-					enter_kdebug();
 			}
 		}
 	}
@@ -734,7 +730,7 @@ class MemFlipEmulator : public Flipper,
 			case 8:  addr += _ud.operand[i].lval.sbyte; break;
 			case 16: addr += _ud.operand[i].lval.sword; break;
 			case 32: addr += _ud.operand[i].lval.sdword; break;
-			default: enter_kdebug("offset"); break;
+			default: abort(); break;
 		}
 
 		MSG() << "target addr: " << std::hex << addr << " ("
@@ -763,7 +759,6 @@ class MemFlipEmulator : public Flipper,
 					break;
 				default:
 					MSG() << _ud.operand[1].type;
-					enter_kdebug("op?");
 					break;
 			}
 		} else { // input operand
@@ -781,7 +776,6 @@ class MemFlipEmulator : public Flipper,
 		as.pop(tmp);
 		commit_asm(as, _am, _vcpu);
 
-		//enter_kdebug("mem::flip");
 		return false;
 	}
 

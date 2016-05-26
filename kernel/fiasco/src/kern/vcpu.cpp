@@ -2,6 +2,7 @@ INTERFACE:
 
 #include "entry_frame.h"
 #include "trap_state.h"
+#include "vcpu_host_regs.h"
 
 class Vcpu_state
 {
@@ -23,6 +24,11 @@ public:
     Sf_irq_pending = 0x01,
   };
 
+  /// vCPU ABI version (must be checked by the user for equality).
+  Mword version;
+  /// user-specific data
+  Mword user_data[7];
+
   Trex _regs;
   Syscall_frame _ipc_regs;
 
@@ -38,4 +44,5 @@ public:
 
   // kernel-internal private state
   Mword _sp;
+  Vcpu_host_regs host;
 };

@@ -20,15 +20,22 @@
 
 #include <l4/sys/types.h>
 
+enum
+{
+  /**
+   * Architecture specific version ID.
+   *
+   * This ID must match the version field in the l4_vcpu_state_t structure
+   * after enabling vCPU mode or extended vCPU mode for a thread.
+   */
+  L4_VCPU_STATE_VERSION = 0x23
+};
+
 typedef struct l4_vcpu_arch_state_t
 {
   l4_umword_t host_fs_base;
   l4_umword_t host_gs_base;
   l4_uint16_t host_ds, host_es, host_fs, host_gs;
-
-  l4_umword_t user_fs_base;
-  l4_umword_t user_gs_base;
-  l4_uint16_t user_ds, user_es, user_fs, user_gs;
 
   l4_uint16_t const user_ds32;
   l4_uint16_t const user_cs64;
@@ -49,7 +56,7 @@ typedef struct l4_vcpu_regs_t
   l4_umword_t r11;     /**< r11 register */
   l4_umword_t r10;     /**< r10 register */
   l4_umword_t r9;      /**< r9 register */
-  l4_umword_t r8;      /**< r8 reigster */
+  l4_umword_t r8;      /**< r8 register */
 
   l4_umword_t di;      /**< rdi register */
   l4_umword_t si;      /**< rsi register */
@@ -68,6 +75,10 @@ typedef struct l4_vcpu_regs_t
   l4_umword_t flags;   /**< eflags */
   l4_umword_t sp;      /**< stack pointer */
   l4_umword_t ss;
+  l4_umword_t fs_base;
+  l4_umword_t gs_base;
+  l4_uint16_t ds, es, fs, gs;
+
 } l4_vcpu_regs_t;
 
 /**

@@ -1,9 +1,10 @@
 # vim:set ft=make:
 
 SUBSYSTEMS              += LIBUART
-OBJECTS_LIBUART         += uart_imx.o
+OBJECTS_LIBUART         += uart_imx.o uart_pl011.o
 PREPROCESS_PARTS        += imx libuart generic_tickless_idle
 PREPROCESS_PARTS	+= $(if $(CONFIG_PF_IMX_21),imx21 kern_start_0xd)
+PREPROCESS_PARTS        += $(if $(CONFIG_PF_IMX_28),imx28)
 PREPROCESS_PARTS	+= $(if $(CONFIG_PF_IMX_35),imx35 imx_epit)
 PREPROCESS_PARTS	+= $(if $(CONFIG_PF_IMX_51),imx51 imx_epit \
                                                     pic_gic pic_gic_mxc_tzic)
@@ -24,12 +25,14 @@ uart_IMPL             += uart-imx
 config_IMPL           += config-arm-imx
 mem_layout_IMPL       += mem_layout-arm-imx
 pic_IMPL              += $(if $(CONFIG_PF_IMX_21),pic-arm-imx)
+pic_IMPL              += $(if $(CONFIG_PF_IMX_28),pic-arm-imx-icoll)
 pic_IMPL              += $(if $(CONFIG_PF_IMX_35),pic-arm-imx)
 pic_IMPL              += $(if $(CONFIG_PF_IMX_51),pic-gic pic-arm-imx51)
 pic_IMPL              += $(if $(CONFIG_PF_IMX_53),pic-gic pic-arm-imx51)
 pic_IMPL              += $(if $(CONFIG_PF_IMX_6),pic-gic pic-arm-imx51)
 bootstrap_IMPL        += bootstrap-arm-imx
 timer_IMPL            += $(if $(CONFIG_PF_IMX_21),timer-arm-imx21)
+timer_IMPL            += $(if $(CONFIG_PF_IMX_28),timer-arm-timrot)
 timer_IMPL            += $(if $(CONFIG_PF_IMX_35),timer-arm-imx_epit)
 timer_IMPL            += $(if $(CONFIG_PF_IMX_51),timer-arm-imx_epit)
 timer_IMPL            += $(if $(CONFIG_PF_IMX_53),timer-arm-imx_epit)

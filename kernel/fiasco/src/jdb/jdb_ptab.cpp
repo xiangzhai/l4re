@@ -9,6 +9,7 @@ IMPLEMENTATION:
 #include "jdb_screen.h"
 #include "jdb_table.h"
 #include "kernel_console.h"
+#include "kernel_task.h"
 #include "kmem.h"
 #include "keycodes.h"
 #include "space.h"
@@ -147,8 +148,13 @@ Jdb_ptab::entry_is_pt_ptr(Pdir::Pte_ptr const &entry,
   if (!entry.is_valid() || entry.is_leaf())
     return 0;
 
-  *entries = Pdir::Levels::length(entry.level+1);
-  *next_level = entry.level+1;
+  unsigned n = 1;
+  while (   (entry.level + n) < Pdir::Depth
+         && Pdir::Levels::length(entry.level + n) <= 1)
+    ++n;
+
+  *entries = Pdir::Levels::length(entry.level + n);
+  *next_level = entry.level + n;
   return 1;
 }
 
@@ -202,6 +208,7 @@ Jdb_ptab::key_pressed(int c, unsigned long &row, unsigned long &col)
       return Redraw;
 
     case KEY_RETURN:	// goto ptab/address under cursor
+    case KEY_RETURN_2:
       if (_level<=7)
 	{
           int idx = index(row, col);
@@ -280,7 +287,8 @@ Jdb_ptab_m::action(int cmd, void *&args, char const *&fmt, int &next_char)
     {
       if (args == &first_char)
 	{
-	  if (first_char != KEY_RETURN && first_char != ' ')
+	  if (first_char != KEY_RETURN && first_char != KEY_RETURN_2
+              && first_char != ' ')
 	    {
 	      fmt       = "%q";
 	      args      = &task;

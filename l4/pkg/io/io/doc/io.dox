@@ -71,11 +71,111 @@
  * device property which can be used to configure a device driver. Right now,
  * device properties are internal to Io only.
  *
+ * Matching and Assigning PCI Devices
+ * ----------------------------------
  * Assigning clients PCI devices could look like this:
  *
  * \include io/doc/example_pci.io
  *
- * The CC numbers are PCI class codes. You can also use <tt>REV_</tt>,
- * <tt>VEN_</tt>, <tt>DEV_</tt> and <tt>SUBSYS_</tt> to specify revision,
- * vendor, device and subsystem with a hex number.
+ * The "PCI/" is followed by a bus-specific ID string. The format of the PCI ID
+ * string may be one of the following:
+ * - PCI/CC_cc
+ * - PCI/CC_ccss
+ * - PCI/CC_ccsspp
+ * - PCI/VEN_vvvv
+ * - PCI/DEV_dddd
+ * - PCI/SUBSYS_ssssssss
+ * - PCI/REV_rr
+ * - PCI/ADR_xxxx:xx:xx.x
+ *
+ * Where:
+ * - `cc` is the hexadecimal representation of the class code byte
+ * - `ss` is the hexadecimal representation of the subclass code byte
+ * - `pp` is the hexadecimal representation of the programming interface byte
+ * - `vvvv` is the hexadecimal representation of the vendor ID
+ * - `dddd` is the hexadecimal representation of the device ID
+ * - `ssssssss` is the hexadecimal representation of the subsystem ID
+ * - `rr` is the hexadecimal representation of the revision byte
+ * - `xxxx:xx:xx.x` is the bus address in PCI nomenclature
+ *
+ * As a special extension io supports replacing the ID string with a
+ * human-readable common PCI class name. The following table gives an overview
+ * of the names known to io and their respective PCI class and subclass.
+ *
+ * Common Name          | Description                        | PCI ID string
+ * ---------------------|------------------------------------|--------------
+ * storage              | Mass storage controller            | CC_01
+ * scsi                 | SCSI storage controller            | CC_0100
+ * ide                  | IDE interface                      | CC_0101
+ * floppy               | Floppy disk controller             | CC_0102
+ * raid                 | RAID bus controller                | CC_0104
+ * ata                  | ATA controller                     | CC_0105
+ * sata                 | SATA controller                    | CC_0106
+ * sas                  | Serial attached SCSI controller    | CC_0107
+ * nvm                  | Non-volatile memory controller     | CC_0108
+ * - | - | -
+ * network              | Network controller                 | CC_02
+ * ethernet             | Ethernet controller                | CC_0200
+ * token_ring           | Token ring network controller      | CC_0201
+ * fddi                 | FDDI network controller            | CC_0202
+ * atm                  | ATM network controller             | CC_0203
+ * isdn                 | ISDN controller                    | CC_0204
+ * picmg                | PICMG controller                   | CC_0206
+ * net_infiniband       | Infiniband controller              | CC_0207
+ * fabric               | Fabric controller                  | CC_0208
+ * network_nw           | Network controller e.g. Wifi       | CC_0280
+ * - | - | -
+ * display              | Display controller                 | CC_03
+ * vga                  | VGA compatible controller          | CC_0300
+ * xga                  | XGA compatible controller          | CC_0301
+ * - | - | -
+ * media                | Multimedia controller              | CC_04
+ * mm_video             | Multimedia video controller        | CC_0400
+ * mm_audio             | Multimedia audio controller        | CC_0401
+ * telephony            | Computer telephony device          | CC_0402
+ * audio                | Audio device                       | CC_0403
+ * - | - | -
+ * bridge               | Bridge                             | CC_06
+ * br_host              | Host bridge                        | CC_0600
+ * br_isa               | ISA bridge                         | CC_0601
+ * br_eisa              | EISA bridge                        | CC_0602
+ * br_microchannel      | MicroChannel bridge                | CC_0603
+ * br_pci               | PCI bridge                         | CC_0604
+ * br_pcmcia            | PCMCIA bridge                      | CC_0605
+ * br_nubus             | NuBus bridge                       | CC_0606
+ * br_cardbus           | CardBus bridge                     | CC_0607
+ * br_raceway           | RACEway bridge                     | CC_0608
+ * br_semi_pci          | Semi-transparent PCI-to-PCI bridge | CC_0609
+ * br_infiniband_to_pci | InfiniBand to PCI host bridge      | CC_060a
+ * - | - | -
+ * com                  | Communication controller           | CC_07
+ * com_serial           | Serial controller                  | CC_0700
+ * com_parallel         | Parallel controller                | CC_0701
+ * com_multiport_ser    | Multiport serial controller        | CC_0702
+ * com_modem            | Modem                              | CC_0703
+ * com_gpib             | GPIB controller                    | CC_0704
+ * com_smart_card       | Smart card controller              | CC_0705
+ * - | -
+ * serial_bus           | Serial bus controller              | CC_0c
+ * firewire             | FireWire (IEEE 1394)               | CC_0c00
+ * access_bus           | ACCESS bus                         | CC_0c01
+ * ssa                  | SSA                                | CC_0c02
+ * usb                  | USB controller                     | CC_0c03
+ * fibre_channel        | Fibre channel                      | CC_0c04
+ * smbus                | SMBus                              | CC_0c05
+ * bus_infiniband       | InfiniBand                         | CC_0c06
+ * ipmi_smic            | IPMI SMIC interface                | CC_0c07
+ * sercos               | SERCOS interface                   | CC_0c08
+ * canbus               | CAN bus                            | CC_0c09
+ * - | - | -
+ * wireless             | Wireless controller                | CC_0d
+ * bluetooth            | Bluetooth                          | CC_0d11
+ * w_8021a              | 802.1a controller                  | CC_0d20
+ * w_8021b              | 802.1b controller                  | CC_0d21
+ *
+ * ### Strong Matching of PCI Devices ###
+ * If more specific matching of PCI devices is required it is possible to
+ * concatenate multiple ID strings using `&`. An example where a specific
+ * device from a specific vendor at a fixed bus address is matched would use
+ * the string `PCI/VEN_vvvv&DEV_dddd&ADR_xxxx:xx:xx.x`.
  */

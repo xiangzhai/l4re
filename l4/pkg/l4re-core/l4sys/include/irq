@@ -51,6 +51,13 @@ public:
    *                     used for this operation. The receive timeout
    *                     is used with a non-NULL `label` only.
    * \utcb{utcb}
+   *
+   * \return Syscall return tag.
+   *
+   * Note that if `label` is NULL this function is a send-only operation and
+   * there is no return value except for a failed send operation. Use
+   * l4_ipc_error() to check for errors, **do not** use l4_error(), because
+   * l4_error() will always return an error.
    */
   l4_msgtag_t unmask(unsigned irqnum, l4_umword_t *label = 0,
                      l4_timeout_t to = L4_IPC_NEVER,
@@ -164,9 +171,16 @@ public:
    *
    * \utcb{utcb}
    *
-   * \return Syscall return tag
+   * \return Syscall return tag for a send-only operation, use l4_ipc_error()
+   *         to check for errors (**do not** use l4_error()).
+   *
+   * Note that this function is a send-only operation, this means there is no
+   * return value except for a failed send operation. Use l4_ipc_error() to
+   * check for errors, **do not** use l4_error(), because l4_error() will
+   * always return an error.
    *
    * \deprecated Use L4::Irq_eoi::unmask()
+   *
    * \note wait() and receive() are doing the unmask already.
    */
   l4_msgtag_t unmask(l4_utcb_t *utcb = l4_utcb()) throw()
@@ -258,7 +272,13 @@ public:
    * \param irq     IRQ object for the given IRQ line to bind to this ICU.
    * \utcb{utcb}
    *
-   * \return Syscall return tag
+   * \return Syscall return tag. The caller should check the return value using
+   *         l4_error() to check for errors and to identify the correct method
+   *         for unmasking the interrupt.
+   *         Return values `< 0` indicate an error. A return value of `0` means
+   *         a direct unmask via the IRQ object using L4::Irq::unmask. A return
+   *         value of `1` means that the interrupt has to be unmasked via the
+   *         ICU using L4::Icu::unmask.
    */
   l4_msgtag_t bind(unsigned irqnum, L4::Cap<Triggerable> irq,
                    l4_utcb_t *utcb = l4_utcb()) throw()

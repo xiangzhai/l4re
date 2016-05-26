@@ -159,6 +159,10 @@ Dmar::op_bind(Ko::Rights, Unsigned64 src_id, Ko::Cap<Dmar_space> space)
   if (!mmu)
     return Kobject_iface::commit_result(-L4_err::EInval);
 
+  // no free domain id left
+  if (EXPECT_FALSE(space.obj->get_did() == ~0UL))
+    return Kobject_iface::commit_result(-L4_err::ENomem);
+
   for (unsigned df = dfs; df < dfe; ++df)
     {
       auto entryp = mmu->get_context_entry(bus, df, true);

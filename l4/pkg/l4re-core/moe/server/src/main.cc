@@ -499,12 +499,8 @@ int main(int argc, char**argv)
 
   info.printf("Hello world\n");
 
-    {
-      using L4Re::Env;
-      Env::env()->scheduler()
-        ->run_thread(L4::Cap<L4::Thread>(L4_BASE_THREAD_CAP),
-                     l4_sched_param(0xff));
-    }
+  L4Re::Env::env()->scheduler()
+    ->run_thread(L4::Cap<L4::Thread>(L4_BASE_THREAD_CAP), l4_sched_param(0xff));
 
 #if 0 // map RO stuff RO, we'll see write pagefaults if someone write to our
       // RO segments later on
@@ -549,6 +545,7 @@ int main(int argc, char**argv)
         root_name_space()->register_obj("iommu", Entry::F_rw, L4_BASE_IOMMU_CAP);
       root_name_space()->register_obj("sigma0", Entry::F_trusted | Entry::F_rw, L4_BASE_PAGER_CAP);
       root_name_space()->register_obj("mem", Entry::F_trusted | Entry::F_rw, Allocator::root_allocator());
+      root_name_space()->register_obj("jdb", Entry::F_trusted | Entry::F_rw, L4_BASE_DEBUGGER_CAP);
 
       char *cmdline = my_cmdline();
 

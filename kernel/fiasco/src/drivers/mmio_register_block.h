@@ -70,8 +70,8 @@ public:
     Type modify(Type enable, Type disable)
     {
       Type tmp = this->read();
-      this->write(tmp & ~disable | enable);
-      return tmp & ~disable | enable;
+      this->write((tmp & ~disable) | enable);
+      return (tmp & ~disable) | enable;
     }
   };
 

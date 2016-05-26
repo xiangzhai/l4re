@@ -20,6 +20,17 @@
 
 #include <l4/sys/types.h>
 
+enum
+{
+  /**
+   * Architecture specific version ID.
+   *
+   * This ID must match the version field in the l4_vcpu_state_t structure
+   * after enabling vCPU mode or extended vCPU mode for a thread.
+   */
+  L4_VCPU_STATE_VERSION = 0x33
+};
+
 /**
  * \brief vCPU registers.
  * \ingroup l4_vcpu_api
@@ -29,7 +40,7 @@ typedef struct l4_vcpu_regs_t
   l4_umword_t pfa;
   l4_umword_t err;
 
-  l4_umword_t reserved;
+  l4_umword_t tpidruro;/**< Thread-ID register */
   l4_umword_t r[13];
 
   l4_umword_t sp;
@@ -42,7 +53,6 @@ typedef struct l4_vcpu_regs_t
 typedef struct l4_vcpu_arch_state_t
 {
   l4_umword_t host_tpidruro;
-  l4_umword_t user_tpidruro;
 } l4_vcpu_arch_state_t;
 
 /**

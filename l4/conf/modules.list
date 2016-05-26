@@ -79,6 +79,18 @@ module libc_be_l4re.so
 module libsupc++.so
 module libuc_c.so
 
+entry framebuffer-example-x86
+roottask moe rom/x86-fb.cfg
+module x86-fb.cfg
+module l4re
+module ned
+module io
+module x86-legacy.devs
+module x86-fb.io
+module fb-drv
+module mag
+module ex_fb_spectrum_cc
+
 entry L4Linux-basic
 roottask moe rom/l4lx.cfg
 module l4lx.cfg

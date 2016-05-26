@@ -78,7 +78,7 @@ Romain::MSO_priv::notify(Romain::App_instance *i,
 
 		} else {
 			ERROR() << "Application specified address " << addr << " in unmapped region.";
-			enter_kdebug();
+			abort();
 		}
 	}
 

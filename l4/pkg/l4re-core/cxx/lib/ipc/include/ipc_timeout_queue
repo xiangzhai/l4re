@@ -60,31 +60,29 @@ public:
   typedef L4::Ipc_svr::Timeout Timeout;
 
   /**
-   * \brief Creates an empty timeout queue.
-   */
-  Timeout_queue() : _next_timeout(0) {}
-
-  /**
-   * \brief Determine if a timeout has happened
-   * \param now the current time.
-   * \return true if there is at least one expired timeout in the queue,
-   *         false if not.
-   */
-  bool timeout_expired(l4_kernel_clock_t now) const
-  {
-    if (_timeouts.empty())
-      return false;
-
-    return _next_timeout <= now;
-  }
-
-  /**
    * \brief Get the time for the next timeout.
    * \return the time for the next timeout or 0 if there is none
    */
   l4_kernel_clock_t next_timeout() const
   {
-    return _next_timeout;
+    if (auto e = _timeouts.front())
+      return e->timeout();
+
+    return 0;
+  }
+
+  /**
+   * \brief Determine if a timeout has happened.
+   *
+   * \param now  The current time.
+   *
+   * \retval true   There is at least one expired timeout in the queue.
+   *         false  No expired timeout in the queue.
+   */
+  bool timeout_expired(l4_kernel_clock_t now) const
+  {
+    l4_kernel_clock_t next = next_timeout();
+    return (next != 0) && (next <= now);
   }
 
   /**
@@ -102,10 +100,6 @@ public:
         Timeout *t = *top;
         top = _timeouts.erase(top);
         t->expired();
-        if (!_timeouts.empty())
-          _next_timeout = (*_timeouts.begin())->timeout();
-        else
-          _next_timeout = 0;
       }
   }
 
@@ -123,7 +117,6 @@ public:
       ++i;
 
     _timeouts.insert_before(timeout, i);
-    _next_timeout = (*_timeouts.begin())->timeout();
   }
 
   /**
@@ -134,19 +127,11 @@ public:
   void remove(Timeout *timeout)
   {
     _timeouts.remove(timeout);
-    if (_next_timeout == timeout->timeout())
-      {
-        if (!_timeouts.empty())
-          _next_timeout = (*_timeouts.begin())->timeout();
-        else
-          _next_timeout = 0;
-      }
   }
 
 private:
   typedef cxx::H_list<Timeout> Queue;
   Queue _timeouts;
-  l4_kernel_clock_t _next_timeout;
 };
 
 /**
@@ -238,4 +223,3 @@ public:
 };
 
 }}
-

@@ -163,13 +163,11 @@ class Region_ops
 
             if ((h->flags() & L4Re::Rm::Reserved) || !h->memory().is_valid()) {
                 VG_(debugLog)(4, "vcap", "Reserved || invalid\n");
-                enter_kdebug();
                 return -L4_ENOENT;
             }
 
             if (h->flags() & L4Re::Rm::Pager) {
                 VG_(debugLog)(4, "vcap", "pager\n");
-                enter_kdebug();
                 return -L4_ENOENT;
             }
 
@@ -187,7 +185,6 @@ class Region_ops
             if (err = ds->map(offset, writable, the_map_area, the_map_area, the_map_area_end)) {
                 VG_(debugLog)(0, "vcap", "map failed: %d %s\n", err, l4sys_errtostr(err));
                 l4re_rm_show_lists();
-                enter_kdebug("map error");
                 return err;
             }
 
@@ -203,21 +200,18 @@ class Region_ops
         {
             (void)h; (void)vaddr; (void)offs; (void)size;
             VG_(debugLog)(0, "vcap", "\n");
-            enter_kdebug("Region_ops::unmap()");
         }
 
         static void take(MyRegion_handler const *h)
         {
             (void)h;
             VG_(debugLog)(0, "vcap", "\n");
-            enter_kdebug("Region_ops::take()");
         }
 
         static void release(MyRegion_handler const *h)
         {
             (void)h;
             VG_(debugLog)(0, "vcap", "\n");
-            enter_kdebug("Region_ops::release()");
         }
 };
 
@@ -277,7 +271,7 @@ struct area_info
 
 #define DEBUG_RM_LAYOUT do { VG_(am_show_nsegments)(0, (HChar*)"current AS layout"); } while (0)
 
-#define RM_ERROR do { DEBUG_RM_LAYOUT; enter_kdebug("rm error"); } while (0)
+#define RM_ERROR do { DEBUG_RM_LAYOUT; VG_(exit)(1); } while (0)
 
 /*
  * VCap::rm -- virtual region manager.
@@ -419,7 +413,8 @@ class rm
              * Case B
              */
             if (!info->match_resvn(seg) && seg->kind != SkResvn) {
-                enter_kdebug("resvn not matching");
+                VG_(debugLog)(0, "vcap", "resvn not matching");
+                VG_(exit)(1);
             }
 
             /*
@@ -478,13 +473,12 @@ class rm
             else {
                 // should not happen!
                 VG_(printf)("Cannot determine the type of mapping here: %lx\n", _id);
-                enter_kdebug();
+                return L4_INVALID_PTR;
             }
 
             if (!ok) {
                 VG_(debugLog)(0, "vcap", "Advisor has no free area for us!\n");
                 RM_ERROR;
-                enter_kdebug("error looking up free segment");
                 return L4_INVALID_PTR;
             }
 
@@ -588,7 +582,7 @@ class rm
             else {
                 // should not happen
                 VG_(printf)("I can't determine what kind of mapping this is -- id = %lX\n", _id);
-                enter_kdebug();
+                return L4_INVALID_PTR;
             }
 
             /*
@@ -654,7 +648,7 @@ class rm
             if (!info) {
                 VG_(printf)("Cannot find area for address %p\n", (void*)addr);
                 RM_ERROR;
-                enter_kdebug("detach_area");
+                return false;
             }
 
             VG_(debugLog)(4, "vcap", "detach area: %08lx - %08lx\n", info->_start, info->_end);
@@ -748,25 +742,25 @@ class rm
 
         Node area_find(Region const &) const throw()
         {
-            enter_kdebug("area_find");
+            VG_(debugLog)(0, "vcap", "UNIMPLEMENTED: area_find");
             return NULL;
         }
 
         Node lower_bound(Region const &) const throw()
         {
-            enter_kdebug("lower_bound");
+            VG_(debugLog)(0, "vcap", "UNIMPLEMENTED: lower_bound");
             return NULL;
         }
 
         Node lower_bound_area(Region const &) const throw()
         {
-            enter_kdebug("lower_bound_area");
+            VG_(debugLog)(0, "vcap", "UNIMPLEMENTED: lower_bound_area");
             return NULL;
         }
 
         void get_lists( l4_addr_t) const throw()
         {
-            enter_kdebug("get_lists");
+            VG_(debugLog)(0, "vcap", "UNIMPLEMENTED: get_lists");
         }
 
         l4_addr_t max_addr() const { return ~0UL; }
@@ -797,7 +791,6 @@ class Vcap_object : public L4::Server_object_t<Vcap_if>
         int handle_exception()
         {
             VG_(printf)("\033[31mEXCEPTION\033[0m\n");
-            enter_kdebug();
             return -L4_EOK;
         }
 
@@ -828,7 +821,6 @@ class Vcap_object : public L4::Server_object_t<Vcap_if>
 
                 case L4Re::Parent::Protocol:
                     if (dbg_vcap) VG_(debugLog)(2, "vcap", "parent protocol\n");
-                    enter_kdebug("parent");
                     return -L4_ENOSYS;
 
                 case L4_PROTO_IRQ:
@@ -843,7 +835,6 @@ class Vcap_object : public L4::Server_object_t<Vcap_if>
                     VG_(debugLog)(2, "vcap", "Unknown protocol: %lx (%ld)\n",
                                   t.label(), t.label());
                     VG_(show_sched_status)();
-                    enter_kdebug("Unknown protocol");
                     return -L4_ENOSYS;
             }
         }
@@ -907,7 +898,7 @@ L4::Cap<L4::Thread> allocate_new_thread()
     if (!ret.is_valid()) {
         VG_(debugLog)(0, "vcap", "%s: Error allocating thread cap.",
                       __func__);
-        enter_kdebug("ERROR");
+        VG_(exit)(1);
     }
 
     if (dbg_vcap) VG_(debugLog)(1, "vcap", "vcap cap: %lx\n", ret.cap());
@@ -915,7 +906,7 @@ L4::Cap<L4::Thread> allocate_new_thread()
     l4_msgtag_t tag = L4Re::Env::env()->factory()->create_thread(ret);
     if (l4_msgtag_has_error(tag)) {
         VG_(debugLog)(0, "vcap", "Error creating vcap thread from factory.\n");
-        enter_kdebug("ERROR");
+        VG_(exit)(1);
     }
 
     return ret;
@@ -1060,7 +1051,7 @@ static L4Re::Env::Cap_entry* __copy_init_caps(L4Re::Env const * const e)
                                                 VKI_PROT_READ | VKI_PROT_WRITE);
     if (sr_isError(res)) {
         VG_(debugLog)(0, "vcap", "Error allocating memory for client initial caps.\n");
-        enter_kdebug();
+        VG_(exit)(1);
     }
     VG_(memcpy)((void*)sr_Res(res), e->initial_caps(), (cnt+1) * sizeof(L4Re::Env::Cap_entry));
 
@@ -1108,7 +1099,6 @@ void vrm_segment_notify(Addr start, Addr end, l4_cap_idx_t dscap, unsigned offse
     else {
         VG_(printf)("Segment mismatch: args %08lx-%08lx; found %08lx-%08lx\n",
                     start, end, seg->start, seg->end);
-        enter_kdebug("error");
     }
 }
 

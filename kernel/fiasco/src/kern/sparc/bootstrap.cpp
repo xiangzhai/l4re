@@ -20,7 +20,7 @@ _exit(int)
 
 extern "C" int main(void);
 
-extern "C" FIASCO_INIT 
+extern "C" FIASCO_INIT
 int bootstrap_main(void * /* r3 */, Address prom_ptr /* r4 */)
 {
   atexit(&static_destruction);

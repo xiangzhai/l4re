@@ -34,6 +34,7 @@ SRC_S_libl4sys-l4x.so        = $(SRC_S_libl4sys-$(ARCH))
 SRC_C_l4lx-arm               = utcb.c
 SRC_C_l4lx-amd64             = utcb.c
 SRC_S_l4lx-arm               = ARCH-arm/atomic_ops_s.S
+SRC_C_l4lx-mips              = utcb.c
 SRC_C_l4lx-ppc32             = utcb.c ARCH-ppc32/atomic_ops.c
 SRC_C_l4lx-x86               = ARCH-x86/utcb-l4x.c
 SRC_C_libl4sys-l4x.a         = errtostr.c $(SRC_C_l4lx-$(ARCH))

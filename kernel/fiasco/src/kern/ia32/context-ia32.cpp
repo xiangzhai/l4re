@@ -23,17 +23,6 @@ IMPLEMENTATION [ia32,amd64,ux]:
 #include "space.h"
 #include "thread_state.h"
 
-
-IMPLEMENT inline
-void
-Context::spill_user_state()
-{}
-
-IMPLEMENT inline
-void
-Context::fill_user_state()
-{}
-
 /** Thread context switchin.  Called on every re-activation of a thread
     (switch_exec()).  This method is public only because it is called from
     from assembly code in switch_cpu().

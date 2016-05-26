@@ -316,14 +316,75 @@ end
 
 Io.Dt.PCI_cc =
 {
-  storage = "CC_01",
-  network = "CC_02",
-  display = "CC_03",
-  media   = "CC_04",
-  bridge  = "CC_06",
-  com     = "CC_07",
-  usb     = "CC_0c",
-  wlan    = "CC_0d",
+  storage              = "CC_01",
+  scsi                 = "CC_0100",
+  ide                  = "CC_0101",
+  floppy               = "CC_0102",
+  raid                 = "CC_0104",
+  ata                  = "CC_0105",
+  sata                 = "CC_0106",
+  sas                  = "CC_0107",
+  nvm                  = "CC_0108",
+
+  network              = "CC_02",
+  ethernet             = "CC_0200",
+  token_ring           = "CC_0201",
+  fddi                 = "CC_0202",
+  atm                  = "CC_0203",
+  isdn                 = "CC_0204",
+  picmg                = "CC_0206",
+  net_infiniband       = "CC_0207",
+  fabric               = "CC_0208",
+  network_nw           = "CC_0280", -- often used for wifi
+
+  display              = "CC_03",
+  vga                  = "CC_0300",
+  xga                  = "CC_0301",
+
+  media                = "CC_04",
+  mm_video             = "CC_0400",
+  mm_audio             = "CC_0401",
+  tekephony            = "CC_0402",
+  audio                = "CC_0403",
+
+  bridge               = "CC_06",
+  br_host              = "CC_0600",
+  br_isa               = "CC_0601",
+  br_eisa              = "CC_0602",
+  br_microchannel      = "CC_0603",
+  br_pci               = "CC_0604",
+  br_pcmcia            = "CC_0605",
+  br_nubus             = "CC_0606",
+  br_cardbus           = "CC_0607",
+  br_raceway           = "CC_0608",
+  br_semi_pci          = "CC_0609",
+  br_infiniband_to_pci = "CC_060a",
+
+  com                  = "CC_07",
+  com_serial           = "CC_0700",
+  com_parallel         = "CC_0701",
+  com_multiport_ser    = "CC_0702",
+  com_modem            = "CC_0703",
+  com_gpib             = "CC_0704",
+  com_smart_card       = "CC_0705",
+
+
+  serial_bus           = "CC_0c",
+  firewire             = "CC_0c00",
+  access_bus           = "CC_0c01",
+  ssa                  = "CC_0c02",
+  usb                  = "CC_0c03",
+  fibre_channel        = "CC_0c04",
+  smbus                = "CC_0c05",
+  bus_infiniband       = "CC_0c06",
+  ipmi_smic            = "CC_0c07",
+  sercos               = "CC_0c08",
+  canbus               = "CC_0c09",
+
+  wireless             = "CC_0d",
+  bluetooth            = "CC_0d11",
+  w_8021a              = "CC_0d20",
+  w_8021b              = "CC_0d21",
 }
 
 Io.Dt.MAX_DEPTH = 1000

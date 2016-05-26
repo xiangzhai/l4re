@@ -131,8 +131,8 @@ Kip::mem_descs_a() const
 PUBLIC inline
 void Kip::num_mem_descs(unsigned n)
 {
-  _mem_info = (_mem_info & ~((1UL << (MWORD_BITS/2))-1)
-	       | (n & ((1UL << (MWORD_BITS/2))-1)));
+  _mem_info = (_mem_info & ~((1UL << (MWORD_BITS / 2)) - 1))
+              | (n & ((1UL << (MWORD_BITS / 2)) - 1));
 }
 
 PUBLIC
@@ -174,6 +174,12 @@ char const *Kip::version_string() const
 
   return reinterpret_cast <char const *> (this) + (offset_version_strings << 4);
 }
+
+#ifdef TARGET_NAME
+#define TARGET_NAME_PHRASE " for " TARGET_NAME
+#else
+#define TARGET_NAME_PHRASE
+#endif
 
 asm(".section .initkip.version, \"a\", %progbits        \n"
     ".string \"" CONFIG_KERNEL_VERSION_STRING "\"       \n"

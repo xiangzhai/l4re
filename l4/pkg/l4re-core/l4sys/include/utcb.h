@@ -214,7 +214,7 @@ L4_INLINE l4_exc_regs_t *l4_utcb_exc_u(l4_utcb_t *u) L4_NOTHROW L4_PURE;
  * \param  u  UTCB
  * \return The program counter register out of the exception state.
  */
-L4_INLINE l4_umword_t l4_utcb_exc_pc(l4_exc_regs_t *u) L4_NOTHROW L4_PURE;
+L4_INLINE l4_umword_t l4_utcb_exc_pc(l4_exc_regs_t const *u) L4_NOTHROW L4_PURE;
 
 /**
  * \brief Set the program counter register in the exception state.
@@ -230,7 +230,7 @@ L4_INLINE void l4_utcb_exc_pc_set(l4_exc_regs_t *u, l4_addr_t pc) L4_NOTHROW;
  * \brief Get the value out of an exception UTCB that describes the type of exception.
  * \ingroup l4_utcb_exc_api
  */
-L4_INLINE unsigned long l4_utcb_exc_typeval(l4_exc_regs_t *u) L4_NOTHROW L4_PURE;
+L4_INLINE unsigned long l4_utcb_exc_typeval(l4_exc_regs_t const *u) L4_NOTHROW L4_PURE;
 
 /**
  * \brief Check whether an exception IPC is a page fault.
@@ -241,13 +241,13 @@ L4_INLINE unsigned long l4_utcb_exc_typeval(l4_exc_regs_t *u) L4_NOTHROW L4_PURE
  * Function to check whether an exception IPC is a page fault, also applies
  * to I/O pagefaults.
  */
-L4_INLINE int l4_utcb_exc_is_pf(l4_exc_regs_t *u) L4_NOTHROW L4_PURE;
+L4_INLINE int l4_utcb_exc_is_pf(l4_exc_regs_t const *u) L4_NOTHROW L4_PURE;
 
 /**
  * \brief Function to get the L4 style page fault address out of an exception.
  * \ingroup l4_utcb_exc_api
  */
-L4_INLINE l4_addr_t l4_utcb_exc_pfa(l4_exc_regs_t *u) L4_NOTHROW L4_PURE;
+L4_INLINE l4_addr_t l4_utcb_exc_pfa(l4_exc_regs_t const *u) L4_NOTHROW L4_PURE;
 
 /**
  * \brief Enable or disable inheritance of FPU state to receiver.

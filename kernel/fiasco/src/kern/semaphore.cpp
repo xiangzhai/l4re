@@ -105,6 +105,11 @@ Semaphore::switch_mode(bool is_edge_triggered)
   hit_func = is_edge_triggered ? &hit_edge_irq : &hit_level_irq;
 }
 
+PUBLIC static inline
+Sender *
+Semaphore::sem_partner()
+{ return reinterpret_cast<Sender *>(5); }
+
 PRIVATE inline NOEXPORT
 bool ALWAYS_INLINE
 Semaphore::down(Thread *ct)
@@ -118,7 +123,7 @@ Semaphore::down(Thread *ct)
           // set fake partner to avoid IPCs to the thread
           // TODO: make really sure that the partner pointer never gets
           //       dereferenced (use C++ types)
-          ct->set_partner(reinterpret_cast<Sender*>(5));
+          ct->set_partner(sem_partner());
           ct->state_change_dirty(~Thread_ready, Thread_receive_wait);
           ct->set_wait_queue(&_waiting);
           ct->sender_enqueue(&_waiting, ct->sched()->prio());

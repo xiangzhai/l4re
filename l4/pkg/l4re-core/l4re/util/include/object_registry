@@ -142,7 +142,7 @@ private:
     if (err < 0)
       return L4::Cap<void>(err | L4_INVALID_CAP_BIT);
 
-    err = o->set_server(_sif, cap.get());
+    err = o->set_server(_sif, cap.get(), true);
     if (err < 0)
       return L4::Cap<void>(err | L4_INVALID_CAP_BIT);
 
@@ -191,7 +191,7 @@ private:
     if (err < 0)
       return L4::Cap<L4::Irq>(err | L4_INVALID_CAP_BIT);
 
-    err = o->set_server(_sif, cap.get());
+    err = o->set_server(_sif, cap.get(), true);
     if (err < 0)
       return L4::Cap<L4::Irq>(err | L4_INVALID_CAP_BIT);
 
@@ -270,16 +270,21 @@ public:
   /**
    * Remove a server object from the handler list.
    *
-   * \param o  Server object to unbind.
+   * \param o      Server object to unbind.
+   * \param unmap  Specifies if the object capability shall be unmapped (true)
+   *               or not. The default (true) is to unmap the capability.
    *
-   * \return True if the server object was bound to a valid capability.
-   *
-   * The capability used by the server object will be unmapped.
+   * The capability used by the server object will be unmapped if `unmap` is
+   * true.
    */
-  bool unregister_obj(L4::Epiface *o)
+  void unregister_obj(L4::Epiface *o, bool unmap = true)
   {
+    L4::Epiface::Stored_cap c;
+
     if (!o || !o->obj_cap().is_valid())
-      return false;
+      return;
+
+    c = o->obj_cap();
 
     // make sure unhandled ipc ends up with the null handler
     L4::Thread::Modify_senders todo;
@@ -287,10 +292,14 @@ public:
              ~0UL, reinterpret_cast<l4_umword_t>((L4::Epiface*)&_null_handler));
     _server->modify_senders(todo);
 
-    L4::Cap<L4::Task>(L4Re::This_task)->unmap(o->obj_cap().fpage(),
-                      L4_FP_ALL_SPACES);
+    if (unmap)
+      L4::Cap<L4::Task>(L4Re::This_task)->unmap(c.fpage(), L4_FP_ALL_SPACES);
+
+    // we use bit 4 to indicated an internally allocated cap
+    if (c.managed())
+      cap_alloc.free(c);
+
     o->set_server(0, L4::Cap<void>::Invalid);
-    return true;
   }
 };
 

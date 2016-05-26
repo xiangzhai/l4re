@@ -34,10 +34,8 @@ public:
     CXX_BITFIELD_MEMBER(0, 3, rev, v);
     CXX_BITFIELD_MEMBER(4, 7, variant, v);
     CXX_BITFIELD_MEMBER(8, 15, part_number, v);
+    CXX_BITFIELD_MEMBER(16, 22, sub_arch, v);
     CXX_BITFIELD_MEMBER(16, 19, arch_version, v);
-    CXX_BITFIELD_MEMBER(20, 20, precision, v);
-    CXX_BITFIELD_MEMBER(21, 22, format, v);
-    CXX_BITFIELD_MEMBER(23, 23, hw_sw, v);
     CXX_BITFIELD_MEMBER(24, 31, implementer, v);
   };
 
@@ -234,33 +232,13 @@ Fpu::emulate_insns(Mword opcode, Trap_state *ts)
   return true;
 }
 
-PRIVATE static
-void
-Fpu::show(Cpu_number cpu)
-{
-  const Fpsid s = fpu.cpu(cpu)._fpsid;
-  unsigned arch = s.arch_version();
-  printf("FPU%d: Arch: %s(%x), Part: %s(%x), r: %x, v: %x, i: %x, t: %s, p: %s\n",
-         cxx::int_value<Cpu_number>(cpu),
-         arch == 1 ? "VFPv2"
-                   : (arch == 3 ? "VFPv3"
-                                : (arch == 4 ? "VFPv4"
-                                             : "Unkn")),
-         arch,
-         (int)s.part_number() == 0x20
-           ? "VFP11"
-           : (s.part_number() == 0x30 ?  "VFPv3" : "Unkn"),
-         (int)s.part_number(),
-         (int)s.rev(), (int)s.variant(), (int)s.implementer(),
-         (int)s.hw_sw() ? "soft" : "hard",
-         (int)s.precision() ? "sngl" : "dbl/sngl");
-}
-
-
 IMPLEMENT
 void
 Fpu::init(Cpu_number cpu, bool resume)
 {
+  if (Config::Jdb && !resume && cpu == Cpu_number::boot_cpu())
+    printf("FPU: Initialize\n");
+
   copro_enable();
 
   Fpu &f = fpu.cpu(cpu);
@@ -397,7 +375,29 @@ Fpu::save_user_exception_state(bool owner, Fpu_state *s, Trap_state *ts, Excepti
     }
 }
 
+//-------------------------------------------------------------------------
+IMPLEMENTATION [arm && fpu && debug]:
 
+PRIVATE static
+void
+Fpu::show(Cpu_number cpu)
+{
+  const Fpsid s = fpu.cpu(cpu)._fpsid;
+  printf("FPU%d: Subarch: %x, Part: %x, Rev: %x, Var: %x, Impl: %x\n",
+         cxx::int_value<Cpu_number>(cpu),
+         (int)s.sub_arch(), (int)s.part_number(),
+         (int)s.rev(), (int)s.variant(), (int)s.implementer());
+}
+
+//-------------------------------------------------------------------------
+IMPLEMENTATION [arm && fpu && !debug]:
+
+PRIVATE static inline
+void
+Fpu::show(Cpu_number)
+{}
+
+//-------------------------------------------------------------------------
 IMPLEMENTATION [arm && fpu && !hyp]:
 
 IMPLEMENT inline NEEDS ["fpu_state.h", "mem.h", "static_assert.h", <cstring>]
@@ -432,7 +432,7 @@ Fpu::disable()
   fpexc(fpexc() & ~FPEXC_EN);
 }
 
-//------------------------------------------------------------------------------
+//-------------------------------------------------------------------------
 IMPLEMENTATION [arm && fpu && hyp]:
 
 EXTENSION class Fpu

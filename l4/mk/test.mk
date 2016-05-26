@@ -55,7 +55,7 @@ test_script = $(L4DIR)/tool/bin/run_test
 endif
 
 # variables that are forwarded to the test runner environment
-testvars_fix    := MODE ARCH MOE_CFG REQUIRED_MODS KERNEL_CONF L4LINUX_CONF \
+testvars_fix    := MODE ARCH MOE_CFG REQUIRED_MODULES KERNEL_CONF L4LINUX_CONF \
                     TEST_SETUP TEST_TARGET TEST_EXPECTED OBJ_BASE
 testvars_conf   := PLATFORM_TYPE TEST_TIMEOUT TEST_EXPECTED_REPEAT
 testvars_append := QEMU_ARGS MOE_ARGS
@@ -73,9 +73,9 @@ $(TEST_SCRIPTS):%.t: $(GENERAL_D_LOC)
 	$(VERBOSE)$(foreach v,$(testvars_conf), echo ': $${$(v):=$(call targetvar,$(v),$(notdir $*))}' >> $@;)
 	$(VERBOSE)$(foreach v,$(testvars_append), echo '$(v)="$$$(v) $(call targetvar,$(v),$(notdir $*))"' >> $@;)
 	$(VERBOSE)echo ': $${BID_L4_TEST_HARNESS_ACTIVE:=1}' >> $@
-	$(VERBOSE)echo "TEST_TMPDIR=\`mktemp -d\`" >> $@
+	$(VERBOSE)echo 'if [ -n "$$TEST_TMPDIR" ]; then GOT_TMPDIR=1; else TEST_TMPDIR=`mktemp -d`; fi' >> $@
 	$(VERBOSE)echo -e "set +a\n" >> $@
-	$(VERBOSE)echo -e 'trap "{ if [ -d $$TEST_TMPDIR ]; then rm -r $$TEST_TMPDIR; fi; }" EXIT\n' >> $@
+	$(VERBOSE)echo -e 'trap "{ if [ x$$GOT_TMPDIR != x1 -a -d $$TEST_TMPDIR ]; then rm -r $$TEST_TMPDIR; fi; }" EXIT\n' >> $@
 	$(VERBOSE)echo '$(L4DIR)/tool/bin/tapper-wrapper $(call test_script,$(notdir $*)) "$$@"' >> $@
 	$(VERBOSE)chmod 755 $@
 	@$(BUILT_MESSAGE)

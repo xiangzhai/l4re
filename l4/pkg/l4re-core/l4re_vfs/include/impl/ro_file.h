@@ -19,7 +19,6 @@
 #pragma once
 
 #include <l4/l4re_vfs/backend>
-#include "simple_store.h"
 
 namespace L4Re { namespace Core {
 
@@ -53,16 +52,10 @@ public:
 
   ~Ro_file() throw();
 
-  void *operator new(size_t s) throw();
-  void operator delete(void *b) throw();
-
 private:
   ssize_t read_single(const struct iovec*, off64_t) throw();
   ssize_t preadv(const struct iovec *, int, off64_t) throw();
   ssize_t pwritev(const struct iovec *, int , off64_t) throw();
-
-private:
-  static Simple_store<Ro_file> store;
 };
 
 

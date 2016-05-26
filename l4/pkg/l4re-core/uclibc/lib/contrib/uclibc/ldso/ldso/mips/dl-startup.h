@@ -42,7 +42,7 @@ __asm__(""
 #else	/* O32 || N32 */
     "	la	$8, .coff\n"
 #endif	/* O32 || N32 */
-    "	bltzal	$8, .coff\n"
+    "	bal	.coff\n"
     ".coff:\n"
 #if _MIPS_SIM == _MIPS_SIM_ABI64
     "	dsubu	$8, $31, $8\n"

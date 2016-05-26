@@ -115,7 +115,7 @@ Mem_space::has_superpages()
 }
 
 
-PUBLIC inline NEEDS["mem_unit.h"]
+IMPLEMENT inline NEEDS["mem_unit.h"]
 void
 Mem_space::tlb_flush(bool = false)
 {
@@ -402,7 +402,7 @@ Mem_space::page_unmap(Address, Address)
 
 IMPLEMENT inline NEEDS["kmem.h", "logdefs.h"]
 void
-Mem_space::switchin_context(Mem_space *from, unsigned)
+Mem_space::switchin_context(Mem_space *from)
 {
   // FIXME: this optimization breaks SMP task deletion, an idle thread
   // may run on an already deleted page table

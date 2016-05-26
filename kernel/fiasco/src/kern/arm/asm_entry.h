@@ -1,4 +1,4 @@
-// vim:se ft=asms:
+// vim: ft=asm
 #pragma once
 
 #include "globalconfig.h"
@@ -44,22 +44,17 @@
 .align 4
 .global sys_call_table
 sys_call_table:
-	.word sys_kdb_ke
-	.word sys_kdb_ke
+	.word 0
+	.word 0
 	.word sys_ipc_wrapper
 	.word sys_arm_mem_op
-	.word sys_invoke_debug_wrapper
-	.word sys_kdb_ke
-	.word sys_kdb_ke
-	.word sys_kdb_ke
-	.word sys_kdb_ke
-	.word sys_kdb_ke
-	.word sys_kdb_ke
 .endm
 
 .macro GEN_VCPU_UPCALL THREAD_VCPU, LOAD_USR_SP, LOAD_USR_VCPU, USR_ONLY
 .align 4
 .global leave_by_vcpu_upcall;
+
+#define OFS__VCPU_STATE__RF (VAL__SIZEOF_TRAP_STATE - RF_SIZE + OFS__VCPU_STATE__TREX)
 
 leave_by_vcpu_upcall:
 	sub 	sp, sp, #(RF_SIZE + 3*4)   @ restore old return frame
@@ -69,7 +64,7 @@ leave_by_vcpu_upcall:
 	/* restore original IP */
 	CONTEXT_OF r1, sp
 	ldr	r2, [r1, #(\THREAD_VCPU)]
-	add	r2, r2, #(VAL__SIZEOF_TRAP_STATE - RF_SIZE)
+	add	r2, r2, #(OFS__VCPU_STATE__RF)
 
 	/* r1 = current() */
 	/* r2 = &vcpu_state->ts.r[13] */
@@ -110,7 +105,7 @@ leave_by_vcpu_upcall:
 
 	ldr	r0, [sp]
 	str	r0, [r2, #-52]
-        sub     r2, r2, #64     @ now r2 points to the VCPU STATE again
+        sub     r2, r2, #(OFS__VCPU_STATE__RF)     @ now r2 points to the VCPU STATE again
 
 	add	sp, sp, #(3*4)
 

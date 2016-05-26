@@ -48,6 +48,9 @@ public:
 struct Trex
 {
   Trap_state s;
+  Mword fs_base;
+  Mword gs_base;
+  Unsigned16 ds, es, fs, gs;
 
   void set_ipc_upcall()
   {
@@ -62,7 +65,7 @@ namespace Ts
 {
   enum
   {
-    /// full number of words in a Trasp_state
+    /// full number of words in a Trap_state
     Words = sizeof(Trap_state) / sizeof(Mword),
     /// words for the IRET frame at the end of the trap state
     Iret_words = 5,

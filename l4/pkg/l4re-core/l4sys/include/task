@@ -77,7 +77,7 @@ public:
    * tasks that got the rights delegated from that task (i.e., this operation
    * does a recursive rights revocation).
    *
-   * \note If the capability posseses delete rights or if it is the last
+   * \note If the capability possesses delete rights or if it is the last
    *       capability pointing to the object, calling this function might
    *       destroy the object itself.
    */
@@ -101,7 +101,7 @@ public:
    * \pre The caller needs to take care that `num_fpages` is not bigger
    *      than L4_UTCB_GENERIC_DATA_SIZE - 2.
    *
-   * \note If the capability posseses delete rights or if it is the last
+   * \note If the capability possesses delete rights or if it is the last
    *       capability pointing to the object, calling this function might
    *       destroy the object itself.
    */

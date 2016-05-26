@@ -91,7 +91,7 @@ EXCEPTION	0x13, vec13_simd_err
 	.type	slowtraps,@function
 	.globl	slowtraps
 	/* We have to introduce the label _slowtraps besides the label
-	   slowtraps to achive that jmps from exception entry points
+	   slowtraps to achieve that jmps from exception entry points
 	   are optimized to two-byte jmps. The label slowtraps is visible
 	   from outside. */
 _slowtraps:
@@ -449,6 +449,8 @@ leave_by_trigger_exception:
 	jmp	thread_restore_exc_state
 
 
+#define OFS__VCPU_STATE__REGS_IRET (VAL__SIZEOF_TRAP_STATE - 40 + OFS__VCPU_STATE__TREX)
+
 	.p2align
 	.globl	leave_by_vcpu_upcall
 leave_by_vcpu_upcall:
@@ -460,7 +462,7 @@ leave_by_vcpu_upcall:
 	ESP_TO_TCB_AT %rcx
 	mov OFS__THREAD__USER_VCPU(%rcx), %rdi
 	mov OFS__THREAD__VCPU_STATE(%rcx), %rcx
-	add $(VAL__SIZEOF_TRAP_STATE - 40), %rcx
+	add $(OFS__VCPU_STATE__REGS_IRET), %rcx
 	mov SCRATCH_REGISTER_SIZE(%rsp),  %rdx
 	mov %rdx, (%rcx)                            /* RIP */
 	mov 8 + SCRATCH_REGISTER_SIZE(%rsp),  %rdx
@@ -505,9 +507,9 @@ leave_by_vcpu_upcall:
 
 	/*add SCRATCH_REGISTER_SIZE, %esp*/
 	mov %rdx, %rsp
-	mov -VAL__SIZEOF_TRAP_STATE + 40 + OFS__VCPU_STATE__ENTRY_SP(%rcx), %rax
+	mov -OFS__VCPU_STATE__REGS_IRET + OFS__VCPU_STATE__ENTRY_SP(%rcx), %rax
 	mov %rax, 24(%rsp)
-	mov -VAL__SIZEOF_TRAP_STATE + 40 + OFS__VCPU_STATE__ENTRY_IP(%rcx), %rax
+	mov -OFS__VCPU_STATE__REGS_IRET + OFS__VCPU_STATE__ENTRY_IP(%rcx), %rax
 	mov %rax, 0(%rsp)
 	movq $EFLAGS_IF, 16(%rsp)
         movq $(GDT_CODE_USER | SEL_PL_U), 8(%rsp)

@@ -171,7 +171,6 @@ Jdb_symbol_info::transform ()
 
       // write link address to next symbol
       *sym_addr = (Address)++symstr;
-      sym += sizeof(Address);
       s--;
     }
 }

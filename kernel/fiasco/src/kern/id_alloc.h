@@ -13,8 +13,7 @@ public:
   typedef OWNER_TYPE Owner_type;
   typedef ID_OPS Id_ops;
 
-  Id_alloc(unsigned nr_ids, unsigned id_base)
-  : _nr_ids(nr_ids), _id_base(id_base)
+  Id_alloc(unsigned nr_ids) : _nr_ids(nr_ids)
   {
     _active = (Owner_type **)Boot_alloced::alloc(sizeof(Owner_type *) * _nr_ids);
     for (unsigned i = 0; i < _nr_ids; ++i)
@@ -31,6 +30,9 @@ public:
     Owner_type **bad_guy = &_active[new_id];
     while (Owner_type *victim = access_once(bad_guy))
       {
+        if (victim == reinterpret_cast<Owner_type *>(~0UL))
+          break;
+
         if (!Id_ops::can_replace(victim, arg))
           {
             new_id = next_id();
@@ -38,19 +40,18 @@ public:
             continue;
           }
 
-      // If the victim is valid and we get a 1 written to the ID array
-      // then we have to reset the ID of our victim, else the
-      // reset function is currently resetting the IDs of the
-      // victim from a different CPU.
-       if (victim != reinterpret_cast<Owner_type *>(~0UL) &&
-            mp_cas(bad_guy, victim, reinterpret_cast<Owner_type *>(1)))
-          Id_ops::reset_id(owner, arg);
+        // If the victim is valid and we get a 1 written to the ID array
+        // then we have to reset the ID of our victim, else the
+        // reset function is currently resetting the IDs of the
+        // victim from a different CPU.
+        if (mp_cas(bad_guy, victim, reinterpret_cast<Owner_type *>(1)))
+          Id_ops::reset_id(victim, arg);
         break;
       }
 
-    Id_ops::set_id(owner, arg, new_id + _id_base);
+    Id_ops::set_id(owner, arg, new_id + Id_ops::Id_offset);
     write_now(bad_guy, owner);
-    return new_id + _id_base;
+    return new_id + Id_ops::Id_offset;
   }
 
   template<typename ARG>
@@ -59,7 +60,7 @@ public:
     if (!Id_ops::valid(owner, arg))
       return;
 
-    Id_type id = Id_ops::get_id(owner, arg) - _id_base;
+    Id_type id = Id_ops::get_id(owner, arg) - Id_ops::Id_offset;
     Owner_type **o = &_active[id];
     if (!mp_cas(o, owner, reinterpret_cast<Owner_type *>(~0UL)))
       while (access_once(o) == reinterpret_cast<Owner_type *>(1))
@@ -67,7 +68,7 @@ public:
   }
 
 private:
-  unsigned _nr_ids, _id_base;
+  unsigned _nr_ids;
   Id_type _next_free = 0;
   Owner_type **_active;
 

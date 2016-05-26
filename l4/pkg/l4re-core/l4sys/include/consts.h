@@ -257,6 +257,11 @@ enum l4_default_caps_t
   L4_BASE_IOMMU_CAP     = 8UL << L4_CAP_SHIFT,
   /// Capability selector for the debugger cap. \hideinitializer
   L4_BASE_DEBUGGER_CAP  = 10UL << L4_CAP_SHIFT,
+
+  /// \internal helper must be last before L4_BASE_CAPS_LAST
+  L4_BASE_CAPS_LAST_P1,
+  /// Last capability index used for base capabilities
+  L4_BASE_CAPS_LAST = L4_BASE_CAPS_LAST_P1 - 1
 };
 
 /**

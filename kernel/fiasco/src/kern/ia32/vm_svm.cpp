@@ -9,7 +9,7 @@ class Svm;
 class Vm_svm : public Vm
 {
 private:
-  static void resume_vm_svm(Mword phys_vmcb, Vcpu_state *regs)
+  static void resume_vm_svm(Mword phys_vmcb, Trex *regs)
     asm("resume_vm_svm") __attribute__((__regparm__(3)));
 
   struct Asid_info
@@ -624,7 +624,7 @@ Vm_svm::do_resume_vcpu(Context *ctxt, Vcpu_state *vcpu, Vmcb *vmcb_s)
 
   load_guest_xcr0(host_xcr0, kernel_vmcb_s->state_save_area.xcr0);
 
-  resume_vm_svm(kernel_vmcb_pa, vcpu);
+  resume_vm_svm(kernel_vmcb_pa, &vcpu->_regs);
 
   load_host_xcr0(host_xcr0, kernel_vmcb_s->state_save_area.xcr0);
 

@@ -95,7 +95,7 @@ textconfig: $(DIRS_FOR_CONFIG)
 	$(VERBOSE)+$(kconfig_call) config silentoldconfig
 	@$(MAKE) $(DROPSCONF_CONFIG_MK)
 
-oldconfig xconfig gconfig nconfig randconfig allyesconfig allnoconfig: $(DIRS_FOR_CONFIG)
+oldconfig olddefconfig xconfig gconfig nconfig randconfig allyesconfig allnoconfig savedefconfig: $(DIRS_FOR_CONFIG)
 	$(VERBOSE)+$(kconfig_call) $@ silentoldconfig
 	@$(MAKE) $(DROPSCONF_CONFIG_MK)
 
@@ -175,8 +175,9 @@ endif
 
 # end of DROPSCONF defined
 else
-config txtconfig oldconfig silentoldconfig::
+config txtconfig oldconfig olddefconfig silentoldconfig::
 endif
 
-.PHONY: config oldconfig silentoldconfig txtconfig menuconfig \
-        xconfig gconfig nconfig randconfig allyesconfig allnoconfig
+.PHONY: config oldconfig olddefconfig silentoldconfig txtconfig menuconfig \
+        xconfig gconfig nconfig randconfig allyesconfig allnoconfig \
+	savedefconfig

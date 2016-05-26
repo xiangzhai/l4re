@@ -17,7 +17,6 @@
 #include "virt/vbus.h"
 #include "virt/vicu.h"
 
-#include <vector>
 #include <l4/cxx/bitmap>
 #include <l4/vbus/vbus_gpio-ops.h>
 
@@ -533,7 +532,6 @@ private:
   void operator = (Root_gpio_rs const &);
 
   System_bus *_bus;
-  std::vector<Gpio *> _gpios;
 };
 
 static Vi::Resource_factory_t<Vi::Gpio_resource, ::Gpio_resource> __gpio_res_factory;

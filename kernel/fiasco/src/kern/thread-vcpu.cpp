@@ -12,7 +12,10 @@ IMPLEMENTATION:
 #include "vcpu.h"
 
 IMPLEMENT_DEFAULT inline
-void Thread::arch_init_vcpu_state(Vcpu_state *, bool /*ext*/) {}
+void Thread::arch_init_vcpu_state(Vcpu_state *vcpu, bool /*ext*/)
+{
+  vcpu->version = Vcpu_arch_version;
+}
 
 
 PUBLIC inline NEEDS["task.h"]

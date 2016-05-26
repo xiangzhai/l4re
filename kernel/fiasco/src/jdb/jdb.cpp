@@ -122,7 +122,7 @@ public:
   static Jdb_handler_queue jdb_enter;
   static Jdb_handler_queue jdb_leave;
 
-  // esc sequences for highligthing
+  // esc sequences for highlighting
   static char  esc_iret[];
   static char  esc_bt[];
   static char  esc_emph[];
@@ -152,6 +152,7 @@ IMPLEMENTATION:
 #include "push_console.h"
 #include "static_init.h"
 #include "keycodes.h"
+#include "libc_backend.h"
 
 KIP_KERNEL_FEATURE("jdb");
 
@@ -411,13 +412,13 @@ Jdb::execute_command_ni(Space *task, char const *str, int len = 1000)
 	    }
 	}
 
-      if (c == KEY_RETURN || c == ' ' || was_input_error)
+      if (c == KEY_RETURN || c == KEY_RETURN_2 || c == ' ' || was_input_error)
 	{
 	  push_cons()->flush();
 	  // re-enable all consoles but GZIP
 	  Kconsole::console()->change_state(0, Console::GZIP,
 					    ~0U, Console::OUTENABLED);
-	  return c == KEY_RETURN || c == ' ';
+	  return c == KEY_RETURN || c == KEY_RETURN_2 || c == ' ';
 	}
     }
 }
@@ -437,7 +438,7 @@ Jdb::input_short_mode(Jdb::Cmd *cmd, char const **args, int &cmd_key)
 	  else
 	    c = getchar();
 	}
-      while (c < ' ' && c != KEY_RETURN);
+      while (c < ' ' && c != KEY_RETURN && c != KEY_RETURN_2);
 
       if (c == KEY_F1)
 	c = 'h';
@@ -454,7 +455,7 @@ Jdb::input_short_mode(Jdb::Cmd *cmd, char const **args, int &cmd_key)
 	}
       else if (!handle_special_cmds(c))
 	return true; // special command triggered a JDB leave
-      else if (c == KEY_RETURN)
+      else if (c == KEY_RETURN || c == KEY_RETURN_2)
 	{
 	  hide_statline = false;
 	  cmd_key = c;
@@ -561,6 +562,7 @@ Jdb::input_long_mode(Jdb::Cmd *cmd, char const **args)
 	  break;
 
 	case KEY_RETURN:
+	case KEY_RETURN_2:
 	  puts("");
 	  if (!buf.len())
 	    {
@@ -631,12 +633,13 @@ bool
 Jdb::open_debug_console(Cpu_number cpu)
 {
   in_service = 1;
+  __libc_backend_printf_local_force_unlock();
   save_disable_irqs(cpu);
   if (cpu == Cpu_number::boot_cpu())
     jdb_enter.execute();
 
   if (!stop_all_cpus(cpu))
-    return false; // CPUs other than 0 never become interacitve
+    return false; // CPUs other than 0 never become interactive
 
   if (!Jdb_screen::direct_enabled())
     Kconsole::console()->
@@ -1190,7 +1193,7 @@ Jdb::enter_jdb(Jdb_entry_frame *e, Cpu_number cpu)
 
   while (setjmp(recover_buf))
     {
-      // handle traps which occured while we are in Jdb
+      // handle traps which occurred while we are in Jdb
       Kconsole::console()->end_exclusive(Console::GZIP);
       handle_nested_trap(&nested_trap_frame);
     }
@@ -1387,7 +1390,7 @@ bool
 Jdb::stop_all_cpus(Cpu_number current_cpu)
 {
   enum { Max_wait_cnt = 1000 };
-  // JDB allways runs on the boot CPU, if any other CPU enters the debugger
+  // JDB always runs on the boot CPU, if any other CPU enters the debugger
   // the boot CPU is notified to do enter the debugger too
   if (current_cpu == Cpu_number::boot_cpu())
     {

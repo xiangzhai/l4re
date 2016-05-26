@@ -42,6 +42,8 @@ extern "C" char * _dl_find_hash(const char * name, struct dyn_elf * rpnt,
 
 extern "C" attribute_hidden void *__rtld_l4re_global_env;
 extern "C" void _dl_dprintf(int, const char *, ...);
+extern "C" void *_dl_malloc(size_t size);
+extern "C" void _dl_free(void *m);
 namespace Vfs_config {
 
   using ::memcpy;
@@ -80,6 +82,9 @@ namespace Vfs_config {
     return _dl_open(name, RTLD_LOCAL | RTLD_LAZY) ? 0 : -1;
   }
 
+  inline void *malloc(size_t size) { return _dl_malloc(size); }
+  inline void free(void *p) { _dl_free(p); }
+
 }
 
 
@@ -102,3 +107,5 @@ extern "C" void __aeabi_atexit(void)
 #include <l4/l4re_vfs/impl/vcon_stream_impl.h>
 #include <l4/l4re_vfs/impl/vfs_api_impl.h>
 #include <l4/l4re_vfs/impl/vfs_impl.h>
+// must be the last
+#include <l4/l4re_vfs/impl/default_ops_impl.h>

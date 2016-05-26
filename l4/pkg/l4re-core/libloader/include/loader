@@ -84,6 +84,45 @@ public:
     l4_umword_t argc = argv.push(this, false);
     _stack.push(argc);
   }
+
+  /**
+   * Get the fixed capability index for fixed initial caps.
+   * \param  name  The name of the initial capability.
+   * \retval L4_INVALID_CAP if the given capability has no fixed location
+   *         in the target task.
+   * \retval A valid capability index corresponding to the fixed index
+   *         assigned to the initial capability with the given name.
+   */
+  l4_cap_idx_t get_fixed_cap(char const *name)
+  {
+    if (!strcmp(name, "jdb"))
+      return L4_BASE_DEBUGGER_CAP;
+
+    return L4_INVALID_CAP;
+  }
+
+  /**
+   * Get either a new capability index or the fixed index for
+   * the inital capability with the given name.
+   *
+   * \param name     The name of the initial capability.
+   * \param current  A pointer to the next free capability index
+   *                 that shall be used for dynamic assignment.
+   *                 The function increments `*current` to the next
+   *                 index if a dynamic index is assigned to the cap.
+   * \return The index that shall be used for the initial capability with the
+   *         given name.
+   */
+  l4_cap_idx_t get_initial_cap(char const *name, l4_cap_idx_t *current)
+  {
+    l4_cap_idx_t c = get_fixed_cap(name);
+    if (l4_is_valid_cap(c))
+      return c;
+
+    c = *current;
+    *current += L4_CAP_OFFSET;
+    return c;
+  }
 };
 
 template< typename STACK, typename PROG_INFO >

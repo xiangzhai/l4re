@@ -51,6 +51,7 @@
 #if defined(CONFIG_AMD64) || defined(CONFIG_IA32)
   DUMP_MEMBER1 (TRAP_STATE, Trap_state, _ip, IP)
 #endif
+  DUMP_MEMBER1 (VCPU_STATE, Vcpu_state, _regs, TREX)
   DUMP_MEMBER1 (VCPU_STATE, Vcpu_state, _entry_ip, ENTRY_IP)
   DUMP_MEMBER1 (VCPU_STATE, Vcpu_state, _sp, ENTRY_SP)
 
@@ -93,4 +94,7 @@
 
   //physical atddress of kernel image
   DUMP_CONSTANT(KERNEL__START, Mem_layout::Kernel_start)
+#endif
+#ifdef  CONFIG_MIPS32
+  DUMP_MEMBER1 (THREAD, Context, _ulr, ULR)
 #endif

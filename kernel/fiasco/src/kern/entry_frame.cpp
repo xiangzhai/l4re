@@ -10,7 +10,7 @@ class Syscall_post_frame {};
  *
  * This class must be defined in arch dependent parts
  * and has to represent the data necessary for a 
- * system call as layed out on the kernel stack. 
+ * system call as laid out on the kernel stack. 
  */
 class Syscall_frame
 {

@@ -37,6 +37,7 @@ public:
   {
     this->snd_base(snd_base);
     l4_utcb_mr_u(utcb)->mr[1] = fp.raw;
+    tag = l4_msgtag(0, 0, 1, 0);
   }
 
   void snd_fpage(unsigned long addr, unsigned size, bool ro = false,

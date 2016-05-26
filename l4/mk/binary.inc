@@ -27,7 +27,7 @@
 # Clean-rules are defined here.
 #
 
-$(GENERAL_D_LOC): $(L4DIR)/mk/binary.inc $(L4DIR)/mk/modes.inc
+$(GENERAL_D_LOC): $(L4DIR)/mk/binary.inc $(L4DIR)/mk/modes.inc $(L4DIR)/mk/rules.inc
 
 SRC_CC_IS_CXX11 ?= c++0x
 
@@ -478,11 +478,11 @@ endif
 endif
 
 CPPFLAGS-DEBUG_MODE = \
-    $(addprefix -include, $(OBJ_BASE)/include/$(ARCH)/l4/sys/kdebug.h) \
-    $(addprefix -include, $(wildcard $(if $(L4API),$(OBJ_BASE)/include/$(ARCH)/$(L4API)/l4/sys/ktrace.h) \
-                                     $(OBJ_BASE)/include/$(ARCH)/l4/sys/ktrace.h)) \
-    -include $(OBJ_BASE)/include/l4/util/kprintf.h \
-    $(if $(L4API),-include $(OBJ_BASE)/include/l4/sys/debugger.h)
+    $(if $(L4API), \
+      $(addprefix -include ,$(OBJ_BASE)/include/l4/sys/kdebug.h \
+                            $(OBJ_BASE)/include/l4/sys/ktrace.h \
+                            $(OBJ_BASE)/include/l4/util/kprintf.h \
+                            $(OBJ_BASE)/include/l4/sys/debugger.h))
 
 CPPFLAGS+= $(call bid_flag_variants,CPPFLAGS)
 CPPFLAGS+= $(DEFINES)
@@ -508,8 +508,10 @@ CXXFLAGS_L4_GENERIC += $(GCCSTACKPROTECTOROPT)
 CXXFLAGS_L4_GENERIC += -fuse-cxa-atexit
 endif
 
+CXXFLAGS_CXX11 = $(if $(filter 4.7 4.8 4.9 5,$(GCCVERSION)),-std=gnu++11,-std=gnu++0x)
+
 ifneq ($(SRC_CC_IS_CXX11),)
-  CXXFLAGS+= $(if $(filter 4.7 4.8 4.9 5,$(GCCVERSION)),-std=gnu++11,-std=gnu++0x)
+  CXXFLAGS+= $(CXXFLAGS_CXX11)
 endif
 
 CXXFLAGS+= $(if $(CONFIG_BID_GCC_OMIT_FP),-fomit-frame-pointer,-fno-omit-frame-pointer)

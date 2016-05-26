@@ -98,7 +98,7 @@ impl_name = $(basename $(firstword $(subst -, ,\
 
 $(ALL_STAMPS): auto/stamp-%.ready: $(PREPROCESS)
 	$(PREP_MESSAGE)
-	@test -e auto || mkdir auto
+	@mkdir -p auto
 	$(VERBOSE)$(PREPROCESS) \
 	   $(PREPROCESS_FLAGS) \
 	   $(if $(filter $(call impl_name,$^),$(ALWAYS_INLINE)),-i,) \

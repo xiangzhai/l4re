@@ -111,7 +111,7 @@ Fb::setup_mbi()
   vbi->x_resolution       = Boot_info::fb_width();
   vbi->bits_per_pixel     = Boot_info::fb_depth();
   vbi->bytes_per_scanline = Boot_info::fb_width()
-                             * (Boot_info::fb_depth() + 7 >> 3);
+                            * ((Boot_info::fb_depth() + 7) >> 3);
 
   set_color_mapping(vbi);
 }

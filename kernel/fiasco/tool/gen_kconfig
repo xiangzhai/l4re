@@ -18,23 +18,33 @@ foreach my $f (@ARGV) {
   my $pf;
   my $arch;
   my $arch_cpu;
+  my $current_snippet = [];
+  my $fi = { sections => { GLOBAL => $current_snippet } };
+  $files{$f} = $fi;
+
   while ($_=<X>) {
     if (/$tag PF:\s*(\S+)/x) {
       $pf = { name => $bsp_name, file => $f };
-      push (@{$files{$f}}, "PF_$1");
+      push (@{$fi->{cond}}, "PF_$1");
       $pfs{$1} = $pf;
+    }
+    if (/$tag SECTION:\s*(\S+)/x) {
+      $fi->{sections}{$1} = [] if not defined $fi->{sections}{$1};
+      $current_snippet = $fi->{sections}{$1};
     }
     if  (defined $pf) {
       $pf->{desc}  = $1                        if /$tag PFDESCR:\s*(.+)/x;
       push(@{$pf->{select}}, split(/\s+/, $1)) if /$tag PFSELECT:\s*(.+)/x;
-      push(@{$pf->{dep}},    split(/\s+/, $1)) if /$tag PFDEPENDS:\s*(.+)/x;
+      push(@{$pf->{dep}}, $1)                  if /$tag PFDEPENDS:\s*(.+)/x;
     }
 
     if (/^$tag ARCH:\s*(\S+)\s+(\S+)/x) {
       $arch_cpu = undef;
       $arch = { name => $2, file => $f };
       $archs{$1} = $arch;
-      push (@{$files{$f}}, $1);
+      $fi->{sections}{TARGET} = [] if not defined $fi->{sections}{TARGET};
+      $current_snippet = $fi->{sections}{TARGET};
+      push (@{$fi->{cond}}, $1);
     }
     if (defined $arch) {
       $arch->{desc} = $1            if /$tag ARCHDESCR:\s*(.+)/x;
@@ -53,6 +63,8 @@ foreach my $f (@ARGV) {
       push (@{$arch_cpu->{select}}, $1) if /$tag ARCHCPUSELECT:\s*(.+)/x;
       push (@{$arch_cpu->{help}}, $1)   if /$tag ARCHCPUHELP:\s*(.+)/x;
     }
+
+    push (@{$current_snippet}, $_);
   }
 
   close X;
@@ -109,12 +121,16 @@ while ($_=<IN>) {
     }
   }
 
-  if (/$tag PF_INCLUDE\W/x) {
+  if (/$tag PF_SECTION:\s+(\S+)\W/x) {
+    my $sect = $1;
     foreach my $i (sort keys %files) {
-      print OUT "if " . join(" || ", @{$files{$i}})."\n";
-      print OUT "\tsource \"$i\"\n";
+      next unless defined $files{$i}{sections}{$sect};
+      print OUT "if " . join(" || ", @{$files{$i}{cond}})."\n";
+      print OUT "\t$_" foreach (@{$files{$i}{sections}{$sect}});
       print OUT "endif\n";
     }
+  }
+  if (/$tag PF_INCLUDE\W/x) {
     print OUT "config BSP_NAME\n";
     print OUT "\tstring\n";
     foreach my $i (sort keys %pfs) {

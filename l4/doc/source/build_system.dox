@@ -276,7 +276,7 @@ Non-standard timeout after which the test run is aborted
 \par `MOE_CFG`
 LUA configuration file for startup to give to moe
 
-\par `REQUIRED_MODS`
+\par `REQUIRED_MODULES`
 Additional modules needed to run the test.
 
 \par `QEMU_ARGS`

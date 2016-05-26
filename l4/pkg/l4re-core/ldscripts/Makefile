@@ -27,12 +27,13 @@ LD_SCRIPTS      = main_stat.ld main_rel.ld main_dyn.ld
 UCLIBC_ARCH_x86   := i386
 UCLIBC_ARCH_arm   := arm
 UCLIBC_ARCH_amd64 := x86_64
+UCLIBC_ARCH_mips  := mips
 UCLIBC_ARCH_ppc32 := powerpc
 UCLIBC_ARCH_sparc := sparc
 UCLIBC_BASE       = $(PKGDIR)/../uclibc
 UCLIBC_SYSDEPS    = $(UCLIBC_BASE)/lib/contrib/uclibc/libc/sysdeps/linux/$(UCLIBC_ARCH_$(ARCH))
 
-PRIVATE_INCDIR    = $(PKGDIR) $(PKGDIR)/ARCH-$(ARCH)
+PRIVATE_INCDIR    = $(PKGDIR) $(PKGDIR)/ARCH-$(ARCH) $(UCLIBC_SYSDEPS)
 
 vpath %.S $(UCLIBC_SYSDEPS)
 

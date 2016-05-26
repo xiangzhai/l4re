@@ -35,8 +35,6 @@ void *timerThread(void *argp)
 		*((volatile l4_uint64_t*)global_arg.timer) = l4_rdtsc();
 	}
 
-	enter_kdebug("timer returned");
-
 	return 0;
 }
 
@@ -51,6 +49,5 @@ Measurements::EventBuf::launchTimerThread(l4_addr_t timer, l4_umword_t CPU)
 	l4_mword_t err = pthread_create(&tmr, 0, timerThread, (void*)&global_arg);
 	if (err) {
 		ERROR() << "Error creating timer thread: " << err << "\n";
-		enter_kdebug();
 	}
 }

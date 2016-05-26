@@ -48,7 +48,11 @@ struct App_model : public Ldr::Base_app_model<Stack>
 
   enum
   {
+#ifdef ARCH_mips
+    Utcb_area_start        = 0x73000000, // this needs to be lower on MIPS
+#else
     Utcb_area_start        = 0xb3000000,
+#endif
   };
 
   typedef L4Re::Util::Ref_cap<L4Re::Dataspace>::Cap Const_dataspace;

@@ -310,7 +310,6 @@ static void mc_pp_AddrInfo ( Addr a, AddrInfo* ai, Bool maybe_gcc )
             emit( "%sAddress 0x%llx "
                   "is not stack'd, malloc'd or (recently) free'd%s\n",
                   xpre, (ULong)a, xpost );
-			enter_kdebug();
          }
          break;
 

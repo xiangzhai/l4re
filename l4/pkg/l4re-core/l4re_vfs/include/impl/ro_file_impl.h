@@ -26,26 +26,6 @@
 
 namespace L4Re { namespace Core {
 
-
-Simple_store<Ro_file> Ro_file::store __attribute__((init_priority(1000)));
-
-
-void *
-Ro_file::operator new(size_t s) throw()
-{
-  if (s != sizeof(Ro_file))
-    return 0;
-
-  return store.alloc();
-}
-
-void
-Ro_file::operator delete(void *b) throw()
-{
-  store.free(b);
-}
-
-
 Ro_file::~Ro_file() throw()
 {
   if (_addr)

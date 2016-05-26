@@ -51,6 +51,12 @@ public:
   };
 
 protected:
+  static Thread *detach_in_progress()
+  { return reinterpret_cast<Thread *>(1); }
+
+  static bool is_valid_thread(Thread const *t)
+  { return t > detach_in_progress(); }
+
   Smword _queued;
   Thread *_irq_thread;
 
@@ -105,6 +111,7 @@ IMPLEMENTATION:
 #include "globals.h"
 #include "ipc_sender.h"
 #include "kmem_slab.h"
+#include "kobject_rpc.h"
 #include "lock_guard.h"
 #include "minmax.h"
 #include "std_macros.h"
@@ -281,6 +288,7 @@ Irq_muxer::sys_attach(L4_msg_tag tag, Utcb const *utcb, Syscall_frame *)
       while (!mp_cas(&_mask_cnt, old, old + 1));
     }
 
+  Mem::mp_acquire();
   bind(irq, 0);
 
   auto mg = lock_guard(_mux_lock);
@@ -332,63 +340,126 @@ Irq_muxer::kinvoke(L4_obj_ref, L4_fpage::Rights /*rights*/, Syscall_frame *f,
     }
 }
 
-/** Bind a receiver to this device interrupt.
-    @param t the receiver that wants to receive IPC messages for this IRQ
-    @return true if the binding could be established
+/**
+ * Bind a receiver to this device interrupt.
+ * \param t           the receiver that wants to receive IPC messages for this
+ *                    IRQ
+ * \param rl[in,out]  the list of objects that have to be destroyed. The
+ *                    operation might append objects to this list if it is in
+ *                    charge of deleting the old receiver that used to be
+ *                    attached to this IRQ.
+ *
+ * \retval 0        on success, `t` is the new IRQ handler thread
+ * \retval -EINVAL  if `t` is not a valid thread.
+ * \retval -EBUSY   if another detach operation is in progress.
  */
 PUBLIC inline NEEDS ["atomic.h", "cpu_lock.h", "lock_guard.h"]
-bool
-Irq_sender::alloc(Thread *t)
+int
+Irq_sender::alloc(Thread *t, Kobject ***rl)
 {
-  bool ret = mp_cas(&_irq_thread, reinterpret_cast<Thread*>(0), t);
+  if (t == nullptr)
+    return -L4_err::EInval;
 
-  if (ret)
+  Thread *old;
+  for (;;)
     {
-      if (EXPECT_TRUE(t != 0))
-        {
-          t->inc_ref();
-          if (Cpu::online(t->home_cpu()))
-            _chip->set_cpu(pin(), t->home_cpu());
-        }
+      old = access_once(&_irq_thread);
 
-      _queued = 0;
+      if (old == t)
+        return 0;
+
+      if (EXPECT_FALSE(old == detach_in_progress()))
+        return -L4_err::EBusy;
+
+      if (mp_cas(&_irq_thread, old, t))
+        break;
     }
 
-  return ret;
+  Mem::mp_acquire();
+
+  auto g = lock_guard(cpu_lock);
+  bool reinject = false;
+
+  if (is_valid_thread(old))
+    {
+      switch (old->Receiver::abort_send(this))
+        {
+        case Receiver::Abt_ipc_done:
+          break; // was not queued
+
+        case Receiver::Abt_ipc_cancel:
+          reinject = true;
+          break;
+
+        default:
+          // this must not happen as this is only the case
+          // for IPC including message items and an IRQ never
+          // sends message items.
+          panic("IRQ IPC flagged as in progress");
+        }
+
+      old->put_n_reap(rl);
+    }
+
+  t->inc_ref();
+  if (Cpu::online(t->home_cpu()))
+    _chip->set_cpu(pin(), t->home_cpu());
+
+  if (old == nullptr)
+    _queued = 0;
+  else if (reinject)
+    send();
+
+  return 0;
 }
 
 PUBLIC
 Receiver *
 Irq_sender::owner() const { return _irq_thread; }
 
-/** Release an device interrupt.
-    @param t the receiver that ownes the IRQ
-    @return true if t really was the owner of the IRQ and operation was 
-            successful
+/**
+ * Release an interrupt.
+ * \param rl[in,out]  The list of objects that have to be destroyed.
+ *                    The operation might append objects to this list if it is
+ *                    in charge of deleting the receiver that used to be
+ *                    attached to this IRQ.
+ *
+ * \retval 0        on success.
+ * \retval -ENOENT  if there was no receiver attached.
+ * \retval -EBUSY   when there is another detach operation in progress.
  */
 PRIVATE
-bool
-Irq_sender::free(Thread *t, Kobject ***rl)
+int
+Irq_sender::free(Kobject ***rl)
 {
-  bool ret = mp_cas(&_irq_thread, t, reinterpret_cast<Thread*>(0));
-
-  if (ret)
+  Mem::mp_release();
+  Thread *t;
+  for (;;)
     {
-      auto guard = lock_guard(cpu_lock);
-      mask();
+      t = access_once(&_irq_thread);
 
-      if (EXPECT_TRUE(t != 0))
-	{
-	  t->Receiver::abort_send(this);
+      if (t == detach_in_progress())
+        return -L4_err::EBusy;
 
-	  // release cpu-lock early, actually before delete
-	  guard.reset();
+      if (t == nullptr)
+        return -L4_err::ENoent;
 
-          t->put_n_reap(rl);
-	}
+      if (EXPECT_TRUE(mp_cas(&_irq_thread, t, detach_in_progress())))
+        break;
     }
 
-  return ret;
+  auto guard = lock_guard(cpu_lock);
+  mask();
+
+  t->Receiver::abort_send(this);
+
+  Mem::mp_release();
+  write_now(&_irq_thread, nullptr);
+  // release cpu-lock early, actually before delete
+  guard.reset();
+
+  t->put_n_reap(rl);
+  return 0;
 }
 
 PUBLIC explicit
@@ -410,10 +481,7 @@ void
 Irq_sender::destroy(Kobject ***rl)
 {
   auto g = lock_guard(cpu_lock);
-  auto t = access_once(&_irq_thread);
-  if (t)
-    free(t, rl);
-
+  (void)free(rl);
   Irq::destroy(rl);
 }
 
@@ -432,6 +500,7 @@ Irq_sender::consume()
       old = _queued;
     }
   while (!mp_cas (&_queued, old, old - 1));
+  Mem::mp_acquire();
 
   if (old == 2 && hit_func == &hit_edge_irq)
     unmask();
@@ -505,8 +574,16 @@ Irq_sender::handle_remote_hit(Context::Drq *, Context *, void *arg)
 {
   Irq_sender *irq = (Irq_sender*)arg;
   irq->set_cpu(current_cpu());
-  if (EXPECT_TRUE(irq->send_msg(irq->_irq_thread, false)))
-    return Context::Drq::no_answer_resched();
+  auto t = access_once(&irq->_irq_thread);
+  if (EXPECT_TRUE(t->home_cpu() == current_cpu()))
+    {
+      if (EXPECT_TRUE(irq->send_msg(t, false)))
+        return Context::Drq::no_answer_resched();
+    }
+  else
+    t->drq(&irq->_drq, handle_remote_hit, irq,
+           Context::Drq::Target_ctxt, Context::Drq::No_wait);
+
   return Context::Drq::no_answer();
 }
 
@@ -524,20 +601,21 @@ Irq_sender::queue()
 
 PRIVATE inline
 void
-Irq_sender::count_and_send(Smword queued)
+Irq_sender::send()
 {
-  if (EXPECT_TRUE (queued == 0) && EXPECT_TRUE(_irq_thread != 0))	// increase hit counter
-    {
-      if (EXPECT_FALSE(_irq_thread->home_cpu() != current_cpu()))
-	_irq_thread->drq(&_drq, handle_remote_hit, this,
-	                 Context::Drq::Target_ctxt, Context::Drq::No_wait);
-      else
-	send_msg(_irq_thread, true);
-    }
+  auto t = access_once(&_irq_thread);
+  if (EXPECT_FALSE(!is_valid_thread(t)))
+    return;
+
+  if (EXPECT_FALSE(t->home_cpu() != current_cpu()))
+    t->drq(&_drq, handle_remote_hit, this,
+           Context::Drq::Target_ctxt, Context::Drq::No_wait);
+  else
+    send_msg(t, true);
 }
 
 
-PUBLIC inline NEEDS[Irq_sender::count_and_send, Irq_sender::queue]
+PUBLIC inline NEEDS[Irq_sender::send, Irq_sender::queue]
 void
 Irq_sender::_hit_level_irq(Upstream_irq const *ui)
 {
@@ -553,7 +631,8 @@ Irq_sender::_hit_level_irq(Upstream_irq const *ui)
   assert (cpu_lock.test());
   mask_and_ack();
   ui->ack();
-  count_and_send(queue());
+  if (queue() == 0)
+    send();
 }
 
 PRIVATE static
@@ -561,7 +640,7 @@ void
 Irq_sender::hit_level_irq(Irq_base *i, Upstream_irq const *ui)
 { nonull_static_cast<Irq_sender*>(i)->_hit_level_irq(ui); }
 
-PUBLIC inline NEEDS[Irq_sender::count_and_send, Irq_sender::queue]
+PUBLIC inline NEEDS[Irq_sender::send, Irq_sender::queue]
 void
 Irq_sender::_hit_edge_irq(Upstream_irq const *ui)
 {
@@ -586,7 +665,8 @@ Irq_sender::_hit_edge_irq(Upstream_irq const *ui)
     mask_and_ack();
 
   ui->ack();
-  count_and_send(q);
+  if (q == 0)
+    send();
 }
 
 PRIVATE static
@@ -612,13 +692,21 @@ Irq_sender::sys_attach(L4_msg_tag tag, Utcb const *utcb,
   else
     thread = current_thread();
 
-  if (alloc(thread))
-    {
-      _irq_id = utcb->values[1];
-      return commit_result(0);
-    }
+  Reap_list rl;
+  int res = alloc(thread, rl.list());
 
-  return commit_result(-L4_err::EInval);
+  // note: this is a possible race on user-land
+  // where the label of an IRQ might become inconsistent with the attached
+  // thread. The user is responsible to synchronize Irq::attach calls to prevent
+  // this.
+  if (res == 0)
+    _irq_id = utcb->values[1];
+
+  cpu_lock.clear();
+  rl.del();
+  cpu_lock.lock();
+
+  return commit_result(res);
 }
 
 PRIVATE
@@ -626,12 +714,12 @@ L4_msg_tag
 Irq_sender::sys_detach()
 {
   Reap_list rl;
-  free(_irq_thread, rl.list());
+  auto res = free(rl.list());
   _irq_id = ~0UL;
   cpu_lock.clear();
   rl.del();
   cpu_lock.lock();
-  return commit_result(0);
+  return commit_result(res);
 }
 
 

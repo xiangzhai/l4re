@@ -530,7 +530,8 @@ int Jdb_core::exec_cmd(Cmd const cmd, char const *str, int push_next_char = -1)
 		      else
 			max_digit = 2*sizeof(long long int);
 		    }
-		  while((c = cmd_getchar(str)) != ' ' && c!=KEY_RETURN)
+		  while((c = cmd_getchar(str)) != ' ' && c!=KEY_RETURN
+                         && c != KEY_RETURN_2)
 		    {
 		      if(c==KEY_ESC)
 			return 3;
@@ -632,7 +633,8 @@ int Jdb_core::exec_cmd(Cmd const cmd, char const *str, int push_next_char = -1)
 		    continue;
 
 		  num_pos = 0;
-		  while((c = cmd_getchar(str)) != KEY_RETURN && c!=' ')
+		  while((c = cmd_getchar(str)) != KEY_RETURN && c!=' '
+                        && c != KEY_RETURN_2)
 		    {
 		      if(c==KEY_ESC)
 			return 3;
@@ -780,6 +782,7 @@ Jdb_core::new_line( unsigned &line )
 	  cmd_putchar('\n');
 	  return 0;
 	case KEY_RETURN:
+	case KEY_RETURN_2:
 	  line--;
 	  return 1;
 	default:

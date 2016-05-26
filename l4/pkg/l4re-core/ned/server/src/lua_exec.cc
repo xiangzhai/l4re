@@ -135,8 +135,7 @@ public:
 	if (!lua_isnil(_lua, -1) && lua_touserdata(_lua, -1))
 	  {
 	    Lua::check_cap(_lua, -1);
-	    _stack.push(l4re_env_cap_entry_t(r, start));
-	    start += L4_CAP_OFFSET;
+	    _stack.push(l4re_env_cap_entry_t(r, get_initial_cap(r, &start)));
 	  }
 	lua_pop(_lua, 1);
       }
@@ -158,7 +157,7 @@ public:
     lua_pushnil(_lua);
     while (lua_next(_lua, tab))
       {
-	luaL_checkstring(_lua, -2);
+	char const *r = luaL_checkstring(_lua, -2);
 	while (lua_isfunction(_lua, -1))
 	  {
 	    lua_pushvalue(_lua, tab);
@@ -168,8 +167,10 @@ public:
 	if (!lua_isnil(_lua, -1) && lua_touserdata(_lua, -1))
 	  {
 	    Cap *c = Lua::check_cap(_lua, -1);
-	    chksys(task->map(L4Re::This_task, c->cap<void>().fpage(c->rights()), L4::Cap<void>(start).snd_base() | c->ext_rights()));
-	    start += L4_CAP_OFFSET;
+	    auto idx = get_initial_cap(r, &start);
+	    chksys(task->map(L4Re::This_task,
+	                     c->cap<void>().fpage(c->rights()),
+	                     L4::Cap<void>(idx).snd_base() | c->ext_rights()));
 	  }
 	lua_pop(_lua, 1);
       }
@@ -409,7 +410,6 @@ static int exec(lua_State *l)
   Am am(l);
   am.parse_cfg();
 
-  typedef cxx::Ref_ptr<App_task> App_ptr;
   App_ptr app_task(new App_task(Ned::server->registry(), am.rm_fab()));
 
   if (!app_task)
@@ -421,9 +421,9 @@ static int exec(lua_State *l)
 
   am.set_task(app_task.get());
 
-  am.launch_loader();
-
   app_task->running();
+
+  am.launch_loader();
 
   App_ptr *at = new (lua_newuserdata(l, sizeof(App_ptr))) App_ptr();
   *at = app_task;

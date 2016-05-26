@@ -72,15 +72,13 @@
     l->set(ts->ip(), ts);                                               \
     Jdb_tbuf::commit_entry() )
 
-#define LOG_TRAP_N(n)                                                   \
-  LOG_TRACE("Exceptions", "exc", current(), Tb_entry_trap,              \
-    Mword ip = (Mword)(__builtin_return_address(0));                    \
-    l->set(ip, n))
-
 #define LOG_TRAP_CN(curr, n)                                            \
   LOG_TRACE("Exceptions", "exc", curr, Tb_entry_trap,                   \
     Mword ip = (Mword)(__builtin_return_address(0));                    \
     l->set(ip, n))
+
+#define LOG_TRAP_N(n)                                                   \
+  LOG_TRAP_CN(current(), n)
 
 #define LOG_SCHED_SAVE(cs)                                              \
   LOG_TRACE("Scheduling context save", "sch", current(), Tb_entry_sched,\

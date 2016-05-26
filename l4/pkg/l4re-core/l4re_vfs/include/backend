@@ -39,6 +39,15 @@ class Mount_tree;
 class Be_file : public File
 {
 public:
+  void *operator new (size_t size) throw()
+  { return vfs_ops->malloc(size); }
+
+  void *operator new (size_t, void *m) throw()
+  { return m; }
+
+  void operator delete (void *m)
+  { vfs_ops->free(m); }
+
   // used in close, to unlock all locks of a file (as POSIX says)
   int unlock_all_locks() throw()
   { return 0; }

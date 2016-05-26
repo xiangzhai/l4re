@@ -37,6 +37,7 @@ IMPLEMENTATION:
 #include "keycodes.h"
 #include "jdb.h"
 #include "jdb_kobject.h"
+#include "task.h"
 
 char     Jdb_input_task_addr::first_char;
 char     Jdb_input_task_addr::first_char_have_task;
@@ -134,7 +135,8 @@ Jdb_input_task_addr::action(void *&args, char const *&fmt, int &next_char)
 	  fmt  = L4_ADDR_INPUT_FMT;
 	  return Jdb_module::EXTRA_INPUT_WITH_NEXTCHAR;
 	}
-      else if (first_char != KEY_RETURN && first_char != ' ')
+      else if (first_char != KEY_RETURN && first_char != KEY_RETURN_2
+               && first_char != ' ')
 	{
 	  fmt = "%C";
 	  return Jdb_module::EXTRA_INPUT;

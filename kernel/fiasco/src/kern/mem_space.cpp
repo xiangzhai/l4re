@@ -44,7 +44,10 @@ public:
   typedef Addr::Order<0> V_order;
 
   // Each architecture must provide these members:
-  void switchin_context(Mem_space *from, unsigned mode = 0);
+  void switchin_context(Mem_space *from);
+
+  FIASCO_SPACE_VIRTUAL
+  void tlb_flush(bool);
 
   /** Insert a page-table entry, or upgrade an existing entry with new
    *  attributes.

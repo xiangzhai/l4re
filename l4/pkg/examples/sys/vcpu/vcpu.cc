@@ -170,6 +170,35 @@ asm
   );
 static void setup_user_state_arch(l4_vcpu_state_t *) { }
 static void handler_prolog() {}
+
+#elif defined(ARCH_mips)
+asm
+(
+  ".p2align 14                      \t\n" // mapping must be L4_PAGESHIFT aligned
+  ".global my_super_code            \t\n"
+  ".global my_super_code_excp       \t\n"
+  ".global my_super_code_excp_after \t\n"
+  "my_super_code:                   \t\n"
+  "1: addiu $a0, $a0, 4             \t\n"
+  "   addiu $a0, $a0, 4             \t\n"
+  "   addiu $a0, $a0, 4             \t\n"
+  "   addiu $a0, $a0, 4             \t\n"
+  "   addiu $a0, $a0, 4             \t\n"
+  "   addiu $a0, $a0, 4             \t\n"
+  "   addiu $a0, $a0, 4             \t\n"
+  "   addiu $a0, $a0, 4             \t\n"
+  "my_super_code_excp:              \t\n"
+  "   mfc0  $t0, $10, 0             \t\n" /* break inst enters jdb, use mfc0 to trigger CpU exception */
+  "my_super_code_excp_after:        \t\n"
+  "   addiu $a0, $a0, 4             \t\n"
+  "   addiu $a0, $a0, 4             \t\n"
+  "   addiu $a0, $a0, 4             \t\n"
+  "   b 1b                          \t\n"
+  "   nop                           \t\n"
+  );
+static void setup_user_state_arch(l4_vcpu_state_t *) { }
+static void handler_prolog() {}
+
 #else
 #error Add your architecture.
 #endif

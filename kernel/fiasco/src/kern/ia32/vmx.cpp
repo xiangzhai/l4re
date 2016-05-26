@@ -241,10 +241,34 @@ INTERFACE:
 class Vmx : public Pm_object
 {
 public:
-  enum Vmcs_fields
+  enum Vmcs_16bit_ctl_fields
   {
     F_vpid               = 0x0,
+    F_posted_irq_vector  = 0x2,
+    F_eptp_index         = 0x4,
 
+    // must be the last
+    F_max_16bit_ctl
+  };
+
+  enum Vmcs_16bit_guest_fields
+  {
+    F_guest_es               = 0x800,
+    F_guest_cs               = 0x802,
+    F_guest_ss               = 0x804,
+    F_guest_ds               = 0x806,
+    F_guest_fs               = 0x808,
+    F_guest_gs               = 0x80a,
+    F_guest_ldtr             = 0x80c,
+    F_guest_tr               = 0x80e,
+    F_guest_guest_irq_status = 0x810,
+
+    // must be the last
+    F_max_16bit_guest
+  };
+
+  enum Vmcs_16bit_host_fields
+  {
     F_host_es_selector   = 0x0c00,
     F_host_cs_selector   = 0x0c02,
     F_host_ss_selector   = 0x0c04,
@@ -252,54 +276,143 @@ public:
     F_host_fs_selector   = 0x0c08,
     F_host_gs_selector   = 0x0c0a,
     F_host_tr_selector   = 0x0c0c,
+  };
 
+  enum Vmcs_64bit_ctl_fields
+  {
     F_tsc_offset         = 0x2010,
+    F_ept_ptr            = 0x201a,
     F_apic_access_addr   = 0x2014,
 
-    F_guest_pat          = 0x2804,
-    F_guest_efer         = 0x2806,
+    // .. skip ...
 
+    F_xss_exiting        = 0x202c,
+
+    // must be the last
+    F_max_64bit_ctl
+  };
+
+  enum Vmcs_64bit_ro_fields
+  {
+    F_guest_phys         = 0x2400,
+
+    // must be the last
+    F_max_64bit_ro
+  };
+
+  enum Vmcs_64bit_guest_fields
+  {
+    F_guest_pat             = 0x2804,
+    F_guest_efer            = 0x2806,
+    F_guest_perf_global_ctl = 0x2808,
+
+    // ... skip ...
+
+    F_guest_pdpte3          = 0x2810,
+
+    F_sw_guest_xcr0         = 0x2840,
+    F_sw_msr_syscall_mask   = 0x2842,
+    F_sw_msr_lstar          = 0x2844,
+    F_sw_msr_cstar          = 0x2846,
+    F_sw_msr_tsc_aux        = 0x2848,
+    F_sw_msr_star           = 0x284a,
+    F_sw_msr_kernel_gs_base = 0x284c,
+
+    // must be the last
+    F_max_64bit_guest
+  };
+
+  enum Vmcs_64bit_host_fields
+  {
     F_host_ia32_pat              = 0x2c00,
     F_host_ia32_efer             = 0x2c02,
     F_host_ia32_perf_global_ctrl = 0x2c04,
+  };
 
+  enum Vmcs_32bit_ctl_fields
+  {
+    F_pin_based_ctls       = 0x4000,
+    F_proc_based_ctls      = 0x4002,
+    F_exception_bitmap     = 0x4004,
 
-    F_pin_based_ctls     = 0x4000,
-    F_proc_based_ctls    = 0x4002,
-
-    F_cr3_target_cnt     = 0x400a,
-    F_exit_ctls          = 0x400c,
-    F_exit_msr_store_cnt = 0x400e,
-    F_exit_msr_load_cnt  = 0x4010,
-    F_entry_ctls         = 0x4012,
-    F_entry_msr_load_cnt = 0x4014,
-    F_entry_int_info     = 0x4016,
+    F_cr3_target_cnt       = 0x400a,
+    F_exit_ctls            = 0x400c,
+    F_exit_msr_store_cnt   = 0x400e,
+    F_exit_msr_load_cnt    = 0x4010,
+    F_entry_ctls           = 0x4012,
+    F_entry_msr_load_cnt   = 0x4014,
+    F_entry_int_info       = 0x4016,
 
     F_entry_exc_error_code = 0x4018,
-    F_entry_insn_len     = 0x401a,
-    F_proc_based_ctls_2  = 0x401e,
+    F_entry_insn_len       = 0x401a,
+    F_proc_based_ctls_2    = 0x401e,
+    F_ple_gap              = 0x4020,
+    F_ple_window           = 0x4022,
 
+    // must be the last
+    F_max_32bit_ctl
+  };
+
+  enum Vmcs_32bit_ro_fields
+  {
     F_vm_instruction_error = 0x4400,
-    F_exit_reason        = 0x4402,
-    F_vectoring_info     = 0x4408,
+    F_exit_reason          = 0x4402,
+    F_vectoring_info       = 0x4408,
     F_vectoring_error_code = 0x440a,
-    F_exit_insn_len      = 0x440c,
+    F_exit_insn_len        = 0x440c,
+    F_exit_insn_info       = 0x440e,
 
+    // must be the last
+    F_max_32bit_ro
+  };
+
+  enum Vmcs_32bit_guest_fields
+  {
+    // ... skip ...
+    F_sysenter_cs        = 0x482a,
     F_preempt_timer      = 0x482e,
 
+    // must be the last
+    F_max_32bit_guest
+  };
+
+  enum Vmcs_32bit_host_fields
+  {
     F_host_sysenter_cs   = 0x4c00,
+  };
 
-    F_guest_cr3          = 0x6802,
-    F_sw_guest_cr2       = 0x683e,
-    F_sw_guest_xcr0      = 0x6842,
-    F_sw_msr_syscall_mask= 0x6844,
-    F_sw_msr_lstar       = 0x6846,
-    F_sw_msr_cstar       = 0x6848,
-    F_sw_msr_tsc_aux     = 0x6850,
-    F_sw_msr_star        = 0x6852,
-    F_sw_msr_kernel_gs_base = 0x6854,
+  enum Vmcs_nat_ctl_fields
+  {
+    // ... skip ....
+    F_cr3_target_3 = 0x600e,
 
+    // must be the last
+    F_max_nat_ctl
+  };
 
+  enum Vmcs_nat_ro_fields
+  {
+    // ... skip ...
+    F_guest_linear       = 0x640a,
+
+    // must be the last
+    F_max_nat_ro
+  };
+
+  enum Vmcs_nat_guest_fields
+  {
+    F_guest_cr3               = 0x6802,
+    // ... skip ...
+    F_guest_ia32_sysenter_eip = 0x682e,
+
+    F_sw_guest_cr2            = 0x683e,
+
+    // must be the last
+    F_max_nat_guest
+  };
+
+  enum Vmcs_nat_host_fields
+  {
     F_host_cr0           = 0x6c00,
     F_host_cr3           = 0x6c02,
     F_host_cr4           = 0x6c04,
@@ -311,9 +424,7 @@ public:
     F_host_sysenter_esp  = 0x6c10,
     F_host_sysenter_eip  = 0x6c12,
     F_host_rip           = 0x6c16,
-
   };
-
 };
 
 INTERFACE [vmx]:
@@ -804,6 +915,91 @@ Vmx::Vmx(Cpu_number cpu)
 
 }
 
+/// Some compile-time VMCS field calculations
+namespace Vmcs_field {
+
+/**
+ * Calculate the shift needed to calculate the memory offset from a
+ * field offset for a field of size FIELD_SIZE (bits 13..14 of a VMCS field index).
+ */
+template<unsigned FIELD_SIZE> struct Shift;
+template<> struct Shift<0> { enum { value = 0 }; }; ///< 16bit -> 1 byte per index
+template<> struct Shift<1> { enum { value = 2 }; }; ///< 64bit -> 4 byte per index
+template<> struct Shift<2> { enum { value = 1 }; }; ///< 32bit -> 2 byte per index
+template<> struct Shift<3> { enum { value = 2 }; }; ///< nat   -> 4 byte per index
+
+/**
+ * Calculate the maximum field index of all given fields
+ * Uses bits 0..9 of the given index values.
+ */
+template<unsigned ...N> struct Max;
+template<unsigned A1> struct Max<A1> { enum { value = A1 & 0x3ff }; };
+template<unsigned A1, unsigned A2, unsigned ...N>
+struct Max<A1, A2, N...>
+{
+  enum
+  {
+    value = ((A1 & 0x3ff) > (A2 & 0x3ff))
+            ? (unsigned)Max<A1 & 0x3ff, N...>::value
+            : (unsigned)Max<A2 & 0x3ff, N...>::value
+  };
+};
+
+enum
+{
+  /**
+   * Max of all of our defined field indices.
+   *
+   * We calculate this without host fields, as host fields are never
+   * exposed to in our API.
+   */
+  Max_field_index = Max<Vmx::F_max_16bit_ctl,
+                        Vmx::F_max_16bit_guest,
+                        Vmx::F_max_64bit_ctl,
+                        Vmx::F_max_64bit_ro,
+                        Vmx::F_max_64bit_guest,
+                        Vmx::F_max_32bit_ctl,
+                        Vmx::F_max_32bit_ro,
+                        Vmx::F_max_32bit_guest,
+                        Vmx::F_max_nat_ctl,
+                        Vmx::F_max_nat_ro,
+                        Vmx::F_max_nat_guest>::value
+};
+
+/**
+ * Calculate the size (in multiples of 64 bytes) of a field block given
+ * the maximum field index in a group.
+ */
+template<unsigned FIELD_MAX>
+struct Block_size
+{
+  enum
+  { value = ((((FIELD_MAX & 0x3ff) + 1) << Shift<(FIELD_MAX >> 13)>::value) + 63) / 64 };
+};
+
+enum
+{
+  Offset_0000 = 64 / 64,
+  Offset_2000 = Offset_0000 + Block_size<0x0000 | Max_field_index>::value,
+  Offset_4000 = Offset_2000 + Block_size<0x2000 | Max_field_index>::value,
+  Offset_6000 = Offset_4000 + Block_size<0x4000 | Max_field_index>::value,
+
+  Offset_0400 = Offset_6000 + Block_size<0x6000 | Max_field_index>::value,
+  Offset_2400 = Offset_0400 + Block_size<0x0400 | Max_field_index>::value,
+  Offset_4400 = Offset_2400 + Block_size<0x2400 | Max_field_index>::value,
+  Offset_6400 = Offset_4400 + Block_size<0x4400 | Max_field_index>::value,
+
+  Offset_0800 = Offset_6400 + Block_size<0x6400 | Max_field_index>::value,
+  Offset_2800 = Offset_0800 + Block_size<0x0800 | Max_field_index>::value,
+  Offset_4800 = Offset_2800 + Block_size<0x2800 | Max_field_index>::value,
+  Offset_6800 = Offset_4800 + Block_size<0x4800 | Max_field_index>::value,
+
+  Total_size  = Offset_6800 + Block_size<0x6800 | Max_field_index>::value
+};
+
+static_assert(Total_size * 64 + 1024 < 4096, "VMCS fields exceed extended vCPU state");
+}
+
 /*
  * VMCS field offset table:
  *  0h -  2h: 3 offsets for 16bit fields:
@@ -824,10 +1020,11 @@ Vmx::Vmx(Cpu_number cpu)
  */
 unsigned char const Vmx_user_info::Fo_table::master_offsets[32] =
 {
-    64 / 64,  768 / 64, 1472 / 64, 0,   0, 2, 1, 2,
-   128 / 64,  832 / 64, 1536 / 64, 0,   0, 0, 0, 0,
-   384 / 64, 1088 / 64, 1792 / 64, 0,   0, 0, 0, 0,
-   512 / 64, 1216 / 64, 1920 / 64, 0,   64 / 64, 2264 / 64, 0, 0,
+   Vmcs_field::Offset_0000, Vmcs_field::Offset_0400, Vmcs_field::Offset_0800, 0,   0, 2, 1, 2,
+   Vmcs_field::Offset_2000, Vmcs_field::Offset_2400, Vmcs_field::Offset_2800, 0,   0, 0, 0, 0,
+   Vmcs_field::Offset_4000, Vmcs_field::Offset_4400, Vmcs_field::Offset_4800, 0,   0, 0, 0, 0,
+   Vmcs_field::Offset_6000, Vmcs_field::Offset_6400, Vmcs_field::Offset_6800, 0,
+   Vmcs_field::Offset_0000, Vmcs_field::Total_size, 0, 0,
 };
 
 PUBLIC inline

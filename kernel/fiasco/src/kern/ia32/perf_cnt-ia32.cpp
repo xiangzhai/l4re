@@ -285,7 +285,7 @@ Perf_cnt_p5::set_pmc_event(Mword slot)
       msr &= 0x0000ffff;
       msr |= (event << 16);
     }
-  Cpu::wrmsr(event, Msr_p5_cesr);
+  Cpu::wrmsr(msr, Msr_p5_cesr);
 }
 
 static Mword p5_read_pmc_0()

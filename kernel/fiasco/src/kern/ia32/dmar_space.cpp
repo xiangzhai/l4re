@@ -133,8 +133,7 @@ public:
   static void create_identity_map();
   static Dmar_pt *identity_map;
 
-  virtual void tlb_flush(bool);
-  virtual bool global() const { return true; }
+  void tlb_flush(bool) override;
 
 private:
   Dmar_pt *_dmarpt;
@@ -200,7 +199,8 @@ Dmar_space::alloc_did()
     if (_free_dids->atomic_get_and_set(did) == false)
       return did;
 
-  panic("DMAR: Out of DIDs");
+  // No DID left
+  return ~0U;
 }
 
 PRIVATE static
@@ -241,7 +241,7 @@ Dmar_space::initialize()
 
   /*
    * Make sure that the very first entry in a page table is valid and
-   * not a super page. This is neccessary if the hardware supports
+   * not a super page. This is necessary if the hardware supports
    * fewer levels than the current software implementation.
    *
    * Force allocation of two levels in entry 0, so get_root works
@@ -278,8 +278,11 @@ Dmar_space::get_did()
   // XXX: possibly need a loop here
   if (_did == 0)
     {
-      unsigned long ndid = alloc_did();
-      if (!mp_cas(&_did, (unsigned long)0, ndid))
+      unsigned ndid = alloc_did();
+      if (EXPECT_FALSE(ndid == ~0U))
+        return ~0UL;
+
+      if (!mp_cas(&_did, (unsigned long)0, (unsigned long)ndid))
         free_did(ndid);
     }
   return _did;

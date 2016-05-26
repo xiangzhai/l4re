@@ -571,9 +571,9 @@ Mapping_tree::check_integrity(Space *owner = (Space*)-1)
       m++;
     }
 
-  if (enter_ke |= _count != used)
+  if ((enter_ke |= _count != used))
     printf("mapdb: _count=%u != used=%u\n", _count, used);
-  if (enter_ke |= _empty_count != dead)
+  if ((enter_ke |= _empty_count != dead))
     printf("mapdb: _empty_count=%u != dead=%u\n", _empty_count, dead);
 
   if (enter_ke)

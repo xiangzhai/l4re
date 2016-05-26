@@ -19,6 +19,17 @@
 
 #include <l4/sys/types.h>
 
+enum
+{
+  /**
+   * Architecture specific version ID.
+   *
+   * This ID must match the version field in the l4_vcpu_state_t structure
+   * after enabling vCPU mode or extended vCPU mode for a thread.
+   */
+  L4_VCPU_STATE_VERSION = 0x99
+};
+
 /**
  * \brief vCPU registers.
  * \ingroup l4_vcpu_api

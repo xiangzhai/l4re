@@ -15,6 +15,7 @@ INTERFACES_KERNEL	:= cpu_mask rcupdate kobject_mapdb context_base pm \
 			   kmem_slab switch_lock kip_init   \
 			   thread_lock helping_lock cpu_lock timer timeout   \
 			   ipc_timeout timeslice_timeout per_cpu_data_alloc  \
+			   vcpu_host_regs                                    \
 			   vcpu kobject_helper icu_helper thread_state       \
 			   context sender receiver mem_unit factory cpu_call \
 			   lock ipc_sender thread thread_object syscalls     \
@@ -29,7 +30,7 @@ INTERFACES_KERNEL	:= cpu_mask rcupdate kobject_mapdb context_base pm \
 			   sched_context utcb_init perf_cnt trap_state       \
 			   buddy_alloc vkey kdb_ke prio_list ipi scheduler   \
 			   clock sys_call_page boot_alloc                    \
-			   assertion semaphore
+			   assertion semaphore jdb_object
 
 OBJ_SPACE_TYPE = $(if $(CONFIG_VIRT_OBJ_SPACE),virt,phys)
 PREPROCESS_PARTS-y$(CONFIG_VIRT_OBJ_SPACE) += obj_space_phys
@@ -44,6 +45,7 @@ syscalls_IMPL		:= syscalls syscalls-log
 
 timer_tick_IMPL         := timer_tick
 
+vcpu_host_regs_IMPL	:= vcpu_host_regs-$(CONFIG_XARCH)
 
 INTERFACES_JDB += \
 	jdb jdb_util jdb_core jdb_module jdb_prompt_ext jdb_list           \

@@ -153,7 +153,7 @@ Kobject::sys_dec_refcnt(L4_msg_tag tag, Utcb const *in, Utcb *out)
 
   Smword diff = in->values[1];
   out->values[0] = dec_cap_refcnt(diff);
-  return Kobject_iface::commit_result(0);
+  return Kobject_iface::commit_result(0, 1);
 }
 
 PUBLIC

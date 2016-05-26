@@ -14,7 +14,7 @@
 
 // TODO:
 //   1. Add the Cache handling for ARM etc.
-//   2. check and garbage collect Dma_space_task_mappers when their task capaibility vanishes
+//   2. check and garbage collect Dma_space_task_mappers when their task capability vanishes
 //      (may be also when the last Dma_space associated with the task vanishes)
 
 namespace Moe {

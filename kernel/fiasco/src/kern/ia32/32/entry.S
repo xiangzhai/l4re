@@ -581,6 +581,7 @@ GATE_INITTAB_END
 	SC_ADDR_TO_ERR 6
 	jmp	2b
 
+#define OFS__VCPU_STATE__REGS_IRET (VAL__SIZEOF_TRAP_STATE - 20 + OFS__VCPU_STATE__TREX)
 
 	.p2align
 	.globl	leave_by_trigger_exception
@@ -606,7 +607,7 @@ leave_by_vcpu_upcall:
 	ESP_TO_TCB_AT %ecx
 	mov OFS__THREAD__USER_VCPU(%ecx), %eax /* vcpu state pointer from TCB */
 	mov OFS__THREAD__VCPU_STATE(%ecx), %ecx /* vcpu state pointer from TCB */
-	addl $(VAL__SIZEOF_TRAP_STATE - 20), %ecx /* skip return frame */
+	addl $(OFS__VCPU_STATE__REGS_IRET), %ecx /* skip return frame */
 	mov SCRATCH_REGISTER_SIZE(%esp),  %edx
 	mov %edx, (%ecx)                                /* EIP */
 	mov 8 + SCRATCH_REGISTER_SIZE(%esp),  %edx
@@ -640,9 +641,9 @@ leave_by_vcpu_upcall:
 	pushl	%es		/* RESET_{KERNEL,USER}_SEGMENTS           */
 
 	mov %edx, %esp
-	mov -VAL__SIZEOF_TRAP_STATE + 20 + OFS__VCPU_STATE__ENTRY_SP(%ecx), %edx
+	mov -OFS__VCPU_STATE__REGS_IRET + OFS__VCPU_STATE__ENTRY_SP(%ecx), %edx
 	mov %edx, 12(%esp)
-	mov -VAL__SIZEOF_TRAP_STATE + 20 + OFS__VCPU_STATE__ENTRY_IP(%ecx), %edx
+	mov -OFS__VCPU_STATE__REGS_IRET + OFS__VCPU_STATE__ENTRY_IP(%ecx), %edx
 	mov %edx, 0(%esp)
 	movl $EFLAGS_IF, 8(%esp)
 	iret

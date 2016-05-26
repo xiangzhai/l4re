@@ -147,7 +147,6 @@ tss_IMPL		:= tss-amd64
 utcb_init_IMPL		:= utcb_init utcb_init-ia32
 vmem_alloc_IMPL		:= vmem_alloc vmem_alloc-ia32
 watchdog_IMPL		:= watchdog watchdog-ia32
-vcpu_IMPL		:= vcpu vcpu-ia32-64
 
 INTERFACES_KERNEL-$(CONFIG_SERIAL) += uart_console
 

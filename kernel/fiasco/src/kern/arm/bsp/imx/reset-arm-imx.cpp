@@ -25,6 +25,23 @@ platform_reset(void)
 }
 
 // ------------------------------------------------------------------------
+IMPLEMENTATION [arm && imx28]:
+
+#include "kmem.h"
+#include "mmio_register_block.h"
+
+void __attribute__ ((noreturn))
+platform_reset(void)
+{
+  Register_block<32> r(Kmem::mmio_remap(0x80056000));
+  r[0x50] = 1; // Watchdog counter
+  r[0x04] = 1 << 4; // Watchdog enable
+
+  for (;;)
+    ;
+}
+
+// ------------------------------------------------------------------------
 IMPLEMENTATION [arm && (imx35 || imx51 || imx53)]:
 
 void platform_imx_cpus_off()

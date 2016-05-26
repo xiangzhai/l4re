@@ -64,9 +64,6 @@ Moe::Dataspace_anon::Dataspace_anon(long _size, bool w,
       g = Quota_guard(qalloc()->quota(), r_size);
       void *_m = Single_page_alloc_base::_alloc(r_size, page_size());
 
-      if (!_m)
-        L4Re::chksys(-L4_ENOMEM);
-
       m = Single_page_unique_ptr(_m, r_size);
     }
 

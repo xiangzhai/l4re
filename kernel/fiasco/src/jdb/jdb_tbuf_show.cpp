@@ -248,6 +248,7 @@ Jdb_tbuf_show::select_perf_event_unit_mask(Mword nr, Mword unit_mask)
 		unit_mask ^= value;
 	      break;
 	    case KEY_RETURN:
+	    case KEY_RETURN_2:
 	      return unit_mask;
 	    case KEY_ESC:
 	      return Nil;
@@ -333,6 +334,7 @@ Jdb_tbuf_show::select_perf_event(Mword event)
 	  switch (c)
     	    {
 	    case KEY_RETURN:
+	    case KEY_RETURN_2:
 	      absy += addy;
 	      if (absy < add_kcnt)
 		return absy | 0x80000000;
@@ -659,10 +661,12 @@ restart:
 
   // Search reference element. If not found, use last entry.
   if ((refy = Jdb_tbuf::search_to_idx(_nr_ref)) >= (Mword)-2)
-    if (entries)
-      refy = entries-1;
-    else
-      refy = Nil;
+    {
+      if (entries)
+        refy = entries - 1;
+      else
+        refy = Nil;
+    }
 
   // Search mark {0..9}. If not found, set Nil.
   for (n=0; n<10; n++)
@@ -916,6 +920,7 @@ restart:
 		}
 	      break;
 	    case KEY_RETURN: // disassemble eip of current entry
+	    case KEY_RETURN_2:
                 {
 		  Thread const *t = 0;
 		  Mword eip;

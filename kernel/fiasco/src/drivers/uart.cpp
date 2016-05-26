@@ -20,7 +20,7 @@ public:
 
   /* These constants must be defined in the 
      arch part of the uart. To define them there
-     has the advantage of most efficent definition
+     has the advantage of most efficient definition
      for the hardware.
 
   static unsigned const PAR_NONE = xxx;

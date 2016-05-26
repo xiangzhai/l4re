@@ -36,6 +36,8 @@ public:
     Ldt_set_x86 = 0x11,
   };
 
+  virtual int resume_vcpu(Context *ctxt, Vcpu_state *vcpu, bool user_mode);
+
 private:
   /// map the global utcb pointer page into this task
   void map_utcb_ptr_page();
@@ -67,7 +69,7 @@ Slab_cache *Space::Ku_mem::a = _k_u_mem_list_alloc.slab();
 extern "C" void vcpu_resume(Trap_state *, Return_frame *sp)
    FIASCO_FASTCALL FIASCO_NORETURN;
 
-PUBLIC virtual
+IMPLEMENT_DEFAULT
 int
 Task::resume_vcpu(Context *ctxt, Vcpu_state *vcpu, bool user_mode)
 {
@@ -86,7 +88,7 @@ Task::resume_vcpu(Context *ctxt, Vcpu_state *vcpu, bool user_mode)
     }
 
   ctxt->space_ref()->user_mode(user_mode);
-  switchin_context(ctxt->space(), user_mode ? ctxt->vcpu_space_mode(&ts) : 0);
+  switchin_context(ctxt->space());
   vcpu_resume(&ts, ctxt->regs());
 }
 
@@ -262,7 +264,8 @@ Task::Task(Ram_quota *q, Caps c) : Space(q, c)
 }
 
 PUBLIC explicit
-Task::Task(Ram_quota *q) : Space(q, Caps::mem() | Caps::io() | Caps::obj())
+Task::Task(Ram_quota *q)
+: Space(q, Caps::mem() | Caps::io() | Caps::obj() | Caps::threads())
 {
   ux_init();
 
@@ -384,20 +387,28 @@ Task::sys_map(L4_fpage::Rights rights, Syscall_frame *f, Utcb *utcb)
   L4_msg_tag tag = f->tag();
 
   L4_fpage::Rights mask;
-  Task *from = Ko::deref<Task>(&tag, utcb, &mask);
-  if (!from)
+  Task *_from = Ko::deref<Task>(&tag, utcb, &mask);
+  if (!_from)
     return tag;
 
-  mask &= rights;
-  mask |= L4_fpage::Rights::CD() | L4_fpage::Rights::CRW();
-
   L4_fpage sfp(utcb->values[2]);
-  sfp.mask_rights(mask);
+
+  if (sfp.type() == L4_fpage::Obj)
+    {
+      // handle Rights::CS() bit masking for capabilities
+      mask &= rights;
+      mask |= L4_fpage::Rights::CD() | L4_fpage::Rights::CRW();
+
+      // diminish when sending via restricted ipc gates
+      sfp.mask_rights(mask);
+    }
 
   Kobject::Reap_list rl;
   L4_error ret;
 
     {
+      Ref_ptr<Task> from(_from);
+      Ref_ptr<Task> self(this);
       // enforce lock order to prevent deadlocks.
       // always take lock from task with the lower memory address first
       Lock_guard_2<Lock> guard;
@@ -408,7 +419,7 @@ Task::sys_map(L4_fpage::Rights rights, Syscall_frame *f, Utcb *utcb)
 
       cpu_lock.clear();
 
-      ret = fpage_map(from, sfp, this,
+      ret = fpage_map(from.get(), sfp, this,
                       L4_fpage::all_spaces(), L4_msg_item(utcb->values[1]), &rl);
       cpu_lock.lock();
     }
@@ -438,6 +449,7 @@ Task::sys_unmap(Syscall_frame *f, Utcb *utcb)
             l->fpage = utcb->values[2]);
 
     {
+      Ref_ptr<Task> self(this);
       Lock_guard<Lock> guard;
 
       // FIXME: avoid locking the current task, it is not needed

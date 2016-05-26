@@ -254,7 +254,7 @@ L4_CV int l4shmc_rb_receiver_copy_out(l4shmc_ringbuf_head_t *head,
 	if (*tsize < size_in_buffer) {
 		printf("tsize %d, psize %d\n", *tsize, size_in_buffer);
 		printf("addr = %p\n", addr);
-		enter_kdebug();
+		return -L4_EINVAL;
 	}
 	ASSERT_GREATER_EQ(*tsize, size_in_buffer);
 

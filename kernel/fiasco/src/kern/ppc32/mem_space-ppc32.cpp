@@ -158,7 +158,7 @@ Mem_space::has_superpages()
 }
 
 //we flush tlb in htab implementation
-PUBLIC static inline NEEDS["mem_unit.h"]
+IMPLEMENT static inline NEEDS["mem_unit.h"]
 void
 Mem_space::tlb_flush(bool = false)
 {

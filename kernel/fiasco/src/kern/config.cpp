@@ -133,26 +133,14 @@ INTERFACE[amd64]:
 #define TARGET_NAME CONFIG_IA32_TARGET
 
 INTERFACE:
-#ifdef TARGET_NAME
-#define CONFIG_KERNEL_VERSION_STRING \
-  GREETING_COLOR_ANSI_TITLE "Welcome to L4/Fiasco.OC!\\n"                      \
-  GREETING_COLOR_ANSI_INFO "L4/Fiasco.OC microkernel on " CONFIG_XARCH "\\n"      \
-                           "Rev: " CODE_VERSION " compiled with " COMPILER \
-                            " for " TARGET_NAME "    [" CONFIG_LABEL "]\\n"    \
-                           "Build: #" BUILD_NR " " BUILD_DATE "\\n"            \
-  GREETING_COLOR_ANSI_OFF
-
-#else
 
 #define CONFIG_KERNEL_VERSION_STRING \
   GREETING_COLOR_ANSI_TITLE "Welcome to L4/Fiasco.OC!\\n"                      \
   GREETING_COLOR_ANSI_INFO "L4/Fiasco.OC microkernel on " CONFIG_XARCH "\\n"      \
                            "Rev: " CODE_VERSION " compiled with " COMPILER \
-                           "   [" CONFIG_LABEL "]\\n"    \
+                           TARGET_NAME_PHRASE "    [" CONFIG_LABEL "]\\n"    \
                            "Build: #" BUILD_NR " " BUILD_DATE "\\n"            \
   GREETING_COLOR_ANSI_OFF
-#endif
-
 
 //---------------------------------------------------------------------------
 INTERFACE [ux]:

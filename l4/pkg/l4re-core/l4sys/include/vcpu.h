@@ -33,6 +33,8 @@
  */
 typedef struct l4_vcpu_state_t
 {
+  l4_umword_t          version;
+  l4_umword_t          user_data[7];
   l4_vcpu_regs_t       r;             ///< Register state
   l4_vcpu_ipc_regs_t   i;             ///< IPC state
 
@@ -81,3 +83,24 @@ enum L4_vcpu_state_offset
   L4_VCPU_OFFSET_EXT_STATE = 0x400, ///< Offset where extended state begins
   L4_VCPU_OFFSET_EXT_INFOS = 0x200, ///< Offset where extended infos begin
 };
+
+/**
+ * Check if a vCPU state has the right version.
+ *
+ * \param  vcpu  A pointer to an initialized vCPU state.
+ * \retval 1  Iff the vCPU state has a matching version ID for the current
+ *            user-level structures.
+ * \retval 0  If the vCPU state has a different (incompatible) version ID than
+ *            the current vCPU user-level structures.
+ *
+ */
+L4_INLINE int
+l4_vcpu_check_version(l4_vcpu_state_t const *vcpu) L4_NOTHROW;
+
+/* IMPLEMENTATION: ------------------------------------------------*/
+
+L4_INLINE int
+l4_vcpu_check_version(l4_vcpu_state_t const *vcpu) L4_NOTHROW
+{
+  return vcpu->version == L4_VCPU_STATE_VERSION;
+}

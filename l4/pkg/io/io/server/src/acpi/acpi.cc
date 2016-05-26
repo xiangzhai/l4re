@@ -561,6 +561,13 @@ public:
     _supports_remapping = true;
   }
 
+  void iommu_bind(L4::Cap<L4::Iommu> iommu, l4_uint64_t src)
+  {
+    int r = l4_error(iommu->bind(src, _kern_dma_space));
+    if (r < 0)
+      d_printf(DBG_ERR, "error: setting DMA for device: %d\n", r);
+  }
+
   void set_managed_kern_dma_space(L4::Cap<L4::Task> s) override
   {
     Dma_domain::set_managed_kern_dma_space(s);
@@ -572,19 +579,21 @@ public:
         return;
       }
 
-    int r;
     if (_dev)
-      r = l4_error(iommu->bind(0x40000
-                               | (_bus->num << 8)
-                               | (_dev->device_nr() << 3)
-                               | _dev->function_nr(), _kern_dma_space));
+      {
+        unsigned phantomfn = _dev->phantomfn_bits();
+        unsigned devfn     = _dev->devfn();
+        devfn &= (7 >> phantomfn) | 0xf8;
+        for (unsigned i = 0; i < (1 << phantomfn); ++i)
+          {
+            iommu_bind(iommu, 0x40000
+                              | (_bus->num << 8)
+                              | devfn | (i << (3 - phantomfn)));
+          }
+      }
     else
-      r = l4_error(iommu->bind(0x80000
-                               | (_bus->num << 8) | _bus->num,
-                               _kern_dma_space));
-
-    if (r < 0)
-      d_printf(DBG_ERR, "error: setting DMA for device: %d\n", r);
+      iommu_bind(iommu, 0x80000
+                        | (_bus->num << 8) | _bus->num);
   }
 
   int create_managed_kern_dma_space() override
@@ -1009,21 +1018,21 @@ Acpi_dev::discover_crs(Hw::Device *host)
 	  break;
 
 	case ACPI_RESOURCE_TYPE_ADDRESS16:
-          if (d->Address16.AddressLength == 0)
+          if (d->Address16.Address.AddressLength == 0)
             break;
-	  acpi_adr_res(res_id++, host, &d->Address, d->Address16.Minimum, d->Address16.AddressLength, 0);
+	  acpi_adr_res(res_id++, host, &d->Address, d->Address16.Address.Minimum, d->Address16.Address.AddressLength, 0);
 	  break;
 
 	case ACPI_RESOURCE_TYPE_ADDRESS32:
-          if (d->Address32.AddressLength == 0)
+          if (d->Address32.Address.AddressLength == 0)
             break;
-	  acpi_adr_res(res_id++, host, &d->Address, d->Address32.Minimum, d->Address32.AddressLength, 0);
+	  acpi_adr_res(res_id++, host, &d->Address, d->Address32.Address.Minimum, d->Address32.Address.AddressLength, 0);
 	  break;
 
 	case ACPI_RESOURCE_TYPE_ADDRESS64:
-          if (d->Address64.AddressLength == 0)
+          if (d->Address64.Address.AddressLength == 0)
             break;
-	  acpi_adr_res(res_id++, host, &d->Address, d->Address64.Minimum, d->Address64.AddressLength, 1);
+	  acpi_adr_res(res_id++, host, &d->Address, d->Address64.Address.Minimum, d->Address64.Address.AddressLength, 1);
 	  break;
 
 	default:

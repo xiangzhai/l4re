@@ -671,6 +671,7 @@ dump_stack:
           switch (c)
             {
             case KEY_RETURN:
+            case KEY_RETURN_2:
               if (jdb_dump_addr_task && _stack_view.current.valid())
                 {
                   if (!jdb_dump_addr_task(_stack_view.current.value(),
@@ -701,7 +702,7 @@ dump_stack:
                                         _stack_view.current.value(),
                                         Kobject_dbg::pointer_to_id(t->space()));
                   int c1 = Jdb_core::getchar();
-                  if ((c1 != KEY_RETURN) && (c1 != ' '))
+                  if ((c1 != KEY_RETURN) && c1 != KEY_RETURN_2 && (c1 != ' '))
                     {
                       Jdb::printf_statline("tcb", 0, "u");
                       Jdb::execute_command("u", c1);
@@ -811,6 +812,7 @@ Jdb_tcb::action(int cmd, void *&args, char const *&fmt, int &next_char)
                 putchar(first_char);
                 return Jdb_module::EXTRA_INPUT;
               case KEY_RETURN:
+              case KEY_RETURN_2:
                 show(0, 0, false);
                 return NOTHING;
               default:

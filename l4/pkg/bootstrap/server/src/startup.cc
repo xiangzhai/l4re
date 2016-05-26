@@ -92,6 +92,8 @@ struct Elf_info
 static exec_handler_func_t l4_exec_read_exec;
 static exec_handler_func_t l4_exec_add_region;
 
+// this function can be provided per architecture
+void __attribute__((weak)) print_cpu_info();
 
 #if 0
 static void
@@ -172,7 +174,7 @@ L4_kernel_options::Options *find_kopts(void *kip)
   unsigned long a = (unsigned long)kip + sizeof(l4_kernel_info_t);
 
   // kernel-option directly follow the KIP page
-  a = (a + 4096 - 1) & ~0xfff;
+  a = (a + L4_PAGESIZE - 1) & L4_PAGEMASK;
 
   L4_kernel_options::Options *ko = (L4_kernel_options::Options *)a;
 
@@ -579,6 +581,10 @@ setup_and_check_kernel_config(Platform_base *plat, l4_kernel_info_t *kip)
 }
 #endif /* arm */
 
+#ifdef ARCH_mips
+extern "C" void syncICache(unsigned long start, unsigned long size);
+#endif
+
 static unsigned long
 load_elf_module(Boot_modules::Module const &mod, char const *n)
 {
@@ -630,6 +636,9 @@ startup(char const *cmdline)
        ", " __VERSION__
 #endif
       );
+
+  if (print_cpu_info)
+    print_cpu_info();
 
   regions.init(__regs, "regions");
   ram.init(__ram, "RAM", get_memory_max_size(cmdline), get_memory_max_address());
@@ -750,6 +759,20 @@ startup(char const *cmdline)
 #if defined(ARCH_arm)
   if (major == 0x87)
     setup_and_check_kernel_config(plat, (l4_kernel_info_t *)l4i);
+#endif
+#if defined(ARCH_mips)
+  {
+    printf("  Flushing caches ...\n");
+    for (Region *i = ram.begin(); i < ram.end(); ++i)
+      {
+        if (i->end() >= (512 << 20))
+          continue;
+
+        printf("  [%08lx, %08lx)\n", (unsigned long)i->begin(), (unsigned long)i->size());
+        syncICache((unsigned long)i->begin(), (unsigned long)i->size());
+      }
+    printf("  done\n");
+  }
 #endif
 #if defined(ARCH_ppc32)
   init_kip_v2_arch((l4_kernel_info_t*)l4i);

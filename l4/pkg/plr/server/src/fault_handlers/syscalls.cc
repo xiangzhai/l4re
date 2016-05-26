@@ -218,7 +218,6 @@ Romain::SyscallObserver::notify(Romain::App_instance *i,
 	} else {
 		t->vcpu()->print_state();
 		INFO() << "err = " << std::hex << t->vcpu()->r()->err;
-		enter_kdebug("GPF in replica");
 	}
 
 	return retval;
@@ -272,7 +271,6 @@ void Romain::SyscallHandler::proxy_syscall(Romain::App_instance *,
 
 	//t->print_vcpu_state();
 	//Romain::dump_mem((l4_umword_t*)addr, 40);
-	//enter_kdebug("done syscall");
 }
 
 
@@ -339,25 +337,25 @@ Romain::ThreadHandler::handle(Romain::App_instance *i,
 			group->ex_regs(t);
 			break;
 		case L4_THREAD_SWITCH_OP:
-			enter_kdebug("THREAD: switch");
+			ERROR() << "THREAD: switch\n";
 			break;
 		case L4_THREAD_STATS_OP:
-			enter_kdebug("THREAD: stats");
+			ERROR() << "THREAD: stats\n";
 			break;
 		case L4_THREAD_VCPU_RESUME_OP:
-			enter_kdebug("THREAD: vcpu_resume");
+			ERROR() << "THREAD: vcpu_resume\n";
 			break;
 		case L4_THREAD_REGISTER_DELETE_IRQ_OP:
-			enter_kdebug("THREAD: irq");
+			ERROR() << "THREAD: irq\n";
 			break;
 		case L4_THREAD_MODIFY_SENDER_OP:
-			enter_kdebug("THREAD: modify sender");
+			ERROR() << "THREAD: modify sender\n";
 			break;
 		case L4_THREAD_VCPU_CONTROL_OP:
-			enter_kdebug("THREAD: vcpu control");
+			ERROR() <<"THREAD: vcpu control\n";
 			break;
 		case L4_THREAD_VCPU_CONTROL_EXT_OP:
-			enter_kdebug("THREAD: vcpu control ext");
+			ERROR() << "THREAD: vcpu control ext\n";
 			break;
 		case L4_THREAD_X86_GDT_OP:
 			group->gdt(t, utcb);
@@ -368,7 +366,6 @@ Romain::ThreadHandler::handle(Romain::App_instance *i,
 	}
 
 	return Romain::Observer::Replicatable;
-	//enter_kdebug("thread");
 }
 
 
@@ -400,7 +397,6 @@ Romain::SyscallObserver::handle_task(Romain::App_instance* i,
 			MSGt(t) << "UTCB @ " << std::hex << (l4_umword_t)utcb << " op: " << op
 				  << " cap " << (t->vcpu()->r()->dx & ~0xF) << " " << L4RE_THIS_TASK_CAP;
 			t->print_vcpu_state();
-			enter_kdebug("unknown task op?");
 			break;
 	}
 
@@ -444,7 +440,6 @@ Romain::Factory::handle(Romain::App_instance* inst,
 			break;
 	}
 
-	enter_kdebug("theObjectFactory");
 	return Romain::Observer::Finished;
 }
 
@@ -464,7 +459,6 @@ Romain::Scheduling::handle(Romain::App_instance* inst,
 		Romain::Thread_group* group = theObjectFactory.thread_for_cap(cap);
 		group->scheduler_run(t);
 	} else {
-		//enter_kdebug("run_thread != 1");
 		SyscallHandler::proxy_syscall(inst, t, tg, am);
 	}
 
@@ -495,7 +489,6 @@ Romain::IrqHandler::handle(Romain::App_instance* inst,
 	switch(op) {
 		case L4_IRQ_OP_TRIGGER:
 			DEBUGt(t) << ":: trigger";
-			//enter_kdebug("trigger");
 			irq->trigger();
 			break;
 		case L4_IRQ_OP_EOI:
@@ -541,7 +534,6 @@ Romain::IrqSenderHandler::handle(Romain::App_instance* inst,
 
 				if (!group) {
 					ERROR() << "Unimplemented: Attaching someone else but myself!\n";
-					enter_kdebug();
 				}
 
 				ret = irq->attach(label, group->gateagent->listener_cap);

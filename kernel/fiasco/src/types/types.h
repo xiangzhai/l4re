@@ -38,8 +38,8 @@ T access_once(T const *a)
 #endif
 }
 
-template< typename T >
-void write_now(T *a, T const &val)
+template< typename T, typename VAL >
+void write_now(T *a, VAL &&val)
 {
   __asm__ __volatile__ ( "" : "=m"(*a));
   *a = val;

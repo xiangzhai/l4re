@@ -4,11 +4,11 @@
 
 L4DIR		?= .
 
-PRJ_SUBDIRS   := pkg $(wildcard l4linux)
+PRJ_SUBDIRS   := pkg tests $(wildcard l4linux)
 BUILD_DIRS    := tool
 install-dirs  := tool pkg
-clean-dirs    := tool pkg doc
-cleanall-dirs := tool pkg doc
+clean-dirs    := tool pkg tests doc
+cleanall-dirs := tool pkg tests doc
 
 BUILD_TOOLS	= gawk gcc g++ ld perl pkg-config
 
@@ -25,6 +25,7 @@ all::
 DROPSCONF 		= y
 DROPSCONF_DEFCONFIG	?= $(L4DIR)/mk/defconfig/config.x86
 KCONFIG_FILE            = $(OBJ_BASE)/Kconfig.generated
+KCONFIG_FILE_DEPS       = $(OBJ_BASE)/.Kconfig.generated.d
 KCONFIG_FILE_SRC        = $(L4DIR)/mk/Kconfig
 DROPSCONF_CONFIG	= $(OBJ_BASE)/.kconfig.auto
 DROPSCONF_CONFIG_H	= $(OBJ_BASE)/include/l4/bid_config.h
@@ -57,7 +58,7 @@ IGNORE_MAKECONF_INCLUDE=1
 endif
 
 ifeq ($(IGNORE_MAKECONF_INCLUDE),)
-ifneq ($(filter help config oldconfig silentoldconfig,$(MAKECMDGOALS)),)
+ifneq ($(filter help config oldconfig olddefconfig silentoldconfig,$(MAKECMDGOALS)),)
 # tweek $(L4DIR)/mk/Makeconf to use the intermediate file
 export BID_IGN_ROOT_CONF=y
 BID_ROOT_CONF=$(DROPSCONF_CONFIG_MK)
@@ -85,7 +86,7 @@ PKGDEPS_IGNORE_MISSING :=
 export DROPS_STDDIR
 
 # after having absfilename, we can export BID_ROOT_CONF
-ifneq ($(filter config oldconfig silentoldconfig gconfig nconfig xconfig, $(MAKECMDGOALS)),)
+ifneq ($(filter config oldconfig olddefconfig silentoldconfig gconfig nconfig xconfig, $(MAKECMDGOALS)),)
 export BID_ROOT_CONF=$(call absfilename,$(OBJ_BASE))/.config.all
 endif
 endif
@@ -105,7 +106,7 @@ all:: check_build_tools
 	fi
 	@mkdir -p "$(BUILDDIR_TO_CREATE)"
 	@cp $(DROPSCONF_DEFCONFIG) $(BUILDDIR_TO_CREATE)/.kconfig
-	@$(MAKE) B= BUILDDIR_TO_CREATE= O=$(BUILDDIR_TO_CREATE) oldconfig
+	@$(MAKE) B= BUILDDIR_TO_CREATE= O=$(BUILDDIR_TO_CREATE) olddefconfig
 	@echo "done."
 else
 
@@ -150,15 +151,27 @@ doc:
 
 BID_POST_CONT_HOOK := $(MAKE) regen_l4defs
 
-.PHONY: all clean cleanall install up update doc
+.PHONY: all clean cleanall clean-test-scripts install up update doc
 .PHONY: $(BUILD_DIRS) doc check_build_tools cont cleanfast
 
 cleanfast:
-	$(VERBOSE)$(RM) -r $(addprefix $(OBJ_BASE)/,bin include pkg doc ext-pkg pc lib test l4defs.mk.inc l4defs.sh.inc) \
+	$(VERBOSE)if [ -f $(OBJ_BASE)/include/l4/bid_config.h ]; then  \
+	            cp -a $(OBJ_BASE)/include/l4/bid_config.h          \
+	                  $(OBJ_BASE)/.tmp.bid_config.h;               \
+	          fi
+	$(VERBOSE)$(RM) -r $(addprefix $(OBJ_BASE)/,bin include pkg tests doc ext-pkg pc lib test l4defs.mk.inc l4defs.sh.inc) \
 	                   $(IMAGES_DIR)
+	$(VERBOSE)if [ -f $(OBJ_BASE)/.tmp.bid_config.h ]; then        \
+	            mkdir -p $(OBJ_BASE)/include/l4;                   \
+	            mv $(OBJ_BASE)/.tmp.bid_config.h                   \
+	               $(OBJ_BASE)/include/l4/bid_config.h;            \
+	          fi
 
 cleanall::
 	$(VERBOSE)rm -f *~
+
+clean-test-scripts:
+	$(VERBOSE)$(RM) -r $(OBJ_BASE)/test/t
 
 clean cleanall install::
 	$(VERBOSE)set -e; for i in $($@-dirs) ; do \
@@ -268,8 +281,12 @@ KCONFIGS_ARCH := $(wildcard $(L4DIR)/mk/arch/Kconfig.*.inc)
 
 $(KCONFIG_FILE): $(KCONFIG_FILE_SRC) Makefile $(wildcard $(L4DIR)/conf/platforms/*.conf $(L4DIR)/conf/platforms/*.conf) \
                  $(KCONFIGS_ARCH)
+	$(VERBOSE)echo $(KCONFIG_FILE): $^ > $(KCONFIG_FILE_DEPS)
+	$(VERBOSE)$(foreach f,$^,echo $(f): >> $(KCONFIG_FILE_DEPS) ; )
 	$(VERBOSE)$(L4DIR)/tool/bin/gen_kconfig $(KCONFIG_FILE_SRC) $(KCONFIG_FILE).im $(KCONFIGS_ARCH)
 	+$(call create_kconfig,$@,$(KCONFIG_FILE).im)
+
+-include $(KCONFIG_FILE_DEPS)
 
 checkconf:
 	$(VERBOSE)if [ -n "$(GCCDIR)" -a ! -e $(GCCDIR)/include/stddef.h ]; then \
@@ -657,7 +674,7 @@ $(CHECK_BASE_DIR)/config.%/.kconfig: mk/defconfig/config.% checkbuild_prepare.%
 	cp $< $@
 
 $(CHECK_BASE_DIR)/config.%/.config.all: $(CHECK_BASE_DIR)/config.%/.kconfig FORCE
-	$(MAKE) -j 1 O=$(@D) oldconfig $(call BID_CHECKBUILD_LOG_REDIR_f, $*)
+	$(MAKE) -j 1 O=$(@D) olddefconfig $(call BID_CHECKBUILD_LOG_REDIR_f, $*)
 
 checkbuild.%: $(CHECK_BASE_DIR)/config.%/.config.all $(CHECK_BASE_DIR)/config.%/.kconfig check_base_dir
 	$(MAKE) O=$(<D) BID_CHECKBUILD=1 report $(call BID_CHECKBUILD_LOG_REDIR_f, $*)

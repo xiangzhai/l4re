@@ -11,7 +11,10 @@
 /*
  * Example to show syscall tracing.
  */
+#if defined(ARCH_x86) || defined(ARCH_amd64)
+// MEASURE only works on x86/amd64
 //#define MEASURE
+#endif
 
 #include <l4/sys/ipc.h>
 #include <l4/sys/thread.h>
@@ -19,7 +22,6 @@
 #include <l4/sys/utcb.h>
 #include <l4/sys/kdebug.h>
 #include <l4/util/util.h>
-#include <l4/util/rdtsc.h>
 #include <l4/re/env.h>
 #include <l4/re/c/util/cap_alloc.h>
 #include <l4/sys/debugger.h>
@@ -28,32 +30,161 @@
 #include <stdio.h>
 #include <string.h>
 
+/* Architecture specifics */
+#if defined(ARCH_x86) || defined(ARCH_amd64)
+
+enum { Sc_code = 4 };
+
+static int
+is_alien_after_call(l4_exc_regs_t const *exc)
+{ return exc->err & Sc_code; }
+
+static inline void
+_print_exc_state(l4_exc_regs_t const *exc)
+{
+  printf("PC=%08lx SP=%08lx Err=%08lx Trap=%lx, %s syscall, SC-Nr: %lx\n",
+         l4_utcb_exc_pc(exc), exc->sp, exc->err,
+         exc->trapno, is_alien_after_call(exc) ? " after" : "before",
+         exc->err >> 3);
+}
+
+#elif defined(ARCH_arm)
+
+enum { Sc_code = 0x40 };
+
+static int
+is_alien_after_call(l4_exc_regs_t const *exc)
+{ return exc->err & Sc_code; }
+
+static inline void
+_print_exc_state(l4_exc_regs_t const *exc)
+{
+  printf("PC=%08lx SP=%08lx ULR=%08lx CPSR=%08lx Err=%lx/%lx, %s syscall\n",
+         l4_utcb_exc_pc(exc), exc->sp, exc->ulr, exc->cpsr,
+         exc->err, exc->err >> 26,
+         is_alien_after_call(exc) ? " after" : "before");
+}
+
+#elif defined(ARCH_mips)
+
+static int
+is_alien_after_call(l4_exc_regs_t const *exc)
+{ return 0; }
+
+static inline void
+_print_exc_state(l4_exc_regs_t const *exc)
+{
+  printf("PC=%08lx SP=%08lx Cause=%lx, %s syscall\n",
+         l4_utcb_exc_pc(exc), exc->sp, exc->cause,
+         is_alien_after_call(exc) ? " after" : "before");
+}
+
+#else
+
+enum { Sc_code = 1 };
+
+static int
+is_alien_after_call(l4_exc_regs_t const *exc)
+{ return exc->err & Sc_code; }
+
+static inline void
+_print_exc_state(l4_exc_regs_t const *exc)
+{
+  printf("PC=%08lx SP=%08lx, %s syscall\n",
+         l4_utcb_exc_pc(exc), exc->sp,
+         is_alien_after_call(exc) ? " after" : "before");
+}
+
+#endif
+
+/* Measurement mode specifics.
+ *
+ * In measurement mode the code is less verbose and uses RDTSC for alient exception
+ * performance measurement.
+ */
+#ifdef MEASURE
+
+#include <l4/util/rdtsc.h>
+
+static inline void
+calibrate_timer(void)
+{
+  l4_calibrate_tsc(l4re_kip());
+}
+
+static inline void
+print_timediff(l4_cpu_time_t start)
+{
+  e = l4_rdtsc();
+  printf("time %lld\n", l4_tsc_to_ns(e - start));
+}
+
+static inline void
+alien_sleep(void)
+{
+  l4_sleep(0);
+}
+
+static inline void
+print_exc_state(l4_exc_regs_t const *exc)
+{
+  if (0)
+    _print_exc_state(exc);
+}
+
+#else
+
+static inline void
+calibrate_timer(void)
+{
+}
+
+static inline void
+print_timediff(l4_cpu_time_t start)
+{
+  (void)start;
+}
+
+static inline l4_cpu_time_t
+l4_rdtsc(void)
+{
+  return 0;
+}
+
+static inline void
+alien_sleep(void)
+{
+  l4_sleep(1000);
+  outstring("An int3 -- you should see this\n");
+  outnstring("345", 3);
+}
+
+static inline void
+print_exc_state(l4_exc_regs_t const *exc)
+{
+  _print_exc_state(exc);
+}
+
+#endif
+
 
 static char alien_thread_stack[8 << 10];
 static l4_cap_idx_t alien;
 
 static void alien_thread(void)
 {
-  volatile l4_msgtag_t x;
-  while (1) {
-    x = l4_ipc_call(0x1234 << L4_CAP_SHIFT, l4_utcb(), l4_msgtag(0, 0, 0, 0), L4_IPC_NEVER);
-#ifdef MEASURE
-    l4_sleep(0);
-#else
-    l4_sleep(1000);
-    outstring("An int3 -- you should see this\n");
-    outnstring("345", 3);
-#endif
-  }
+  while (1)
+    {
+      l4_ipc_call(0x1234 << L4_CAP_SHIFT, l4_utcb(), l4_msgtag(0, 0, 0, 0), L4_IPC_NEVER);
+      alien_sleep();
+    }
 
 }
 
 int main(void)
 {
   l4_msgtag_t tag;
-#ifdef MEASURE
-  l4_cpu_time_t s, e;
-#endif
+  l4_cpu_time_t s;
   l4_utcb_t *u = l4_utcb();
   l4_exc_regs_t exc;
   l4_umword_t mr0, mr1;
@@ -95,9 +226,7 @@ int main(void)
   if (l4_error(tag))
     return 4;
 
-#ifdef MEASURE
-  l4_calibrate_tsc(l4re_kip());
-#endif
+  calibrate_timer();
 
   /* Pager/Exception loop */
   if (l4_msgtag_has_error(tag = l4_ipc_receive(alien, u, L4_IPC_NEVER)))
@@ -112,19 +241,12 @@ int main(void)
 
   for (;;)
     {
-#ifdef MEASURE
       s = l4_rdtsc();
-#endif
 
       if (l4_msgtag_is_exception(tag))
         {
-#ifndef MEASURE
-          printf("PC=%08lx SP=%08lx Err=%08lx Trap=%lx, %s syscall, SC-Nr: %lx\n",
-                 l4_utcb_exc_pc(&exc), exc.sp, exc.err,
-                 exc.trapno, (exc.err & 4) ? " after" : "before",
-                 exc.err >> 3);
-#endif
-          tag = l4_msgtag((exc.err & 4) ? 0 : L4_PROTO_ALLOW_SYSCALL,
+          print_exc_state(&exc);
+          tag = l4_msgtag(is_alien_after_call(&exc) ? 0 : L4_PROTO_ALLOW_SYSCALL,
                           L4_UTCB_EXCEPTION_REGS_SIZE, 0, 0);
         }
       else
@@ -141,10 +263,7 @@ int main(void)
       memcpy(&exc, l4_utcb_exc(), sizeof(exc));
       mr0 = l4_utcb_mr()->mr[0];
       mr1 = l4_utcb_mr()->mr[1];
-#ifdef MEASURE
-      e = l4_rdtsc();
-      printf("time %lld\n", l4_tsc_to_ns(e - s));
-#endif
+      print_timediff(s);
     }
 
   return 0;

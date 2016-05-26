@@ -29,7 +29,7 @@
 #include "vbus_factory.h"
 
 Vi::System_bus::Root_resource_factory::Factory_list
-  Vi::System_bus::Root_resource_factory::_factories;
+  Vi::System_bus::Root_resource_factory::_factories(true);
 
 namespace {
 

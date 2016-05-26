@@ -45,20 +45,20 @@ Svm::cpu_virt_capable()
 
   if (!(cx & 4))
     {
-      printf("CPU does not support SVM.\n");
+      printf("# CPU does not support SVM.\n");
       return false;
     }
 
   l4util_cpu_cpuid(0x8000000a, &ax, &bx, &cx, &dx);
 
-  printf("SVM revision: %lx\n", ax & 0xf);
-  printf("Number of ASIDs: %lu\n", bx);
+  printf("# SVM revision: %lx\n", ax & 0xf);
+  printf("# Number of ASIDs: %lu\n", bx);
 
-  printf("This CPU has the following extra SVM features:\n");
+  printf("# This CPU has the following extra SVM features:\n");
 
   for (unsigned i = 0; i < (sizeof(svm_features)/sizeof(svm_features[0])); ++i)
     if (svm_features[i] && dx & (1 << i))
-      printf("%s\n", svm_features[i]);
+      printf("#\t%s\n", svm_features[i]);
 
   return true;
 }
@@ -73,13 +73,13 @@ Svm::npt_available()
 
   l4util_cpu_cpuid(0x8000000a, &ax, &bx, &cx, &dx);
 
-  printf("NPT available: %s\n", dx & 1 ? "yes" : "no");
+  printf("# NPT available: %s\n", dx & 1 ? "yes" : "no");
 
   return (dx & 1);
 }
 
 void
-Svm::initialize_vmcb()
+Svm::initialize_vmcb(unsigned)
 {
   vmcb_s->control_area.np_enable = 1;
   vmcb_s->control_area.guest_asid_tlb_ctl = 1;
@@ -91,17 +91,17 @@ Svm::initialize_vmcb()
 
   //vmcb[256 +  0] = 0;        // es; attrib sel
 
-  vmcb_s->state_save_area.cs.selector = 0x8;
+  vmcb_s->state_save_area.cs.selector = 0x10;
   vmcb_s->state_save_area.cs.attrib = 0xc9b;
   vmcb_s->state_save_area.cs.limit = 0xffffffff;
   vmcb_s->state_save_area.cs.base = 0ULL;
 
-  vmcb_s->state_save_area.ss.selector = 0x10;
+  vmcb_s->state_save_area.ss.selector = 0x18;
   vmcb_s->state_save_area.ss.attrib = 0xc93;
   vmcb_s->state_save_area.ss.limit = 0xffffffff;
   vmcb_s->state_save_area.ss.base = 0ULL;
 
-  vmcb_s->state_save_area.ds.selector = 0x23;
+  vmcb_s->state_save_area.ds.selector = 0x20;
   vmcb_s->state_save_area.ds.attrib = 0xcf3;
   vmcb_s->state_save_area.ds.limit = 0xffffffff;
   vmcb_s->state_save_area.ds.base = 0ULL;
@@ -118,7 +118,7 @@ Svm::initialize_vmcb()
 
   vmcb_s->state_save_area.gdtr.selector = 0;
   vmcb_s->state_save_area.gdtr.attrib = 0;
-  vmcb_s->state_save_area.gdtr.limit = 0x3f;
+  vmcb_s->state_save_area.gdtr.limit = 0xffff;
   vmcb_s->state_save_area.gdtr.base = Gdt;
 
   vmcb_s->state_save_area.ldtr.selector = 0;
@@ -128,7 +128,7 @@ Svm::initialize_vmcb()
 
   vmcb_s->state_save_area.idtr.selector = 0;
   vmcb_s->state_save_area.idtr.attrib = 0;
-  vmcb_s->state_save_area.idtr.limit = 0xff;
+  vmcb_s->state_save_area.idtr.limit = 0xffff;
   vmcb_s->state_save_area.idtr.base = Idt;
 
   vmcb_s->state_save_area.tr.selector = 0x28;
@@ -141,8 +141,7 @@ Svm::initialize_vmcb()
   vmcb_s->state_save_area.dr6 = 0;
   vmcb_s->state_save_area.cpl = 0;
 
-  vmcb_s->control_area.intercept_exceptions |= 0xa; // intercept #1 & #3
-  vmcb_s->control_area.intercept_exceptions |= 0xffffffff;
+  vmcb_s->control_area.intercept_exceptions = 0x0;
   vmcb_s->control_area.intercept_instruction1 |= 0x20; // intercept int1
   vmcb_s->control_area.intercept_wr_crX |= 0xff; // intercept write to cr
   vmcb_s->control_area.intercept_rd_crX |= 0xff; // intercept reads to cr
@@ -202,6 +201,12 @@ Svm::set_dr7(l4_umword_t dr7)
   vmcb_s->state_save_area.dr7 = dr7;
 }
 
+l4_umword_t
+Svm::get_rax()
+{
+  return vmcb_s->state_save_area.rax;
+}
+
 void
 Svm::enable_npt()
 {
@@ -223,71 +228,76 @@ Svm::set_efer(l4_umword_t efer)
 unsigned
 Svm::handle_vmexit()
 {
-  static unsigned int exitcnt;
-
-  ++exitcnt;
-  printf("iteration %d: exit code=%lld rip = 0x%llx\n",
-         exitcnt, vmcb_s->control_area.exitcode, vmcb_s->state_save_area.rip);
+  printf("# exit code=%llx rip=0x%llx intercept_exceptions=0x%x\n",
+         vmcb_s->control_area.exitcode, vmcb_s->state_save_area.rip,
+         vmcb_s->control_area.intercept_exceptions);
 
   switch (vmcb_s->control_area.exitcode)
     {
     case 0x4:
-      printf("Read of cr4 intercepted.\n");
+      printf("# Read of cr4 intercepted.\n");
       vmcb_s->state_save_area.rip += 1;
       return 1;
     case 0x14:
-      printf("Write to cr4 intercepted.\n");
+      printf("# Write to cr4 intercepted.\n");
+      vmcb_s->state_save_area.rip += 1;
+      return 1;
+    case 0x41:
+      printf("# divide by zero exception encountered\n");
       vmcb_s->state_save_area.rip += 1;
       return 1;
     case 0x43:
-      printf("Software interrupt\n");
+      printf("# Software interrupt\n");
       vmcb_s->state_save_area.rip += 1;
       return 1;
     case 0x46:
-      printf("undefined instruction\n");
+      printf("# undefined instruction\n");
       vmcb_s->state_save_area.rip += 2;
       return 1;
     case 0x4d:
-      printf("General protection fault. Bye\n");
-      printf("cs=%08x attrib=%x, limit=%x, base=%llx\n",
+      printf("# General protection fault. Bye\n");
+      printf("# cs=%08x attrib=%x, limit=%x, base=%llx\n",
               vmcb_s->state_save_area.cs.selector,
               vmcb_s->state_save_area.cs.attrib,
               vmcb_s->state_save_area.cs.limit,
               vmcb_s->state_save_area.cs.base);
-      printf("ss=%08x attrib=%x, limit=%x, base=%llx\n",
+      printf("# ss=%08x attrib=%x, limit=%x, base=%llx\n",
               vmcb_s->state_save_area.ss.selector,
               vmcb_s->state_save_area.ss.attrib,
               vmcb_s->state_save_area.ss.limit,
               vmcb_s->state_save_area.ss.base);
-      printf("np_enabled=%lld\n", vmcb_s->control_area.np_enable);
-      printf("cr0=%llx cr4=%llx\n", vmcb_s->state_save_area.cr0,
+      printf("# np_enabled=%lld\n", vmcb_s->control_area.np_enable);
+      printf("# cr0=%llx cr4=%llx\n", vmcb_s->state_save_area.cr0,
               vmcb_s->state_save_area.cr4);
-      printf("interrupt_ctl=%llx\n", vmcb_s->control_area.interrupt_ctl);
-      printf("rip=%llx, rsp=%llx, cpl=%d\n", vmcb_s->state_save_area.rip,
+      printf("# interrupt_ctl=%llx\n", vmcb_s->control_area.interrupt_ctl);
+      printf("# rip=%llx, rsp=%llx, cpl=%d\n", vmcb_s->state_save_area.rip,
               vmcb_s->state_save_area.rsp, vmcb_s->state_save_area.cpl);
-      printf("exitinfo1=%llx\n", vmcb_s->control_area.exitinfo1);
-      test_ok = false;
+      printf("# exitinfo1=%llx\n", vmcb_s->control_area.exitinfo1);
       return 0;
     case 0x4e:
-      printf("page fault; error code=%llx, pfa=%llx\n",
+      printf("# page fault; error code=%llx, pfa=%llx\n",
              vmcb_s->control_area.exitinfo1, vmcb_s->control_area.exitinfo2);
-      test_ok = false;
+      return 0;
+    case 0x51:
+      printf("# alignment check exception encountered.\n");
+      vmcb_s->state_save_area.rsp += 3;
+      return Alignment_check_intercept;
+    case 0x7f:
+      printf("# shutdown.\n");
       return 0;
     case 0x400:
-      printf("host-level page fault; error code=%llx, gpa=%llx\n",
+      printf("# host-level page fault; error code=%llx, gpa=%llx\n",
              vmcb_s->control_area.exitinfo1, vmcb_s->control_area.exitinfo2);
-      test_ok = false;
       return 0;
     case 0x81:
-      printf("VMMCALL ecx = %ld\n", (long)(vcpu->r.cx & 0xffffffff));
-      if ((vcpu->r.cx & 0xffffffff) > 15)
-        return 0;
-      vmcb_s->state_save_area.rax = vcpu->r.cx;
+      printf("# VMMCALL ecx = %ld edx=%lx\n", (long)(vcpu->r.cx & 0xffffffff), vcpu->r.dx);
       vmcb_s->state_save_area.rip += 3;
-      return 1;
+      return VMCALL;
     case l4_uint64_t(~0):
-      printf("Invalid guest state.\n");
-      test_ok = false;
+      printf("# Invalid guest state.\n");
+      return 0;
+    default:
+      printf("# Unhandled vm exit.\n");
       return 0;
     }
   return 1;

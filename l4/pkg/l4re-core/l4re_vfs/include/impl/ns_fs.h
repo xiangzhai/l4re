@@ -21,30 +21,17 @@
 #include <l4/l4re_vfs/backend>
 #include <l4/sys/capability>
 #include <l4/re/namespace>
-#include "simple_store.h"
 
 namespace L4Re { namespace Core {
 
 using cxx::Ref_ptr;
 
-class Ns_base_dir : public L4Re::Vfs::Be_file
-{
-public:
-  enum { Size = sizeof(L4Re::Vfs::Be_file) + 2 * sizeof(l4_addr_t) };
-
-  void *operator new(size_t s) throw();
-  void operator delete(void *b) throw();
-
-protected:
-  static Simple_store_sz<Size> store;
-};
-
-class Env_dir : public Ns_base_dir
+class Env_dir : public L4Re::Vfs::Be_file
 {
 public:
   explicit Env_dir(L4Re::Env const *env)
   : _env(env), _current_cap_entry(env->initial_caps())
-  { static_assert(Ns_base_dir::Size >= sizeof(*this), "Size too small"); }
+  {}
 
   ssize_t readv(const struct iovec*, int) throw() { return -EISDIR; }
   ssize_t writev(const struct iovec*, int) throw() { return -EISDIR; }
@@ -66,12 +53,12 @@ private:
   Env::Cap_entry const *_current_cap_entry;
 };
 
-class Ns_dir : public Ns_base_dir
+class Ns_dir : public L4Re::Vfs::Be_file
 {
 public:
   explicit Ns_dir(L4::Cap<L4Re::Namespace> ns)
   : _ns(ns), _current_dir_pos(0)
-  { static_assert(Ns_base_dir::Size >= sizeof(*this), "Size too small"); }
+  {}
 
   ssize_t readv(const struct iovec*, int) throw() { return -EISDIR; }
   ssize_t writev(const struct iovec*, int) throw() { return -EISDIR; }

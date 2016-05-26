@@ -166,7 +166,7 @@
  */
 .macro  enter_sys_call no_sys_call
 	ldr	lr, [sp, #RF(PC,  0)]
-	cmn	lr, #0x2a		@ Range Check !!! UNSIGNED !!!
+	cmn	lr, #0x0d		@ Range Check !!! UNSIGNED !!!
 	bls	\no_sys_call		@ no syscall
 	cmn	lr, #0x08
 	bhi	\no_sys_call
@@ -636,6 +636,7 @@ alien_syscall: @ Do it for an alien ---------------------------------------
 	ldr	lr, [sp, #RF(SVC_LR, 13*4)] @ read orig exception PC
 	sub	lr, lr, #4                  @ adjust pc to be on insn
 	str	lr, [sp, #RF(PC,     13*4)] @ store to entry_stack_PC
+	make_tpidruro_space sp
 	enter_slowtrap_w_stack GET_HSR(0x3d)
 	@ Never reach this -- end up in user land after exception reply
 
@@ -652,6 +653,7 @@ alien_syscall: @ Do it for an alien ---------------------------------------
 	@ The trap occurs at the insn where the system call returns to.
 	@ Set the bit 0x00000040 to indicate a trap after the resumed 
 	@ system call.
+	make_tpidruro_space sp
 	enter_slowtrap_w_stack GET_HSR(0x3d), 0x40
 
 	

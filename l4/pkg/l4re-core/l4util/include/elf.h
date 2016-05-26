@@ -94,6 +94,10 @@ typedef	l4_int64_t	Elf64_Sxword; /**< size 8 align 8 \ingroup l4util_elf*/
 #define L4_ARCH_EI_DATA      ELFDATA2MSB
 #define L4_ARCH_E_MACHINE    EM_SPARC
 #define L4_ARCH_EI_CLASS     ELFCLASS32
+#elif defined(ARCH_mips)
+#define L4_ARCH_EI_DATA      ELFDATA2LSB
+#define L4_ARCH_E_MACHINE    EM_MIPS
+#define L4_ARCH_EI_CLASS     ELFCLASS32
 #else
 #warning elf.h: Unsupported build architecture!
 #endif

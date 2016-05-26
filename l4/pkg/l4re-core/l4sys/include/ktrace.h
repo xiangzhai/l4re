@@ -181,19 +181,6 @@ fiasco_tbuf_clear(void);
 L4_INLINE void
 fiasco_tbuf_dump(void);
 
-/**
- * Disable the kernel scheduling timer.
- */
-L4_INLINE void
-fiasco_timer_disable(void);
-
-/**
- * Enable the kernel scheduling timer (after it was disabled with
- * fiasco_timer_disable).
- */
-L4_INLINE void
-fiasco_timer_enable(void);
-
-#include <l4/sys/ktrace-arch.h>
+#include <l4/sys/__ktrace-impl.h>
 
 #endif

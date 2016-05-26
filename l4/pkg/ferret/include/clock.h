@@ -106,6 +106,8 @@ L4_INLINE L4_CV void ferret_calibrate_clock(int clock_type)
 	if (clock_type == FERRET_TIME_REL_US)
 		if (l4_scaler_tsc_to_us == 0)  // calibrate on demand
 			l4_calibrate_tsc(l4re_kip());
+#else
+	(void)clock_type;
 #endif
 }
 

@@ -40,6 +40,8 @@ public:
   typedef D_list_item Item;
   static D_list_item *&prev(D_list_item *e) { return e->_dli_prev; }
   static D_list_item *&next(D_list_item *e) { return e->_dli_next; }
+  static D_list_item *prev(D_list_item const *e) { return e->_dli_prev; }
+  static D_list_item *next(D_list_item const *e) { return e->_dli_next; }
 };
 
 template< typename T >
@@ -241,10 +243,10 @@ public:
 
   D_list() { this->self_insert(static_cast<T*>(&_h)); }
 
-  bool empty() const { return C::next(static_cast<T*>(&_h)) == &_h; }
+  bool empty() const { return C::next(static_cast<T const *>(&_h)) == &_h; }
 
-  void remove(T *e) { Base::remove(e); }
-  void erase(Iterator const &e) { return Base::erase(e); }
+  static void remove(T *e) { Base::remove(e); }
+  Iterator erase(Iterator const &e) { return Base::erase(e); }
 
   void push(T *e, Pos pos)
   {

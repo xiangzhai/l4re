@@ -305,6 +305,7 @@ Jdb_dump::key_pressed(int c, unsigned long &row, unsigned long &col)
       return Redraw;
 
     case KEY_RETURN: // goto address under cursor
+    case KEY_RETURN_2:
       if (level<=7 && dump_type==D_MODE)
 	{
 	  Address virt1;
@@ -327,7 +328,7 @@ Jdb_dump::key_pressed(int c, unsigned long &row, unsigned long &col)
 				   "u[address=" L4_PTR_FMT " task=%p] ",
 				   virt1, task);
 	      int c1 = Jdb_core::getchar();
-	      if (c1 != KEY_RETURN && c1 != ' ')
+	      if (c1 != KEY_RETURN && c1 != ' ' && c != KEY_RETURN_2)
 		{
 		  Jdb::printf_statline("dump", 0, "u");
 		  Jdb::execute_command("u", c1);

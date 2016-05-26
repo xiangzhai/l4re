@@ -24,6 +24,7 @@
 # include <stdbool.h>
 # include <stddef.h>
 # include <stdint.h>
+# include <l4/sys/thread_mips.h>
 
 /* Type for the dtv.  */
 typedef union dtv
@@ -39,7 +40,7 @@ typedef union dtv
 /* Note: rd must be $v1 to be ABI-conformant.  */
 # define READ_THREAD_POINTER() \
     ({ void *__result;							      \
-       __asm__ __volatile__ (".set\tpush\n\t.set\tmips32r2\n\t"		      \
+       __asm__ __volatile__ (".set\tpush\n\t"		      \
 		     "rdhwr\t%0, $29\n\t.set\tpop" : "=v" (__result));	      \
        __result; })
 
@@ -48,7 +49,6 @@ typedef union dtv
 
 # define READ_THREAD_POINTER(rd) \
 	.set	push;							      \
-	.set	mips32r2;						      \
 	rdhwr	rd, $29;						      \
 	.set	pop
 #endif /* __ASSEMBLER__ */
@@ -64,8 +64,6 @@ typedef union dtv
 
 #ifndef __ASSEMBLER__
 
-/* Get system call information.  */
-# include <sysdep.h>
 
 /* The TP points to the start of the thread blocks.  */
 # define TLS_DTV_AT_TP	1
@@ -76,7 +74,7 @@ typedef union dtv
 typedef struct
 {
   dtv_t *dtv;
-  void *private;
+  void *private_data;
 } tcbhead_t;
 
 /* This is the size of the initial TCB.  Because our TCB is before the thread
@@ -92,11 +90,18 @@ typedef struct
 
 /* Alignment requirements for the TCB.  */
 # define TLS_TCB_ALIGN		__alignof__ (struct pthread)
-
+#ifdef NOT_FOR_L4
 /* This is the size we need before TCB - actually, it includes the TCB.  */
 # define TLS_PRE_TCB_SIZE \
   (sizeof (struct pthread)						      \
    + ((sizeof (tcbhead_t) + TLS_TCB_ALIGN - 1) & ~(TLS_TCB_ALIGN - 1)))
+#else
+/* This is the size we need before TCB - actually, it includes the TCB
+ * and the L4 UTCB pointer (sizeof(void)).  */
+# define TLS_PRE_TCB_SIZE \
+  (sizeof (struct pthread)						      \
+   + ((sizeof (tcbhead_t) + sizeof(void*) + TLS_TCB_ALIGN - 1) & ~(TLS_TCB_ALIGN - 1)))
+#endif
 
 /* The thread pointer (in hardware register $29) points to the end of
    the TCB + 0x7000, as for PowerPC.  The pthread_descr structure is
@@ -119,13 +124,15 @@ typedef struct
 /* Code to initially initialize the thread pointer.  This might need
    special attention since 'errno' is not yet available and if the
    operation can cause a failure 'errno' must not be touched.  */
-# define TLS_INIT_TP(tcbp, secondcall) \
-  ({ INTERNAL_SYSCALL_DECL (err);					\
-     long result_var;							\
-     result_var = INTERNAL_SYSCALL (set_thread_area, err, 1,		\
-				    (char *) (tcbp) + TLS_TCB_OFFSET);	\
-     INTERNAL_SYSCALL_ERROR_P (result_var, err)				\
-       ? "unknown error" : NULL; })
+static inline char const *TLS_INIT_TP(void *tcbp, int secondcall)
+{
+  unsigned offset = sizeof(tcbhead_t) + sizeof(l4_umword_t);
+  l4_umword_t *x = (l4_umword_t *)((char *)tcbp - offset);
+  l4_utcb_t *u = l4_utcb();
+  *x = (l4_umword_t)u;
+  l4_thread_mips_set_ulr_u(L4_INVALID_CAP, (l4_umword_t)tcbp + TLS_TCB_OFFSET, u);
+  return NULL;
+}
 
 /* Return the address of the dtv for the current thread.  */
 # define THREAD_DTV() \

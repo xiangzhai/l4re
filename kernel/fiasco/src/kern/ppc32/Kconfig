@@ -12,6 +12,8 @@
 #
 # ARCHDEFAULTPF: PF_MP52CXX
 
+# SECTION: CPU
+
 choice
 	prompt "CPU"
 	default PPC32_603e if PPC32

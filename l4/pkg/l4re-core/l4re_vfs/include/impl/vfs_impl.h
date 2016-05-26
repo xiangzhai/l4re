@@ -27,6 +27,8 @@
 #include <l4/re/env>
 #include <l4/re/rm>
 #include <l4/re/dataspace>
+#include <l4/cxx/hlist>
+#include <l4/cxx/std_alloc>
 
 #include <l4/l4re_vfs/backend>
 
@@ -54,15 +56,6 @@ using L4Re::Rm;
 
 namespace {
 
-struct Dl_env_ops
-{
-  void *(*malloc)(size_t);
-  void (*free)(void*);
-
-  unsigned long (*cap_alloc)();
-  void (*cap_free)(unsigned long);
-};
-
 using cxx::Ref_ptr;
 
 class Fd_store : public L4Re::Core::Fd_store
@@ -76,7 +69,6 @@ public:
 class Std_stream : public L4Re::Core::Vcon_stream
 {
 public:
-  inline void *operator new (size_t, void *p) throw() { return p; }
   Std_stream(L4::Cap<L4::Vcon> c) : L4Re::Core::Vcon_stream(c) {}
 };
 
@@ -106,10 +98,9 @@ private:
   bool _early_oom;
 
 public:
-  void *operator new (size_t, void *p) throw() { return p; }
   Vfs()
   : _early_oom(true), _root_mount(), _root(L4Re::Env::env()),
-    _annon_size(0x10000000)
+    _anon_size(0x10000000)
   {
     _root_mount.add_ref();
     _root.add_ref();
@@ -150,7 +141,15 @@ public:
   int unregister_file_system(L4Re::Vfs::File_system *f) throw();
   L4Re::Vfs::File_system *get_file_system(char const *fstype) throw();
 
+  int register_file_factory(cxx::Ref_ptr<L4Re::Vfs::File_factory> f) throw();
+  int unregister_file_factory(cxx::Ref_ptr<L4Re::Vfs::File_factory> f) throw();
+  Ref_ptr<L4Re::Vfs::File_factory> get_file_factory(int proto) throw();
+  Ref_ptr<L4Re::Vfs::File_factory> get_file_factory(char const *proto_name) throw();
+
   void operator delete (void *) {}
+
+  void *malloc(size_t size) noexcept { return Vfs_config::malloc(size); }
+  void free(void *m) noexcept { Vfs_config::free(m); }
 
 private:
   Root_mount_tree _root_mount;
@@ -160,9 +159,22 @@ private:
 
   L4Re::Vfs::File_system *_fs_registry;
 
-  l4_addr_t _annon_size;
-  l4_addr_t _annon_offset;
-  L4::Cap<L4Re::Dataspace> _annon_ds;
+  struct File_factory_item : cxx::H_list_item_t<File_factory_item>
+  {
+    cxx::Ref_ptr<L4Re::Vfs::File_factory> f;
+    explicit File_factory_item(cxx::Ref_ptr<L4Re::Vfs::File_factory> const &f)
+    : f(f) {};
+
+    File_factory_item() = default;
+    File_factory_item(File_factory_item const &) = delete;
+    File_factory_item &operator = (File_factory_item const &) = delete;
+  };
+
+  cxx::H_list_t<File_factory_item> _file_factories;
+
+  l4_addr_t _anon_size;
+  l4_addr_t _anon_offset;
+  L4::Cap<L4Re::Dataspace> _anon_ds;
 
   int alloc_ds(unsigned long size, L4::Cap<L4Re::Dataspace> *ds);
   int alloc_anon_mem(l4_umword_t size, L4::Cap<L4Re::Dataspace> *ds,
@@ -237,6 +249,61 @@ Vfs::get_file_system(char const *fstype) throw()
 
       try_dynamic = false;
     }
+}
+
+int
+Vfs::register_file_factory(cxx::Ref_ptr<L4Re::Vfs::File_factory> f) throw()
+{
+  if (!f)
+    return -EINVAL;
+
+  void *x = this->malloc(sizeof(File_factory_item));
+  if (!x)
+    return -ENOMEM;
+
+  auto ff = new (x, cxx::Nothrow()) File_factory_item(f);
+  _file_factories.push_front(ff);
+  return 0;
+}
+
+int
+Vfs::unregister_file_factory(cxx::Ref_ptr<L4Re::Vfs::File_factory> f) throw()
+{
+  for (auto p: _file_factories)
+    {
+      if (p->f == f)
+        {
+          _file_factories.remove(p);
+          p->~File_factory_item();
+          this->free(p);
+          return 0;
+        }
+    }
+  return -ENOENT;
+}
+
+Ref_ptr<L4Re::Vfs::File_factory>
+Vfs::get_file_factory(int proto) throw()
+{
+  for (auto p: _file_factories)
+    if (p->f->proto() == proto)
+      return p->f;
+
+  return Ref_ptr<L4Re::Vfs::File_factory>();
+}
+
+Ref_ptr<L4Re::Vfs::File_factory>
+Vfs::get_file_factory(char const * /*proto_name*/) throw()
+{
+#if 0 // strcmp not available in ldso so disable this for now
+  for (auto p: _file_factories)
+    {
+      auto n = p->f->proto_name();
+      if (n && __builtin_strcmp(n, proto_name) == 0)
+        return p->f;
+    }
+#endif
+  return Ref_ptr<L4Re::Vfs::File_factory>();
 }
 
 int
@@ -373,7 +440,7 @@ Vfs::alloc_ds(unsigned long size, L4::Cap<L4Re::Dataspace> *ds)
     return err;
 
   DEBUG_LOG(debug_mmap, {
-      outstring("ANNON DS ALLOCATED: size=");
+      outstring("ANON DS ALLOCATED: size=");
       outhex32(size);
       outstring("  cap=");
       outhex32(ds->cap());
@@ -388,29 +455,29 @@ Vfs::alloc_anon_mem(l4_umword_t size, L4::Cap<L4Re::Dataspace> *ds,
                     l4_addr_t *offset)
 {
 #ifdef USE_BIG_ANON_DS
-  if (!_annon_ds.is_valid() || _annon_offset + size >= _annon_size)
+  if (!_anon_ds.is_valid() || _anon_offset + size >= _anon_size)
     {
-      if (_annon_ds.is_valid())
-	L4Re::Core::release_ds(_annon_ds);
+      if (_anon_ds.is_valid())
+	L4Re::Core::release_ds(_anon_ds);
 
       int err;
-      if ((err = alloc_ds(_annon_size, ds)) < 0)
+      if ((err = alloc_ds(_anon_size, ds)) < 0)
 	return err;
 
-      _annon_offset = 0;
-      _annon_ds = *ds;
+      _anon_offset = 0;
+      _anon_ds = *ds;
     }
   else
-    *ds = _annon_ds;
+    *ds = _anon_ds;
 
   if (_early_oom)
     {
-      if (int err = (*ds)->allocate(_annon_offset, size))
+      if (int err = (*ds)->allocate(_anon_offset, size))
 	return err;
     }
 
-  *offset = _annon_offset;
-  _annon_offset += size;
+  *offset = _anon_offset;
+  _anon_offset += size;
 #else
   int err;
   if ((err = alloc_ds(size, ds)) < 0)
@@ -458,22 +525,22 @@ Vfs::mmap2(void *start, size_t len, int prot, int flags, int fd, off_t _offset,
     }
 
   L4::Cap<L4Re::Dataspace> ds;
-  l4_addr_t annon_offset = 0;
+  l4_addr_t anon_offset = 0;
   unsigned rm_flags = 0;
 
   if (flags & (MAP_ANONYMOUS | MAP_PRIVATE))
     {
       rm_flags |= L4Re::Rm::Detach_free;
 
-      int err = alloc_anon_mem(size, &ds, &annon_offset);
+      int err = alloc_anon_mem(size, &ds, &anon_offset);
       if (err)
 	return err;
 
       DEBUG_LOG(debug_mmap, {
-	  outstring("USE ANNON MEM: ");
+	  outstring("USE ANON MEM: ");
 	  outhex32(ds.cap());
 	  outstring(" offs=");
-	  outhex32(annon_offset);
+	  outhex32(anon_offset);
 	  outstring("\n");
       });
     }
@@ -501,8 +568,8 @@ Vfs::mmap2(void *start, size_t len, int prot, int flags, int fd, off_t _offset,
       if (flags & MAP_PRIVATE)
 	{
 	  DEBUG_LOG(debug_mmap, outstring("COW\n"););
-	  ds->copy_in(annon_offset, fds, l4_trunc_page(offset), l4_round_page(size));
-	  offset = annon_offset;
+	  ds->copy_in(anon_offset, fds, l4_trunc_page(offset), l4_round_page(size));
+	  offset = anon_offset;
 	}
       else
 	{
@@ -510,7 +577,7 @@ Vfs::mmap2(void *start, size_t len, int prot, int flags, int fd, off_t _offset,
 	}
     }
   else
-    offset = annon_offset;
+    offset = anon_offset;
 
 
   if (!(flags & MAP_FIXED) && start == 0)
@@ -773,22 +840,9 @@ int
 Vfs::madvise(void *, size_t, int) L4_NOTHROW
 { return 0; }
 
-namespace {
-struct Vfs_cnt
-{
-
-  // use this container construct here to prevent a destructor for
-  // our VFS main object is ever called!
-  char vfs_cnt[sizeof(Vfs)] __attribute__((aligned(sizeof(long))));
-  Vfs_cnt() { new (vfs_cnt) Vfs(); }
-};
-
-static Vfs_cnt vfs_cnt __attribute__((init_priority(INIT_PRIO_VFS_INIT)));
-}
 }
 
-//L4Re::Vfs::Ops *__ldso_posix_vfs_ops = &vfs;
-void *__rtld_l4re_env_posix_vfs_ops = &vfs_cnt.vfs_cnt;
+void *__rtld_l4re_env_posix_vfs_ops;
 extern void *l4re_env_posix_vfs_ops __attribute__((alias("__rtld_l4re_env_posix_vfs_ops"), visibility("default")));
 
 

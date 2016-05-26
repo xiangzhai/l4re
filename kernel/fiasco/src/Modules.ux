@@ -95,7 +95,7 @@ INTERFACES_KERNEL	:= string_buffer mem_region simpleio kernel_console panic warn
 			   obj_space kobject_dbg kobject kobject_iface    \
 			   l4_buf_iter lock  clock \
                            obj_space_types obj_space_phys_util \
-			   mem_space space utcb_init vcpu trap_state  \
+			   mem_space space utcb_init trap_state vcpu_host_regs vcpu \
 			   cpu_call context \
 			   helping_lock \
 			   usermode \
@@ -197,6 +197,7 @@ timer_IMPL 		:= timer timer-ia32-amd64-ux timer-ux
 timer_tick_IMPL		:= timer_tick timer_tick-single-vector timer_tick-ia32
 utcb_init_IMPL		:= utcb_init utcb_init-ux
 vmem_alloc_IMPL		:= vmem_alloc vmem_alloc-ia32 vmem_alloc-ux
+vcpu_host_regs_IMPL	:= vcpu_host_regs-ia32
 spin_lock_IMPL		:= spin_lock spin_lock-ia32
 
 CXXSRC_KERNEL		:= libc_backend_nolock.cc glue_libc_ux.cc tb_entry_output.cc

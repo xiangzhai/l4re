@@ -125,13 +125,13 @@ int main(void)
   e->sp = (l4_umword_t)(thread_stack + sizeof(thread_stack));
 #ifdef ARCH_x86
   e->ip = (l4_umword_t)thread;
-  e->eax = 1;
+  e->edi = 0;
+  e->esi = 1;
+  e->ebp = 2;
   e->ebx = 4;
-  e->ecx = 2;
-  e->edx = 3;
-  e->esi = 6;
-  e->edi = 7;
-  e->ebp = 5;
+  e->edx = 5;
+  e->ecx = 6;
+  e->eax = 7;
 #endif
 #ifdef ARCH_arm
   e->pc = (l4_umword_t)thread;

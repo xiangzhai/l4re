@@ -17,6 +17,16 @@ IMPLEMENTATION[amd64]:
 #include "types.h"
 #include "std_macros.h"
 
+PUBLIC static inline
+Cpu_phys_id
+Proc::cpu_id()
+{
+  Mword eax, ebx,ecx, edx;
+  asm volatile ("cpuid" : "=a" (eax), "=b" (ebx), "=c" (ecx), "=d" (edx)
+                        : "a" (1));
+  return Cpu_phys_id((ebx >> 24) & 0xff);
+}
+
 IMPLEMENT static inline
 Mword Proc::stack_pointer()
 {

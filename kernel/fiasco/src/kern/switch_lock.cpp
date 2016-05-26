@@ -26,15 +26,15 @@ class Context;
  * no longer exist.
  *
  * The operations initialize(), lock_owner(), clear(), clear_dirty(), and
- * clear_no_switch_dirty() must not being called on and invalid lock,
+ * clear_no_switch_dirty() must not be called on any invalid lock,
  * thus the lock itself must be held for using these operations. 
  * (Except initialize(), which is only useful for locks that are always 
  * valid.)
  * 
  * @param VALID must be set to a validity checker for the lock.
  * 
- * The validity checker is used while aquiring the lock to test
- * if the lock itself existis. We assume that a lock may disappear
+ * The validity checker is used while acquiring the lock to test
+ * if the lock itself exists. We assume that a lock may disappear
  * while we are blocked on it.
  */
 class Switch_lock
@@ -55,8 +55,8 @@ public:
    */
   enum Status 
   {
-    Not_locked, ///< The lock was formerly not aquired and -- we got it
-    Locked,     ///< The lock was already aquired by ourselves
+    Not_locked, ///< The lock was formerly not acquired and -- we got it
+    Locked,     ///< The lock was already acquired by ourselves
     Invalid     ///< The lock does not exist (is invalid)
   };
 
@@ -184,14 +184,12 @@ PRIVATE
 void NO_INSTRUMENT
 Switch_lock::help(Context *curr, Context *owner, Address owner_id)
 {
-  auto s = curr->switch_exec_helping(owner, Context::Helping, &_lock_owner,
-                                     owner_id);
+  auto s = curr->switch_exec_helping(owner, &_lock_owner, owner_id);
   if (s == Context::Switch::Failed)
     {
+      Proc::preemption_point();
       if (curr->home_cpu() != current_cpu())
         curr->schedule();
-      else
-        Proc::preemption_point();
     }
 }
 
@@ -281,6 +279,11 @@ Switch_lock::set_lock_owner(Context *o)
   return true;
 }
 
+PRIVATE static inline
+void
+Switch_lock::schedule(Context *curr)
+{ curr->schedule(); }
+
 
 IMPLEMENTATION [mp]:
 
@@ -304,7 +307,7 @@ Switch_lock::set_lock_owner(Context *o)
         {
           if (EXPECT_FALSE(access_once(&o->_running_under_lock)))
             continue;
-          if (EXPECT_TRUE(mp_cas(&o->_running_under_lock, Mword(false), Mword(true))))
+          if (EXPECT_TRUE(o->_running_under_lock.try_dispatch()))
             break;
         }
     }
@@ -318,12 +321,31 @@ Switch_lock::set_lock_owner(Context *o)
       if (have_no_locks)
         {
           Mem::mp_wmb();
-          write_now(&o->_running_under_lock, Mword(false));
+          o->_running_under_lock.reset();
         }
       return false;
     }
 
   return true;
+}
+
+PRIVATE static inline
+void
+Switch_lock::schedule(Context *curr)
+{
+  curr->schedule();
+  /* we have to recheck the correct setting of `curr->_running_under_lock`
+   * after schedule, because the home CPU of `curr` might have been set to
+   * the current CPU meanwhile.
+   * In this case and if `curr` has no locks anymore _running_under_lock
+   * must be `false`. (Invariant: `curr->_running_under_lock` must be true
+   * if `curr` executes on any CPU and `lock_cnt` is not zero, or if
+   * `lock_cnt` is zero and `curr` is executing on a CPU other than the home
+   * CPU of `curr`.)
+   */
+  if ((curr->home_cpu() == current_cpu())
+      && curr->lock_cnt() == 0)
+    curr->_running_under_lock.preempt();
 }
 
 
@@ -361,29 +383,33 @@ Switch_lock::clear_no_switch_dirty()
  *      under the same cpu lock
  */
 PROTECTED
-static inline
+static inline NEEDS[Switch_lock::schedule]
 void NO_INSTRUMENT
-Switch_lock::switch_dirty(Lock_context const &c) 
+Switch_lock::switch_dirty(Lock_context const &c)
 {
   assert (current() == c.owner);
 
-  Context *h = c.owner->helper();
+  Context *curr = c.owner;
+  Context *h = curr->helper();
+
   /*
    * If someone helped us by lending its time slice to us.
    * Just switch back to the helper without changing its helping state.
    */
-  if (h != c.owner)
+  bool need_sched = false;
+
+  if (h != curr)
     if (   EXPECT_FALSE(h->home_cpu() != current_cpu())
-        || EXPECT_FALSE((long)c.owner->switch_exec_locked(h, Context::Ignore_Helping)))
-      c.owner->schedule();
-  /*
-   * Someone apparently tries to delete us. Therefore we aren't
-   * allowed to continue to run and therefore let the scheduler
-   * pick the next thread to execute.
-   */
-  if (   c.owner->lock_cnt() == 0
-      && (c.owner->home_cpu() != current_cpu() || c.owner->donatee()))
-    c.owner->schedule();
+        || EXPECT_FALSE((long)curr->switch_exec_locked(h, Context::Ignore_Helping)))
+      need_sched = true;
+
+  if (!need_sched)
+    need_sched = (   curr->lock_cnt() == 0
+                  && (   curr->home_cpu() != current_cpu()
+                      || curr->donatee()));
+
+  if (EXPECT_FALSE(need_sched))
+    schedule(curr);
 }
 
 /** Free the lock.  

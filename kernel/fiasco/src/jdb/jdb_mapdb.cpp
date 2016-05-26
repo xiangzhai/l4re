@@ -493,7 +493,7 @@ Jdb_mapdb::show_simple_tree(Kobject_common *f, unsigned indent = 1)
       return true;
     }
 
-  printf(" mapping tree for object D:%lx (%p) ref_cnt=%ld\n",
+  printf(" mapping tree for object D:%lx (%p) ref_cnt=%ld\033[K\n",
          f->dbg_info()->dbg_id(), f, f->map_root()->_cnt);
 
   screenline += 2;

@@ -81,6 +81,9 @@ static inline unsigned color_val(unsigned w, unsigned peak_point, unsigned val)
 {
   unsigned third = w / 3;
 
+  if (third == 0)
+    return 0;
+
   unsigned a = abs(val - peak_point);
   if (a > third * 2)
     a = peak_point + w - val;

@@ -98,7 +98,7 @@ Romain::PageFaultObserver::notify(Romain::App_instance *i, Romain::App_thread *t
 
 	if (t->unhandled_pf()) {
 		Romain::_the_instance_manager->show_stats();
-		enter_kdebug("unhandled pf");
+		return Romain::Observer::Ignored;
 	}
 #if BENCHMARKING
 	unsigned long long t1, t2;
@@ -225,7 +225,7 @@ Romain::PageFaultObserver::notify(Romain::App_instance *i, Romain::App_thread *t
 						ERROR() << "Mapping with diverging alignments!\n";
 						ERROR() << Romain::Region_map::print_mapping(n, instID) << "\n";
 						ERROR() << "align: " << align << " but last was " << last_align << "\n";
-						enter_kdebug("Align!");
+						abort();
 					}
 				}
 				last_align = align;
@@ -245,7 +245,6 @@ Romain::PageFaultObserver::notify(Romain::App_instance *i, Romain::App_thread *t
 				MSGt(t) << std::hex << "map: " << localbase << " -> "
 						<< remotebase << " size " << (1 << align);
 
-				//enter_kdebug("pf");
 				
 				// set flags properly, only check ro(), because else we'd already ended
 				// up in the emulation branch above
@@ -278,7 +277,6 @@ Romain::PageFaultObserver::notify(Romain::App_instance *i, Romain::App_thread *t
 		        << " PC @ 0x" << vcpu->r()->ip << " write: "
 				<< (write_pf ? "y" : "n")
 				<< "\n";
-		enter_kdebug();
 		t->set_unhandled_pf();
 	}
 

@@ -81,7 +81,7 @@ void ddekit_pgtab_init(void)
 	int r = pthread_mutex_init(&pa_list_lock, NULL);
 	if (r) {
 		ddekit_printf("Error initializing pgtab mutex: %d\n", r);
-		enter_kdebug();
+		ddekit_panic("error initializing pgtab mutex");
 	}
 }
 

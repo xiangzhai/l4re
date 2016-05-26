@@ -238,8 +238,4 @@ endif
 include $(MODULES_FILE_BSP)
 VPATH += kern/sparc/bsp/$(BSP_NAME) kern/sparc/bsp
 
-ifeq ("$(filter LIBUART, $(SUBSYSTEMS))","LIBUART")
-  LIBUART			:= uart/libuart.a
-endif
-
 MODULES_FILES = $(MODULES_FILE) $(MODULES_FILE_BSP)

@@ -114,7 +114,7 @@ Obj_space_virt<SPACE>::caps_alloc(Cap_index virt)
       return 0;
     };
 
-  unsigned long cap = cv & (Config::PAGE_SIZE - 1) | (unsigned long)mem;
+  unsigned long cap = (cv & (Config::PAGE_SIZE - 1)) | (unsigned long)mem;
 
   return reinterpret_cast<Entry*>(cap);
 }

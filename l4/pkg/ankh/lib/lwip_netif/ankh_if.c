@@ -57,7 +57,6 @@
 
 #include <l4/ankh/client-c.h>
 #include <l4/ankh/lwip-ankh.h>
-#include <l4/sys/kdebug.h>
 #include <l4/util/util.h>
 #include <assert.h>
 #include <stdlib.h>
@@ -104,7 +103,6 @@ static void *ankhif_recv_fn(void *arg)
 		ankhif_input(netif);
     }
 
-    enter_kdebug("exit loop?");
     return NULL;
 }
 
@@ -184,7 +182,6 @@ low_level_output(struct netif *netif, struct pbuf *p)
   }
   else {
     printf("send with NULL workload?\n");
-    enter_kdebug();
   }
 #endif
 
@@ -252,7 +249,6 @@ low_level_input(struct netif *netif)
     if (err) { /* Should not happen! */
       printf("ERROR: l4shmc_rb_copy_out %d\n", err);
       printf("p @ %p, len %d\n", p, p->len);
-      enter_kdebug();
       return NULL;
     }
 

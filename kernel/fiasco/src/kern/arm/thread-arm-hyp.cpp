@@ -4,6 +4,8 @@ IMPLEMENT_OVERRIDE
 void
 Thread::arch_init_vcpu_state(Vcpu_state *vcpu_state, bool ext)
 {
+  vcpu_state->version = Vcpu_arch_version;
+
   if (!ext || (state() & Thread_ext_vcpu_enabled))
     return;
 
@@ -277,7 +279,7 @@ static inline
 bool
 is_syscall_pc(Address pc)
 {
-  return Unsigned32(-0x2a) <= pc && pc <= Unsigned32(-0x08);
+  return Unsigned32(-0x0c) <= pc && pc <= Unsigned32(-0x08);
 }
 
 static inline

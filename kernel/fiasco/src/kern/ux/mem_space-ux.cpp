@@ -70,7 +70,7 @@ Mem_space::set_pid(pid_t pid)
 
 IMPLEMENT inline NEEDS["logdefs.h"]
 void
-Mem_space::switchin_context(Mem_space *from, unsigned)
+Mem_space::switchin_context(Mem_space *from)
 {
   if (this == from)
     return;

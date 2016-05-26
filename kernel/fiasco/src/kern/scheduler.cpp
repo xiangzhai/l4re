@@ -130,7 +130,7 @@ Scheduler::op_sched_info(L4_cpu_set_descr const &s, Mword *m, Mword *max_cpus)
   Cpu_number const offset = s.offset();
 
   if (offset >= max)
-    return commit_result(-L4_err::EInval);
+    return commit_result(-L4_err::ERange);
 
   if (max > offset + Cpu_number(MWORD_BITS) << granularity)
     max = offset + Cpu_number(MWORD_BITS) << granularity;

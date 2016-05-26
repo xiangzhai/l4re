@@ -18,7 +18,6 @@
  */
 #include "ns_fs.h"
 #include "vfs_api.h"
-#include "ro_file.h"
 
 #include <l4/re/dataspace>
 #include <l4/re/util/env_ns>
@@ -26,21 +25,30 @@
 
 namespace L4Re { namespace Core {
 
-Simple_store_sz<Env_dir::Size> Ns_base_dir::store __attribute__((init_priority(1000)));
-
-void *
-Ns_base_dir::operator new(size_t s) throw()
+static
+Ref_ptr<L4Re::Vfs::File>
+cap_to_vfs_object(L4::Cap<void> o, int *err)
 {
-  if (s > Size)
-    return 0;
+  L4::Cap<L4::Meta> m = L4::cap_reinterpret_cast<L4::Meta>(o);
+  long proto = 0;
+  char name_buf[256];
+  L4::Ipc::String<char> name(sizeof(name_buf), name_buf);
+  int r = l4_error(m->interface(0, &proto, &name));
+  *err = -ENOPROTOOPT;
+  if (r < 0)
+    // could not get type of object so bail out
+    return Ref_ptr<L4Re::Vfs::File>();
 
-  return store.alloc();
-}
+  *err = -EPROTO;
+  if (proto == 0)
+    return Ref_ptr<L4Re::Vfs::File>();
 
-void
-Ns_base_dir::operator delete(void *b) throw()
-{
-  store.free(b);
+  auto factory = L4Re::Vfs::vfs_ops->get_file_factory(proto);
+  if (!factory)
+    return Ref_ptr<L4Re::Vfs::File>();
+
+  *err = -ENOMEM;
+  return factory->create(o);
 }
 
 
@@ -78,19 +86,9 @@ Ns_dir::get_entry(const char *path, int flags, mode_t mode,
   if (err < 0)
     return -ENOENT;
 
-  // FIXME: should check if it is a dataspace, somehow
-  cxx::Ref_ptr<L4Re::Vfs::File> fi;
-
-  L4::Cap<L4Re::Namespace> nsc
-    = L4::cap_dynamic_cast<L4Re::Namespace>(file.get());
-
-  if (!nsc.is_valid())
-    fi = cxx::ref_ptr(new Ro_file(file.get()));
-  else // use mat protocol here!!
-    fi = cxx::ref_ptr(new Ns_dir(nsc));
-
+  cxx::Ref_ptr<L4Re::Vfs::File> fi = cap_to_vfs_object(file.get(), &err);
   if (!fi)
-    return -ENOMEM;
+    return err;
 
   file.release();
   *f = cxx::move(fi);
@@ -264,19 +262,9 @@ Env_dir::get_entry(const char *path, int flags, mode_t mode,
   if (err < 0)
     return -ENOENT;
 
-  // FIXME: should check if it is a dataspace, somehow
-  cxx::Ref_ptr<L4Re::Vfs::File> fi;
-
-  L4::Cap<L4Re::Namespace> nsc
-    = L4::cap_dynamic_cast<L4Re::Namespace>(file.get());
-
-  if (!nsc.is_valid())
-    fi = cxx::ref_ptr(new Ro_file(file.get()));
-  else // use mat protocol here!!
-    fi = cxx::ref_ptr(new Ns_dir(nsc));
-
+  cxx::Ref_ptr<L4Re::Vfs::File> fi = cap_to_vfs_object(file.get(), &err);
   if (!fi)
-    return -ENOMEM;
+    return err;
 
   file.release();
   *f = cxx::move(fi);

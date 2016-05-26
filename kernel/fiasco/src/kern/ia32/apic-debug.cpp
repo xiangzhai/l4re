@@ -22,7 +22,7 @@ Apic::reg_lvt_bit_str(unsigned reg, Unsigned32 val, int bit)
     case APIC_lvtthmr: bits = Mask | Delivery_state | Trigger_mode;	break;
     }
 
-  if (bits & bit == 0)
+  if ((bits & bit) == 0)
     return "";
 
   switch (bit)

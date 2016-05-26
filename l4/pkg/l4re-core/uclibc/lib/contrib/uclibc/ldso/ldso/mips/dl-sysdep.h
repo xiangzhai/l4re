@@ -226,7 +226,7 @@ elf_machine_load_address (void)
 	ElfW(Addr) addr;
 	__asm__ ("        .set noreorder\n"
 	     "        " STRINGXP (PTR_LA) " %0, 0f\n"
-	     "        bltzal $0, 0f\n"
+	     "        bal 0f\n"
 	     "        nop\n"
 	     "0:      " STRINGXP (PTR_SUBU) " %0, $31, %0\n"
 	     "        .set reorder\n"

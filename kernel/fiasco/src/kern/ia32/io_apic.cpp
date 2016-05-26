@@ -337,6 +337,7 @@ Io_apic::init_scan_apics()
        ++n_apics)
     {
       Io_apic *apic = new Boot_object<Io_apic>(ioapic->adr, ioapic->irq_base);
+      (void)apic;
 
       if (Print_info)
         {

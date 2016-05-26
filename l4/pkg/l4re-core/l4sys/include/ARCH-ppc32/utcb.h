@@ -92,7 +92,7 @@ L4_INLINE l4_utcb_t *l4_utcb_direct(void) L4_NOTHROW
 }
 #endif
 
-L4_INLINE l4_umword_t l4_utcb_exc_pc(l4_exc_regs_t *u) L4_NOTHROW
+L4_INLINE l4_umword_t l4_utcb_exc_pc(l4_exc_regs_t const *u) L4_NOTHROW
 {
   return u->srr0;
 }
@@ -102,18 +102,18 @@ L4_INLINE void l4_utcb_exc_pc_set(l4_exc_regs_t *u, l4_addr_t pc) L4_NOTHROW
   u->srr0 = pc;
 }
 
-L4_INLINE l4_umword_t l4_utcb_exc_typeval(l4_exc_regs_t *u) L4_NOTHROW
+L4_INLINE l4_umword_t l4_utcb_exc_typeval(l4_exc_regs_t const *u) L4_NOTHROW
 {
   return u->err;
 }
 
 //TODO: cbass check pfa values
-L4_INLINE int l4_utcb_exc_is_pf(l4_exc_regs_t *u) L4_NOTHROW
+L4_INLINE int l4_utcb_exc_is_pf(l4_exc_regs_t const *u) L4_NOTHROW
 {
   return u->err & 0x00010000;
 }
 
-L4_INLINE l4_addr_t l4_utcb_exc_pfa(l4_exc_regs_t *u) L4_NOTHROW
+L4_INLINE l4_addr_t l4_utcb_exc_pfa(l4_exc_regs_t const *u) L4_NOTHROW
 {
   return (u->pfa & ~3) | (!(u->err & 0x00020000) << 1);
 }

@@ -144,8 +144,8 @@ Thread::handle_io_page_fault(Trap_state *ts)
   // pager. If it was a page fault, check the faulting address to prevent
   // touching userland.
   if (eip <= Mem_layout::User_max &&
-      (ts->_trapno == 13 && (ts->_err & 7) == 0 ||
-       ts->_trapno == 14 && Kmem::is_io_bitmap_page_fault(ts->_cr2)))
+      ((ts->_trapno == 13 && (ts->_err & 7) == 0) ||
+       (ts->_trapno == 14 && Kmem::is_io_bitmap_page_fault(ts->_cr2))))
     {
       unsigned port, size;
       if (get_ioport(eip, ts, &port, &size))

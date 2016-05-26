@@ -815,6 +815,41 @@ public:
 inline
 Mman::~Mman() throw() {}
 
+class File_factory
+{
+private:
+  int _ref_cnt = 0;
+  int _proto = 0;
+  char const *_proto_name = 0;
+
+  template<typename T> friend struct cxx::Default_ref_counter;
+  void add_ref() throw() { ++_ref_cnt; }
+  int remove_ref() throw() { return --_ref_cnt; }
+
+public:
+  explicit File_factory(int proto) : _proto(proto) {}
+  explicit File_factory(char const *proto_name) : _proto_name(proto_name) {}
+  File_factory(File_factory const &) = delete;
+  File_factory &operator = (File_factory const &) = delete;
+
+  char const *proto_name() const { return _proto_name; }
+  int proto() const { return _proto; }
+
+  virtual ~File_factory() throw() = 0;
+  virtual cxx::Ref_ptr<File> create(L4::Cap<void> file) = 0;
+};
+
+inline File_factory::~File_factory() throw() {}
+
+template<typename IFACE, typename IMPL>
+class File_factory_t : public File_factory
+{
+public:
+  File_factory_t() : File_factory(IFACE::Protocol) {}
+  cxx::Ref_ptr<File> create(L4::Cap<void> file)
+  { return cxx::ref_ptr(new IMPL(L4::cap_cast<IFACE>(file))); }
+};
+
 /**
  * \brief Basic interface for an L4Re::Vfs file system.
  * \note For implementing a special file system you may
@@ -964,6 +999,11 @@ public:
             char const *fstype, unsigned long mountflags,
             void const *data) throw();
 
+  virtual int register_file_factory(cxx::Ref_ptr<File_factory> f) throw() = 0;
+  virtual int unregister_file_factory(cxx::Ref_ptr<File_factory> f) throw() = 0;
+  virtual cxx::Ref_ptr<File_factory> get_file_factory(int proto) throw() = 0;
+  virtual cxx::Ref_ptr<File_factory> get_file_factory(char const *proto_name) throw() = 0;
+
   virtual ~Fs() = 0;
 };
 
@@ -1004,6 +1044,8 @@ class App_api
 {
 public:
   virtual Cap_alloc *cap_alloc() throw() = 0;
+  virtual void *malloc(size_t) noexcept = 0;
+  virtual void free(void *m) noexcept = 0;
   virtual ~App_api() = 0;
 };
 

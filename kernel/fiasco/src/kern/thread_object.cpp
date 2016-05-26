@@ -202,6 +202,7 @@ Thread_object::sys_vcpu_resume(L4_msg_tag const &tag, Utcb *utcb)
         if (EXPECT_FALSE(!snd_items.next()))
           break;
 
+        // in this case we already have a counted reference managed by vcpu_user_space()
         Lock_guard<Lock> guard;
         if (!guard.check_and_lock(&static_cast<Task *>(vcpu_user_space())->existence_lock))
           return commit_result(-L4_err::ENoent);
@@ -402,6 +403,9 @@ Thread_object::sys_control(L4_fpage::Rights rights, L4_msg_tag tag, Utcb *utcb)
 
       if (EXPECT_FALSE(!(task_rights & L4_fpage::Rights::CS())))
         return commit_result(-L4_err::EPerm);
+
+      if (EXPECT_FALSE(!(task->caps() & Task::Caps::threads())))
+        return commit_result(-L4_err::EInval);
 
       utcb_addr = User<Utcb>::Ptr((Utcb*)utcb->values[5]);
 

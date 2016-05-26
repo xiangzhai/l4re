@@ -21,6 +21,7 @@
 #include <l4/sys/err.h>
 #include <l4/cxx/bitfield>
 #include <l4/cxx/exceptions>
+#include <cstdint>
 
 #pragma once
 
@@ -29,6 +30,9 @@ namespace L4virtio {
 #ifdef __ARM_ARCH_7A__
 static inline void wmb() { asm volatile ("dmb" : : : "memory"); }
 static inline void rmb() { asm volatile ("dmb" : : : "memory"); }
+#elif defined(__mips__)
+static inline void wmb() { asm volatile ("sync" : : : "memory"); }
+static inline void rmb() { asm volatile ("sync" : : : "memory"); }
 #else
 #warning Missing proper memory write barrier
 static inline void wmb() { asm volatile ("" : : : "memory"); }
@@ -207,6 +211,7 @@ protected:
    * Create a disabled virtqueue.
    */
   Virtqueue() : _desc(0), _idx_mask(0) {}
+  Virtqueue(Virtqueue const &) = delete;
 
 public:
   /**
@@ -220,7 +225,7 @@ public:
   /**
    * Calculate the total size for a virtqueue of the given dimensions.
    * \param num    The number of entries in the descriptor table, the
-   *               available ring, and the used ring (must be q power of 2).
+   *               available ring, and the used ring (must be a power of 2).
    * \param align  The alignment for the used ring (must be a power of 2).
    * \return the total size in bytes of the queue data structures.
    */
@@ -249,7 +254,7 @@ public:
   /**
    * \brief Enable this queue.
    * \param num    The number of entries in the descriptor table, the
-   *               available ring, and the used ring (must be q power of 2).
+   *               available ring, and the used ring (must be a power of 2).
    * \param align  The alignment for the used ring (must be a power of 2).
    * \param base   The base address for the queue data structure.
    *
@@ -264,8 +269,9 @@ public:
     _idx_mask = num - 1;
     _desc = (Desc*)base;
     _avail = (Avail*)&_desc[num];
+    uintptr_t al_mask = align - 1;
     _used = (Used*)((((l4_addr_t)&_avail->ring[num])
-          + sizeof(l4_uint16_t) + align - 1) & ~(align - 1));
+                    + sizeof(l4_uint16_t) + al_mask) & ~al_mask);
 
     _current_avail = 0;
 
@@ -319,6 +325,20 @@ public:
   {
     _used->flags.no_notify() = value;
   }
+
+  /**
+   * Get available index from available ring (for debugging).
+   * \pre Queue must be in a working state.
+   * \return current index  in the available ring (shared
+   *         between device model and device driver).
+   */
+  l4_uint16_t get_avail_idx() const { return _avail->idx; }
+
+  /**
+   * Get tail-available index stored in local state (for debugging).
+   * \return current tail index for the the available ring.
+   */
+  l4_uint16_t get_tail_avail_idx() const { return _current_avail; }
 
 };
 

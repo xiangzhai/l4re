@@ -145,7 +145,7 @@ public:
   };
 
   /**
-   * \brief Deffered Request.
+   * \brief Deferred Request.
    *
    * Represents a request that can be queued for each Context
    * and is executed by the target context just after switching to the
@@ -350,6 +350,7 @@ public:
 protected:
   void arch_load_vcpu_user_state(Vcpu_state *vcpu, bool do_load);
   void arch_update_vcpu_state(Vcpu_state *vcpu);
+  void arch_vcpu_ext_shutdown();
 
   // XXX Timeout for both, sender and receiver! In normal case we would have
   // to define own timeouts in Receiver and Sender but because only one
@@ -686,10 +687,10 @@ Context::state_change_safely(Mword mask, Mword bits)
   do
     {
       old = _state;
-      if (old & bits & mask | ~old & ~mask)
+      if ((old & bits & mask) | (~old & ~mask))
         return 0;
     }
-  while (!cas(&_state, old, old & mask | bits));
+  while (!cas(&_state, old, (old & mask) | bits));
 
   return 1;
 }
@@ -1193,7 +1194,7 @@ Context::switch_exec_locked(Context *t, enum Helping_mode mode)
 
 PUBLIC
 Context::Switch
-Context::switch_exec_helping(Context *t, Helping_mode mode, Mword const *lock, Mword val)
+Context::switch_exec_helping(Context *t, Mword const *lock, Mword val)
 {
   // Must be called with CPU lock held
   assert (t);
@@ -1232,7 +1233,7 @@ Context::switch_exec_helping(Context *t, Helping_mode mode, Mword const *lock, M
   if (EXPECT_TRUE(get_current_cpu() == home_cpu()))
     update_ready_list();
 
-  t->set_helper(mode);
+  t->set_helper(Helping);
   t->set_current_cpu(get_current_cpu());
   switch_fpu(t);
   switch_cpu(t);
@@ -1687,6 +1688,11 @@ Context::arch_load_vcpu_user_state(Vcpu_state *, bool)
 
 IMPLEMENT_DEFAULT inline
 void
+Context::arch_vcpu_ext_shutdown()
+{}
+
+IMPLEMENT_DEFAULT inline
+void
 Context::arch_update_vcpu_state(Vcpu_state *)
 {}
 
@@ -1800,8 +1806,116 @@ EXTENSION class Context
 {
 private:
   friend class Switch_lock;
-  // FIXME: could be a byte, but nee cas byte for that
-  Mword _running_under_lock;
+
+  /**
+   * The running-under-lock state machine.
+   *
+   * This state machine handles state transitions for the
+   * Context::_running_under_lock variable to ensure correct multi-
+   * processor helping semantics.
+   *
+   * We use three states:
+   * 1. `Not_running` --- The thread is not running on a foreign CPU. However,
+   *    it might be running on its home CPU without holding any helping lock.
+   * 2. `Trying` --- A thread on a foreign CPU has the intention to start
+   *    helping but has yet to evaluate if this thread owns the desired lock.
+   * 3. `Running` --- This thread is running on a CPU while usually holding
+   *    at least one helping lock.
+   */
+  class Running_under_lock
+  {
+    // FIXME: could be a byte, but nee cas byte for that
+    enum State : Mword
+    {
+      Not_running = 0,
+      Trying      = 1,
+      Running     = 2,
+    };
+
+    State _s;
+
+  public:
+    /**
+     * Atomic transition from `Not_running` to `Trying`.
+     *
+     * \retval true, on success. This means no other thread is currently
+     *         helping or trying to help. However, the thread might
+     *         currently execute on its home CPU.
+     * \retval false, another thread is currently helping or trying to help.
+     *         This means the helper shall retry to grab the helping lock.
+     *
+     * Must be used by a potential helper thread before double checking
+     * if this thread owns the desired lock. If yes, then
+     * Running_under_lock::help() must be called before helping starts.
+     * If no, Running_under_lock::reset() must be called.
+     */
+    bool try_to_help()
+    {
+      if (_s)
+        return false; // either running or already trying
+
+      return mp_cas(&_s, Not_running, Trying);
+    }
+
+    /**
+     * Atomic transition from `Not_running` to `Running`.
+     *
+     * \pre Must be called by the current thread on its own
+     *      `_running_under_lock` member only.
+     *
+     * \retval true, on success. This means no other thread is currently
+     *         helping or trying to help.
+     * \retval false, another thread is currently trying to help. This means
+     *         the caller must wait before grabbing the first lock until the
+     *         potential helper aborted its helping.
+     */
+    bool try_dispatch()
+    {
+      if (_s)
+        return false;
+
+      return mp_cas(&_s, Not_running, Running);
+    }
+
+    /**
+     * Transition from Trying to Running.
+     *
+     * Before calling this method Running_under_lock::try_to_help() must
+     * have returned success.
+     */
+    void help() { write_now(&_s, Running); }
+
+    /**
+     * Dirty transition to Not_running.
+     *
+     * This method is to be used to abort an unsuccessful attempt to help
+     * or after clearing the last lock when running on the home CPU.
+     */
+    void reset() { write_now(&_s, Not_running); }
+
+    /**
+     * Safe transition from Running to Not_running.
+     *
+     * This method has to be used to safely mark a thread as not running
+     * in the preemption code (after switching away from this thread).
+     */
+    void preempt()
+    {
+      if (_s == Running)
+        write_now(&_s, Not_running);
+    }
+
+    /// Check the current running under lock state.
+    operator bool () const { return _s; }
+  };
+
+  /**
+   * Synchronization variable for multi-processor helping.
+   *
+   * This variable in combination with the _lock_cnt variable is used to
+   * synchronize dispatching of this context during cross-processor helping.
+   */
+  Running_under_lock _running_under_lock;
 
 protected:
 
@@ -1836,7 +1950,7 @@ void
 Context::handle_lock_holder_preemption()
 {
   assert (current() != this);
-  write_now(&_running_under_lock, Mword(false));
+  _running_under_lock.preempt();
 }
 
 /** Increment lock count.
@@ -1860,7 +1974,7 @@ Context::dec_lock_cnt()
   if (EXPECT_TRUE(ncnt == 0 && home_cpu() == current_cpu()))
     {
       Mem::mp_wmb();
-      write_now(&_running_under_lock, Mword(false));
+      _running_under_lock.reset();
     }
 }
 
@@ -1872,14 +1986,11 @@ Context::running_on_different_cpu()
       && EXPECT_TRUE(!access_once(&_running_under_lock)))
     return false;
 
-  if (_running_under_lock)
-    return true;
-
-  if (EXPECT_FALSE(!mp_cas(&_running_under_lock, Mword(false), Mword(true))))
+  if (EXPECT_FALSE(!_running_under_lock.try_dispatch()))
     return true;
 
   if (EXPECT_FALSE(access_once(&_lock_cnt) == 0))
-    write_now(&_running_under_lock, Mword(false));
+    _running_under_lock.reset();
 
   return false;
 }
@@ -1888,19 +1999,19 @@ PRIVATE inline
 bool
 Context::need_help(Mword const *lock, Mword val)
 {
-  if (EXPECT_FALSE(_running_under_lock))
-    return false;
-
-  if (EXPECT_FALSE(!mp_cas(&_running_under_lock, Mword(false), Mword(true))))
+  if (EXPECT_FALSE(!_running_under_lock.try_to_help()))
     return false;
 
   Mem::mp_mb();
 
   // double check if the lock is held by us
   if (EXPECT_TRUE(access_once(&_lock_cnt) != 0 && access_once(lock) == val))
-    return true;
+    {
+      _running_under_lock.help();
+      return true;
+    }
 
-  write_now(&_running_under_lock, Mword(false));
+  _running_under_lock.reset();
   return false;
 }
 

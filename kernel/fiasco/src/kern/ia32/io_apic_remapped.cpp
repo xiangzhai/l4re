@@ -411,6 +411,7 @@ Io_apic_remapped::init_apics()
 
       Io_apic_remapped *apic;
       apic = new Boot_object<Io_apic_remapped>(ioapic->adr, ioapic->irq_base, mmu, srcid);
+      (void)apic;
 
       if (Print_infos)
         apic->dump();

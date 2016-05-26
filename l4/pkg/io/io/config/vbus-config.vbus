@@ -2,7 +2,7 @@
 --
 -- Create a virtual BUS named 'bus'
 --
--- This BUS is registerd in io's name space under the name 'bus'.
+-- This BUS is registered in io's name space under the name 'bus'.
 --
 
 local hw = Io.system_bus()

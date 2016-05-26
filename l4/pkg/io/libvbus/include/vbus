@@ -134,7 +134,7 @@ public:
   /**
    * \brief Iterate over the resources of a device
    *
-   * \param[out] res_idx  Index of the resource, the number of resources is
+   * \param      res_idx  Index of the resource, the number of resources is
    *                      available in the devinfo from get device functions.
    * \param[out] res      Descriptor of the resource
    *

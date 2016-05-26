@@ -140,6 +140,9 @@ _GLIBCXX_BEGIN_NAMESPACE_CONTAINER
        *  @brief  Default constructor creates no elements.
        */
       set()
+#if __cplusplus >= 201103L
+      noexcept(is_nothrow_default_constructible<allocator_type>::value)
+#endif
       : _M_t() { }
 
       /**
@@ -698,13 +701,15 @@ _GLIBCXX_BEGIN_NAMESPACE_CONTAINER
 #if __cplusplus > 201103L
       template<typename _Kt>
 	auto
-	find(const _Kt& __x) -> decltype(_M_t._M_find_tr(__x))
-	{ return _M_t._M_find_tr(__x); }
+	find(const _Kt& __x)
+	-> decltype(iterator{_M_t._M_find_tr(__x)})
+	{ return iterator{_M_t._M_find_tr(__x)}; }
 
       template<typename _Kt>
 	auto
-	find(const _Kt& __x) const -> decltype(_M_t._M_find_tr(__x))
-	{ return _M_t._M_find_tr(__x); }
+	find(const _Kt& __x) const
+	-> decltype(const_iterator{_M_t._M_find_tr(__x)})
+	{ return const_iterator{_M_t._M_find_tr(__x)}; }
 #endif
       //@}
 

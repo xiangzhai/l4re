@@ -21,8 +21,8 @@ Moe, the Root Task
 
 Moe is our implementation of the L4 root task that is responsible for
 bootstrapping the system, and to provide basic resource management services
-to the applications on top.  Therefore Moe provides L4Re resource management
-an multiplexing services:
+to the applications on top. Therefore Moe provides L4Re resource management
+and multiplexing services:
 \li \b Memory in the form of memory allocators (L4Re::Mem_alloc, L4::Factory)
     and data spaces (L4Re::Dataspace)
 \li \b Cpu in the form of basic scheduler objects (L4::Scheduler)
@@ -35,7 +35,7 @@ modules.  In the case of a boot loader, like grub that enables a VESA frame
 buffer, there is also a single instance of an L4Re graphics session
 (L4Re::Goos).
 
-To start the system Moe starts a single ELF program, this init process.  The
+To start the system Moe starts a single ELF program, the init process.  The
 init process (usually Ned, see the next section) gets access to all resources
 managed by Moe and to the Sigma0 root pager interface.
 

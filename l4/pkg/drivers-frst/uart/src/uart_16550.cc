@@ -3,7 +3,7 @@
  * \brief  16550 UART implementation
  *
  * \date   2008-01-04
- * \author Adam Lackorznynski <adam@os.inf.tu-dresden.de>
+ * \author Adam Lackorzynski <adam@os.inf.tu-dresden.de>
  *         Alexander Warg <alexander.warg@os.inf.tu-dresden.de>
  *
  */

@@ -99,7 +99,7 @@ Mword
 Thread::sanitize_user_flags(Mword flags)
 { return (flags & ~(EFLAGS_IOPL | EFLAGS_NT)) | EFLAGS_IF; }
 
-/** Check if the pagefault occured at a special place: At some places in the
+/** Check if the pagefault occurred at a special place: At some places in the
     kernel we want to ensure that a specific address is mapped. The regular
     case is "mapped", the exception or slow case is "not mapped". The fastest
     way to check this is to touch into the memory. If there is no mapping for
@@ -204,7 +204,7 @@ Thread::handle_slow_trap(Trap_state *ts)
 	goto success;
     }
 
-  // XXX We might be forced to raise an excepton. In this case, our return
+  // XXX We might be forced to raise an exception. In this case, our return
   // CS:IP points to leave_by_trigger_exception() which will trigger the
   // exception just before returning to userland. But if we were inside an
   // IPC while we was ex-regs'd, we will generate the 'exception after the
@@ -462,6 +462,8 @@ IMPLEMENT_OVERRIDE inline NEEDS[Thread::_hw_virt_arch_init_vcpu_state]
 void
 Thread::arch_init_vcpu_state(Vcpu_state *vcpu_state, bool ext)
 {
+  vcpu_state->version = Vcpu_arch_version;
+
   if (ext)
     _hw_virt_arch_init_vcpu_state(vcpu_state);
 }
@@ -473,15 +475,16 @@ IMPLEMENT_OVERRIDE inline NEEDS[Thread::_hw_virt_arch_init_vcpu_state]
 void
 Thread::arch_init_vcpu_state(Vcpu_state *vcpu_state, bool ext)
 {
-  vcpu_state->host_fs_base = _fs_base;
-  vcpu_state->host_gs_base = _gs_base;
-  vcpu_state->host_ds = 0;
-  vcpu_state->host_es = 0;
-  vcpu_state->host_fs = 0;
-  vcpu_state->host_ds = 0;
-  vcpu_state->user_ds32 = Gdt::gdt_data_user | Gdt::Selector_user;
-  vcpu_state->user_cs64 = Gdt::gdt_code_user | Gdt::Selector_user;
-  vcpu_state->user_cs32 = Gdt::gdt_code_user32 | Gdt::Selector_user;
+  vcpu_state->version = Vcpu_arch_version;
+  vcpu_state->host.fs_base = _fs_base;
+  vcpu_state->host.gs_base = _gs_base;
+  vcpu_state->host.ds = 0;
+  vcpu_state->host.es = 0;
+  vcpu_state->host.fs = 0;
+  vcpu_state->host.ds = 0;
+  vcpu_state->host.user_ds32 = Gdt::gdt_data_user | Gdt::Selector_user;
+  vcpu_state->host.user_cs64 = Gdt::gdt_code_user | Gdt::Selector_user;
+  vcpu_state->host.user_cs32 = Gdt::gdt_code_user32 | Gdt::Selector_user;
 
   if (ext)
     _hw_virt_arch_init_vcpu_state(vcpu_state);

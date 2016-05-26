@@ -55,10 +55,10 @@ public:
   L4::Cap<void> register_obj(Server_object *o)
   { return L4Re::Util::Object_registry::register_obj(o); }
 
-  bool unregister_obj(Server_object *o)
+  void unregister_obj(Server_object *o)
   {
     _reap_list.remove(o);
-    return L4Re::Util::Object_registry::unregister_obj(o);
+    L4Re::Util::Object_registry::unregister_obj(o);
   }
 
   ~Registry() { printf("destroy registry\n"); }

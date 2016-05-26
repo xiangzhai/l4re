@@ -10,6 +10,7 @@ DIR_x86   := i386
 DIR_arm   := arm
 DIR_ppc32 := powerpc
 DIR_sparc := sparc
+DIR_mips  := mips
 
 
 vpath %.c $(CON_DIR)/ldso
@@ -48,6 +49,7 @@ DEFINES_x86-l4f   += -DUSE_TLS=1 -DUSE___THREAD=1
 DEFINES_amd64-l4f += -DUSE_TLS=1 -DUSE___THREAD=1
 DEFINES_arm-l4f   += -DUSE_TLS=1 -DUSE___THREAD=1
 DEFINES_sparc-l4f += -DUSE_TLS=1 -DUSE___THREAD=1
+DEFINES_mips-l4f  += -DUSE_TLS=1 -DUSE___THREAD=1
 
 LDFLAGS  =  -Bsymbolic -Bstatic --warn-common --sort-common \
             --no-undefined -e _start -z defs -z now \
@@ -70,8 +72,11 @@ include $(L4DIR)/mk/lib.mk
 ldso.1.o: ldso.o
 	$(OBJCOPY) --weaken $< $@
 
-CXXFLAGS := -DL4_NO_RTTI -fno-rtti -fno-exceptions -O99 -fvisibility=hidden \
-            -fno-threadsafe-statics $(CXXFLAGS_L4_GENERIC)
+CXXFLAGS := $(filter-out -fno-omit-frame-pointer, $(CXXFLAGS))
+CXXFLAGS := $(filter-out -fno-strict-aliasing, $(CXXFLAGS))
+CXXFLAGS := $(filter-out -Wmissing-declarations, $(CXXFLAGS))
+CXXFLAGS += -DL4_NO_RTTI -fno-rtti -fno-exceptions -fvisibility=hidden \
+            -fno-threadsafe-statics -O3
 
 CPPFLAGS := $(filter-out -DL4SYS_USE_UTCB_WRAP=1, $(CPPFLAGS))
 

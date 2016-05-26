@@ -1293,9 +1293,6 @@ namespace std
 /* Defined if clock_gettime has monotonic clock support. */
 //l4/#define _GLIBCXX_USE_CLOCK_MONOTONIC 1
 
-/* Defined if clock_gettime syscall has monotonic and realtime clock support. */
-//l4/#define _GLIBCXX_USE_CLOCK_GETTIME_SYSCALL 1
-
 /* Defined if clock_gettime has realtime clock support. */
 //l4/#define _GLIBCXX_USE_CLOCK_REALTIME 1
 
@@ -1349,6 +1346,9 @@ namespace std
 
 /* Define if sysctl(), CTL_HW and HW_NCPU are available in <sys/sysctl.h>. */
 /* #undef _GLIBCXX_USE_SYSCTL_HW_NCPU */
+
+/* Define if obsolescent tmpnam is available in <stdio.h>. */
+#define _GLIBCXX_USE_TMPNAM 1
 
 /* Define if code specialized for wchar_t should be used. */
 #ifndef L4_MINIMAL_LIBC

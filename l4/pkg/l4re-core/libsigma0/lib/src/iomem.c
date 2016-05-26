@@ -17,19 +17,6 @@
 #include <l4/sigma0/sigma0.h>
 
 
-/**
- * Map memory-mapped I/O memory.
- *
- * \param pager  pager implementing the Sigma0 protocol
- * \param phys   physical address
- * \param virt   virtual address
- * \param size   size in bytes
- * \param cached != 0: map page cached, uncached otherwise
- * \return   #0  on success
- *          -#L4SIGMA0_NOTALIGNED phys, virt, or size not aligned
- *          -#L4SIGMA0_IPCERROR   IPC error
- *          -#L4SIGMA0_NOFPAGE    no fpage received
- */
 L4_CV int
 l4sigma0_map_iomem(l4_cap_idx_t pager,
                    l4_addr_t phys, l4_addr_t virt, l4_addr_t size, int cached)

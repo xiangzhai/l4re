@@ -81,7 +81,7 @@ class Ref_ptr : public Ref_ptr_base, private CNT<T>
 {
 private:
 #if __cplusplus >= 201103L
-  typedef std::nullptr_t Null_type;
+  typedef decltype(nullptr) Null_type;
 #else
   typedef struct _Null_type const *Null_type;
 #endif
@@ -101,6 +101,20 @@ public:
   Ref_ptr(Wp const &o) throw() : _p(o.ptr())
   { __take_ref(); }
 
+#if __cplusplus >= 201103L
+  /// allow creation from `nullptr`
+  Ref_ptr(decltype(nullptr) n) noexcept : _p(n) {}
+
+  /**
+   * Create a shared pointer from a raw pointer.
+   *
+   * In contrast to C++11 shared_ptr it is safe to use this constructor
+   * multiple times and have the same reference counter.
+   */
+  template<typename X>
+  explicit Ref_ptr(X *o) throw() : _p(o)
+  { __take_ref(); }
+#else
   /**
    * Create a shared pointer from a raw pointer.
    *
@@ -109,6 +123,7 @@ public:
    */
   explicit Ref_ptr(T *o) throw() : _p(o)
   { __take_ref(); }
+#endif
 
   /**
    * Create a shared pointer from a raw pointer without creating a new

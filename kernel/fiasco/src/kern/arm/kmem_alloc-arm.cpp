@@ -1,4 +1,8 @@
 IMPLEMENTATION [arm]:
+// Kmem_alloc::Kmem_alloc() puts those Mem_region_map's on the stack which
+// is slightly larger than our warning limit but it's on the boot stack only
+// so this it is ok.
+#pragma GCC diagnostic ignored "-Wframe-larger-than="
 
 #include "mem_unit.h"
 #include "kmem_space.h"
@@ -64,7 +68,8 @@ Kmem_alloc::Kmem_alloc()
 	f.start += (f.size() - alloc_size);
 
       Kip::k()->add_mem_region(Mem_desc(f.start, f.end, Mem_desc::Reserved));
-      //printf("ALLOC1: [%08lx; %08lx] sz=%ld\n", f.start, f.end, f.size());
+      if (0)
+	printf("Kmem_alloc: [%08lx; %08lx] sz=%ld\n", f.start, f.end, f.size());
       if (Mem_layout::phys_to_pmem(f.start) == ~0UL)
 	if (!map_pmem(f.start, f.size()))
 	  panic("Kmem_alloc: cannot map physical memory %p\n", (void*)f.start);

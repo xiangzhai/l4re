@@ -17,12 +17,15 @@
  */
 #include <l4/re/util/cap_alloc>
 #include <cstring>
+#include <cstdlib>
 #include <l4/re/env>
 
 namespace Vfs_config {
 
 using L4Re::Util::cap_alloc;
 using ::memcpy;
+using ::malloc;
+using ::free;
 
 inline
 L4::Cap<L4Re::Mem_alloc> allocator()
@@ -40,3 +43,5 @@ load_module(char const *)
 #include <l4/l4re_vfs/impl/vcon_stream_impl.h>
 #include <l4/l4re_vfs/impl/vfs_api_impl.h>
 #include <l4/l4re_vfs/impl/vfs_impl.h>
+// must be the last
+#include <l4/l4re_vfs/impl/default_ops_impl.h>

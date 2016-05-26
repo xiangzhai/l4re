@@ -34,7 +34,7 @@
 /**
  * \addtogroup l4sys_defines
  *
- * <c>\#include <l4/sys/compiler.h></c>
+ * \includefile{l4/sys/compiler.h}
  */
 /*@{*/
 

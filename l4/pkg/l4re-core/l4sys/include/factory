@@ -250,12 +250,11 @@ public:
   /**
    * Create a new task.
    *
-   * \param[out] target_cap  Capability selector for the root capability of the
-   *                         new task. The caller must allocate the capability
-   *                         slot. The kernel stores the new task's capability
-   *                         into this slot.
-   * \param      utcb_area   Flexpage that describes the area used for UTCBs and
-   *                         vCPU state-save-areas of the new task.
+   * \param[out] target_cap  The kernel stores the new task's capability into
+   *                         this slot.
+   * \param      utcb_area   Flexpage that describes an area of kernel-user
+   *                         memory that can be used for UTCBs and vCPU
+   *                         state-save-areas of the new task.
    * \param      utcb        The UTCB to use for the operation.
    *
    * \return Syscall return tag
@@ -274,10 +273,8 @@ public:
   /**
    * Create a new thread.
    *
-   * \param[out] target_cap  Capability selector for the root capability of the
-   *                         new thread. The caller must allocate the capability
-   *                         slot. The kernel stores the new thread's capability
-   *                         into this slot.
+   * \param[out] target_cap  The kernel stores the new thread's capability into
+   *                         this slot.
    * \param      utcb        The UTCB to use for the operation.
    *
    * \return Syscall return tag
@@ -291,10 +288,8 @@ public:
   /**
    * Create a new factory.
    *
-   * \param[out] target_cap  Capability selector for the root capability of the
-   *                         new factory. The caller must allocate the
-   *                         capability slot. The kernel stores the new
-   *                         factory's capability into this slot.
+   * \param[out] target_cap  The kernel stores the new factory's capability into
+   *                         this slot.
    * \param      limit       Limit for the new factory in bytes.
    * \param      utcb        The UTCB to use for the operation.
    *
@@ -311,10 +306,8 @@ public:
   /**
    * Create a new IPC gate.
    *
-   * \param[out] target_cap  Capability selector for the root capability of the
-   *                         new IPC gate. The caller must allocate the
-   *                         capability slot. The kernel stores the new IPC
-   *                         gate's capability into this slot.
+   * \param[out] target_cap  The kernel stores the new IPC gate's capability
+   *                         into this slot.
    * \param      thread_cap  Capability selector of the thread to bind the gate
    *                         to.
    * \param      label       Label of the gate.
@@ -332,10 +325,8 @@ public:
   /**
    * Create a new IRQ.
    *
-   * \param[out] target_cap  Capability selector for the root capability of the
-   *                         new IRQ. The caller must allocate the capability
-   *                         slot. The kernel stores the new IRQ's capability
-   *                         into this slot.
+   * \param[out] target_cap  The kernel stores the new IRQ's capability into
+   *                         this slot.
    * \param      utcb        The UTCB to use for the operation.
    *
    * \return Syscall return tag
@@ -349,10 +340,8 @@ public:
   /**
    * Create a new virtual machine.
    *
-   * \param[out] target_cap  Capability selector for the root capability of the
-   *                         new VM. The caller must allocate the capability
-   *                         slot. The kernel stores the new VM's capability
-   *                         into this slot.
+   * \param[out] target_cap  The kernel stores the new VM's capability into this
+   *                         slot.
    * \param      utcb        The UTCB to use for the operation.
    *
    * \return Syscall return tag

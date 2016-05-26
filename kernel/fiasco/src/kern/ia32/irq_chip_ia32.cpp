@@ -52,10 +52,10 @@ class Irq_entry_code : public Boot_alloced
 private:
   struct
   {
-    char push;
-    char mov;
+    unsigned char push;
+    unsigned char mov;
     Signed32 irq_adr;
-    char jmp;
+    unsigned char jmp;
     Unsigned32 jmp_adr;
     unsigned char vector;
   } __attribute__((packed)) _d;

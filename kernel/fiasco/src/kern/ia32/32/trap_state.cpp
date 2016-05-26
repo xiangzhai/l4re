@@ -55,6 +55,23 @@ struct Trex
   void dump() { s.dump(); }
 };
 
+namespace Ts
+{
+  enum
+  {
+    /// full number of words in a Trap_state
+    Words = sizeof(Trap_state) / sizeof(Mword),
+    /// words for the IRET frame at the end of the trap state
+    Iret_words = 5,
+    /// words for error code and trap number
+    Code_words = 2,
+    /// offset of the IRET frame
+    Iret_offset = Words - Iret_words,
+    /// number of words used for normal registers
+    Reg_words = Words - Iret_words - Code_words,
+  };
+}
+
 //---------------------------------------------------------------------------
 IMPLEMENTATION [ia32]:
 

@@ -59,7 +59,7 @@ Space::Ldt::~Ldt()
 
 IMPLEMENT_OVERRIDE inline NEEDS["cpu.h", "globals.h"]
 void
-Space::switchin_context(Space *from, unsigned)
+Space::switchin_context(Space *from)
 {
   if (this != from)
     {

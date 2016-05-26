@@ -31,7 +31,7 @@
 #define _GLIBCXX_CXX_CONFIG_H 1
 
 // The current version of the C++ library in compressed ISO date format.
-#define __GLIBCXX__ 20150601
+#define __GLIBCXX__ 20160103
 
 // Macros for various attributes.
 //   _GLIBCXX_PURE
@@ -294,7 +294,7 @@ namespace std
 # endif
 
 # if _GLIBCXX_USE_CXX11_ABI
-  inline namespace __cxx11 __attribute__((__abi_tag__)) { }
+  inline namespace __cxx11 __attribute__((__abi_tag__ ("cxx11"))) { }
 # endif
   }
 
@@ -576,6 +576,9 @@ namespace std
 /* Define to 1 if you have the `cosl' function. */
 #define _GLIBCXX_HAVE_COSL 1
 
+/* Define to 1 if you have the <dirent.h> header file. */
+#define _GLIBCXX_HAVE_DIRENT_H 1
+
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #define _GLIBCXX_HAVE_DLFCN_H 1
 
@@ -653,6 +656,9 @@ namespace std
 
 /* Define to 1 if you have the `fabsl' function. */
 #define _GLIBCXX_HAVE_FABSL 1
+
+/* Define to 1 if you have the <fcntl.h> header file. */
+#define _GLIBCXX_HAVE_FCNTL_H 1
 
 /* Define to 1 if you have the <fenv.h> header file. */
 #define _GLIBCXX_HAVE_FENV_H 1
@@ -896,6 +902,9 @@ namespace std
 /* Define to 1 if you have the `strtold' function. */
 #define _GLIBCXX_HAVE_STRTOLD 1
 
+/* Define to 1 if `d_type' is a member of `struct dirent'. */
+#define _GLIBCXX_HAVE_STRUCT_DIRENT_D_TYPE 1
+
 /* Define if strxfrm_l is available in <string.h>. */
 #define _GLIBCXX_HAVE_STRXFRM_L 1
 
@@ -929,6 +938,9 @@ namespace std
 
 /* Define to 1 if you have the <sys/sem.h> header file. */
 #define _GLIBCXX_HAVE_SYS_SEM_H 1
+
+/* Define to 1 if you have the <sys/statvfs.h> header file. */
+#define _GLIBCXX_HAVE_SYS_STATVFS_H 1
 
 /* Define to 1 if you have the <sys/stat.h> header file. */
 #define _GLIBCXX_HAVE_SYS_STAT_H 1
@@ -978,6 +990,9 @@ namespace std
 
 /* Defined if usleep exists. */
 #define _GLIBCXX_HAVE_USLEEP 1
+
+/* Define to 1 if you have the <utime.h> header file. */
+#define _GLIBCXX_HAVE_UTIME_H 1
 
 /* Defined if vfwscanf exists. */
 #define _GLIBCXX_HAVE_VFWSCANF 1
@@ -1344,7 +1359,7 @@ namespace std
 
 /* Defined if clock_gettime syscall has monotonic and realtime clock support.
    */
-//l4/#define _GLIBCXX_USE_CLOCK_GETTIME_SYSCALL 1
+/* #undef _GLIBCXX_USE_CLOCK_GETTIME_SYSCALL */
 
 /* Defined if clock_gettime has monotonic clock support. */
 //l4/#define _GLIBCXX_USE_CLOCK_MONOTONIC 1
@@ -1355,6 +1370,12 @@ namespace std
 /* Define if ISO/IEC TR 24733 decimal floating point types are supported on
    this host. */
 #define _GLIBCXX_USE_DECIMAL_FLOAT 1
+
+/* Define if fchmod is available in <sys/stat.h>. */
+#define _GLIBCXX_USE_FCHMOD 1
+
+/* Define if fchmodat is available in <sys/stat.h>. */
+#define _GLIBCXX_USE_FCHMODAT 1
 
 /* Define if __float128 is supported on this host. */
 #if defined(ARCH_x86) || defined(ARCH_amd64) || defined(ARCH_ia64)
@@ -1388,11 +1409,14 @@ namespace std
 /* #undef _GLIBCXX_USE_PTHREADS_NUM_PROCESSORS_NP */
 
 /* Define if POSIX read/write locks are available in <gthr.h>. */
-//#define _GLIBCXX_USE_PTHREAD_RWLOCK_T 1
+//l4/#define _GLIBCXX_USE_PTHREAD_RWLOCK_T 1
 
 /* Define if /dev/random and /dev/urandom are available for the random_device
    of TR1 (Chapter 5.1). */
 #define _GLIBCXX_USE_RANDOM_TR1 1
+
+/* Define if usable realpath is available in <stdlib.h>. */
+#define _GLIBCXX_USE_REALPATH 1
 
 /* Defined if sched_yield is available. */
 /* #undef _GLIBCXX_USE_SCHED_YIELD */
@@ -1403,11 +1427,21 @@ namespace std
 /* Define if _SC_NPROC_ONLN is available in <unistd.h>. */
 /* #undef _GLIBCXX_USE_SC_NPROC_ONLN */
 
+/* Define if sendfile is available in <sys/stat.h>. */
+/* #undef _GLIBCXX_USE_SENDFILE */
+
+/* Define if struct stat has timespec members. */
+#define _GLIBCXX_USE_ST_MTIM 1
+
 /* Define if sysctl(), CTL_HW and HW_NCPU are available in <sys/sysctl.h>. */
 /* #undef _GLIBCXX_USE_SYSCTL_HW_NCPU */
 
 /* Define if obsolescent tmpnam is available in <stdio.h>. */
 //l4/#define _GLIBCXX_USE_TMPNAM 1
+
+/* Define if utimensat and UTIME_OMIT are available in <sys/stat.h> and
+   AT_FDCWD in <fcntl.h>. */
+#define _GLIBCXX_USE_UTIMENSAT 1
 
 /* Define if code specialized for wchar_t should be used. */
 #ifndef L4_MINIMAL_LIBC
@@ -1424,6 +1458,11 @@ namespace std
 
 /* Define to 1 if mutex_timedlock is available. */
 #define _GTHREAD_USE_MUTEX_TIMEDLOCK 1
+
+/* Define if all C++11 overloads are available in <math.h>.  */
+#if __cplusplus >= 201103L
+/* #undef __CORRECT_ISO_CPP11_MATH_H_PROTO */
+#endif
 
 #if defined (_GLIBCXX_HAVE__ACOSF) && ! defined (_GLIBCXX_HAVE_ACOSF)
 # define _GLIBCXX_HAVE_ACOSF 1

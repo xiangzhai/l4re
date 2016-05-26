@@ -94,7 +94,7 @@
  * \par `--debug=<debug flags>`
  * This option enables debug messages from Moe itself, the `<debug flags>`
  * values are a combination of `info`, `warn`, `boot`, `server`, `loader`,
- * and `ns` (or `all` for full verbosity).
+ * `exceptions`, and `ns` (or `all` for full verbosity).
  *
  * \par `--init=<init process>`
  * This options allows to override the default init process binary, which is

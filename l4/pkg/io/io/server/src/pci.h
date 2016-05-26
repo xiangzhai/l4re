@@ -168,8 +168,10 @@ public:
   virtual bool enable_rom() = 0;
 
   virtual unsigned bus_nr() const = 0;
-  virtual unsigned device_nr() const = 0;
-  virtual unsigned function_nr() const = 0;
+  virtual unsigned devfn() const = 0;
+  unsigned device_nr() const { return devfn() >> 3; }
+  unsigned function_nr() const { return devfn() & 7; }
+  virtual unsigned phantomfn_bits() const = 0;
   virtual Bus *bus() const = 0;
   virtual Io_irq_pin::Msi_src *get_msi_src() = 0;
 
@@ -502,7 +504,7 @@ public:
 
     _msi_mgrs.add(mgr);
     if (bus()->bus_type == Bus::Pci_express_bus)
-      return 0x40000 | (bus()->num << 8) | (device_nr() << 3) | function_nr();
+      return 0x40000 | (bus()->num << 8) | devfn() | (_phantomfn_bits << 16);
 
     return 0x80000 | (bus()->num << 8) | bus()->subordinate;
   }
@@ -522,6 +524,7 @@ public:
   Flags flags;
 
 private:
+  unsigned char _phantomfn_bits = 0;
   Resource *_bars[6];
   Resource *_rom;
 
@@ -622,11 +625,17 @@ public:
   int vendor() const { return vendor_device & 0xffff; }
   int device() const { return (vendor_device >> 16) & 0xffff; }
 
-  unsigned function_nr() const override
-  { return _host->adr() & 0x07; }
+  unsigned devfn() const override
+  {
+    unsigned x = _host->adr();
+    return ((x >> 13) & 0xf8) | (x & 7);
+  }
 
-  unsigned device_nr() const override
-  { return (_host->adr() >> 16) & 0x1f; }
+  unsigned phantomfn_bits() const override
+  { return _phantomfn_bits; }
+
+  void set_phantomfn_bits(unsigned char bits)
+  { _phantomfn_bits = bits & 3; }
 
   unsigned disable_decoders();
   void restore_decoders(unsigned cmd);

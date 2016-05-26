@@ -192,7 +192,6 @@ utcb_init_IMPL		:= utcb_init utcb_init-arm
 utcb_support_IMPL       := utcb_support utcb_support-arm
 vmem_alloc_IMPL	  	:= vmem_alloc vmem_alloc-arch
 tb_entry_IMPL		:= tb_entry tb_entry-arm
-vcpu_IMPL               := vcpu vcpu-arm
 
 
 ifeq ("$(CONFIG_JDB)","y")

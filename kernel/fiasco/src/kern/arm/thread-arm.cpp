@@ -281,7 +281,7 @@ Thread::pagein_tcb_request(Return_frame *regs)
       // printf("TCBR: %08lx\n", *(Mword*)regs->pc);
       // skip faulting instruction
       regs->pc += 4;
-      // tell program that a pagefault occured we cannot handle
+      // tell program that a pagefault occurred we cannot handle
       regs->psr |= 0x40000000;	// set zero flag in psr
       regs->km_lr = 0;
 
@@ -470,6 +470,7 @@ Thread::copy_utcb_to_ts(L4_msg_tag tag, Thread *snd, Thread *rcv,
   if (tag.transfer_fpu() && (rights & L4_fpage::Rights::W()))
     snd->transfer_fpu(rcv);
 
+  // FIXME: this is an old l4linux specific hack, will be replaced/remved
   if ((tag.flags() & 0x8000) && (rights & L4_fpage::Rights::W()))
     rcv->utcb().access()->user[2] = snd_utcb->values[25];
 
@@ -478,7 +479,6 @@ Thread::copy_utcb_to_ts(L4_msg_tag tag, Thread *snd, Thread *rcv,
   bool ret = transfer_msg_items(tag, snd, snd_utcb,
                                 rcv, rcv->utcb().access(), rights);
 
-  rcv->state_del(Thread_in_exception);
   return ret;
 }
 

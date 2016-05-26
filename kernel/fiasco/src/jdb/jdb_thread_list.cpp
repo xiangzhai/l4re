@@ -828,6 +828,7 @@ Jdb_thread_list::list_threads(Thread *t_start, char pr)
 		  break;
 #endif
 		case KEY_RETURN: // show current tcb
+		case KEY_RETURN_2:
 		  if (jdb_show_tcb != 0)
 		    {
 		      t = Jdb_thread_list::index(y);

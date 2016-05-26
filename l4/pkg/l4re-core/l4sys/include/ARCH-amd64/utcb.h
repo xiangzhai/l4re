@@ -38,7 +38,7 @@
  */
 enum L4_utcb_consts_amd64
 {
-  L4_UTCB_EXCEPTION_REGS_SIZE    = 23,
+  L4_UTCB_EXCEPTION_REGS_SIZE    = 26,
   L4_UTCB_GENERIC_DATA_SIZE      = 63,
   L4_UTCB_GENERIC_BUFFERS_SIZE   = 58,
 
@@ -80,6 +80,9 @@ typedef struct l4_exc_regs_t
   l4_umword_t flags;      /**< rflags */
   l4_umword_t sp;         /**< stack pointer */
   l4_umword_t ss;         /**< stack segment register */
+  l4_umword_t fs_base;
+  l4_umword_t gs_base;
+  l4_uint16_t ds, es, fs, gs;
 } l4_exc_regs_t;
 
 
@@ -97,7 +100,7 @@ L4_INLINE l4_utcb_t *l4_utcb_direct(void) L4_NOTHROW
   return res;
 }
 
-L4_INLINE l4_umword_t l4_utcb_exc_pc(l4_exc_regs_t *u) L4_NOTHROW
+L4_INLINE l4_umword_t l4_utcb_exc_pc(l4_exc_regs_t const *u) L4_NOTHROW
 {
   return u->ip;
 }
@@ -107,17 +110,17 @@ L4_INLINE void l4_utcb_exc_pc_set(l4_exc_regs_t *u, l4_addr_t pc) L4_NOTHROW
   u->ip = pc;
 }
 
-L4_INLINE l4_umword_t l4_utcb_exc_typeval(l4_exc_regs_t *u) L4_NOTHROW
+L4_INLINE l4_umword_t l4_utcb_exc_typeval(l4_exc_regs_t const *u) L4_NOTHROW
 {
   return u->trapno;
 }
 
-L4_INLINE int l4_utcb_exc_is_pf(l4_exc_regs_t *u) L4_NOTHROW
+L4_INLINE int l4_utcb_exc_is_pf(l4_exc_regs_t const *u) L4_NOTHROW
 {
   return u->trapno == 14;
 }
 
-L4_INLINE l4_addr_t l4_utcb_exc_pfa(l4_exc_regs_t *u) L4_NOTHROW
+L4_INLINE l4_addr_t l4_utcb_exc_pfa(l4_exc_regs_t const *u) L4_NOTHROW
 {
   return (u->pfa & ~3) | (u->err & 2);
 }

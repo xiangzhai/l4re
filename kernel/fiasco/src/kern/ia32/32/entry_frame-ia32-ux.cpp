@@ -156,7 +156,7 @@ Return_frame::ip(Mword ip)
   if (cs() & 0x80)
     {
       // this cannot happen in Fiasco UX
-      /* symbols from the assember entry code */
+      /* symbols from the assembler entry code */
       extern Mword leave_from_sysenter_by_iret;
       extern Mword leave_alien_from_sysenter_by_iret;
       extern Mword ret_from_fast_alien_ipc;

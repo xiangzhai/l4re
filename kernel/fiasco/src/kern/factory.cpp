@@ -21,6 +21,7 @@ IMPLEMENTATION:
 #include "map_util.h"
 #include "logdefs.h"
 #include "entry_frame.h"
+#include "task.h"
 
 static Factory _root_factory INIT_PRIORITY(ROOT_FACTORY_INIT_PRIO);
 
@@ -82,10 +83,11 @@ void Factory::operator delete (void *_f)
 
 PRIVATE
 L4_msg_tag
-Factory::map_obj(Kobject_iface *o, Cap_index cap, Task *c_space,
+Factory::map_obj(Kobject_iface *o, Cap_index cap, Task *_c_space,
                  Obj_space *o_space, Utcb const *utcb)
 {
   // must be before the lock guard
+  Ref_ptr<Task> c_space(_c_space);
   Reap_list rl;
 
   auto space_lock_guard = lock_guard_dont_lock(c_space->existence_lock);
@@ -99,7 +101,7 @@ Factory::map_obj(Kobject_iface *o, Cap_index cap, Task *c_space,
       return commit_error(utcb, L4_error(L4_error::Overflow, L4_error::Rcv));
     }
 
-  if (!map(o, o_space, c_space, cap, rl.list()))
+  if (!map(o, o_space, c_space.get(), cap, rl.list()))
     {
       delete o;
       return commit_result(-L4_err::ENomem);

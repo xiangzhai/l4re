@@ -99,10 +99,12 @@ Jdb_kobject_name::operator delete (void *p)
 
 PUBLIC
 void
-Jdb_kobject_name::name(char const *name)
+Jdb_kobject_name::name(char const *name, int size)
 {
   int i = 0;
-  for (; name[i] && i < max_len(); ++i)
+  if (size > max_len())
+    size = max_len();
+  for (; name[i] && i < size; ++i)
     _name[i] = name[i];
 
   for (; i < max_len(); ++i)
@@ -159,7 +161,9 @@ Jdb_name_hdl::invoke(Kobject_common *o, Syscall_frame *f, Utcb *utcb)
               enqueue = true;
             }
 
-          ne->name(reinterpret_cast<char const*>(&utcb->values[1]));
+          if (f->tag().words() > 0)
+            ne->name(reinterpret_cast<char const *>(&utcb->values[1]),
+                     (f->tag().words() - 1) * sizeof(Mword));
           if (enqueue)
             o->dbg_info()->_jdb_data.add(ne);
           f->tag(Kobject_iface::commit_result(0));

@@ -133,7 +133,7 @@ __set_mode_call(lua_State *l)
 		}
 	    }
 	}
-      c = __set_rights(l, rights);
+      __set_rights(l, rights);
       return 1;
     }
   else

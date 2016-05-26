@@ -88,14 +88,10 @@ App_task::terminate()
   _thread = L4::Cap_base::Invalid;
   _rm = L4::Cap_base::Invalid;
 
-  L4::Cap<void> c = obj_cap();
   _r->unregister_obj(this);
-  L4Re::Util::cap_alloc.free(c);
 }
 
 App_task::~App_task()
 {
-  L4::Cap<void> c = obj_cap();
   _r->unregister_obj(this);
-  L4Re::Util::cap_alloc.free(c);
 }

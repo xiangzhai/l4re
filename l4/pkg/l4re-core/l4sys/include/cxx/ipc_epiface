@@ -147,6 +147,22 @@ struct Epiface
   /// Type for server-side receive buffer demand.
   typedef Ipc_svr::Server_iface::Demand Demand;
 
+  class Stored_cap : public Cap<void>
+  {
+  private:
+    enum { Managed = 0x10 };
+
+  public:
+    Stored_cap() = default;
+    Stored_cap(Cap<void> const &c, bool managed = false)
+    : Cap<void>((c.cap() & L4_CAP_MASK) | (managed ? Managed : 0))
+    {
+      static_assert (!(L4_CAP_MASK & Managed), "conflicting bits used...");
+    }
+
+    bool managed() const { return cap() & Managed; }
+  };
+
   /// Make a server object
   Epiface() : _data(0) {}
 
@@ -182,7 +198,7 @@ struct Epiface
    *
    * This is usually either an Ipc_gate or an Irq.
    */
-  Cap<void> obj_cap() const { return _cap; }
+  Stored_cap obj_cap() const { return _cap; }
 
   /**
    * Get pointer to server interface at which the object is currently registered.
@@ -193,16 +209,19 @@ struct Epiface
 
   /**
    * Set server registration info for the object.
-   * \param srv  The server to register at
-   * \param cap  The capability that connects the object.
+   * \param srv      The server to register at
+   * \param cap      The capability that connects the object.
+   * \param managed  Mark the capability as managed or unmanaged. Typical
+   *                 server implementations use this flag to remember whether
+   *                 the capability was internally allocated or not.
    * \return 0 on success, -L4_EINVAL if the srv and cap are not consistent.
    */
-  int set_server(Server_iface *srv, Cap<Kobject> cap)
+  int set_server(Server_iface *srv, Cap<Kobject> cap, bool managed = false)
   {
     if ((srv && cap) || (!srv && !cap))
       {
         _data = srv;
-        _cap  = cap;
+        _cap  = Stored_cap(cap, managed);
         return 0;
       }
 
@@ -216,7 +235,7 @@ struct Epiface
 
 private:
   Server_iface *_data;
-  Cap<void> _cap;
+  Stored_cap _cap;
 };
 
 inline Epiface::~Epiface() {}

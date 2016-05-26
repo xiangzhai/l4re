@@ -38,7 +38,7 @@ Vmx::cpu_virt_capable()
 
   if (!(cx & (1 << 5)))
     {
-      printf("CPU does not support VMX.\n");
+      printf("# CPU does not support VMX.\n");
       return false;
     }
 
@@ -46,20 +46,20 @@ Vmx::cpu_virt_capable()
 }
 
 void
-Vmx::initialize_vmcb()
+Vmx::initialize_vmcb(unsigned long_mode)
 {
   vmwrite(VMX_GUEST_CS_SEL, 0x8);
   vmwrite(VMX_GUEST_CS_ACCESS_RIGHTS, 0xd09b);
   vmwrite(VMX_GUEST_CS_LIMIT, 0xffffffff);
   vmwrite(VMX_GUEST_CS_BASE, 0);
 
-  vmwrite(VMX_GUEST_SS_SEL, 0x10);
+  vmwrite(VMX_GUEST_SS_SEL, 0x28);
   vmwrite(VMX_GUEST_SS_ACCESS_RIGHTS, 0xc093);
   vmwrite(VMX_GUEST_SS_LIMIT, 0xffffffff);
   vmwrite(VMX_GUEST_SS_BASE, 0);
 
-  vmwrite(VMX_GUEST_DS_SEL, 0x20);
-  vmwrite(VMX_GUEST_DS_ACCESS_RIGHTS, 0xc0f3);
+  vmwrite(VMX_GUEST_DS_SEL, 0x10);
+  vmwrite(VMX_GUEST_DS_ACCESS_RIGHTS, 0xc093);
   vmwrite(VMX_GUEST_DS_LIMIT, 0xffffffff);
   vmwrite(VMX_GUEST_DS_BASE, 0);
 
@@ -86,7 +86,7 @@ Vmx::initialize_vmcb()
   vmwrite(VMX_GUEST_LDTR_LIMIT, 0);
   vmwrite(VMX_GUEST_LDTR_BASE, 0);
 
-  vmwrite(VMX_GUEST_IDTR_LIMIT, 0xff);
+  vmwrite(VMX_GUEST_IDTR_LIMIT, 0x3f);
   vmwrite(VMX_GUEST_IDTR_BASE, Idt);
 
   vmwrite(VMX_GUEST_TR_SEL, 0x28);
@@ -96,7 +96,23 @@ Vmx::initialize_vmcb()
 
   vmwrite(VMX_VMCS_LINK_PTR, 0xffffffffffffffffULL);
 
-  vmwrite(VMX_EXCEPTION_BITMAP, 0xffffffff);
+
+  enum exceptions
+    {
+      de    = 1<<0,
+      db    = 1<<1,
+      bp    = 1<<3,
+      gp    = 1<<13,
+      pf    = 1<<14,
+      ac    = 1<<17
+    };
+
+  /* In 32 bits we also want to test for interrupt handling */
+  if (long_mode)
+    vmwrite(VMX_EXCEPTION_BITMAP, bp|gp|pf);
+  else
+    vmwrite(VMX_EXCEPTION_BITMAP, gp|pf|ac);
+
   vmwrite(VMX_PF_ERROR_CODE_MATCH, 0);
   vmwrite(VMX_PF_ERROR_CODE_MASK, 0);
 
@@ -108,6 +124,9 @@ Vmx::initialize_vmcb()
           l4_vm_vmx_read(vmcb, VMX_EXIT_CTRL) | (1 << 21)); // load host efer
   vmwrite(VMX_ENTRY_CTRL,
           l4_vm_vmx_read(vmcb, VMX_ENTRY_CTRL) &~ (1 << 9)); // enable long mode
+
+  vmwrite(VMX_PRIMARY_EXEC_CTRL,
+          l4_vm_vmx_read(vmcb, VMX_PRIMARY_EXEC_CTRL) &~ (1 << 23)); // do not intercept dr reads/writes
 }
 
 void
@@ -159,6 +178,12 @@ Vmx::set_dr7(l4_umword_t dr7)
   vmwrite(VMX_GUEST_DR7, dr7);
 }
 
+l4_umword_t
+Vmx::get_rax()
+{
+  return vcpu->r.ax;
+}
+
 void
 Vmx::enable_npt()
 {}
@@ -193,90 +218,100 @@ Vmx::jump_over_current_insn(unsigned bytes)
 unsigned
 Vmx::handle_vmexit()
 {
-  static unsigned int exitcnt;
-
-  ++exitcnt;
-
   l4_msgtag_t tag;
   l4_uint32_t interrupt_info;
 
   l4_uint32_t exit_reason = l4_vm_vmx_read_32(vmcb, VMX_EXIT_REASON);
 
-  printf("iteration %d: exit_code=%d rip = 0x%lx\n",
-         exitcnt, exit_reason, l4_vm_vmx_read_nat(vmcb, VMX_GUEST_RIP));
+  printf("# exit_code=%d rip = 0x%lx rsp = 0x%lx cs = %x ds = %x ss = %x\n",
+         exit_reason, l4_vm_vmx_read_nat(vmcb, VMX_GUEST_RIP), l4_vm_vmx_read_nat(vmcb, VMX_GUEST_RSP),
+         l4_vm_vmx_read_16(vmcb, VMX_GUEST_CS_SEL),
+         l4_vm_vmx_read_16(vmcb, VMX_GUEST_DS_SEL),
+         l4_vm_vmx_read_16(vmcb, VMX_GUEST_SS_SEL)
+         );
 
   switch (exit_reason & 0xffff)
     {
     case 0:
       if (verbose)
-        printf("Exception or NMI at guest IP 0x%lx, checking interrupt info\n",
+        printf("# Exception or NMI at guest IP 0x%lx, checking interrupt info\n",
                l4_vm_vmx_read_nat(vmcb, VMX_GUEST_RIP));
       interrupt_info = l4_vm_vmx_read_32(vmcb, VMX_EXIT_INTERRUPT_INFO);
       // check valid bit
       if (!(interrupt_info & (1 << 31)))
-        printf("Interrupt info not valid\n");
+        printf("# Interrupt info not valid\n");
       if (verbose)
-        printf("interrupt vector=%d, type=%d, error code valid=%d\n",
+        printf("# interrupt vector=%d, type=%d, error code valid=%d\n",
                (interrupt_info & 0xFF), ((interrupt_info & 0x700) >> 8),
                ((interrupt_info & 0x800) >> 11));
+      if ((interrupt_info & 0x800) >> 11) {
+        unsigned long error = l4_vm_vmx_read_32(vmcb, VMX_EXIT_INTERRUPT_ERROR);
+        printf ("# error code: %lx\n", error);
+        printf ("# idt vectoring info field: %x\n", l4_vm_vmx_read_32(vmcb, VMX_IDT_VECTORING_INFO_FIELD));
+        printf ("# idt vectoring error code: %x\n", l4_vm_vmx_read_32(vmcb, VMX_IDT_VECTORING_ERROR));
+      }
 
       switch ((interrupt_info & 0x700) >> 8)
         {
         case 0x6:
-          printf("Software interrupt\n");
+          printf("# Software interrupt\n");
           break;
         case 0x3:
           if (verbose)
-            printf("Hardware exception\n");
+            printf("# Hardware exception\n");
           if ((interrupt_info & 0xff) == 0x6)
             {
-              printf("undefined instruction\n");
+              printf("# undefined instruction\n");
               jump_over_current_insn(2);
               return 1;
             }
           else if ((interrupt_info & 0xff) == 0xe)
             {
-              printf("Pagefault\n");
-              printf("EFER = %llx\n", l4_vm_vmx_read_64(vmcb,
+              printf("# Pagefault\n");
+              printf("# EFER = %llx\n", l4_vm_vmx_read_64(vmcb,
                                                         VMX_GUEST_IA32_EFER));
-              test_ok = false;
               return 0;
             }
           else if ((interrupt_info & 0xff) == 0x8)
             {
-              printf("Double fault. VERY BAD.\n");
-              test_ok = false;
+              printf("# Double fault. VERY BAD.\n");
               return 0;
+            }
+          else if ((interrupt_info & 0xff) == 17)
+            {
+              // this is expected
+              // make the stack aligned again and restart insn
+              printf("# Fetched an alignment check exception.\n");
+              vmwrite(VMX_GUEST_RSP, l4_vm_vmx_read_nat(vmcb, VMX_GUEST_RSP) + 3);
+              return Alignment_check_intercept;
             }
           break;
         case 0x2:
-          printf("NMI\n");
-          test_ok = false;
+          printf("# NMI\n");
           return 0;
         default:
-          printf("Unknown\n");
-          test_ok = false;
+          printf("# Unknown\n");
           return 0;
         }
 
       if ((interrupt_info & (1 << 11))) // interrupt error code valid?
         if (verbose)
-          printf("interrupt error=0x%x\n",
+          printf("# interrupt error=0x%x\n",
                  l4_vm_vmx_read_32(vmcb, VMX_EXIT_INTERRUPT_ERROR));
 
       if (((interrupt_info & 0x700) >> 8) == 3
           && (interrupt_info & 0xff) == 14)
         {
-          l4_umword_t fault_addr = l4_vm_vmx_read_nat(vmcb,
-                                                      VMX_EXIT_QUALIFICATION);
           if (0)
             {
+              l4_umword_t fault_addr = l4_vm_vmx_read_nat(vmcb,
+                                                          VMX_EXIT_QUALIFICATION);
               tag = vm_cap->map(L4Re::Env::env()->task(),
                                 l4_fpage(fault_addr & L4_PAGEMASK, L4_PAGESHIFT,
                                          L4_FPAGE_RW),
                                 l4_map_control(fault_addr, 0, L4_MAP_ITEM_MAP));
               if (l4_error(tag))
-                printf("Error mapping page\n");
+                printf("# Error mapping page\n");
             }
           break;
         }
@@ -284,55 +319,70 @@ Vmx::handle_vmexit()
       jump_over_current_insn(0);
       break;
     case 1:
-      printf("External interrupt\n");
+      printf("# External interrupt\n");
       break;
     case 18:
-      printf("vmcall ecx = %ld\n", vcpu->r.cx);
-      if (vcpu->r.cx > 15)
-        return 0;
-      vcpu->r.ax = vcpu->r.cx;
+      if (verbose)
+        printf("# vmcall ecx = %ld edx = %lx\n", vcpu->r.cx, vcpu->r.dx);
       jump_over_current_insn(0);
+      return VMCALL;
+#if 0
+      if (vcpu->r.dx == 0x42) {
+        printf("ok - #dz exception handled - interrupt handling works\n");
+      }
+      if (vcpu->r.dx == 0x44) {
+        printf("#DB exception handled in-guest without involvement of VMM. Must not happen!\n");
+        test_ok = false;
+        return 0;
+      }
+      if (vcpu->r.dx == 0x50) {
+        printf("#AC exception handled in-guest without involvement of VMM. Must not happen!\n");
+        test_ok = false;
+        return 0;
+      }
+      vcpu->r.ax = vcpu->r.cx;
+#endif
       break;
     case 28:
-      printf("Control register access.\n");
+      printf("# Control register access.\n");
+      jump_over_current_insn(0);
+      return 1;
+    case 29:
+      printf("# mov dr procbased_ctls=%llx\n", l4_vm_vmx_read(vmcb, VMX_PRIMARY_EXEC_CTRL));
       jump_over_current_insn(0);
       return 1;
     case 31:
-      printf("rdmsr\n");
-      test_ok = false;
+      printf("# rdmsr\n");
       return 0;
     case 33:
-      printf("Invalid guest state.\n");
-      test_ok = false;
+      printf("# Invalid guest state.\n");
       return 0;
     case 48: // EPT violation
         {
-          printf("EPT violation\n");
+          printf("# EPT violation\n");
           l4_umword_t q = l4_vm_vmx_read_nat(vmcb, VMX_EXIT_QUALIFICATION);
-          printf("  exit qualification: %lx\n", q);
-          printf("  guest phys = %llx,  guest linear: %lx\n",
+          printf("#   exit qualification: %lx\n", q);
+          printf("#   guest phys = %llx,  guest linear: %lx\n",
                  l4_vm_vmx_read_64(vmcb, 0x2400), l4_vm_vmx_read_nat(vmcb, 0x640a));
-          printf("  guest cr0 = %lx\n",
+          printf("#   guest cr0 = %lx\n",
                  l4_vm_vmx_read_nat(vmcb, VMX_GUEST_CR0));
 
           if (0)
             {
               l4_umword_t fault_addr = l4_vm_vmx_read_64(vmcb, 0x2400);
-              printf("detected pagefault @ %lx\n", fault_addr);
+              printf("# detected pagefault @ %lx\n", fault_addr);
               tag = vm_cap->map(L4Re::Env::env()->task(),
                                 l4_fpage(fault_addr & L4_PAGEMASK,
                                          L4_PAGESHIFT, L4_FPAGE_RWX),
                                 l4_map_control(fault_addr, 0, L4_MAP_ITEM_MAP));
               if (l4_error(tag))
-                printf("Error mapping page\n");
+                printf("# Error mapping page\n");
             }
-          test_ok = false;
           return 0;
         }
       break;
     default:
-      printf("Unhandled exit reason %d\n", exit_reason);
-      test_ok = false;
+      printf("# Unhandled exit reason %d\n", exit_reason);
       return 0;
     }
   return 1;

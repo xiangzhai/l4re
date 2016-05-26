@@ -467,7 +467,11 @@ PUBLIC static
 Context::Drq::Result
 Thread::handle_kill_helper(Drq *src, Context *, void *)
 {
-  delete static_cast<Thread*>(static_cast<Kernel_drq*>(src)->src);
+  Thread *to_delete = static_cast<Thread*>(static_cast<Kernel_drq*>(src)->src);
+  assert (!to_delete->in_ready_list());
+  if (to_delete->dec_ref() == 0)
+    delete to_delete;
+
   return Drq::no_answer_resched();
 }
 
@@ -552,6 +556,8 @@ Thread::do_kill()
 
   cpu_lock.lock();
 
+  arch_vcpu_ext_shutdown();
+
   state_change_dirty(0, Thread_dead);
 
   // dequeue from system queues
@@ -563,21 +569,16 @@ Thread::do_kill()
       _del_observer = 0;
     }
 
-  if (dec_ref())
-    while (1)
-      {
-        state_del_dirty(Thread_ready_mask);
-        schedule();
-        WARN("woken up dead thread %lx\n", dbg_id());
-        kdb_ke("X");
-      }
-
   rcu_wait();
 
   state_del_dirty(Thread_ready_mask);
 
   Sched_context::rq.current().ready_dequeue(sched());
 
+  // make sure this thread really never runs again by migrating it
+  // to the 'invalid' CPU forcefully and then switching to the kernel
+  // thread for doing the last bits.
+  force_to_invalid_cpu();
   kernel_context_drq(handle_kill_helper, 0);
   kdb_ke("Im dead");
   return true;
@@ -995,6 +996,16 @@ Thread::migrate(Migration *info)
   current()->schedule_if(do_migration());
 }
 
+PRIVATE inline NOEXPORT
+void
+Thread::force_to_invalid_cpu()
+{
+  // make sure this thread really never runs again by migrating it
+  // to the 'invalid' CPU forcefully and then switching to the kernel
+  // thread for doing the last bits.
+  set_home_cpu(Cpu::invalid());
+  handle_drq();
+}
 
 //----------------------------------------------------------------------------
 INTERFACE [debug]:
@@ -1056,6 +1067,19 @@ Thread::migrate(Migration *info)
     Proc::pause();
   cpu_lock.lock();
 
+}
+
+PRIVATE inline NOEXPORT
+void
+Thread::force_to_invalid_cpu()
+{
+  // make sure this thread really never runs again by migrating it
+  // to the 'invalid' CPU forcefully.
+    {
+      auto g = lock_guard(_pending_rqq.current().q_lock());
+      set_home_cpu(Cpu::invalid());
+    }
+  handle_drq();
 }
 
 IMPLEMENT

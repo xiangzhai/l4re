@@ -73,6 +73,7 @@ CPU_H_x86   := i386
 CPU_H_ppc32 := powerpc
 CPU_H_arm   := arm
 CPU_H_amd64 := i386
+CPU_H_mips  := mips
 CPU_H_sparc := sparc
 
 CPU_H_generic := config/cpu/generic

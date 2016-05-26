@@ -1,5 +1,5 @@
 /*
- * (c) 2015 Adam Lackorznynski <adam@l4re.org>
+ * (c) 2015 Adam Lackorzynski <adam@l4re.org>
  *
  * This file is part of TUD:OS and distributed under the terms of the
  * GNU General Public License 2.

@@ -77,7 +77,7 @@ Mem_space::is_full_flush(L4_fpage::Rights rights)
 
 // Mapping utilities
 
-PUBLIC inline NEEDS["mem_unit.h"]
+IMPLEMENT inline NEEDS["mem_unit.h"]
 void
 Mem_space::tlb_flush(bool force = false)
 {
@@ -128,7 +128,7 @@ Mem_space::set_attributes(Virt_addr virt, Attr page_attribs,
 }
 
 IMPLEMENT inline NEEDS ["kmem.h", Mem_space::c_asid]
-void Mem_space::switchin_context(Mem_space *from, unsigned)
+void Mem_space::switchin_context(Mem_space *from)
 {
 #if 0
   // never switch to kernel space (context of the idle thread)
@@ -475,59 +475,6 @@ void Mem_space::make_current()
       : "r1");
 }
 
-
-//----------------------------------------------------------------------------
-INTERFACE [armv6 || armv7]:
-
-#include "id_alloc.h"
-#include "types.h"
-
-EXTENSION class Mem_space
-{
-public:
-  enum { Have_asids = 1 };
-private:
-  typedef Per_cpu_array<unsigned long> Asid_array;
-  Asid_array _asid;
-
-  struct Asid_ops
-  {
-    static bool valid(Mem_space *o, Cpu_number cpu)
-    { return o->_asid[cpu] != Mem_unit::Asid_invalid; }
-
-    static unsigned get_id(Mem_space *o, Cpu_number cpu)
-    { return o->_asid[cpu]; }
-
-    static bool can_replace(Mem_space *v, Cpu_number cpu)
-    { return v != current_mem_space(cpu); }
-
-    static void set_id(Mem_space *o, Cpu_number cpu, unsigned long id)
-    {
-      write_now(&o->_asid[cpu], id);
-      Mem_unit::tlb_flush(id);
-    }
-
-    static void reset_id(Mem_space *o, Cpu_number cpu)
-    { write_now(&o->_asid[cpu],  (unsigned long)Mem_unit::Asid_invalid); }
-  };
-
-  struct Asid_alloc : Id_alloc<unsigned char, Mem_space, Asid_ops>
-  {
-    Asid_alloc() : Id_alloc<unsigned char, Mem_space, Asid_ops>(Asid_num, Asid_base) {}
-  };
-
-  static Per_cpu<Asid_alloc> _asid_alloc;
-};
-
-//----------------------------------------------------------------------------
-INTERFACE [!(armv6 || armv7)]:
-
-EXTENSION class Mem_space
-{
-public:
-  enum { Have_asids = 0 };
-};
-
 //----------------------------------------------------------------------------
 INTERFACE [armv6 || armca8]:
 
@@ -550,6 +497,60 @@ EXTENSION class Mem_space
     Asid_num = 255,
     Asid_base = 1
   };
+};
+
+//----------------------------------------------------------------------------
+INTERFACE [armv6 || armv7]:
+
+#include "id_alloc.h"
+#include "types.h"
+
+EXTENSION class Mem_space
+{
+public:
+  enum { Have_asids = 1 };
+private:
+  typedef Per_cpu_array<unsigned long> Asid_array;
+  Asid_array _asid;
+
+  struct Asid_ops
+  {
+    enum { Id_offset = Asid_base };
+
+    static bool valid(Mem_space *o, Cpu_number cpu)
+    { return o->_asid[cpu] != Mem_unit::Asid_invalid; }
+
+    static unsigned long get_id(Mem_space *o, Cpu_number cpu)
+    { return o->_asid[cpu]; }
+
+    static bool can_replace(Mem_space *v, Cpu_number cpu)
+    { return v != current_mem_space(cpu); }
+
+    static void set_id(Mem_space *o, Cpu_number cpu, unsigned long id)
+    {
+      write_now(&o->_asid[cpu], id);
+      Mem_unit::tlb_flush(id);
+    }
+
+    static void reset_id(Mem_space *o, Cpu_number cpu)
+    { write_now(&o->_asid[cpu], (unsigned long)Mem_unit::Asid_invalid); }
+  };
+
+  struct Asid_alloc : Id_alloc<unsigned char, Mem_space, Asid_ops>
+  {
+    Asid_alloc() : Id_alloc<unsigned char, Mem_space, Asid_ops>(Asid_num) {}
+  };
+
+  static Per_cpu<Asid_alloc> _asid_alloc;
+};
+
+//----------------------------------------------------------------------------
+INTERFACE [!(armv6 || armv7)]:
+
+EXTENSION class Mem_space
+{
+public:
+  enum { Have_asids = 0 };
 };
 
 //----------------------------------------------------------------------------

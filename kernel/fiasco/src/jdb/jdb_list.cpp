@@ -244,8 +244,8 @@ Jdb_list::show_line(Jdb_list::Line_buf *b)
 {
   Kconsole::console()->getchar_chance();
 
-  // fefe-printf does not care on the length argument if used with strings
-  // containing ESC-sequences
+  // our modified printf ignores the length argument if used with
+  // strings containing ESC-sequences
   int s_len_visible = print_limit(b->begin(), Jdb_screen::width());
   b->begin()[s_len_visible] = 0;
   printf("%s\033[K\n", b->begin());
@@ -529,6 +529,7 @@ Jdb_list::do_list()
 		    }
 		  break;
 		case KEY_RETURN:
+		case KEY_RETURN_2:
 		  _current = index(y);
 		  if (!enter_item(_current))
 		    return;
