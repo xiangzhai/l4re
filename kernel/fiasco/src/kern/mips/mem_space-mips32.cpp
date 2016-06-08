@@ -602,12 +602,9 @@ PRIVATE inline
 void
 Mem_space::apply_extra_page_attribs(Attr *a)
 {
-  // we set the G (global) flag here if the space is
-  // used for a VZ guest as the HW page walker on (at least)
-  // P5600 does not set the G bit when loading root TLB entries
-  // for a guest.
-  // ATTENTION: this prevents us from running normal threads
-  // in this mem-space, and hence caps & Caps::threads() must be false
+  // ATTENTION: Setting the global bit for VM page-tables prevents us
+  // from running normal threads in this mem-space, hence
+  // caps & Caps::threads() must be false.
   if (_is_vz_guest)
     a->kern |= Page::Kern::Global();
 }
