@@ -1,7 +1,7 @@
 // vim:set ft=cpp:
 /*!
  * \file
- * \brief  L4::Kip class, memory descriptors.
+ * L4::Kip class, memory descriptors.
  *
  * \author Alexander Warg <alexander.warg@os.inf.tu-dresden.de>
  * \ingroup l4_api
@@ -32,10 +32,10 @@
 /**
  * \defgroup l4_kip_api Kernel Interface Page
  * \ingroup l4_api
- * \brief Kernel Interface Page.
+ * Kernel Interface Page.
  *
  * C++ interface for the Kernel Interface Page:<br>
- * <c>\#include <l4/sys/kip></c>
+ * \includefile{l4/sys/kip}
  */
 
 namespace L4
@@ -43,16 +43,16 @@ namespace L4
   namespace Kip
   {
     /**
-     * \brief Memory descriptors stored in the kernel interface page.
+     * Memory descriptors stored in the kernel interface page.
      * \ingroup l4_kip_api
      *
-     * <c>\#include <l4/sys/kip></c>
+     * \includefile{l4/sys/kip}
      */
     class Mem_desc
     {
     public:
       /**
-       * \brief Memory types.
+       * Memory types.
        */
       enum Mem_type
       {
@@ -77,8 +77,10 @@ namespace L4
 
     public:
       /**
-       * \brief Get first memory descriptor.
+       * Get first memory descriptor.
+       *
        * \param kip  Pointer to the kernel info page
+       *
        * \return First memory descriptor stored in the kernel info page
        */
       static Mem_desc *first(void *kip) throw()
@@ -94,8 +96,10 @@ namespace L4
       }
 
       /**
-       * \brief Return number of memory descriptors stored in the kernel info page.
+       * Return number of memory descriptors stored in the kernel info page.
+       *
        * \param kip  Pointer to the kernel info page
+       *
        * \return Number of memory descriptors in the kernel info page.
        */
       static unsigned long count(void const *kip) throw()
@@ -105,9 +109,10 @@ namespace L4
       }
 
       /**
-       * \brief Set number of memory descriptors.
-       * \param kip   Pointer to the kernel info page
-       * \param count Number of memory descriptors
+       * Set number of memory descriptors.
+       *
+       * \param kip    Pointer to the kernel info page
+       * \param count  Number of memory descriptors
        */
       static void count(void *kip, unsigned count) throw()
       {
@@ -116,7 +121,8 @@ namespace L4
       }
 
       /**
-       * \brief Initialize memory descriptor.
+       * Initialize memory descriptor.
+       *
        * \param start  Start address
        * \param end    End address
        * \param t      Memory type
@@ -131,44 +137,51 @@ namespace L4
       {}
 
       /**
-       * \brief Return start address of memory descriptor.
+       * Return start address of memory descriptor.
+       *
        * \return Start address of memory descriptor
        */
       unsigned long start() const throw() { return _l & ~0x3ffUL; }
 
       /**
-       * \brief Return end address of memory descriptor.
+       * Return end address of memory descriptor.
+       *
        * \return End address of memory descriptor
        */
       unsigned long end() const throw() { return _h | 0x3ffUL; }
 
       /**
-       * \brief Return size of region described by the memory descriptor.
+       * Return size of region described by the memory descriptor.
+       *
        * \return Size of the region described by the memory descriptor
        */
       unsigned long size() const throw() { return end() + 1 - start(); }
 
       /**
-       * \brief Return type of the memory descriptor.
+       * Return type of the memory descriptor.
+       *
        * \return Type of the memory descriptor
        */
       Mem_type type() const throw() { return (Mem_type)(_l & 0x0f); }
 
       /**
-       * \brief Return sub-type of the memory descriptor.
+       * Return sub-type of the memory descriptor.
+       *
        * \return Sub-type of the memory descriptor
        */
       unsigned char sub_type() const throw() { return (_l >> 4) & 0x0f; }
 
       /**
-       * \brief Return whether the memory descriptor describes a virtual or
+       * Return whether the memory descriptor describes a virtual or
        * physical region.
+       *
        * \return True for virtual region, false for physical region.
        */
       unsigned is_virtual() const throw() { return _l & 0x200; }
 
       /**
-       * \brief Set values of a memory descriptor.
+       * Set values of a memory descriptor.
+       *
        * \param start  Start address
        * \param end    End address
        * \param t      Memory type

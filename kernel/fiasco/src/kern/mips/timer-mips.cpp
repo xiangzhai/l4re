@@ -1,4 +1,4 @@
-INTERFACE [mips32]:
+INTERFACE [mips]:
 
 #include "per_cpu_data.h"
 #include "irq_chip.h"
@@ -14,7 +14,7 @@ private:
   static Per_cpu<Static_object<Timer> > _timer;
 };
 
-IMPLEMENTATION [mips32]:
+IMPLEMENTATION [mips]:
 
 #include "cpu.h"
 #include "config.h"
@@ -28,34 +28,22 @@ DEFINE_PER_CPU Per_cpu<Static_object<Timer> > Timer::_timer;
 PRIVATE static inline
 Unsigned32
 Timer::_get_compare()
-{
-  Unsigned32 v;
-  __asm__ __volatile__ ("mfc0 %0, $11" : "=r"(v));
-  return v;
-}
+{ return Mips::mfc0_32(Mips::Cp0_compare); }
 
 PRIVATE static inline
 void
 Timer::_set_compare(Unsigned32 v)
-{
-  __asm__ __volatile__ ("mtc0 %0, $11" : : "r"(v));
-}
+{ Mips::mtc0_32(v, Mips::Cp0_compare); }
 
 PRIVATE static inline
 Unsigned32
 Timer::_get_counter()
-{
-  Unsigned32 v;
-  __asm__ __volatile__ ("mfc0 %0, $9" : "=r"(v));
-  return v;
-}
+{ return Mips::mfc0_32(Mips::Cp0_count); }
 
 PRIVATE static inline
 void
 Timer::_set_counter(Unsigned32 cnt)
-{
-  __asm__ __volatile__ ("mtc0 %0, $9" : : "r"(cnt));
-}
+{ Mips::mtc0_32(cnt, Mips::Cp0_count); }
 
 IMPLEMENT
 void
@@ -155,9 +143,5 @@ Timer::update_timer(Unsigned64 wakeup)
 PUBLIC static inline
 unsigned
 Timer::irq()
-{
-  Mword v;
-  asm volatile ("mfc0 %0, $12, 1" : "=r" (v)); // IntCtl 31-29
-  return (v >> 29) & 0x7;
-}
+{ return (Mips::mfc0_32(12, 1) >> 29) & 0x7; }
 

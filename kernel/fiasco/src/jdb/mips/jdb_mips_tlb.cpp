@@ -91,9 +91,9 @@ struct Jdb_mips_tlb : Jdb_module
     for (unsigned i = 0; i < ntlb; ++i)
       {
         Mem_unit::index_reg(i);
-        Mem_unit::ehb();
-        Mem_unit::tlbr();
-        Mem_unit::ehb();
+        Mips::ehb();
+        Mips::tlbr();
+        Mips::ehb();
         Mword h = Mem_unit::entry_hi();
         if (h & (1UL << 10))
           // invalid entry, skip
@@ -102,8 +102,7 @@ struct Jdb_mips_tlb : Jdb_module
         Mword l0 = Mem_unit::entry_lo0();
         Mword l1 = Mem_unit::entry_lo1();
 
-        Mword pm;
-        asm volatile ("mfc0 %0, $5, 0" : "=r"(pm));
+        Mword pm = Mips::mfc0_32(Mips::Cp0_page_mask);
         pm |= 0x1fff;
 
         Mword guest_id;
@@ -162,7 +161,7 @@ struct Jdb_mips_tlb : Jdb_module
       }
 
     Mem_unit::entry_hi(old_entry_hi);
-    Mem_unit::ehb();
+    Mips::ehb();
   }
 
   Jdb_module::Action_code

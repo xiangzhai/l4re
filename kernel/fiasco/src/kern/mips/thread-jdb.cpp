@@ -5,7 +5,7 @@
  * Author: Alexander Warg <alexander.warg@kernkonzept.com>
  */
 
-INTERFACE [mips32 && debug]:
+INTERFACE [mips && debug]:
 
 #include "trap_state.h"
 
@@ -28,7 +28,7 @@ private:
 };
 
 //------------------------------------------------------------------------------
-IMPLEMENTATION [mips32 && debug]:
+IMPLEMENTATION [mips && debug]:
 
 #include "kernel_task.h"
 #include "mem_layout.h"
@@ -110,29 +110,31 @@ Thread::call_nested_trap_handler(Trap_state *ts)
         ".set push                        \n"
         ".set noreorder                   \n"
         " move  %[origstack], $sp         \n"
-        " lw    %[tmp], 0(%[ntr])         \n"
+        " " ASM_L " %[tmp], 0(%[ntr])     \n"
         " bnez  %[tmp], 1f                \n"
         " nop                             \n"
         " move  $sp, %[stack]             \n"
         "1:                               \n"
-        " addiu %[tmp], %[tmp], 1         \n"
-        " sw    %[tmp], 0(%[ntr])         \n"
-        " addu  $sp, $sp, -32             \n" //set up call frame
-        " sw    %[origstack], 28($sp)     \n"
-        " sw    %[ntr], 24($sp)           \n"
+        " " ASM_ADDIU " %[tmp], %[tmp], 1 \n"
+        " " ASM_S " %[tmp], 0(%[ntr])     \n"
+        " " ASM_ADDIU " $sp, $sp, -(%[frsz] + 2 * %[rsz]) \n" //set up call frame
+        " " ASM_S " %[origstack], (%[rsz] + %[frsz])($sp) \n"
+        " " ASM_S " %[ntr], (%[frsz])($sp)                \n"
         " jalr  %[handler]                \n"
         " nop                             \n"
-        " lw    %[ntr], 24($sp)           \n"
-        " lw    $sp, 28($sp)              \n"
-        " lw    %[tmp], 0(%[ntr])         \n"
-        " addiu %[tmp], %[tmp], -1        \n"
-        " sw    %[tmp], 0(%[ntr])         \n"
+        " " ASM_L " %[ntr], (%[frsz])($sp)\n"
+        " " ASM_L " $sp, (%[rsz] + %[frsz])($sp)          \n"
+        " " ASM_L " %[tmp], 0(%[ntr])     \n"
+        " " ASM_ADDIU " %[tmp], %[tmp], -1\n"
+        " " ASM_S " %[tmp], 0(%[ntr])     \n"
         ".set pop                         \n"
         : [origstack] "=&r" (dummy1), [tmp] "=&r" (tmp),
           "=r" (_ts), "=r" (_lcpu), "=r" (res)
         : [ntr] "r" (&ntr), [stack] "r" (stack),
           [handler] "r" (nested_trap_handler),
-          "2" (_ts), "3" (_lcpu)
+          "2" (_ts), "3" (_lcpu),
+          [rsz] "n" (sizeof(Mword)),
+          [frsz] "n" (ASM_NARGSAVE * sizeof(Mword))
         : "memory", "ra", "a2", "a3", "v1", "t0", "t1", "t2",
           "t3", "t4", "t5", "t6", "t7", "t8", "t9");
 
@@ -153,7 +155,7 @@ Thread::call_nested_trap_handler(Trap_state *ts)
   return ret;
 }
 
-IMPLEMENTATION [mips32 && !debug]:
+IMPLEMENTATION [mips && !debug]:
 
 extern "C" void sys_kdb_ke()
 {}

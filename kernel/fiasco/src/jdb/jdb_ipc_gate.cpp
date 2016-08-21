@@ -52,12 +52,5 @@ Jdb_ipc_gate::show_kobject_short(String_buffer *buf, Kobject_common *o)
               g->id(), g->thread() ? g->thread()->dbg_info()->dbg_id() : 0);
 }
 
-PUBLIC
-char const *
-Jdb_ipc_gate::kobject_type(Kobject_common *) const
-{
-  return JDB_ANSI_COLOR(magenta) "Gate" JDB_ANSI_COLOR(default);
-}
-
 static Jdb_ipc_gate jdb_space INIT_PRIORITY(JDB_MODULE_INIT_PRIO);
 

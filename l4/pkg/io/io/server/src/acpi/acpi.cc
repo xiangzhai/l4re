@@ -474,10 +474,27 @@ struct Acpi_pm : Hw::Root_bus::Pm
   int reboot()
   {
     ACPI_STATUS status = AcpiReset();
-    if (status == AE_NOT_EXIST)
-      return 1;
-    else
+
+    if (ACPI_SUCCESS(status))
       return 0;
+
+    auto pf = L4Re::Env::env()->get_cap<L4::Platform_control>("icu");
+    if (!pf)
+      {
+        d_printf(DBG_WARN, "warning: no platform control capability found\n"
+                           "         no fallback for platform reset\n");
+        return -L4_ENOENT;
+      }
+
+    int err = l4_error(pf->system_shutdown(1));
+    if (err < 0)
+      {
+        d_printf(DBG_ERR, "error: pf->system_shutdown(reset) failed: %d\n",
+                 err);
+        return err;
+      }
+
+    return 0;
   }
 
 };
@@ -719,7 +736,7 @@ setup_pci_root_mmconfig()
                (unsigned long long)e->Address,
                e->PciSegment, e->StartBusNumber, e->EndBusNumber);
 
-      // Register for all given busses?
+      // Register for all given buses?
       unsigned num_busses = e->EndBusNumber - e->StartBusNumber + 1;
       Hw::Pci::register_root_bridge(
           new Hw::Pci::Mmio_root_bridge(e->PciSegment, e->StartBusNumber,

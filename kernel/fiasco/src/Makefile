@@ -1,8 +1,6 @@
 srcdir		?= NOT_SET
 tooldir		:= $(srcdir)/../tool
 
-CONFIG_BANNER_STRING ?= "Fiasco - prepare for world domination"
-
 .PHONY: all do-all test-all config textconfig menuconfig xconfig \
         oldconfig regenconfig mrproper doc help update nconfig \
         savedefconfig listnewconfig oldnoconfig oldaskconfig FORCE
@@ -99,10 +97,10 @@ ALL = $(foreach subsys, $(SUBSYSTEMS), $($(subsys)) $($(subsys)_EXTRA))
 $(foreach m, $(GENERATED_MODULES), auto/stamp-$(m).ready): $(MODULES_FILES)
 
 .PRECIOUS: .Modules.deps
-.Modules.deps: $(MODULES_FILES) globalconfig.h source
+.Modules.deps: $(MODULES_FILES) globalconfig.h
 	@mkdir -p auto
 	@echo "Cleaning up build directory"
-	$(VERBOSE)$(RM_R) *.o fiasco *.d .*.d .*.d.new *.d.new
+	$(VERBOSE)$(RM_R) *.lds *.o fiasco *.d .*.d .*.d.new *.d.new
 	$(VERBOSE)$(RM_R) auto/*.cc auto/*.h auto/*.S auto/stamp-*.ready
 	@echo "Creating $@"
 	@($(foreach mod, $(GENERATED_MODULES),				\
@@ -135,7 +133,7 @@ endif # _modules_read_
 # 
 
 .PHONY: create-sources
-create-sources: $(MODULES_FILES) globalconfig.h .Modules.deps 
+create-sources: $(MODULES_FILES) globalconfig.h .Modules.deps source
 	$(MAKE) srcdir=$(srcdir) objbase=$(objbase) -f $(srcdir)/Makefile.sub1 
 auto/stamp-%.ready: $(MODULES_FILES) globalconfig.h .Modules.deps 
 	$(MAKE) srcdir=$(srcdir) objbase=$(objbase) -f $(srcdir)/Makefile.sub1 $@

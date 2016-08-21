@@ -1,6 +1,6 @@
 /**
  * \file
- * \brief Platform control object.
+ * Platform control object.
  */
 /*
  * (c) 2014 Alexander Warg <alexander.warg@kernkonzept.com>
@@ -31,22 +31,21 @@
  *
  * C interface for controlling platform-wide properties.
  *
- * Add
+ * \includefile{l4/sys/platform_control.h}
  *
- *     #include <l4/sys/platform_control.h>
- *
- *  to your code to use the platform control functions. The API allows a
- *  client to suspend, reboot or shutdown the system.
+ *  The API allows a client to suspend, reboot or shutdown the system.
  *
  *  For the C++ interface refer to \ref L4::Platform_control
  */
 
 
 /**
- * \brief Enter suspend to RAM.
+ * Enter suspend to RAM.
+ *
  * \param pfc     Capability selector for the platform-control object
  * \param extras  some extra platform-specific information needed to enter
  *                suspend to RAM.
+ *
  * \return Syscall return tag
  */
 L4_INLINE l4_msgtag_t
@@ -63,9 +62,11 @@ l4_platform_ctl_system_suspend_u(l4_cap_idx_t pfc,
 
 
 /**
- * \brief Shutdown or reboot the system.
+ * Shutdown or reboot the system.
+ *
  * \param pfc     Capability selector for the platform-control object
  * \param reboot  Shutdown when 0, or reboot when 1.
+ *
  * \return Syscall return tag
  */
 L4_INLINE l4_msgtag_t
@@ -81,7 +82,7 @@ l4_platform_ctl_system_shutdown_u(l4_cap_idx_t pfc,
                                   l4_utcb_t *utcb) L4_NOTHROW;
 
 /**
- * \brief Enable an offline CPU.
+ * Enable an offline CPU.
  *
  * \param pfc      Capability to the platform control object.
  * \param phys_id  Physical CPU id of CPU (e.g. local APIC id) to enable.
@@ -101,7 +102,7 @@ l4_platform_ctl_cpu_enable_u(l4_cap_idx_t pfc,
                              l4_utcb_t *utcb) L4_NOTHROW;
 
 /**
- * \brief Disable an online CPU.
+ * Disable an online CPU.
  *
  * \param pfc      Capability to the platform control object.
  * \param phys_id  Physical CPU id of CPU (e.g. local APIC id) to disable.

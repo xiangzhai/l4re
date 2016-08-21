@@ -91,7 +91,7 @@ public:
   { return _a->unaligned_alloc(size); }
 
   void free(void *block, unsigned long size) const
-  { return _a->unaligned_free(size, block); }
+  { _a->unaligned_free(size, block); }
 
   bool valid() const { return _a; }
 

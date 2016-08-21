@@ -10,6 +10,8 @@
 
 /* -*- c -*- */
 
+#include <sys/asm.h>
+
 /* This routine makes changes to the instruction stream effective to the hardware.
  * It should be called after the instruction stream is written.
  * On return, the new instructions are effective.
@@ -70,6 +72,7 @@ _start:
 .set noreorder
 	/* initialize GP */
 	.cpload $25
+	SETUP_GPX64($25, $0)
 
 #ifdef PLATFORM_TYPE_baikal_t
 	// Fix invalid setting of CCA by boot loader
@@ -100,10 +103,10 @@ _start:
 	mtc0  $8, $12, 0         // mtc0 t0, c0_status
 	ehb
 
-	la    $gp, _gp
-	la    $29, crt0_stack_high
-	subu  $29, 6 * 4
-	la    $25, __main        // jump to USEG address space
+	PTR_LA $gp, _gp
+	PTR_LA    $29, crt0_stack_high
+	PTR_SUBU  $29, (NARGSAVE * SZREG)
+	PTR_LA    $25, __main        // jump to USEG address space
 	jr    $25
 	nop
 1:

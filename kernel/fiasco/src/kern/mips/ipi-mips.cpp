@@ -1,4 +1,4 @@
-INTERFACE [mips32 && mp]:
+INTERFACE [mips && mp]:
 
 #include "ipi_control.h"
 
@@ -36,7 +36,7 @@ private:
 };
 
 // -------------------------------------------------------
-IMPLEMENTATION [mips32 && mp]:
+IMPLEMENTATION [mips && mp]:
 
 #include "processor.h"
 #include "cpu.h"
@@ -113,7 +113,7 @@ Ipi::bcast(Message m, Cpu_number from_cpu)
 }
 
 // -------------------------------------------------------
-IMPLEMENTATION [mips32 && !mp]:
+IMPLEMENTATION [mips && !mp]:
 
 PUBLIC static
 Mword

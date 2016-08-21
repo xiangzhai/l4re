@@ -39,6 +39,7 @@ static char sccsid[] = "@(#)nlist.c	8.1 (Berkeley) 6/4/93";
 #include <arpa/inet.h>
 
 #include <errno.h>
+#include <fcntl.h>
 #include <a.out.h>
 #include <stdio.h>
 #include <string.h>
@@ -70,9 +71,7 @@ static int __elf_fdnlist(int, struct nlist *);
 int __fdnlist(int, struct nlist *);
 
 int
-nlist(name, list)
-	const char *name;
-	struct nlist *list;
+nlist(const char *name, struct nlist *list)
 {
 	int fd, n;
 
@@ -96,9 +95,7 @@ static struct nlist_handlers {
 };
 
 int
-__fdnlist(fd, list)
-	int fd;
-	struct nlist *list;
+__fdnlist(int fd, struct nlist *list)
 {
 	size_t i;
 	int n = -1;
@@ -115,9 +112,7 @@ __fdnlist(fd, list)
 
 #ifdef _NLIST_DO_AOUT
 static int
-__aout_fdnlist(fd, list)
-	int fd;
-	struct nlist *list;
+__aout_fdnlist(int fd, struct nlist *list)
 {
 	struct nlist *p, *symtab;
 	caddr_t strtab, a_out_mmap;
@@ -220,8 +215,7 @@ static void elf_sym_to_nlist(struct nlist *, Elf_Sym *, Elf_Shdr *, int);
  * as such its use should be restricted.
  */
 static int
-__elf_is_okay__(ehdr)
-	Elf_Ehdr *ehdr;
+__elf_is_okay__(Elf_Ehdr *ehdr)
 {
 	int retval = 0;
 	/*
@@ -244,9 +238,7 @@ __elf_is_okay__(ehdr)
 }
 
 static int
-__elf_fdnlist(fd, list)
-	int fd;
-	struct nlist *list;
+__elf_fdnlist(int fd, struct nlist *list)
 {
 	struct nlist *p;
 	Elf_Off symoff = 0, symstroff = 0;
@@ -386,11 +378,7 @@ __elf_fdnlist(fd, list)
  * n_value and n_type members.
  */
 static void
-elf_sym_to_nlist(nl, s, shdr, shnum)
-	struct nlist *nl;
-	Elf_Sym *s;
-	Elf_Shdr *shdr;
-	int shnum;
+elf_sym_to_nlist(struct nlist *nl, Elf_Sym *s, Elf_Shdr *shdr, int shnum)
 {
 	nl->n_value = s->st_value;
 

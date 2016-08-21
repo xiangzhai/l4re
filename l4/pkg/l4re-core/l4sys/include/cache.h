@@ -1,6 +1,6 @@
 /**
  * \file
- * \brief  Cache-consistency functions.
+ * Cache-consistency functions.
  *
  * \date   2007-11
  * \author Adam Lackorzynski <adam@os.inf.tu-dresden.de>
@@ -34,68 +34,93 @@
 /**
  * \defgroup l4_cache_api Cache Consistency
  * \ingroup l4_api
- * \brief Various functions for cache consistency.
+ * Various functions for cache consistency.
  *
- * <c>\#include <l4/sys/cache.h></c>
+ * \includefile{l4/sys/cache.h}
  */
 
 EXTERN_C_BEGIN
 
 /**
- * \brief Cache clean a range in D-cache.
+ * Cache clean a range in D-cache.
  * \ingroup l4_cache_api
+ *
  * \param start  Start of range (inclusive)
  * \param end    End of range (exclusive)
+ *
+ * \retval 0        on success
+ * \retval -EFAULT  in the case of an unresolved page fault
+ *                  in the given area
  */
-L4_INLINE void
+L4_INLINE int
 l4_cache_clean_data(unsigned long start,
                     unsigned long end) L4_NOTHROW;
 
 /**
- * \brief Cache flush a range.
+ * Cache flush a range.
  * \ingroup l4_cache_api
+ *
  * \param start  Start of range (inclusive)
  * \param end    End of range (exclusive)
+ *
+ * \retval 0        on success
+ * \retval -EFAULT  in the case of an unresolved page fault
+ *                  in the given area
  */
-L4_INLINE void
+L4_INLINE int
 l4_cache_flush_data(unsigned long start,
                     unsigned long end) L4_NOTHROW;
 
 /**
- * \brief Cache invalidate a range.
+ * Cache invalidate a range.
  * \ingroup l4_cache_api
+ *
  * \param start  Start of range (inclusive)
  * \param end    End of range (exclusive)
+ *
+ * \retval 0        on success
+ * \retval -EFAULT  in the case of an unresolved page fault
+ *                  in the given area
  */
-L4_INLINE void
+L4_INLINE int
 l4_cache_inv_data(unsigned long start,
                   unsigned long end) L4_NOTHROW;
 
 /**
- * \brief Make memory coherent between I-cache and D-cache.
+ * Make memory coherent between I-cache and D-cache.
  * \ingroup l4_cache_api
+ *
  * \param start  Start of range (inclusive)
  * \param end    End of range (exclusive)
+ *
+ * \retval 0        on success
+ * \retval -EFAULT  in the case of an unresolved page fault
+ *                  in the given area
  */
-L4_INLINE void
+L4_INLINE int
 l4_cache_coherent(unsigned long start,
                   unsigned long end) L4_NOTHROW;
 
 /**
- * \brief Make memory coherent for use with external memory.
+ * Make memory coherent for use with external memory.
  * \ingroup l4_cache_api
+ *
  * \param start  Start of range (inclusive)
  * \param end    End of range (exclusive)
+ *
+ * \retval 0        on success
+ * \retval -EFAULT  in the case of an unresolved page fault
+ *                  in the given area
  */
-L4_INLINE void
+L4_INLINE int
 l4_cache_dma_coherent(unsigned long start,
                       unsigned long end) L4_NOTHROW;
 
 /**
- * \brief Make memory coherent for use with external memory.
+ * Make memory coherent for use with external memory.
  * \ingroup l4_cache_api
  */
-L4_INLINE void
+L4_INLINE int
 l4_cache_dma_coherent_full(void) L4_NOTHROW;
 
 EXTERN_C_END

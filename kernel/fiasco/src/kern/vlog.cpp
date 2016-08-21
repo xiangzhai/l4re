@@ -46,6 +46,8 @@ IMPLEMENTATION:
 #include "irq.h"
 #include "irq_controller.h"
 
+JDB_DEFINE_TYPENAME(Vlog, "Vlog");
+
 PUBLIC
 Vlog::Vlog()
 : _irq(0),

@@ -127,5 +127,36 @@ private:
   bool _state;
 };
 
+/**
+ * Generic interrupt line on an interrupt controller.
+ *
+ * The Irq_edge_sink implements an edge-triggered interrupt.
+ * It notifies the interrupt controller on each inject.
+ */
+class Irq_edge_sink
+{
+public:
+  Irq_edge_sink() : _ic(nullptr) {}
+
+  Irq_edge_sink(Gic::Ic *ic, unsigned irq)
+  : _irq(irq), _ic(ic)
+  {}
+
+  void rebind(Gic::Ic *ic, unsigned irq)
+  {
+    _ic = ic;
+    _irq = irq;
+  }
+
+  void inject()
+  { _ic->set(_irq); }
+
+private:
+  unsigned _irq;
+  Gic::Ic *_ic;
+};
+
+
+
 } // namespace
 

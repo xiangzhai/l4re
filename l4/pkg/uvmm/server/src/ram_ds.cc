@@ -12,6 +12,7 @@
 #include <l4/l4re_vfs/backend>
 
 #include "debug.h"
+#include "generic_guest.h"
 #include "ram_ds.h"
 
 namespace Vmm {
@@ -52,7 +53,7 @@ Ram_ds::Ram_ds(L4::Cap<L4Re::Dataspace> ram, l4_addr_t vm_base,
   if (err < 0 || phys_size < _size)
     {
       info.printf("RAM dataspace not contiguous, should not use DMA w/o IOMMU\n");
-      if (err >= 0 && _vm_start == ~0UL)
+      if (err >= 0 && _vm_start == Ram_base_identity_mapped)
         {
           _vm_start = phys_ram;
           _ident = true;
@@ -61,7 +62,7 @@ Ram_ds::Ram_ds(L4::Cap<L4Re::Dataspace> ram, l4_addr_t vm_base,
   else
     {
       _cont = true;
-      if (_vm_start == ~0UL)
+      if (_vm_start == Ram_base_identity_mapped)
         {
           _vm_start = phys_ram;
           _ident = true;
@@ -82,6 +83,9 @@ Ram_ds::Ram_ds(L4::Cap<L4Re::Dataspace> ram, l4_addr_t vm_base,
   assert(_vm_start != ~0UL);
   _offset = _local_start - _vm_start;
   info.printf("RAM: VM offset=%lx\n", _offset);
+
+  _phys_ram = phys_ram;
+  _phys_size = phys_size;
 }
 
 
@@ -114,13 +118,20 @@ Ram_ds::load_file(char const *name, l4_addr_t offset, l4_size_t *_size)
       L4Re::chksys(-L4_EINVAL);
     }
 
-  l4_size_t size = f->size();
-  info.printf("copy in: %s -> %lx-%lx\n", name, offset, offset + size);
+  l4_size_t fsize = f->size();
 
-  L4Re::chksys(_ram->copy_in(offset, f, 0, size), "copy in");
+  if (offset >= size() || offset + fsize >= size())
+    {
+      Err().printf("File does not fit into ram: %s\n", name);
+      L4Re::chksys(-L4_EINVAL);
+    }
+
+  info.printf("copy in: %s -> %lx-%lx\n", name, offset, offset + fsize);
+
+  L4Re::chksys(_ram->copy_in(offset, f, 0, fsize), "copy in");
   close(fd);
   if (_size)
-    *_size = size;
+    *_size = fsize;
 
   return L4virtio::Ptr<void>(offset + vm_start());
 }

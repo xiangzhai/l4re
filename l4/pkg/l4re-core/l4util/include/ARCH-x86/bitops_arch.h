@@ -25,13 +25,13 @@
 EXTERN_C_BEGIN
 
 /* set bit */
-#define __L4UTIL_BITOPS_HAVE_ARCH_SET_BIT32
+#define __L4UTIL_BITOPS_HAVE_ARCH_SET_BIT
 L4_INLINE void
-l4util_set_bit32(int b, volatile l4_uint32_t * dest)
+l4util_set_bit(int b, volatile l4_umword_t * dest)
 {
   __asm__ __volatile__
     (
-     "btsl  %1,%0   \n\t"
+     "lock; btsl  %1,%0   \n\t"
      :
      :
      "m"   (*dest),   /* 0 mem, destination operand */
@@ -41,21 +41,14 @@ l4util_set_bit32(int b, volatile l4_uint32_t * dest)
      );
 }
 
-#define __L4UTIL_BITOPS_HAVE_ARCH_SET_BIT
-L4_INLINE void
-l4util_set_bit(int b, volatile l4_umword_t * dest)
-{
-  return l4util_set_bit32(b, (volatile l4_uint32_t*)dest);
-}
-
 /* clear bit */
-#define __L4UTIL_BITOPS_HAVE_ARCH_CLEAR_BIT32
+#define __L4UTIL_BITOPS_HAVE_ARCH_CLEAR_BIT
 L4_INLINE void
-l4util_clear_bit32(int b, volatile l4_uint32_t * dest)
+l4util_clear_bit(int b, volatile l4_umword_t * dest)
 {
   __asm__ __volatile__
     (
-     "btrl  %1,%0   \n\t"
+     "lock; btrl  %1,%0   \n\t"
      :
      :
      "m"   (*dest),   /* 0 mem, destination operand */
@@ -65,13 +58,6 @@ l4util_clear_bit32(int b, volatile l4_uint32_t * dest)
      );
 }
 
-#define __L4UTIL_BITOPS_HAVE_ARCH_CLEAR_BIT
-L4_INLINE void
-l4util_clear_bit(int b, volatile l4_umword_t * dest)
-{
-  return l4util_clear_bit32(b, (volatile l4_uint32_t*)dest);
-}
-
 /* change bit */
 #define __L4UTIL_BITOPS_HAVE_ARCH_COMPLEMENT_BIT
 L4_INLINE void
@@ -79,7 +65,7 @@ l4util_complement_bit(int b, volatile l4_umword_t * dest)
 {
   __asm__ __volatile__
     (
-     "btcl  %1,%0   \n\t"
+     "lock; btcl  %1,%0   \n\t"
      :
      :
      "m"   (*dest),   /* 0 mem, destination operand */
@@ -90,9 +76,9 @@ l4util_complement_bit(int b, volatile l4_umword_t * dest)
 }
 
 /* test bit */
-#define __L4UTIL_BITOPS_HAVE_ARCH_TEST_BIT32
+#define __L4UTIL_BITOPS_HAVE_ARCH_TEST_BIT
 L4_INLINE int
-l4util_test_bit32(int b, const volatile l4_uint32_t * dest)
+l4util_test_bit(int b, const volatile l4_umword_t * dest)
 {
   l4_int8_t bit;
 
@@ -112,14 +98,6 @@ l4util_test_bit32(int b, const volatile l4_uint32_t * dest)
   return (int)bit;
 }
 
-/* test bit */
-#define __L4UTIL_BITOPS_HAVE_ARCH_TEST_BIT
-L4_INLINE int
-l4util_test_bit(int b, const volatile l4_umword_t * dest)
-{
-  return l4util_test_bit32(b, (const volatile l4_uint32_t*)dest);
-}
-
 /* bit test and set */
 #define __L4UTIL_BITOPS_HAVE_ARCH_BIT_TEST_AND_SET
 L4_INLINE int 
@@ -129,7 +107,7 @@ l4util_bts(int b, volatile l4_umword_t * dest)
 
   __asm__ __volatile__
     (
-     "btsl  %2,%1   \n\t"
+     "lock; btsl  %2,%1   \n\t"
      "setc  %0      \n\t"
      :
      "=q"  (bit)      /* 0,     old bit value */
@@ -152,7 +130,7 @@ l4util_btr(int b, volatile l4_umword_t * dest)
 
   __asm__ __volatile__
     (
-     "btrl  %2,%1   \n\t"
+     "lock; btrl  %2,%1   \n\t"
      "setc  %0      \n\t"
      :
      "=q"  (bit)      /* 0,     old bit value */
@@ -175,7 +153,7 @@ l4util_btc(int b, volatile l4_umword_t * dest)
 
   __asm__ __volatile__
     (
-     "btcl  %2,%1   \n\t"
+     "lock; btcl  %2,%1   \n\t"
      "setc  %0      \n\t"
      :
      "=q"  (bit)      /* 0,     old bit value */

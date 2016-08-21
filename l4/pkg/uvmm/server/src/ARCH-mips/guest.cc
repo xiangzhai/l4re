@@ -8,222 +8,185 @@
 
 #include <l4/cxx/static_container>
 
+#include "device_factory.h"
 #include "guest.h"
-#include "binary_loader.h"
 
 static cxx::Static_container<Vmm::Guest> guest;
 
-static void
+void handler(l4_vcpu_state_t *vcpu);
+
+void __attribute__((flatten))
 handler(l4_vcpu_state_t *vcpu)
 {
   guest->handle_entry(Vmm::Cpu(vcpu));
 }
 
+namespace {
+
+l4_addr_t sign_ext(l4_uint32_t addr)
+{ return (l4_addr_t) ((l4_mword_t) ((l4_int32_t) addr)); }
+
+}
+
 namespace Vmm {
 
-Guest::Guest(L4::Cap<L4Re::Dataspace> ram)
-: Guest::Generic_guest(ram, 0, 0x80000000),
+Guest::Guest(L4::Cap<L4Re::Dataspace> ram, l4_addr_t vm_base)
+: Guest::Generic_guest(ram, vm_base, sign_ext(0x80000000)),
   _core_ic(Vdev::make_device<Gic::Mips_core_ic>())
 {
   // TODO Fiasco should be exporting the proc ID for us. For the
   //      moment just derive it from the platform.
   auto *platform = l4re_kip()->platform_info.name;
-  if (strcmp(platform, "baikal_t") == 0)
+  if (sizeof(l4_addr_t) == 8)
+    _proc_id = 0x00010000; // generic 64bit CPU
+  else if (strcmp(platform, "baikal_t") == 0)
     _proc_id = 0x0001a82c; // P5600
   else
     _proc_id = 0x0001a700; // M5150
 }
 
 Guest *
-Guest::create_instance(L4::Cap<L4Re::Dataspace> ram)
+Guest::create_instance(L4::Cap<L4Re::Dataspace> ram, l4_addr_t vm_base)
 {
-  guest.construct(ram);
+  guest.construct(ram, vm_base);
   return guest;
 }
 
 void
-Guest::load_device_tree(char const *name)
+Guest::update_device_tree(char const *cmd_line)
 {
-  load_device_tree_at(name, 0x100, 0x200);
+  Guest::Generic_guest::update_device_tree(cmd_line);
 
   // advertise CPU core timer frequency in DTS
   auto node = device_tree().path_offset("/cpus");
   node.setprop_u32("mips-hpt-frequency", l4re_kip()->frequency_cpu * 1000);
 }
 
-int
-Guest::config_as_core_device(L4::Cap<L4Re::Dataspace>,
-                             Vdev::Dt_node const &node,
-                             cxx::Ref_ptr<Vdev::Device> *dev)
+L4virtio::Ptr<void>
+Guest::load_linux_kernel(char const *kernel, l4_addr_t *entry)
 {
-  if (node.is_compatible("mti,cpu-interrupt-controller") == 0)
-    {
-      Dbg().printf("Core interrupt controller enabled\n");
-      *dev = _core_ic;
-      return 1;
-    }
-
-  if (node.is_compatible("mti,gic") == 0)
-    {
-      auto *prop = node.check_prop<fdt32_t const>("reg", 2);
-
-      uint32_t base = fdt32_to_cpu(prop[0]);
-      uint32_t size = fdt32_to_cpu(prop[1]);
-
-      auto gic = Vdev::make_device<Gic::Dist>(size);
-
-      _memmap[Region::ss(base, size)] = gic;
-
-      gic->set_cpu_ic(0, _core_ic.get());
-
-      Dbg().printf("GIC configured @ 0x%x (0x%x)\n", base, size);
-      *dev = gic;
-      return 1;
-    }
-
-  return 0;
+  *entry = _ram.boot_addr(0x100400);
+  return l4_round_size(load_binary_at(kernel, 0x100000, entry),
+                       L4_LOG2_SUPERPAGESIZE);
 }
 
-l4_addr_t
-Guest::load_linux_kernel(char const *kernel, char const *cmdline, Cpu vcpu)
+void
+Guest::show_state_registers(FILE *f)
 {
-  Boot::Binary_ds kbin(kernel);
-
-  l4_addr_t entry = _ram.boot_addr(0x100400);
-  l4_addr_t start, end;
-  if (kbin.is_elf_binary())
+  for (int i = 0; i < 1; ++i)
     {
-      entry = kbin.load_as_elf(&_ram);
+      //if (i != current_cpu)
+      //  interrupt_vcpu(i);
 
-      kbin.elf_addr_bounds(&start, &end);
+      Cpu v = *_vcpu[i];
+      fprintf(f, "CPU %d\n", i);
+      fprintf(f, "EPC=%08lx SP=%08lx\n", v->r.ip, v->r.sp);
+      fprintf(f, "Status=%08lx  Cause=%08lx\n", v->r.status, v->r.cause);
+      fprintf(f, "ULR=%08lx  Hi=%08lx Lo=%08lx\n", v->r.ulr, v->r.hi, v->r.lo);
+      fprintf(f, "at/ 1=%08lx v0/ 2=%08lx v1/ 3=%08lx\n",
+              v->r.r[1], v->r.r[2], v->r.r[3]);
+      fprintf(f, "a0/ 4=%08lx a1/ 5=%08lx a1/ 6=%08lx a4/ 7=%08lx\n",
+              v->r.r[4], v->r.r[5], v->r.r[6], v->r.r[7]);
+      fprintf(f, "t0/ 8=%08lx t1/ 9=%08lx t2/10=%08lx t3/11=%08lx\n",
+              v->r.r[8], v->r.r[9], v->r.r[10], v->r.r[11]);
+      fprintf(f, "t4/12=%08lx t5/13=%08lx t6/14=%08lx t7/15=%08lx\n",
+              v->r.r[12], v->r.r[13], v->r.r[14], v->r.r[15]);
+      fprintf(f, "s0/16=%08lx s1/17=%08lx s2/18=%08lx s3/19=%08lx\n",
+              v->r.r[16], v->r.r[17], v->r.r[18], v->r.r[19]);
+      fprintf(f, "s4/20=%08lx s5/21=%08lx s6/22=%08lx s7/23=%08lx\n",
+              v->r.r[20], v->r.r[21], v->r.r[22], v->r.r[23]);
+      fprintf(f, "t8/24=%08lx t9/25=%08lx k0/26=%08lx k1/27=%08lx\n",
+              v->r.r[24], v->r.r[25], v->r.r[26], v->r.r[27]);
+      fprintf(f, "gp/28=%08lx sp/29=%08lx s8/30=%08lx ra/31=%08lx\n",
+              v->r.r[28], v->r.r[29], v->r.r[30], v->r.r[31]);
 
-      start = _ram.local_start() + _ram.boot2ram(start);
-      end = _ram.local_start() + _ram.boot2ram(end);
+      auto *s = v.state();
+      s->update_state(~0UL);
+      fprintf(f, "\nGuestCtl0=%08lx  Guestctl0_ext=%08lx\n",
+              s->guest_ctl_0, s->guest_ctl_0_ext);
+      fprintf(f, "GuestCtl1=%08lx  Guestctl2    =%08lx\n",
+              s->guest_ctl_1, s->guest_ctl_2);
+      fprintf(f, "\nGuest CP0:\n");
+
+      fprintf(f, "Status   =%08lx  Cause    =%08lx\n", s->g_status, s->g_cause);
+      fprintf(f, "Index    =%08lx  EBase    =%08lx\n", s->g_index, s->g_ebase);
+      fprintf(f, "EntryLo0 =%08lx  EntryLo1 =%08lx\n", s->g_entry_lo[0], s->g_entry_lo[1]);
+      fprintf(f, "Context  =%08lx  EntryHi  =%08lx\n", s->g_context, s->g_entry_hi);
+      fprintf(f, "PageMask =%08lx  PageGrain=%08lx\n", s->g_page_mask, s->g_page_grain);
+      fprintf(f, "ULR      =%08lx  Wired    =%08lx\n", s->g_ulr, s->g_wired);
+      fprintf(f, "SegCtl0  =%08lx  SegCtl1  =%08lx\n", s->g_seg_ctl[0], s->g_seg_ctl[1]);
+      fprintf(f, "SegCtl2  =%08lx  HWRena   =%08lx\n", s->g_seg_ctl[2], s->g_hwrena);
+      fprintf(f, "PWBase   =%08lx  PWField  =%08lx\n", s->g_pw_base, s->g_pw_field);
+      fprintf(f, "PWSize   =%08lx  PWCtl    =%08lx\n", s->g_pw_size, s->g_pw_ctl);
+      fprintf(f, "BadVAddr =%08lx  BadInstr =%08lx\n", s->g_bad_v_addr, s->g_bad_instr);
+      fprintf(f, "BadInstrP=%08lx  Compare  =%08lx\n", s->g_bad_instr_p, s->g_compare);
+      fprintf(f, "IntCtl   =%08lx  EPC      =%08lx\n", s->g_intctl, s->g_epc);
+      fprintf(f, "Config0  =%08lx  Config1  =%08lx\n", s->g_cfg[0], s->g_cfg[1]);
+      fprintf(f, "Config2  =%08lx  Config3  =%08lx\n", s->g_cfg[2], s->g_cfg[3]);
+      fprintf(f, "Config4  =%08lx  Config5  =%08lx\n", s->g_cfg[4], s->g_cfg[5]);
     }
-  else
+}
+
+void
+Guest::show_state_interrupts(FILE *f)
+{
+  for (int i = 0; i < 1; ++i)
     {
-      l4_size_t sz;
-      _ram.load_file(kernel, 0x100000, &sz);
+      //if (i != current_cpu)
+      //  interrupt_vcpu(i);
 
-      start = _ram.local_start() + 0x100000;
-      end = start + sz;
+      Cpu v = *_vcpu[i];
+
+      fprintf(f, "\nCPU %d core IC:\n", i);
+      _core_ic->show_state(f, v);
+    }
+}
+
+void
+Guest::prepare_linux_run(Cpu vcpu, l4_addr_t entry, char const *kernel,
+                         char const *cmd_line)
+{
+  /*
+   * Setup arguments for Mips boot protocol
+   */
+  l4_addr_t end = has_device_tree()
+                  ? (_device_tree.get() + device_tree().size())
+                  : 1;
+  L4virtio::Ptr<l4_addr_t> prom_tab(l4_round_size(end, L4_PAGESHIFT));
+
+  size_t size = 2 * sizeof(l4_addr_t);
+  L4virtio::Ptr<char> prom_buf(prom_tab.get() + size);
+
+  size += strlen(kernel) + 1;
+  strcpy(_ram.access(prom_buf), kernel);
+  _ram.access(prom_tab)[0] = _ram.boot_addr(prom_buf);
+
+  if (cmd_line)
+    {
+      prom_buf = L4virtio::Ptr<char>(prom_buf.get() + size);
+      size += strlen(cmd_line) + 1;
+      strcpy(_ram.access(prom_buf), cmd_line);
+      _ram.access(prom_tab)[1] = _ram.boot_addr(prom_buf);
     }
 
-  if (has_device_tree() && device_tree().overlaps(start, end))
-    L4Re::chksys(-L4_EINVAL, "Linux binary overlaps with device tree in RAM.");
+  l4_cache_clean_data(reinterpret_cast<l4_addr_t>(_ram.access(prom_tab)), size);
 
   // Initial register setup:
   //  a0 - number of kernel arguments
   //  a1 - address of kernel arguments
   //  a2 - unused
   //  a3 - address of DTB
-  L4virtio::Ptr<l4_uint32_t> prom_tab(l4_round_size(device_tree().size(), 12));
-  L4virtio::Ptr<char> prom_buf(prom_tab.get() + 2 * sizeof(l4_uint32_t));
-
-  // Setup initial arguments
-  // two arguments: kernel name and optionally cmdline
-  vcpu->r.a0 = cmdline ? 2 : 1;
+  vcpu->r.a0 = cmd_line ? 2 : 1;
   vcpu->r.a1 = _ram.boot_addr(prom_tab);
-
-  _ram.access(prom_tab)[0] = _ram.boot_addr(prom_buf.get());
-  unsigned strpos = sprintf(_ram.access(prom_buf), "%s", kernel) + 1;
-
-  if (cmdline)
-    {
-      prom_buf = L4virtio::Ptr<char>(prom_buf.get() + strpos);
-      _ram.access(prom_tab)[1] = _ram.boot_addr(prom_buf.get());
-      strcpy(_ram.access(prom_buf), cmdline);
-    }
-
   vcpu->r.a2 = 0;
-  vcpu->r.a3 = _ram.boot_addr(_device_tree);
+  vcpu->r.a3 = has_device_tree() ? _ram.boot_addr(_device_tree) : 0;
   vcpu->r.status = 8;
+  // UHI boot protocol spec says that at least KX should be set when the
+  // boot loader passes in 64bit addresses for the command line parameters.
+  if (sizeof(l4_addr_t) == 8)
+    vcpu->r.status |= 0xe0;
   vcpu->r.ip = entry;
-
-  // sync i-cache on binary
-  unsigned step;
-  asm volatile("rdhwr %0, $1" : "=r" (step));
-
-  for (l4_addr_t a = start; a <= end; a += step)
-    asm volatile("synci 0(%0)" : : "r" (a));
-
-  asm volatile("sync");
-
-  return end - _ram.local_start();
 }
-
-void
-Guest::show_state_registers()
-{
-  for (int i = 0; i < 1; ++i)
-    {
-      //if (i != current_cpu)
-      //  interrupt_vcpu(i);
-
-      Cpu v = *_vcpu[i];
-      printf("CPU %d\n", i);
-      printf("EPC=%08lx SP=%08lx\n", v->r.ip, v->r.sp);
-      printf("Status=%08lx  Cause=%08lx\n", v->r.status, v->r.cause);
-      printf("ULR=%08lx  Hi=%08lx Lo=%08lx\n", v->r.ulr, v->r.hi, v->r.lo);
-      printf("at/ 1=%08lx v0/ 2=%08lx v1/ 3=%08lx\n",
-             v->r.r[1], v->r.r[2], v->r.r[3]);
-      printf("a0/ 4=%08lx a1/ 5=%08lx a1/ 6=%08lx a4/ 7=%08lx\n",
-             v->r.r[4], v->r.r[5], v->r.r[6], v->r.r[7]);
-      printf("t0/ 8=%08lx t1/ 9=%08lx t2/10=%08lx t3/11=%08lx\n",
-             v->r.r[8], v->r.r[9], v->r.r[10], v->r.r[11]);
-      printf("t4/12=%08lx t5/13=%08lx t6/14=%08lx t7/15=%08lx\n",
-             v->r.r[12], v->r.r[13], v->r.r[14], v->r.r[15]);
-      printf("s0/16=%08lx s1/17=%08lx s2/18=%08lx s3/19=%08lx\n",
-             v->r.r[16], v->r.r[17], v->r.r[18], v->r.r[19]);
-      printf("s4/20=%08lx s5/21=%08lx s6/22=%08lx s7/23=%08lx\n",
-             v->r.r[20], v->r.r[21], v->r.r[22], v->r.r[23]);
-      printf("t8/24=%08lx t9/25=%08lx k0/26=%08lx k1/27=%08lx\n",
-             v->r.r[24], v->r.r[25], v->r.r[26], v->r.r[27]);
-      printf("gp/28=%08lx sp/29=%08lx s8/30=%08lx ra/31=%08lx\n",
-             v->r.r[28], v->r.r[29], v->r.r[30], v->r.r[31]);
-
-      auto *s = v.state();
-      s->update_state(~0UL);
-      printf("\nGuestCtl0=%08lx  Guestctl0_ext=%08lx\n",
-             s->guest_ctl_0, s->guest_ctl_0_ext);
-      printf("GuestCtl1=%08lx  Guestctl2    =%08lx\n",
-             s->guest_ctl_1, s->guest_ctl_2);
-      printf("\nGuest CP0:\n");
-
-      printf("Status   =%08lx  Cause    =%08lx\n", s->g_status, s->g_cause);
-      printf("Index    =%08lx  EBase    =%08lx\n", s->g_index, s->g_ebase);
-      printf("EntryLo0 =%08lx  EntryLo1 =%08lx\n", s->g_entry_lo[0], s->g_entry_lo[1]);
-      printf("Context  =%08lx  EntryHi  =%08lx\n", s->g_context, s->g_entry_hi);
-      printf("PageMask =%08lx  PageGrain=%08lx\n", s->g_page_mask, s->g_page_grain);
-      printf("ULR      =%08lx  Wired    =%08lx\n", s->g_ulr, s->g_wired);
-      printf("SegCtl0  =%08lx  SegCtl1  =%08lx\n", s->g_seg_ctl[0], s->g_seg_ctl[1]);
-      printf("SegCtl2  =%08lx  HWRena   =%08lx\n", s->g_seg_ctl[2], s->g_hwrena);
-      printf("PWBase   =%08lx  PWField  =%08lx\n", s->g_pw_base, s->g_pw_field);
-      printf("PWSize   =%08lx  PWCtl    =%08lx\n", s->g_pw_size, s->g_pw_ctl);
-      printf("BadVAddr =%08lx  BadInstr =%08lx\n", s->g_bad_v_addr, s->g_bad_instr);
-      printf("BadInstrP=%08lx  Compare  =%08lx\n", s->g_bad_instr_p, s->g_compare);
-      printf("IntCtl   =%08lx  EPC      =%08lx\n", s->g_intctl, s->g_epc);
-      printf("Config0  =%08lx  Config1  =%08lx\n", s->g_cfg[0], s->g_cfg[1]);
-      printf("Config2  =%08lx  Config3  =%08lx\n", s->g_cfg[2], s->g_cfg[3]);
-      printf("Config4  =%08lx  Config5  =%08lx\n", s->g_cfg[4], s->g_cfg[5]);
-    }
-}
-
-void
-Guest::show_state_interrupts()
-{
-  for (int i = 0; i < 1; ++i)
-    {
-      //if (i != current_cpu)
-      //  interrupt_vcpu(i);
-
-      Cpu v = *_vcpu[i];
-
-      printf("\nCPU %d core IC:\n", i);
-      _core_ic->show_state(v);
-    }
-}
-
 
 void
 Guest::run(Cpu vcpu)
@@ -376,6 +339,25 @@ Guest::handle_entry(Cpu vcpu)
 
   Err().printf("VM restart failed with %ld\n", e);
   halt_vm();
+}
+
+namespace {
+
+using namespace Vdev;
+
+struct F : Factory
+{
+  cxx::Ref_ptr<Vdev::Device> create(Vmm::Guest *vmm,
+                                    Vmm::Virt_bus *,
+                                    Vdev::Dt_node const &)
+  {
+    return vmm->core_ic();
+  }
+};
+
+static F f;
+static Vdev::Device_type t = { "mti,cpu-interrupt-controller", nullptr, &f };
+
 }
 
 } // namespace

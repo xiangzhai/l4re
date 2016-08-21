@@ -1,5 +1,9 @@
 #pragma once
 
+/* feature bits from cpu-mips.cpp */
+#define FEATURE_VZ     0x4
+#define FEATURE_TLBINV 0x1
+
 .macro ASM_ALTERNATIVE_ORIG_START
 819:
 .endm

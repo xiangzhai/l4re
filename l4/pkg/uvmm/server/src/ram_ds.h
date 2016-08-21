@@ -20,6 +20,8 @@ namespace Vmm {
 class Ram_ds : public Vm_ram
 {
 public:
+  enum { Ram_base_identity_mapped = ~0UL };
+
   /**
    * Create a new RAM dataspace.
    *
@@ -37,6 +39,10 @@ public:
 
   L4virtio::Ptr<void>
   load_file(char const *name, l4_addr_t offset, l4_size_t *_size = 0);
+
+  L4virtio::Ptr<void>
+  load_file(char const *name, L4virtio::Ptr<void> addr, l4_size_t *_size = 0)
+  { return load_file(name, addr.get() - _vm_start, _size); }
 
   L4::Cap<L4Re::Dataspace> ram() const noexcept
   { return _ram; }
@@ -57,10 +63,22 @@ public:
   l4_addr_t boot2ram(l4_addr_t p) const noexcept
   { return p - _boot_offset - vm_start(); }
 
+  template <typename T>
+  L4virtio::Ptr<T> boot2guest_phys(l4_addr_t p) const noexcept
+  { return L4virtio::Ptr<T>(p - _boot_offset); }
+
+  void dma_area(l4_addr_t *phys_base, l4_size_t *phys_size) const
+  {
+    *phys_base = _phys_ram;
+    *phys_size = _phys_size;
+  }
+
 private:
   L4::Cap<L4Re::Dataspace> _ram;
   L4Re::Util::Auto_cap<L4Re::Dma_space>::Cap _dma;
   l4_addr_t _boot_offset;
+  L4Re::Dma_space::Dma_addr _phys_ram;
+  l4_size_t _phys_size;
 };
 
 } // namespace

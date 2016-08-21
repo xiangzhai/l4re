@@ -1,8 +1,0 @@
-# -*- makefile -*-
-# vi:se ft=make:
-
-CROSS_COMPILE             ?= mips-linux-
-LD_EMULATION_CHOICE       := elf32ltsmip
-SHARED_FLAGS              += -EL -msoft-float
-SHARED_FLAGS-$(CONFIG_CPU_MIPS32_R2) += -march=mips32r2 -mno-abicalls
-SHARED_FLAGS-$(CONFIG_CPU_MIPS32_R6) += -march=mips32r6 -mno-abicalls

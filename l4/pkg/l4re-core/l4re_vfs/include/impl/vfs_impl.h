@@ -99,8 +99,7 @@ private:
 
 public:
   Vfs()
-  : _early_oom(true), _root_mount(), _root(L4Re::Env::env()),
-    _anon_size(0x10000000)
+  : _early_oom(true), _root_mount(), _root(L4Re::Env::env())
   {
     _root_mount.add_ref();
     _root.add_ref();
@@ -172,7 +171,6 @@ private:
 
   cxx::H_list_t<File_factory_item> _file_factories;
 
-  l4_addr_t _anon_size;
   l4_addr_t _anon_offset;
   L4::Cap<L4Re::Dataspace> _anon_ds;
 
@@ -455,14 +453,41 @@ Vfs::alloc_anon_mem(l4_umword_t size, L4::Cap<L4Re::Dataspace> *ds,
                     l4_addr_t *offset)
 {
 #ifdef USE_BIG_ANON_DS
-  if (!_anon_ds.is_valid() || _anon_offset + size >= _anon_size)
+  enum
+  {
+    ANON_MEM_DS_POOL_SIZE = 256UL << 20, // size of a pool dataspace used for anon memory
+    ANON_MEM_MAX_SIZE     = 32UL << 20,  // chunk size that will be allocate a dataspace
+  };
+#else
+  enum
+  {
+    ANON_MEM_DS_POOL_SIZE = 256UL << 20, // size of a pool dataspace used for anon memory
+    ANON_MEM_MAX_SIZE     = 0UL << 20,   // chunk size that will be allocate a dataspace
+  };
+#endif
+
+  if (size >= ANON_MEM_MAX_SIZE)
+    {
+      int err;
+      if ((err = alloc_ds(size, ds)) < 0)
+        return err;
+
+      *offset = 0;
+
+      if (!_early_oom)
+        return err;
+
+      return (*ds)->allocate(0, size);
+    }
+
+  if (!_anon_ds.is_valid() || _anon_offset + size >= ANON_MEM_DS_POOL_SIZE)
     {
       if (_anon_ds.is_valid())
-	L4Re::Core::release_ds(_anon_ds);
+        L4Re::Core::release_ds(_anon_ds);
 
       int err;
-      if ((err = alloc_ds(_anon_size, ds)) < 0)
-	return err;
+      if ((err = alloc_ds(ANON_MEM_DS_POOL_SIZE, ds)) < 0)
+        return err;
 
       _anon_offset = 0;
       _anon_ds = *ds;
@@ -473,23 +498,11 @@ Vfs::alloc_anon_mem(l4_umword_t size, L4::Cap<L4Re::Dataspace> *ds,
   if (_early_oom)
     {
       if (int err = (*ds)->allocate(_anon_offset, size))
-	return err;
+        return err;
     }
 
   *offset = _anon_offset;
   _anon_offset += size;
-#else
-  int err;
-  if ((err = alloc_ds(size, ds)) < 0)
-    return err;
-
-  if (_early_oom)
-    {
-      if ((err = (*ds)->allocate(0, size)))
-	return err;
-    }
-  *offset = 0;
-#endif
   return 0;
 }
 
@@ -498,7 +511,7 @@ Vfs::mmap2(void *start, size_t len, int prot, int flags, int fd, off_t _offset,
            void **resptr) L4_NOTHROW
 {
   using namespace L4Re;
-  off64_t offset = _offset << 12;
+  off64_t offset = l4_trunc_page(_offset << 12);
 
   start = (void*)l4_trunc_page(l4_addr_t(start));
   len   = l4_round_page(len);

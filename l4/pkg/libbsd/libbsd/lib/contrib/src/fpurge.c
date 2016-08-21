@@ -44,23 +44,3 @@ fpurge(FILE *fp)
 #else
 #error "Function fpurge() needs to be ported."
 #endif
-
-#ifdef TEST
-int
-main()
-{
-	static FILE fp_bad;
-	FILE *fp;
-
-	if (fpurge(&fp_bad) == 0)
-		return 1;
-
-	fp = fopen("/dev/zero", "r");
-	if (fpurge(fp) < 0)
-		return 1;
-
-	fclose(fp);
-
-	return 0;
-}
-#endif

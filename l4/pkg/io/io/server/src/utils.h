@@ -18,3 +18,16 @@ private:
   pthread_mutex_t *_m = 0;
 };
 
+template<typename COND>
+bool
+poll_loop(unsigned count, COND &&cond)
+{
+  while (cond())
+    {
+      if (count == 0)
+        return false;
+
+      --count;
+    }
+  return true;
+}

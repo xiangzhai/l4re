@@ -7,15 +7,20 @@
  * Author: Yann Le Du <ledu@kymasys.com>
  */
 
+#include <sys/asm.h>
+
 .section .text.init, "ax"
 .type __start, @function
 .globl __start
 .set noreorder
 __start:
 	.cpload $25 /* load GP */
-	la    $29, crt0_stack_high
-	j     init
-	  subu  $29, 6 * 4
+	SETUP_GPX64($25, $0)
+	PTR_LA	$29, crt0_stack_high
+	PTR_LA	$25, init
+	PTR_SUBU  $29, (NARGSAVE * SZREG)
+	jalr $25
+	  nop
 1:
 	b   1b
 

@@ -20,7 +20,3 @@ vpath %.cc $(STDCXX_CONTRIB_DIR)/config/io
 vpath %.cc $(STDCXX_CONTRIB_DIR)/config/locale/generic
 
 vpath %.cc $(STDCXX_CONTRIB_DIR)/src
-ifeq ($(STDCXX_CONTRIB_VERSION_4.7_PLUS),)
-else
-endif
-

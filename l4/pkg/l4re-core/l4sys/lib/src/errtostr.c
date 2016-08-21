@@ -28,6 +28,7 @@ static char const *const _l4sys_errortab[L4_ERRNOMAX] = {
     [L4_EAGAIN]        = "Try again",
     [L4_ENOMEM]        = "Insufficient memory",
     [L4_EACCESS]       = "Access not permitted",
+    [L4_EFAULT]        = "Invalid memory address",
     [L4_EBUSY]         = "Function busy",
     [L4_EEXIST]        = "Object exists",
     [L4_ENODEV]        = "No such device",

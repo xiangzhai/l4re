@@ -35,7 +35,7 @@
 
 EXTERN_C void syncICache(unsigned long start, unsigned long size);
 
-L4_INLINE void
+L4_INLINE int
 l4_cache_clean_data(unsigned long start,
                     unsigned long end) L4_NOTHROW
 {
@@ -44,11 +44,12 @@ l4_cache_clean_data(unsigned long start,
   mr->mr[0] = 0x21;
   mr->mr[1] = start;
   mr->mr[2] = end;
-  l4_ipc_call(L4_INVALID_CAP, u, l4_msgtag(L4_PROTO_THREAD, 3, 0, 0),
-              L4_IPC_NEVER);
+  return l4_error_u(l4_ipc_call(L4_INVALID_CAP, u,
+                                l4_msgtag(L4_PROTO_THREAD, 3, 0, 0),
+                                L4_IPC_NEVER), u);
 }
 
-L4_INLINE void
+L4_INLINE int
 l4_cache_flush_data(unsigned long start,
                     unsigned long end) L4_NOTHROW
 {
@@ -57,11 +58,12 @@ l4_cache_flush_data(unsigned long start,
   mr->mr[0] = 0x20;
   mr->mr[1] = start;
   mr->mr[2] = end;
-  l4_ipc_call(L4_INVALID_CAP, u, l4_msgtag(L4_PROTO_THREAD, 3, 0, 0),
-              L4_IPC_NEVER);
+  return l4_error_u(l4_ipc_call(L4_INVALID_CAP, u,
+                                l4_msgtag(L4_PROTO_THREAD, 3, 0, 0),
+                                L4_IPC_NEVER), u);
 }
 
-L4_INLINE void
+L4_INLINE int
 l4_cache_inv_data(unsigned long start,
                   unsigned long end) L4_NOTHROW
 {
@@ -70,11 +72,12 @@ l4_cache_inv_data(unsigned long start,
   mr->mr[0] = 0x22;
   mr->mr[1] = start;
   mr->mr[2] = end;
-  l4_ipc_call(L4_INVALID_CAP, u, l4_msgtag(L4_PROTO_THREAD, 3, 0, 0),
-              L4_IPC_NEVER);
+  return l4_error_u(l4_ipc_call(L4_INVALID_CAP, u,
+                                l4_msgtag(L4_PROTO_THREAD, 3, 0, 0),
+                                L4_IPC_NEVER), u);
 }
 
-L4_INLINE void
+L4_INLINE int
 l4_cache_coherent(unsigned long start,
                   unsigned long end) L4_NOTHROW
 {
@@ -86,22 +89,29 @@ l4_cache_coherent(unsigned long start,
 
   asm volatile ("sync");
   asm volatile (".set push; .set noat; .set noreorder\n"
+#if (_MIPS_SZLONG == 64)
+                "dla $1, 1f\n"
+#else
                 "la $1, 1f\n"
+#endif
                 "jr.hb $1\n"
                 "  nop\n"
                 "1: .set pop");
+  return 0;
 }
 
-L4_INLINE void
+L4_INLINE int
 l4_cache_dma_coherent(unsigned long start,
                       unsigned long end) L4_NOTHROW
 {
   (void)start; (void)end;
+  return 0;
 }
 
-L4_INLINE void
+L4_INLINE int
 l4_cache_dma_coherent_full(void) L4_NOTHROW
 {
+  return 0;
 }
 
 #endif /* ! __L4SYS__INCLUDE__ARCH_MIPS__CACHE_H__ */

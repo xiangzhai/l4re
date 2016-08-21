@@ -1,7 +1,7 @@
 /*****************************************************************************/
 /**
  * \file
- * \brief   UTCB definitions.
+ * UTCB definitions.
  * \ingroup l4_ipc_api
  */
 /*
@@ -35,9 +35,9 @@
  * \defgroup l4_utcb_api Virtual Registers (UTCBs)
  * \ingroup l4_ipc_api
  *
- * \brief L4 Virtual Registers (UTCB).
- * Includes: <br>
- * <code> \#include <\link l4/sys/utcb.h l4/sys/utcb.h\endlink> </code>
+ * L4 Virtual Registers (UTCB).
+ *
+ * \includefile{l4/sys/utcb.h}
  *
  * The virtual registers are part of the micro-kernel API and are located in
  * the user-level thread control block (UTCB). The UTCB is a data structure
@@ -57,8 +57,7 @@
  */
 
 /**
- * \brief Opaque type for the UTCB.
- * \headerfile l4/sys/utcb.h
+ * Opaque type for the UTCB.
  * \ingroup l4_utcb_api
  *
  * To access the contents of the virtual registers the l4_utcb_mr(),
@@ -73,8 +72,7 @@ typedef struct l4_utcb_t l4_utcb_t;
  */
 
 /**
- * \brief Encapsulation of the message-register block in the UTCB.
- * \headerfile l4/sys/utcb.h
+ * Encapsulation of the message-register block in the UTCB.
  * \ingroup l4_utcb_mr_api
  */
 typedef union l4_msg_regs_t
@@ -88,8 +86,7 @@ typedef union l4_msg_regs_t
  * \ingroup l4_utcb_api
  */
 /**
- * \brief Encapsulation of the buffer-registers block in the UTCB.
- * \headerfile l4/sys/utcb.h
+ * Encapsulation of the buffer-registers block in the UTCB.
  *
  * \ingroup l4_utcb_br_api
  */
@@ -107,8 +104,7 @@ typedef struct l4_buf_regs_t
  * \ingroup l4_utcb_api
  */
 /**
- * \brief Encapsulation of the thread-control-register block of the UTCB.
- * \headerfile l4/sys/utcb.h
+ * Encapsulation of the thread-control-register block of the UTCB.
  * \ingroup l4_utcb_tcr_api
  */
 typedef struct l4_thread_regs_t
@@ -125,8 +121,7 @@ __BEGIN_DECLS
 
 /**
  * \internal
- * \headerfile l4/sys/utcb.h
- * \brief Get the UTCB address.
+ * Get the UTCB address.
  * \attention This functions should be used by libraries.
  * \ingroup l4_utcb_api
  *
@@ -138,19 +133,19 @@ L4_CV l4_utcb_t *l4_utcb_wrap(void) L4_NOTHROW L4_PURE;
 
 /**
  * \internal
- * \brief Get the UTCB address.
+ * Get the UTCB address.
  * \ingroup l4_utcb_api
  */
 L4_INLINE l4_utcb_t *l4_utcb_direct(void) L4_NOTHROW L4_PURE;
 
 /**
- * \brief Get the UTCB address.
+ * Get the UTCB address.
  * \ingroup l4_utcb_api
  */
 L4_INLINE l4_utcb_t *l4_utcb(void) L4_NOTHROW L4_PURE;
 
 /**
- * \brief Get the message-register block of a UTCB.
+ * Get the message-register block of a UTCB.
  * \ingroup l4_utcb_api
  * \returns A pointer to the message-register block of \c u.
  */
@@ -158,25 +153,26 @@ L4_INLINE l4_msg_regs_t *l4_utcb_mr(void) L4_NOTHROW L4_PURE;
 
 /**
  * \internal
- * \param u the UTCB pointer to access.
+ * \param u  The UTCB pointer to access.
  */
 L4_INLINE l4_msg_regs_t *l4_utcb_mr_u(l4_utcb_t *u) L4_NOTHROW L4_PURE;
 
 /**
- * \brief Get the buffer-register block of a UTCB.
+ * Get the buffer-register block of a UTCB.
  * \ingroup l4_utcb_api
+ *
  * \returns A pointer to the buffer-register block of \c u.
  */
 L4_INLINE l4_buf_regs_t *l4_utcb_br(void) L4_NOTHROW L4_PURE;
 
 /**
  * \internal
- * \param u the UTCB pointer to access.
+ * \param u  The UTCB pointer to access.
  */
 L4_INLINE l4_buf_regs_t *l4_utcb_br_u(l4_utcb_t *u) L4_NOTHROW L4_PURE;
 
 /**
- * \brief Get the thread-control-register block of a UTCB.
+ * Get the thread-control-register block of a UTCB.
  * \ingroup l4_utcb_api
  * \returns A pointer to the thread-control-register block of \c u.
  */
@@ -184,31 +180,32 @@ L4_INLINE l4_thread_regs_t *l4_utcb_tcr(void) L4_NOTHROW L4_PURE;
 
 /**
  * \internal
- * \param u the UTCB pointer to access.
+ * \param u  The UTCB pointer to access.
  */
 L4_INLINE l4_thread_regs_t *l4_utcb_tcr_u(l4_utcb_t *u) L4_NOTHROW L4_PURE;
 
 /**
  * \defgroup l4_utcb_exc_api Exception registers
  * \ingroup l4_utcb_mr_api
- * \brief Overly definition of the MRs for exception messages.
+ * Overly definition of the MRs for exception messages.
  */
 
 /**
- * \brief Get the message-register block of a UTCB (for an exception IPC).
+ * Get the message-register block of a UTCB (for an exception IPC).
  * \ingroup l4_utcb_exc_api
+ *
  * \returns A pointer to the exception message in \c u.
  */
 L4_INLINE l4_exc_regs_t *l4_utcb_exc(void) L4_NOTHROW L4_PURE;
 
 /**
  * \internal
- * \param u the UTCB pointer to access.
+ * \param u  The UTCB pointer to access.
  */
 L4_INLINE l4_exc_regs_t *l4_utcb_exc_u(l4_utcb_t *u) L4_NOTHROW L4_PURE;
 
 /**
- * \brief Access function to get the program counter of the exception state.
+ * Access function to get the program counter of the exception state.
  * \ingroup l4_utcb_exc_api
  *
  * \param  u  UTCB
@@ -217,7 +214,7 @@ L4_INLINE l4_exc_regs_t *l4_utcb_exc_u(l4_utcb_t *u) L4_NOTHROW L4_PURE;
 L4_INLINE l4_umword_t l4_utcb_exc_pc(l4_exc_regs_t const *u) L4_NOTHROW L4_PURE;
 
 /**
- * \brief Set the program counter register in the exception state.
+ * Set the program counter register in the exception state.
  * \ingroup l4_utcb_exc_api
  *
  * \param u   UTCB
@@ -227,13 +224,13 @@ L4_INLINE l4_umword_t l4_utcb_exc_pc(l4_exc_regs_t const *u) L4_NOTHROW L4_PURE;
 L4_INLINE void l4_utcb_exc_pc_set(l4_exc_regs_t *u, l4_addr_t pc) L4_NOTHROW;
 
 /**
- * \brief Get the value out of an exception UTCB that describes the type of exception.
+ * Get the value out of an exception UTCB that describes the type of exception.
  * \ingroup l4_utcb_exc_api
  */
 L4_INLINE unsigned long l4_utcb_exc_typeval(l4_exc_regs_t const *u) L4_NOTHROW L4_PURE;
 
 /**
- * \brief Check whether an exception IPC is a page fault.
+ * Check whether an exception IPC is a page fault.
  * \ingroup l4_utcb_exc_api
  *
  * \returns 0 if not, != 0 if yes
@@ -244,13 +241,13 @@ L4_INLINE unsigned long l4_utcb_exc_typeval(l4_exc_regs_t const *u) L4_NOTHROW L
 L4_INLINE int l4_utcb_exc_is_pf(l4_exc_regs_t const *u) L4_NOTHROW L4_PURE;
 
 /**
- * \brief Function to get the L4 style page fault address out of an exception.
+ * Function to get the L4 style page fault address out of an exception.
  * \ingroup l4_utcb_exc_api
  */
 L4_INLINE l4_addr_t l4_utcb_exc_pfa(l4_exc_regs_t const *u) L4_NOTHROW L4_PURE;
 
 /**
- * \brief Enable or disable inheritance of FPU state to receiver.
+ * Enable or disable inheritance of FPU state to receiver.
  * \ingroup l4_utcb_br_api
  */
 L4_INLINE void l4_utcb_inherit_fpu(int switch_on) L4_NOTHROW;
@@ -263,7 +260,7 @@ L4_INLINE void l4_utcb_inherit_fpu_u(l4_utcb_t *u, int switch_on) L4_NOTHROW;
 /**
  * \internal
  *
- * \brief Set an absolute timeout.
+ * Set an absolute timeout.
  * \ingroup l4_timeout_api
  *
  * \param  pint  Point in time in clocks
@@ -278,7 +275,7 @@ L4_INLINE
 l4_timeout_s l4_timeout_abs_u(l4_kernel_clock_t pint, int br,
                               l4_utcb_t *utcb) L4_NOTHROW;
 /**
- * \brief Set an absolute timeout.
+ * Set an absolute timeout.
  * \ingroup l4_timeout_api
  *
  * \param  pint  Point in time in clocks
@@ -294,7 +291,7 @@ L4_INLINE
 l4_timeout_s l4_timeout_abs(l4_kernel_clock_t pint, int br) L4_NOTHROW;
 
 /**
- * \brief Get index into 64bit message registers alias from native-sized index.
+ * Get index into 64bit message registers alias from native-sized index.
  * \ingroup l4_timeout_api
  *
  * \param idx  Index to native-sized message register

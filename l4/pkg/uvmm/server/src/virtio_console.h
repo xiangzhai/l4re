@@ -63,14 +63,15 @@ public:
     L4Re::chksys(con->set_attr(&attr), "console set_attr");
   }
 
-  void init_device(Vdev::Device_lookup const &devs, Vdev::Dt_node const &self) override
+  void init_device(Vdev::Device_lookup const *devs,
+                   Vdev::Dt_node const &self) override
   {
     auto irq_ctl = self.find_irq_parent();
     if (!irq_ctl.is_valid())
       L4Re::chksys(-L4_ENODEV, "No interupt handler found for virtio console.\n");
 
     // XXX need dynamic cast for Ref_ptr here
-    auto *ic = dynamic_cast<Gic::Ic *>(devs.device_from_node(irq_ctl).get());
+    auto *ic = dynamic_cast<Gic::Ic *>(devs->device_from_node(irq_ctl).get());
 
     if (!ic)
       L4Re::chksys(-L4_ENODEV, "Interupt handler for virtio console has bad type.\n");
@@ -157,7 +158,15 @@ public:
           break; // empty
 
         if (!q->ready())
-          continue; // drop input
+          {
+            // drop input
+            do
+              {
+                r = _con->read(NULL, L4_VCON_READ_SIZE);
+              }
+            while (r > L4_VCON_READ_SIZE);
+            break;
+          }
 
         auto req = q->next_avail();
 

@@ -12,6 +12,7 @@
 #include "pages.h"
 
 #include <l4/sys/task.h>
+#include <l4/sys/cache.h>
 
 #include <l4/cxx/iostream>
 #include <l4/cxx/minmax>
@@ -70,6 +71,13 @@ Moe::Dataspace_noncont::address(l4_addr_t offset,
 
           // L4::cout << "copy on write for " << *p << " to " << np << '\n';
           memcpy(np, *p, page_size());
+          // FIXME: we should pass information if this page is to be mapped
+          // executable or not and conditionally make I caches coherent.
+          // And we should provide a single API with opcode bits to allow
+          // a combination of cache clean and I cache coherency in a single
+          // operation.
+          l4_cache_coherent((l4_addr_t)np, (l4_addr_t)np + page_size() - 1);
+          l4_cache_clean_data((l4_addr_t)np, (l4_addr_t)np + page_size() - 1);
           unmap_page(p);
           Moe::Pages::unshare(*p);
           p.set(np, 0);
@@ -81,6 +89,9 @@ Moe::Dataspace_noncont::address(l4_addr_t offset,
       p.set(qalloc()->alloc_pages(page_size(), page_size()), 0);
       Moe::Pages::share(*p);
       memset(*p, 0, page_size());
+      // No need for I cache coherence, as we just zero fill and assume that
+      // this is no executable code
+      l4_cache_clean_data((l4_addr_t)*p, (l4_addr_t)(*p) + page_size() - 1);
     }
 
   return Address(l4_addr_t(*p), page_shift(), rw, offset & (page_size()-1));

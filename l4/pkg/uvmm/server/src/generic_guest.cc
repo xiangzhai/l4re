@@ -6,12 +6,11 @@
  * License, version 2.  Please see the COPYING-GPL-2 file for details.
  */
 
+#include <l4/sys/cache.h>
 #include <l4/sys/debugger.h>
 
 #include "generic_guest.h"
-#include "dev_sysctl.h"
-#include "virtio_console.h"
-#include "virtio_proxy.h"
+#include "binary_loader.h"
 
 namespace Vmm {
 
@@ -19,7 +18,8 @@ Generic_guest::Generic_guest(L4::Cap<L4Re::Dataspace> ram,
                              l4_addr_t vm_base, l4_addr_t boot_offset)
 : _registry(&_bm),
   _ram(ram, vm_base, boot_offset),
-  _task(L4Re::chkcap(L4Re::Util::cap_alloc.alloc<L4::Task>()))
+  _task(L4Re::chkcap(L4Re::Util::cap_alloc.alloc<L4::Task>())),
+  _device_tree(L4virtio::Ptr<void>::Invalid)
 {
   // attach RAM to VM
   _memmap[Region::ss(_ram.vm_start(), _ram.size())]
@@ -51,62 +51,125 @@ Generic_guest::create_cpu()
   return vcpu;
 }
 
-void
-Generic_guest::load_device_tree_at(char const *name, l4_addr_t base,
-                                 l4_size_t padding)
+L4virtio::Ptr<void>
+Generic_guest::load_device_tree_at(char const *name, L4virtio::Ptr<void> addr,
+                                   l4_size_t padding)
 {
-  _device_tree = _ram.load_file(name, base);
+  _device_tree = _ram.load_file(name, addr);
 
   auto dt = device_tree();
   dt.check_tree();
-  dt.add_to_size(padding);
+  // use 1.25 * size + padding for the time being
+  dt.add_to_size(dt.size() / 4 + padding);
+  Dbg().printf("Loaded device tree to %llx:%llx\n", _device_tree.get(),
+               _device_tree.get() + dt.size());
 
-  // fill in memory node in the device tree
-  auto mem_nd = dt.path_offset("/memory");
-  mem_nd.setprop_u32("reg", _ram.vm_start());
-  mem_nd.appendprop_u32("reg", _ram.size());
+  // Round to the next page to load anything else to a new page.
+  return l4_round_size(L4virtio::Ptr<void>(addr.get() + dt.size()),
+                       L4_PAGESHIFT);
 }
 
-l4_size_t
-Generic_guest::load_ramdisk_at(char const *ram_disk, l4_addr_t offset)
+void
+Generic_guest::update_device_tree(char const *cmd_line)
+{
+  // We assume that "/choosen" and "/memory" are present
+  auto dt = device_tree();
+  if (cmd_line)
+    {
+      auto node = dt.path_offset("/chosen");
+      node.setprop_string("bootargs", cmd_line);
+    }
+  auto mem_node = dt.path_offset("/memory");
+  mem_node.set_reg_val(_ram.vm_start(), _ram.size());
+
+  l4_addr_t dma_base;
+  l4_size_t dma_size;
+  _ram.dma_area(&dma_base, &dma_size);
+  int addr_cells = mem_node.get_address_cells();
+  mem_node.setprop("dma-ranges", dma_base, addr_cells);
+  mem_node.appendprop("dma-ranges", _ram.vm_start(), addr_cells);
+  mem_node.appendprop("dma-ranges", dma_size, mem_node.get_size_cells());
+}
+
+void
+Generic_guest::set_ramdisk_params(L4virtio::Ptr<void> addr, l4_size_t size)
+{
+  if (!size)
+    return;
+
+  // We assume that "/choosen" is present
+  auto dt = device_tree();
+
+  auto node = dt.path_offset("/chosen");
+  node.set_prop_address("linux,initrd-start", addr.get());
+  node.set_prop_address("linux,initrd-end", addr.get() + size);
+
+}
+
+L4virtio::Ptr<void>
+Generic_guest::load_ramdisk_at(char const *ram_disk, L4virtio::Ptr<void> addr,
+                               l4_size_t *size)
 {
   Dbg info(Dbg::Info);
-  info.printf("load ramdisk image %s\n", ram_disk);
 
-  l4_size_t size;
-  auto initrd = _ram.load_file(ram_disk, offset, &size);
+  l4_size_t tmp;
+  auto initrd = _ram.load_file(ram_disk, addr, &tmp);
 
-  if (offset + size > _ram.size())
-    L4Re::chksys(-L4_EINVAL, "Ramdisk does not fit into RAM.");
+  if (size)
+    *size = tmp;
 
-  if (has_device_tree()
-      && device_tree().overlaps(_ram.local_start() + offset,
-                                _ram.local_start() + offset + size))
-    L4Re::chksys(-L4_EINVAL, "Ramdisk overlaps with device tree.");
+  // Round to the next page to load anything else to a new page.
+  auto res = l4_round_size(L4virtio::Ptr<void>(initrd.get() + tmp),
+                           L4_PAGESHIFT);
+  info.printf("Loaded ramdisk image %s to [%llx:%llx] (%08zx)\n", ram_disk,
+              initrd.get(), res.get() - 1, tmp);
+  return res;
+}
 
+L4virtio::Ptr<void>
+Generic_guest::load_binary_at(char const *kernel, l4_addr_t offset,
+                              l4_addr_t *entry)
+{
+  L4virtio::Ptr<void> start, end;
+  Boot::Binary_ds kbin(kernel);
 
-  if (has_device_tree())
+  if (kbin.is_elf_binary())
     {
-      auto node = device_tree().path_offset("/chosen");
-      node.setprop_u32("linux,initrd-start", _ram.boot_addr(initrd));
-      node.setprop_u32("linux,initrd-end", _ram.boot_addr(initrd) + size);
+      *entry = kbin.load_as_elf(&_ram);
+
+      l4_addr_t lstart, lend;
+      kbin.elf_addr_bounds(&lstart, &lend);
+
+      start = _ram.boot2guest_phys<void>(lstart);
+      end = _ram.boot2guest_phys<void>(lend);
+    }
+  else
+    {
+      l4_size_t sz;
+      start = _ram.load_file(kernel, offset, &sz);
+      end = L4virtio::Ptr<void>(start.get() + sz);
     }
 
-  return size;
+  l4_cache_coherent((unsigned long) _ram.access(start),
+                    (unsigned long) _ram.access(end));
+
+  return end;
 }
+
 
 void
 Generic_guest::register_mmio_device(cxx::Ref_ptr<Vmm::Mmio_device> &&dev,
                                     Vdev::Dt_node const &node, int index)
 {
-  // XXX need to check for address-cells and size-cells here
-  auto *prop = node.check_prop<fdt32_t>("reg", 2 * index);
-  uint32_t base = fdt32_to_cpu(prop[index * 2]);
-  uint32_t size = fdt32_to_cpu(prop[index * 2 + 1]);
+  l4_uint64_t base, size;
+  node.get_reg_val(index, &base, &size);
 
-  _memmap[Region::ss(base, size)] = dev;
+  auto region = Region::ss(base, size);
 
-  Dbg().printf("New mmio mapping: @ %x %x\n", base, size);
+  if (_memmap.count(region) > 0)
+    L4Re::chksys(-L4_ENOMEM, "overlapping MMIO regions");
+
+  _memmap[region] = dev;
+  Dbg().printf("New mmio mapping: @ %llx %llx\n", base, size);
 }
-
 } // namespace

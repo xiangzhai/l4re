@@ -1,7 +1,7 @@
 /**
  * \internal
  * \file
- * \brief   Kernel Interface Page (KIP).
+ * Kernel Interface Page (KIP).
  * \ingroup l4_kip_api
  */
 /*
@@ -30,7 +30,7 @@
 #include <l4/sys/types.h>
 
 /**
- * \brief L4 Kernel Interface Page.
+ * L4 Kernel Interface Page.
  * \ingroup l4_kip_api
  */
 typedef struct l4_kernel_info_t

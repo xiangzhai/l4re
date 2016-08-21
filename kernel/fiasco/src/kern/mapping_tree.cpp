@@ -265,7 +265,8 @@ struct Mapping_tree_allocator
   enum
   {
     Elem_size = (Size_factor << SIZE_ID) * sizeof (Mapping)
-                + sizeof(Mapping_tree)
+                + ((sizeof(Mapping_tree) + Mapping::Alignment - 1)
+                   & ~((unsigned long)Mapping::Alignment - 1))
   };
 
   Mapping_tree_allocator(Kmem_slab **array)

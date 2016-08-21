@@ -47,12 +47,14 @@ class Task :
 public:
   /**
    * Map resources available in the source task to a destination task.
+   *
    * \param src_task   Capability selector of the source task.
    * \param snd_fpage  Send flexpage that describes an area in the address
    *                   space or object space of the source task.
    * \param snd_base   Send base that describes an offset in the receive window
    *                   of the destination task.
    * \param utcb       UTCB pointer of the calling thread.
+   *
    * \return Syscall return tag.
    *
    * This method allows for asynchronous rights delegation from one task to
@@ -66,6 +68,7 @@ public:
 
   /**
    * Revoke rights from the task.
+   *
    * \param fpage     Flexpage that describes an area in the address space or
    *                  object space of `this` task
    * \param map_mask  Unmap mask, see #l4_unmap_flags_t
@@ -88,6 +91,7 @@ public:
 
   /**
    * Revoke rights from a task.
+   *
    * \param fpages      An array of flexpages. Each item describes an area in
    *                    the address or object space of `this` task.
    * \param num_fpages  Number of fpages in the `fpages` array.
@@ -113,8 +117,10 @@ public:
 
   /**
    * Release capability and delete object.
+   *
    * \param obj   Capability selector of the object to delete.
    * \param utcb  UTCB pointer of the calling thread.
+   *
    * \return Syscall return tag
    *
    * The object will be deleted if the `obj` has sufficient rights. No error
@@ -127,8 +133,10 @@ public:
 
   /**
    * Release capability.
+   *
    * \param cap   Capability selector to release.
    * \param utcb  UTCB pointer of the calling thread.
+   *
    * \return Syscall return tag.
    *
    * This operation unmaps the capability from `this` task.
@@ -139,10 +147,12 @@ public:
 
   /**
    * Test whether a capability selector points to a valid capability.
+   *
    * \param cap   Capability selector to check for validity.
    * \param utcb  UTCB pointer of the calling thread.
-   * \return If the label is >0 the capability is valid. Otherwise the label
-   *         is 0.
+   *
+   * \retval tag.label() > 0: The capability is valid.
+   * \retval tag.label() = 0: The capability is invalid.
    */
   l4_msgtag_t cap_valid(Cap<void> const &cap,
                         l4_utcb_t *utcb = l4_utcb()) throw()
@@ -150,10 +160,13 @@ public:
 
   /**
    * Test whether a capability has child mappings (in another task).
+   *
    * \param cap   Capability selector to look up in the destination task.
    * \param utcb  UTCB pointer of the calling thread.
-   * \return If the label is 1 `cap` has at least one child mapping in another
-   *         task. Otherwise the label is 0.
+   *
+   * \retval tag.label() = 1: The capability has at least on child mapping in
+   *         another task.
+   * \retval tag.label() = 0: No child mappings.
    */
   l4_msgtag_t cap_has_child(Cap<void> const &cap,
                             l4_utcb_t *utcb = l4_utcb()) throw()
@@ -162,11 +175,14 @@ public:
   /**
    * Test whether two capabilities point to the same object with the same
    * rights.
+   *
    * \param cap_a  First capability selector to compare.
    * \param cap_b  Second capability selector to compare.
    * \param utcb   Optiona: UTCB pointer of the calling thread.
-   * \return  If the label is 1 `cap_a` and `cap_b` point to the same object.
-   *          Otherwise the label is 0.
+   *
+   * \retval tag.label() = 1: `cap_a` and `cap_b` point to the same object.
+   * \retval tag.label() = 0: The two caps do **not** point to the same
+   *         object.
    */
   l4_msgtag_t cap_equal(Cap<void> const &cap_a,
                         Cap<void> const &cap_b,
@@ -175,8 +191,10 @@ public:
 
   /**
    * Add kernel-user memory.
+   *
    * \param fpage  Flexpage describing the virtual area the memory goes to.
    * \param utcb   UTCP pointer of the calling thread.
+   *
    * \return Syscall return tag
    */
   l4_msgtag_t add_ku_mem(l4_fpage_t const &fpage,

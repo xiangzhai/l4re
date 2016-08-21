@@ -1,6 +1,6 @@
 /**
  * \file
- * \brief Type information handling.
+ * Type information handling.
  */
 /*
  * Copyright (C) 2015 Kernkonzept GmbH.
@@ -69,7 +69,7 @@ enum
 
 /**
  * \ingroup l4_cxx_ipc_ifaces
- * \brief Definition of interface data-type helpers.
+ * Definition of interface data-type helpers.
  * \note These type helpers are intended for internal use, if you look for
  *       standard C++ type traits use the `<type_traits>` header for the
  *       standard C++ library or use `<l4/cxx/type_traits>`.
@@ -494,7 +494,7 @@ namespace Typeid {
  * resources.
  */
 /**
- * \brief Dynamic Type Information for L4Re Interfaces.
+ * Dynamic Type Information for L4Re Interfaces.
  * \ingroup l4_kobject_rtti
  * \headerfile l4/sys/capability
  *
@@ -719,7 +719,7 @@ public:                                                                  \
 /**
  * \ingroup l4_kobject_rtti
  * \headerfile l4/sys/capability
- * \brief Helper class to create an L4Re interface class that is derived
+ * Helper class to create an L4Re interface class that is derived
  *        from a single base class.
  *
  * \tparam Derived   is the name of the new interface.
@@ -730,7 +730,7 @@ public:                                                                  \
  *                   this interface, usually a L4::Type_info::Demand_t.  This
  *                   value must describe the server-side resources needed by
  *                   the interface itself, the resource demand of the base
- *                   interface \a Base is automatically included.
+ *                   interface `Base` is automatically included.
  *
  * The typical usage pattern is shown in the following code snippet. The
  * semantics of this example is an interface My_iface that is derived from
@@ -793,7 +793,7 @@ L4____GEN_TI(Kobject_t<Derived, Base, PROTO, S_DEMAND>);
 /**
  * \ingroup l4_kobject_rtti
  * \headerfile l4/sys/capability
- * \brief Helper class to create an L4Re interface class that is derived
+ * Helper class to create an L4Re interface class that is derived
  *        from two base classes (see `L4::Kobject_t`).
  *
  * \tparam Derived   is the name of the new interface.
@@ -902,7 +902,7 @@ L4____GEN_TI(Kobject_2t<Derived, Base1, Base2, PROTO, S_DEMAND>);
 /**
  * \ingroup l4_kobject_rtti
  * \headerfile l4/sys/capability
- * \brief Helper class to create an L4Re interface class that is derived
+ * Helper class to create an L4Re interface class that is derived
  *        from three base classes (see `L4::Kobject_t`).
  *
  * \tparam Derived   is the name of the new interface.

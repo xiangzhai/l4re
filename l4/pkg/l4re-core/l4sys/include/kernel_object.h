@@ -1,6 +1,6 @@
 /**
  * \file
- * \brief Kernel object system calls
+ * Kernel object system calls
  */
 /*
  * (c) 2008-2009 Adam Lackorzynski <adam@os.inf.tu-dresden.de>,
@@ -30,17 +30,15 @@
 
 /**
  * \defgroup l4_kernel_object_api Kernel Objects
- * \brief API of kernel objects.
+ * API of kernel objects.
  * \ingroup l4_api
  *
- * <c>\#include <l4/sys/kernel_object.h></c>
+ * \includefile{l4/sys/kernel_object.h}
  */
-
-
 
 /**
  * \internal
- * \brief Invoke object, the debugger call.
+ * Invoke object, the debugger call.
  * \ingroup l4_kernel_object_api
  * \param obj        The capability of the object to invoke.
  * \param tag        Message tag.

@@ -225,14 +225,15 @@ public:
   Virtio_proxy(Vmm::Vm_ram *iommu)
   : _iommu(iommu) {}
 
-  void init_device(Vdev::Device_lookup const &devs, Vdev::Dt_node const &self) override
+  void init_device(Vdev::Device_lookup const *devs,
+                   Vdev::Dt_node const &self) override
   {
     auto irq_ctl = self.find_irq_parent();
     if (!irq_ctl.is_valid())
       L4Re::chksys(-L4_ENODEV, "No interupt handler found for virtio proxy.\n");
 
     // XXX need dynamic cast for Ref_ptr here
-    auto *ic = dynamic_cast<Gic::Ic *>(devs.device_from_node(irq_ctl).get());
+    auto *ic = dynamic_cast<Gic::Ic *>(devs->device_from_node(irq_ctl).get());
 
     if (!ic)
       L4Re::chksys(-L4_ENODEV, "Interupt handler for virtio proxy has bad type.\n");

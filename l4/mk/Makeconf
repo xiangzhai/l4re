@@ -52,7 +52,7 @@ L4_KIP_OFFS_SYS_DEBUGGER = 0x900
 L4_STACK_ADDR           ?= $(L4_STACK_ADDR_$(ARCH))
 L4_STACK_SIZE           ?= $(if $(L4_STACK_SIZE_MAIN_THREAD),$(L4_STACK_SIZE_MAIN_THREAD),0x8000)
 
-CC_WHITELIST-gcc     := 4.6 4.7 4.8 4.9 5
+CC_WHITELIST-gcc     := 4.6 4.7 4.8 4.9 5 6
 CC_WHITELIST-clang   := 3.5 3.6 3.7 4.9
 
 # This is quite bad: There is no other chance to disable the page-alignedment
@@ -68,6 +68,7 @@ DROPS_INSTDIR    = $(patsubst "%",%,$(CONFIG_DROPS_INSTDIR))
 RAM_SIZE_MB      = $(CONFIG_RAM_SIZE_MB)
 PLATFORM_TYPE    = $(patsubst "%",%,$(CONFIG_PLATFORM_TYPE))
 CPU              = $(patsubst "%",%,$(CONFIG_CPU))
+CPU_ABI          = $(patsubst "%",%,$(CONFIG_CPU_ABI))
 BUILD_ABI        = $(patsubst "%",%,$(CONFIG_BUILD_ABI))
 BUILD_ARCH       = $(patsubst "%",%,$(CONFIG_BUILD_ARCH))
 MAKECONFS_ADD    = $(patsubst "%,%,$(patsubst %",%,$(CONFIG_MAKECONFS_ADD))) #"
@@ -109,6 +110,7 @@ HOST_CXX	?= g++
 HOST_LD		?= ld
 INSTALL		= install
 $(call dv,LD)   = $(CROSS_COMPILE)ld -m $(LD_EMULATION)
+DTC		?= dtc
 LATEX		= latex
 PDFLATEX	= pdflatex
 GREP		= GREP_OPTIONS= grep
@@ -148,7 +150,7 @@ endef
 
 # Move $(2) to $(1) if content of both files differ
 define move_if_changed
-  $(VERBOSE)if test ! -r "$(1)" || ! cmp -s $(1) $(2); then \
+  if test ! -r "$(1)" || ! cmp -s $(1) $(2); then \
     mv $(2) $(1); \
   else \
     rm $(2); \
@@ -350,6 +352,9 @@ endif
 
 # We recognize the following Fortran file extensions.
 FORTRAN_FILE_EXTENSIONS = .f .F .f90 .F90 .f95 .F95
+
+# We recognize the following file extensions for assembly.
+BID_ASM_FILE_EXTENSIONS = .S
 
 # macros used here and in packages
 checkcc   = $(shell if $(CC)  $(CCXX_FLAGS) $(1) -o /dev/null -c -x c \

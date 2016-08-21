@@ -98,17 +98,17 @@ Dataspace_svr::map(l4_addr_t offs, l4_addr_t hot_spot, unsigned long flags,
 }
 
 long
-Dataspace_svr::clear(l4_addr_t offs, unsigned long _size) const throw()
+Dataspace_svr::clear(l4_addr_t offs, unsigned long ds_size) const throw()
 {
   if (!check_limit(offs))
     return -L4_ERANGE;
 
-  unsigned long sz = _size = cxx::min(_size, round_size()-offs);
+  unsigned long sz = ds_size = cxx::min(ds_size, round_size() - offs);
 
   while (sz)
     {
       unsigned long b_addr = _ds_start + offs;
-      unsigned long b_sz = cxx::min(_size - offs, sz);
+      unsigned long b_sz = cxx::min(ds_size - offs, sz);
 
       memset((void *)b_addr, 0, b_sz);
 
@@ -116,7 +116,7 @@ Dataspace_svr::clear(l4_addr_t offs, unsigned long _size) const throw()
       sz -= b_sz;
     }
 
-  return _size;
+  return ds_size;
 }
 
 int

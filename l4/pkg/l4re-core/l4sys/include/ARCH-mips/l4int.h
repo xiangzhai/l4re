@@ -37,9 +37,14 @@
  */
 /*@{*/
 
-#define L4_MWORD_BITS           32            /**< Size of machine words in bits */
+#define L4_MWORD_BITS           _MIPS_SZLONG  /**< Size of machine words in bits */
 
+#ifdef __mips64
+typedef unsigned long           l4_size_t;    /**< \brief Unsigned size type */
+typedef signed long             l4_ssize_t;   /**< \brief Signed size type */
+#else
 typedef unsigned int            l4_size_t;    /**< \brief Unsigned size type */
 typedef signed int              l4_ssize_t;   /**< \brief Signed size type */
+#endif
 /*@}*/
 

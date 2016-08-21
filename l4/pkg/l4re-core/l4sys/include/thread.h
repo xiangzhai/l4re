@@ -237,8 +237,8 @@ l4_thread_control_exc_handler_u(l4_cap_idx_t exc_handler,
  * Bind the thread to a task.
  * \ingroup l4_thread_control_api
  *
- * \param thread_utcb The address of the UTCB in the target task.
- * \param task        The target task of the thread.
+ * \param thread_utcb  The address of the UTCB in the target task.
+ * \param task         The target task of the thread.
  *
  * Binding a thread to a task has the effect that the thread
  * afterwards executes code within that task and has access to the
@@ -355,8 +355,9 @@ l4_thread_switch_u(l4_cap_idx_t to_thread, l4_utcb_t *utcb) L4_NOTHROW;
 /**
  * Get consumed time of thread in µs.
  * \ingroup l4_thread_api
- * \param      thread Thread to get the consumed time from.
- * \param[out] us     Consumed time in µs.
+ *
+ * \param      thread  Thread to get the consumed time from.
+ * \param[out] us      Consumed time in µs.
  *
  * \return system call return tag
  */
@@ -377,7 +378,7 @@ l4_thread_stats_time_u(l4_cap_idx_t thread, l4_kernel_clock_t *us,
  * \ingroup l4_thread_api
  *
  * \return Message tag to be used for l4_sndfpage_add() and
- *         l4_thread_vcpu_commit()
+ *         l4_thread_vcpu_resume_commit()
  *
  * The vCPU resume functionality is split in multiple functions to allow the
  * specification of additional send-flex-pages using l4_sndfpage_add().
@@ -499,13 +500,16 @@ l4_thread_vcpu_control_ext_u(l4_cap_idx_t thread, l4_addr_t ext_vcpu_state,
 
 
 /**
- * Register an IRQ that will trigger upon deletion events.
+ * \copybrief L4::Thread::register_del_irq
  * \ingroup l4_thread_api
  *
- * \param thread    Thread to register IRQ for.
- * \param irq       Irq to register.
+ * \param thread  Thread to register IRQ for.
+ * \param irq     Capability selector for the IRQ object to be triggered.
  *
- * \return System call result message tag.
+ * \return System call return tag containing the return code.
+ *
+ * An example of a deletion event is the removal of an IPC gate
+ * that is bound to this thread.
  */
 L4_INLINE l4_msgtag_t
 l4_thread_register_del_irq(l4_cap_idx_t thread, l4_cap_idx_t irq) L4_NOTHROW;
@@ -543,14 +547,14 @@ l4_thread_modify_sender_start_u(l4_utcb_t *u) L4_NOTHROW;
  * Add a modification pattern to a sender modification sequence.
  * \ingroup l4_thread_api
  *
- * \param tag        Tag received from l4_thread_modify_sender_start() or
- *                   previous l4_thread_modify_sender_add() calls from
- *                   the same sequence.
- * \param match_mask Bitmask of bits to match the label.
- * \param match      Bitmask that must be equal to the label after applying
- *                   match_mask.
- * \param del_bits   Bits to be deleted from the label.
- * \param add_bits   Bits to be added to the label.
+ * \param tag         Tag received from l4_thread_modify_sender_start() or
+ *                    previous l4_thread_modify_sender_add() calls from
+ *                    the same sequence.
+ * \param match_mask  Bitmask of bits to match the label.
+ * \param match       Bitmask that must be equal to the label after applying
+ *                    match_mask.
+ * \param del_bits    Bits to be deleted from the label.
+ * \param add_bits    Bits to be added to the label.
  *
  * \return 0 on sucess, <0 on error
  *

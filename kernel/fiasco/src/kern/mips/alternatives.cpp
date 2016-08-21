@@ -16,11 +16,11 @@ INTERFACE:
  */
 struct Alternative_insn
 {
-  long orig; ///< offset of the original instruction relative to `this`
-  long alt;  ///< offset of the alternative instruction relative to `this`
-  unsigned feature; ///< feature bit that enables the alternative
-  unsigned char total_len; ///< Total number of bytes in the code
-  unsigned char r_len;     ///< Length of this replacement in bytes
+  Signed32 orig; ///< offset of the original instruction relative to `this`
+  Signed32 alt;  ///< offset of the alternative instruction relative to `this`
+  Unsigned32 feature; ///< feature bit that enables the alternative
+  Unsigned8 total_len; ///< Total number of bytes in the code
+  Unsigned8 r_len;     ///< Length of this replacement in bytes
 };
 
 #define ASM_ALTERNATIVE_ENTRY(feature, idx) \
@@ -51,6 +51,7 @@ IMPLEMENTATION:
 
 #include <cstdio>
 #include <cstring>
+#include "asm_mips.h"
 
 PUBLIC inline
 Unsigned32 *
@@ -82,7 +83,7 @@ Alternative_insn::replace() const
     asm volatile ("synci %0" : : "R"(orig_insn[i]));
 
   Mword dummy;
-  asm volatile ("sync; la %0, 1f; jr.hb %0; nop; 1: nop;" : "=r"(dummy));
+  asm volatile ("sync; " ASM_LA " %0, 1f; jr.hb %0; nop; 1: nop;" : "=r"(dummy));
 }
 
 PUBLIC static
@@ -112,7 +113,7 @@ Alternative_insn::handle_alternatives(unsigned features)
       ".set noreorder\n\t"
       ".set noat\n\t"
       "sync\n\t"
-      "la $at, 1f\n\t"
+      ASM_LA " $at, 1f\n\t"
       "jr.hb $at\n\t"
       "  nop\n\t"
       "1:\n\t"

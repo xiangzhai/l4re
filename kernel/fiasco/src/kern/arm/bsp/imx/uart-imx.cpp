@@ -39,7 +39,7 @@ IMPLEMENT L4::Uart *Uart::uart()
   return &uart;
 }
 
-IMPLEMENTATION [imx6]:
+IMPLEMENTATION [imx6 || imx6ul]:
 
 #include "uart_imx.h"
 

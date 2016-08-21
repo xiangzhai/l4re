@@ -1,6 +1,6 @@
 /**
  * \file
- * \brief Low-level assert implementation.
+ * Low-level assert implementation.
  */
 /*
  * (c) 2015 Adam Lackorzynski <adam@l4re.org>
@@ -32,9 +32,9 @@
 #include <l4/sys/vcon.h>
 
 /**
- * \brief Low-level assert.
+ * Low-level assert.
  *
- * \param expr Expression to be evaluate for the assertion.
+ * \param expr  Expression to be evaluate for the assertion.
  *
  * This assertion is a low-level implementation that directly uses
  * kernel primitives. Only use l4_assert() when the standard assert()

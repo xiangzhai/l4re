@@ -333,7 +333,7 @@ PUBLIC static inline NEEDS["trap_state.h", <cassert>, Fpu::fpexc]
 void
 Fpu::save_user_exception_state(bool owner, Fpu_state *s, Trap_state *ts, Exception_state_user *esu)
 {
-  if (!(ts->hsr().ec() == 7 && ts->hsr().cpt_cpnr() == 10))
+  if (!(ts->esr.ec() == 7 && ts->esr.cpt_cpnr() == 10))
     return;
 
   if (owner)

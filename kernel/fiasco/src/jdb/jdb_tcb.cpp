@@ -921,13 +921,6 @@ Jdb_tcb::show_kobject_short(String_buffer *buf, Kobject_common *o)
 }
 
 PUBLIC
-char const *
-Jdb_tcb::kobject_type(Kobject_common *) const
-{
-  return JDB_ANSI_COLOR(green) "Thread" JDB_ANSI_COLOR(default);
-}
-
-PUBLIC
 Jdb_module::Cmd const *
 Jdb_tcb::cmds() const
 {

@@ -92,8 +92,13 @@ __pthread_disable_asynccancel (int oldtype)
 }
 
 
-
+#ifdef ARCH_mips
+void pthread_handle_sigcancel(void);
+void _pthread_handle_sigcancel(void);
+void __attribute__((visibility("hidden"))) _pthread_handle_sigcancel(void)
+#else
 static void pthread_handle_sigcancel(void)
+#endif
 {
   pthread_descr self = check_thread_self();
   sigjmp_buf * jmpbuf;

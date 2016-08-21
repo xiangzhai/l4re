@@ -101,9 +101,10 @@ public:
    * \param[out]     devinfo  Device information structure (might be NULL)
    *
    * \retval >= 0        A device with the given HID was found.
-   * \retval -L4_ENODEV  No device with the given HID could be found on
+   * \retval -L4_ENOENT  No device with the given HID could be found on
    *                     the vbus.
-   * \retval -L4_ENOENT  Invalid or no HID provided.
+   * \retval -L4_EINVAL  Invalid or no HID provided.
+   * \retval -L4_ENODEV  Function called on a non-existing device.
    */
   int device_by_hid(Device *child, char const *hid,
                     int depth = L4VBUS_MAX_DEPTH,
@@ -115,9 +116,12 @@ public:
   }
 
   /**
-   * \brief Find next child following \a child.
+   * \brief Find next child following `child`.
    *
-   * \param      child        Device to start looking for child devices
+   * \param[in, out] child    Handle of the device that precedes the device
+   *                          that shall be found. To start from the beginning
+   *                          `child` must be initialized using the default
+   *                          (#L4VBUS_NULL).
    * \param      depth        Depth to look for
    * \param[out] devinfo      device information (might be NULL)
    *

@@ -95,8 +95,8 @@ CRTN           = $(CRTN_so)
 include $(L4DIR)/mk/install.inc
 
 ifeq ($(NOTARGETSTOINSTALL),)
-PC_LIBS     ?= $(patsubst lib%.so,-l%,$(TARGET_SHARED) \
-               $(patsubst lib%.a,-l%,$(TARGET_STANDARD)))
+PC_LIBS     ?= $(sort $(patsubst lib%.so,-l%,$(TARGET_SHARED) \
+                      $(patsubst lib%.a,-l%,$(TARGET_STANDARD))))
 
 PC_FILENAME  ?= $(PKGNAME)
 PC_FILENAMES ?= $(PC_FILENAME)

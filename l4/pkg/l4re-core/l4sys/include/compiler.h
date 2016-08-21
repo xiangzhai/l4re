@@ -1,7 +1,7 @@
 /*****************************************************************************/
 /**
  * \file
- * \brief   L4 compiler related defines.
+ * L4 compiler related defines.
  * \ingroup l4_api
  */
 /*
@@ -100,8 +100,8 @@
 /**
  * \def L4_NOTHROW
  * \hideinitializer
- * \brief Mark a function declaration and definition as never
- *        throwing an exception. (Also for C code).
+ * Mark a function declaration and definition as never throwing an exception.
+ * (Also for C code).
  *
  * This macro shall be used to mark C and C++ functions that never
  * throw any exception.  Note that also C functions may throw exceptions
@@ -123,8 +123,8 @@
 /**
  * \def L4_EXPORT
  * \hideinitializer
- * \brief Attribute to mark functions, variables, and data types as being
- *        exported from a library.
+ * Attribute to mark functions, variables, and data types as being exported
+ * from a library.
  *
  * All data types, functions, and global variables that shall be exported
  * from a library shall be marked with this attribute.  The default may become
@@ -149,8 +149,8 @@
 /**
  * \def L4_HIDDEN
  * \hideinitializer
- * \brief Attribute to mark functions, variables, and data types as being
- *        explicitly hidden from users of a library.
+ * Attribute to mark functions, variables, and data types as being explicitly
+ * hidden from users of a library.
  *
  * This attribute is intended for functions, data, and data types that
  * shall never be visible outside of a library.  In particular, for shared
@@ -250,17 +250,17 @@
 
 #ifndef __ASSEMBLER__
 /**
- * \brief Memory barrier.
+ * Memory barrier.
  */
 L4_INLINE void l4_barrier(void);
 
 /**
- * \brief Memory barrier.
+ * Memory barrier.
  */
 L4_INLINE void l4_mb(void);
 
 /**
- * \brief Write memory barrier.
+ * Write memory barrier.
  */
 L4_INLINE void l4_wmb(void);
 

@@ -140,6 +140,8 @@ l4_vcon_read_u(l4_cap_idx_t vcon, char *buf, int size, l4_utcb_t *utcb) L4_NOTHR
  * transmitted content, i.e. all characters supplied by this read call
  * follow the break condition.
  *
+ * `buf` might be a `NULL`, in this case the input data will be dropped.
+ *
  * \note Size must not exceed #L4_VCON_READ_SIZE.
  *
  * \retval <0      Error code.
@@ -336,7 +338,9 @@ l4_vcon_read_with_flags_u(l4_cap_idx_t vcon, char *buf, int size,
   else
     ret = size;
 
-  __builtin_memcpy(buf, &mr->mr[1], r < size ? r : size);
+  if (L4_LIKELY(buf != NULL))
+    __builtin_memcpy(buf, &mr->mr[1], r < size ? r : size);
+
   return ret | (mr->mr[0] & ~(L4_VCON_READ_STAT_DONE | L4_VCON_READ_SIZE_MASK));
 }
 

@@ -42,7 +42,7 @@ platform_reset(void)
 }
 
 // ------------------------------------------------------------------------
-IMPLEMENTATION [arm && (imx35 || imx51 || imx53)]:
+IMPLEMENTATION [arm && (imx35 || imx51 || imx53 || imx6ul)]:
 
 void platform_imx_cpus_off()
 {}
@@ -57,7 +57,7 @@ void platform_imx_cpus_off()
 }
 
 // ------------------------------------------------------------------------
-IMPLEMENTATION [arm && (imx35 || imx51 || imx53 || imx6)]:
+IMPLEMENTATION [arm && (imx35 || imx51 || imx53 || imx6 || imx6ul)]:
 
 #include "io.h"
 #include "kmem.h"

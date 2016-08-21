@@ -22,11 +22,19 @@ void L4_cxx_start(void)
    */
   asm volatile (".global L4_Thread_start_cxx_thread \n"
                 "L4_Thread_start_cxx_thread:        \n"
+                ".set push                          \n"
+                ".set noreorder                     \n"
+#if (_MIPS_SZLONG == 64)
+                "bal 1f                             \n"
+                "ld  $a0, 8($sp)                    \n"
+                "1:                                 \n"
+                ".cpsetup $ra, $t9, 1b              \n"
+#else
+                ".cprestore 16                      \n"
                 "lw  $a0, 4($sp)                    \n"
-                "la  $t9,1f                         \n"
-                "jr  $t9                            \n"
-                "    nop                            \n"
-                "1: .word L4_Thread_execute         \n");
+#endif
+                ".set pop                           \n"
+                "jal L4_Thread_execute              \n");
 }
 
 void L4_cxx_kill(void);
@@ -42,10 +50,18 @@ void L4_cxx_kill(void)
    */
   asm volatile (".global L4_Thread_kill_cxx_thread \n"
                 "L4_Thread_kill_cxx_thread:        \n"
-                "lw  $a0, 4($sp)                    \n"
-                "la  $t9,1f                         \n"
-                "jr  $t9                            \n"
-                "    nop                            \n"
-                "1: .word L4_Thread_shutdown       \n");
+                ".set push                         \n"
+                ".set noreorder                    \n"
+#if (_MIPS_SZLONG == 64)
+                "bal 1f                            \n"
+                "ld  $a0, 8($sp)                   \n"
+                "1:                                \n"
+                ".cpsetup $ra, $t9, 1b             \n"
+#else
+                ".cprestore 16                     \n"
+                "lw  $a0, 4($sp)                   \n"
+#endif
+                ".set pop                          \n"
+                "jal L4_Thread_shutdown            \n");
 }
 

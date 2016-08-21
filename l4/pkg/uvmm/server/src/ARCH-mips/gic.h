@@ -66,13 +66,12 @@ class Dist
 public:
   Dist(l4_size_t size);
 
-  void init_device(Vdev::Device_lookup const &, Vdev::Dt_node const &) override {}
+  void init_device(Vdev::Device_lookup const *,
+                   Vdev::Dt_node const &) override
+  {}
 
-  void set_cpu_ic(unsigned cpu_id, Mips_core_ic *ic)
-  {
-    (void)cpu_id; // TODO
-    _core_ic = ic;
-  }
+  void set_core_ic(Mips_core_ic *core_ic)
+  { _core_ic = core_ic; }
 
   l4_uint32_t read(unsigned reg, char size, unsigned cpu_id);
   void write(unsigned reg, char size, l4_uint32_t value, unsigned cpu_id);
@@ -136,7 +135,7 @@ public:
   void set_mask(unsigned reg, l4_uint32_t mask);
   void setup_source(unsigned irq, l4_uint32_t cpu, l4_uint32_t pin);
 
-  void show_state();
+  void show_state(FILE *);
 
 private:
   l4_uint32_t read_cpu(unsigned reg, unsigned cpu_id);

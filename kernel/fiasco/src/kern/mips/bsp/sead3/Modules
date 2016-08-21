@@ -10,5 +10,5 @@ mips_bsp_irqs_IMPL := mips_bsp_irqs-sead3
 clock_IMPL         += clock-generic
 uart_IMPL          += uart-16550
 kernel_uart_IMPL   += kernel_uart-libuart
-reset_IMPL         += reset-mips32-sead3
+reset_IMPL         += reset-mips-sead3
 timer_tick_IMPL    += timer_tick-single-vector timer_tick-mips-cp0

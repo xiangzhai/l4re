@@ -31,7 +31,6 @@ public:
     Exceptions = 0x20,
     Cmd_line   = 0x40,
     Loader     = 0x80,
-    Parser     = 0x100,
     Name_space = 0x400,
   };
 

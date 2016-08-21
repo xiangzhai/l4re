@@ -1,7 +1,7 @@
 /**
  * \internal
  * \file
- * \brief X86 virtualization interface.
+ * X86 virtualization interface.
  */
 /*
  * (c) 2008-2009 Adam Lackorzynski <adam@os.inf.tu-dresden.de>,
@@ -27,13 +27,13 @@
 
 /**
  * \defgroup l4_vm_svm_api VM API for SVM
- * \brief Virtual machine API for SVM.
+ * Virtual machine API for SVM.
  * \ingroup l4_vm_api
  */
 
 
 /**
- * \brief VMCB structure for SVM VMs
+ * VMCB structure for SVM VMs
  * \ingroup l4_vm_svm_api
  */
 typedef struct l4_vm_svm_vmcb_control_area
@@ -78,7 +78,7 @@ typedef struct l4_vm_svm_vmcb_control_area
 } __attribute__((packed)) l4_vm_svm_vmcb_control_area_t;
 
 /**
- * \brief State save area segment selector struct
+ * State save area segment selector struct
  * \ingroup l4_vm_svm_api
  */
 typedef struct l4_vm_svm_vmcb_state_save_area_seg
@@ -90,7 +90,7 @@ typedef struct l4_vm_svm_vmcb_state_save_area_seg
 } __attribute__((packed)) l4_vm_svm_vmcb_state_save_area_seg_t;
 
 /**
- * \brief State save area structure for SVM VMs
+ * State save area structure for SVM VMs
  * \ingroup l4_vm_svm_api
  */
 typedef struct l4_vm_svm_vmcb_state_save_area
@@ -159,7 +159,7 @@ typedef struct l4_vm_svm_vmcb_state_save_area
 
 
 /**
- * \brief Control structure for SVM VMs
+ * Control structure for SVM VMs
  * \ingroup l4_vm_svm_api
  */
 typedef struct l4_vm_svm_vmcb_t

@@ -1,7 +1,7 @@
 /*****************************************************************************/
 /**
  * \file
- * \brief   Descriptors for virtual hardware (under UX).
+ * Descriptors for virtual hardware (under UX).
  * \ingroup l4_api
  */
 /*
@@ -32,13 +32,13 @@
 /**
  * \defgroup l4_kip_vhw_api Fiasco-UX Virtual devices
  * \ingroup l4_kip_api
- * \brief Virtual hardware devices, provided by Fiasco-UX.
+ * Virtual hardware devices, provided by Fiasco-UX.
  *
- * <c>\#include <l4/sys/vhw.h></c>
+ * \includefile{l4/sys/vhw.h}
  */
 
 /**
- * \brief Type of device.
+ * Type of device.
  * \ingroup l4_kip_vhw_api
  */
 enum l4_vhw_entry_type {
@@ -49,7 +49,7 @@ enum l4_vhw_entry_type {
 };
 
 /**
- * \brief Description of a device.
+ * Description of a device.
  * \ingroup l4_kip_vhw_api
  */
 struct l4_vhw_entry {
@@ -64,7 +64,7 @@ struct l4_vhw_entry {
 };
 
 /**
- * \brief Virtual hardware devices description.
+ * Virtual hardware devices description.
  * \ingroup l4_kip_vhw_api
  */
 struct l4_vhw_descriptor {

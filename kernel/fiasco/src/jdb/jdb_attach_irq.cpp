@@ -106,20 +106,6 @@ Jdb_kobject_irq::Jdb_kobject_irq()
   Jdb_kobject::module()->register_handler(this);
 }
 
-PUBLIC
-char const *
-Jdb_kobject_irq::kobject_type(Kobject_common *o) const
-{
-  if (cxx::dyn_cast<Irq_sender*>(o))
-    return JDB_ANSI_COLOR(white) "IRQ ipc" JDB_ANSI_COLOR(default);
-  if (cxx::dyn_cast<Irq_muxer*>(o))
-    return JDB_ANSI_COLOR(white) "IRQ mux" JDB_ANSI_COLOR(default);
-  if (cxx::dyn_cast<Semaphore*>(o))
-    return JDB_ANSI_COLOR(white) "IRQ sem" JDB_ANSI_COLOR(default);
-
-  return JDB_ANSI_COLOR(white) "IRQ" JDB_ANSI_COLOR(default);
-}
-
 
 PUBLIC
 bool

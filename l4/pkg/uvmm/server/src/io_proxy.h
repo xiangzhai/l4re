@@ -10,6 +10,11 @@
 #include <cassert>
 #include <vector>
 
+#include <l4/cxx/ref_ptr>
+#include <l4/vbus/vbus>
+
+#include "debug.h"
+#include "device.h"
 #include "irq.h"
 
 namespace Vdev {
@@ -40,6 +45,30 @@ public:
 
 private:
   Vmm::Irq_sink _irq;
+};
+
+class Io_proxy : public Device
+{
+public:
+  Io_proxy(L4vbus::Device const &dev)
+  : _dev(dev)
+  {}
+
+  void add_irq_source(unsigned index, cxx::Ref_ptr<Irq_svr> svr)
+  {
+    assert(index < 10);
+
+    if (index >= _irqs.size())
+      _irqs.resize(index + 1);
+
+    _irqs[index] = svr;
+  }
+
+  void init_device(Device_lookup const *devs, Dt_node const &self) override;
+
+private:
+  L4vbus::Device _dev;
+  std::vector<cxx::Ref_ptr<Irq_svr>> _irqs;
 };
 
 } // namespace

@@ -74,6 +74,7 @@ Kernel_thread::boot_app_cpus()
   Outer_cache::clean(Kmem_space::kdir()->virt_to_phys((Address)&_tramp_mp_startup_dcr));
   Outer_cache::clean(Kmem_space::kdir()->virt_to_phys((Address)&_tramp_mp_startup_ttbcr));
   Outer_cache::clean(Kmem_space::kdir()->virt_to_phys((Address)&_tramp_mp_startup_mair0));
+  Outer_cache::clean(Kmem_space::kdir()->virt_to_phys((Address)&_tramp_mp_startup_mair1));
 
   Platform_control::boot_ap_cpus(Kmem_space::kdir()->virt_to_phys((Address)_tramp_mp_entry));
 }

@@ -12,5 +12,5 @@ clock_IMPL         += clock-generic
 uart_IMPL          += uart-16550-baikal_t
 #uart_IMPL          += uart-16550
 kernel_uart_IMPL   += kernel_uart-libuart
-reset_IMPL         += reset-mips32-baikal_t
+reset_IMPL         += reset-mips-baikal_t
 timer_tick_IMPL    += timer_tick-single-vector timer_tick-mips-cp0

@@ -63,6 +63,7 @@ IMPLEMENTATION:
 #include "thread_state.h"
 #include "paging.h"
 
+JDB_DEFINE_TYPENAME(Task, "\033[31mTask\033[m");
 static Kmem_slab_t<Task::Ku_mem> _k_u_mem_list_alloc("Ku_mem");
 Slab_cache *Space::Ku_mem::a = _k_u_mem_list_alloc.slab();
 
@@ -338,7 +339,10 @@ Task::create(Ram_quota *q,
         {
           int e = v->alloc_ku_mem(utcb_area);
           if (e < 0)
-            return 0;
+            {
+              *err = -e;
+              return 0;
+            }
         }
     }
 

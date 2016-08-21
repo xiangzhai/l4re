@@ -3,8 +3,13 @@
 /* source, modified:
  *  /opt/CodeSourcery/Sourcery_G++_Lite/mips-sde-elf/lib/ldscripts/elf32ltsmip.x
  */
+#ifdef __mips64
+OUTPUT_FORMAT("elf64-tradlittlemips", "elf64-tradbigmips",
+              "elf64-tradlittlemips")
+#else
 OUTPUT_FORMAT("elf32-tradlittlemips", "elf32-tradbigmips",
-	      "elf32-tradlittlemips")
+              "elf32-tradlittlemips")
+#endif
 OUTPUT_ARCH(mips)
 ENTRY(__start)
 
@@ -221,10 +226,10 @@ SECTIONS
       .bss section disappears because there are no input sections.
       FIXME: Why do we need it? When there is no .bss section, we don't
       pad the .data section.  */
-   . = ALIGN(. != 0 ? 32 / 8 : 1);
+   . = ALIGN(. != 0 ? __SIZEOF_LONG__ : 1);
   }
-  . = ALIGN(32 / 8);
-  . = ALIGN(32 / 8);
+  . = ALIGN(__SIZEOF_LONG__);
+  . = ALIGN(__SIZEOF_LONG__);
   _end = .; PROVIDE (end = .);
   . = DATA_SEGMENT_END (.);
   /* Stabs debugging sections.  */

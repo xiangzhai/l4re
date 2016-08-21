@@ -76,7 +76,7 @@ enum L4_utcb_consts_mips
 
   L4_UTCB_INHERIT_FPU            = 1UL << 24,
 
-  L4_UTCB_OFFSET                 = 512,
+  L4_UTCB_OFFSET                 = 128 * sizeof(l4_umword_t),
 };
 
 #include_next <l4/sys/utcb.h>
@@ -96,7 +96,7 @@ L4_INLINE l4_utcb_t *l4_utcb_direct(void) L4_NOTHROW
    */
   char const *utcb;
   __asm__ ("rdhwr %0, $29" : "=r" (utcb));
-  return *(l4_utcb_t * const*)(utcb - 0x700c);
+  return *(l4_utcb_t * const*)(utcb - 0x7000 - (3 * sizeof(void*)));
 }
 
 L4_INLINE l4_umword_t l4_utcb_exc_pc(l4_exc_regs_t const *u) L4_NOTHROW

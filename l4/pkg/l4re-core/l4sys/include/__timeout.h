@@ -1,7 +1,7 @@
 /**
  * \internal
  * \file
- * \brief   Timeout definitions.
+ * Timeout definitions.
  */
 /*
  * (c) 2008-2009 Adam Lackorzynski <adam@os.inf.tu-dresden.de>,
@@ -30,11 +30,11 @@
 /**
  * \defgroup l4_timeout_api Timeouts
  * \ingroup l4_ipc_api
- * \brief All kinds of timeouts and time related functions.
+ * All kinds of timeouts and time related functions.
  */
 
 /**
- * \brief Basic timeout specification.
+ * Basic timeout specification.
  * \ingroup l4_timeout_api
  *
  * Basically a floating point number with 10 bits mantissa and
@@ -48,7 +48,7 @@ typedef struct l4_timeout_s {
 
 
 /**
- * \brief Timeout pair.
+ * Timeout pair.
  * \ingroup l4_timeout_api
  *
  * For IPC there are usually a send and a receive timeout.
@@ -70,7 +70,7 @@ typedef union l4_timeout_t {
 
 
 /**
- * \brief Timeout constants.
+ * Timeout constants.
  * \ingroup l4_timeout_api
  */
 /*@{*/
@@ -84,7 +84,7 @@ typedef union l4_timeout_t {
 /*@}*/
 
 /**
- * \brief Intervals of validity for absolute timeouts
+ * Intervals of validity for absolute timeouts
  * \ingroup l4_timeout_api
  *
  * Times are actually 2^x values (e.g. 2ms -> 2048µs)
@@ -109,11 +109,11 @@ enum l4_timeout_abs_validity {
 };
 
 /**
- * \brief Get relative timeout consisting of mantissa and exponent.
+ * Get relative timeout consisting of mantissa and exponent.
  * \ingroup l4_timeout_api
  *
- * \param  man Mantissa of timeout
- * \param  exp Exponent of timeout
+ * \param man  Mantissa of timeout
+ * \param exp  Exponent of timeout
  *
  * \return timeout value
  */
@@ -122,7 +122,7 @@ l4_timeout_s l4_timeout_rel(unsigned man, unsigned exp) L4_NOTHROW;
 
 
 /**
- * \brief Convert explicit timeout values to l4_timeout_t type.
+ * Convert explicit timeout values to l4_timeout_t type.
  * \ingroup l4_timeout_api
  *
  * \param  snd_man    Mantissa of send timeout.
@@ -135,7 +135,7 @@ l4_timeout_t l4_ipc_timeout(unsigned snd_man, unsigned snd_exp,
                             unsigned rcv_man, unsigned rcv_exp) L4_NOTHROW;
 
 /**
- * \brief Combine send and receive timeout in a timeout.
+ * Combine send and receive timeout in a timeout.
  * \ingroup l4_timeout_api
  *
  * \param  snd    Send timeout
@@ -147,7 +147,7 @@ L4_INLINE
 l4_timeout_t l4_timeout(l4_timeout_s snd, l4_timeout_s rcv) L4_NOTHROW;
 
 /**
- * \brief Set send timeout in given to timeout.
+ * Set send timeout in given to timeout.
  * \ingroup l4_timeout_api
  *
  * \param  snd    Send timeout
@@ -157,7 +157,7 @@ L4_INLINE
 void l4_snd_timeout(l4_timeout_s snd, l4_timeout_t *to) L4_NOTHROW;
 
 /**
- * \brief Set receive timeout in given to timeout.
+ * Set receive timeout in given to timeout.
  * \ingroup l4_timeout_api
  *
  * \param  rcv    Receive timeout
@@ -167,7 +167,7 @@ L4_INLINE
 void l4_rcv_timeout(l4_timeout_s rcv, l4_timeout_t *to) L4_NOTHROW;
 
 /**
- * \brief Get clock value of out timeout.
+ * Get clock value of out timeout.
  * \ingroup l4_timeout_api
  *
  * \param to     L4 timeout
@@ -179,7 +179,7 @@ l4_kernel_clock_t l4_timeout_rel_get(l4_timeout_s to) L4_NOTHROW;
 
 
 /**
- * \brief Return whether the given timeout is absolute or not.
+ * Return whether the given timeout is absolute or not.
  * \ingroup l4_timeout_api
  *
  * \param to     L4 timeout
@@ -190,7 +190,7 @@ L4_INLINE
 unsigned l4_timeout_is_absolute(l4_timeout_s to) L4_NOTHROW;
 
 /**
- * \brief Get clock value for a clock + a timeout.
+ * Get clock value for a clock + a timeout.
  * \ingroup l4_timeout_api
  *
  * \param cur    Clock value

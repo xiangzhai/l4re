@@ -1,4 +1,4 @@
-IMPLEMENTATION [mips32]:
+IMPLEMENTATION [mips]:
 
 #include "mips_cpu_irqs.h"
 

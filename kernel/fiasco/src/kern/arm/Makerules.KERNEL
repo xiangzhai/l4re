@@ -11,6 +11,8 @@ tramp-mp.o: $(TCBOFFSET)
 OBJ_KERNEL_noboot = $(filter-out bootstrap%,$(OBJ_KERNEL))
 OBJ_BOOTSTRAP = $(filter  bootstrap%,$(OBJ_KERNEL))
 
+-include .kernel.arm.lds.d
+
 bootstrap.$(KERNEL).o: $(OBJ_BOOTSTRAP) $(LIBGCC)
 	$(LINK_MESSAGE)
 	$(VERBOSE)$(LD) $(LDFLAGS) -m $(LD_EMULATION) -r $(OBJ_BOOTSTRAP) $(LIBGCC) -o $@
@@ -38,6 +40,4 @@ Symbols: $(KERNEL).image
 
 
 clean-KERNEL:
-
-kernel.arm.lds: globalconfig.h
 

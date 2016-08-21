@@ -16,7 +16,25 @@ public:
   static Pdir *const kdir;
 };
 
-IMPLEMENTATION:
+INTERFACE [mips64]:
+
+#include "mem_layout.h"
+#include "paging.h"
+
+class Kmem : public Mem_layout
+{
+public:
+  static bool is_kmem_page_fault(Mword pfa, Mword /*cause*/)
+  { return pfa >= 0x8000000000000000; }
+
+  static bool is_io_bitmap_page_fault(Mword)
+  { return false; }
+
+  // currently a dummy the kernel runs unpaged
+  static Pdir *const kdir;
+};
+
+IMPLEMENTATION [mips]:
 
 #include <cassert>
 

@@ -61,7 +61,12 @@ function start_vm(options)
   local vnet    = options.net;
   local prio    = options.prio;
   local cpus    = options.cpus;
-  local align   = options.mem_align or 10;
+
+  local align   = 10;
+  if L4.Info.arch() == "arm" then
+    align = 28;
+  end
+  align = options.mem_align or align;
 
   local cmdline = {};
   if options.fdt then
@@ -78,6 +83,10 @@ function start_vm(options)
 
   if options.kernel then
     cmdline[#cmdline+1] = "-k" .. options.kernel;
+  end
+
+  if options.ram_base then
+    cmdline[#cmdline+1] = "-b" .. options.ram_base;
   end
 
   local keyb_shortcut = nil;

@@ -1,6 +1,6 @@
 /**
  * \file
- * \brief   L4 kernel event tracing
+ * L4 kernel event tracing
  * \ingroup api_calls
  */
 /*

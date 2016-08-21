@@ -45,7 +45,7 @@ public:
       Sti_mask                = Status_interrupts_disabled,
       Status_preempt_disabled = Status_IRQ_disabled,
       Status_interrupts_mask  = Status_interrupts_disabled,
-      Status_always_mask      = 0x10,
+      Status_always_mask      = 0x110,
     };
 };
 
@@ -62,7 +62,7 @@ public:
       Sti_mask                = Status_FIQ_disabled,
       Status_preempt_disabled = Status_FIQ_disabled,
       Status_interrupts_mask  = Status_FIQ_disabled,
-      Status_always_mask      = 0x10 | Status_IRQ_disabled,
+      Status_always_mask      = 0x110 | Status_IRQ_disabled,
     };
 };
 

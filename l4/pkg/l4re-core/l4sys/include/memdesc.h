@@ -1,6 +1,6 @@
 /**
  * \file
- * \brief Memory description functions.
+ * Memory description functions.
  * \ingroup l4_api
  */
 /*
@@ -29,16 +29,16 @@
 /**
  * \defgroup l4_kip_memdesc_api Memory descriptors (C version)
  * \ingroup l4_kip_api
- * \brief C Interface for KIP memory descriptors.
+ * C Interface for KIP memory descriptors.
  *
- * <c>\#include <l4/sys/memdesc.h></c>
+ * \includefile{l4/sys/memdesc.h}
  *
  * This module contains the C functions to access the memory descriptor in the
  * kernel interface page (KIP).
  */
 
 /**
- * \brief Type of a memory descriptor.
+ * Type of a memory descriptor.
  * \ingroup l4_kip_memdesc_api
  */
 enum l4_mem_type_t
@@ -55,7 +55,7 @@ enum l4_mem_type_t
 
 
 /**
- * \brief   Memory descriptor data structure.
+ * Memory descriptor data structure.
  * \ingroup l4_kip_memdesc_api
  *
  * \note This data type is opaque, and must be accessed by the accessor
@@ -71,7 +71,7 @@ typedef struct l4_kernel_info_mem_desc_t
 
 
 /**
- * \brief   Get pointer to memory descriptors from KIP.
+ * Get pointer to memory descriptors from KIP.
  * \ingroup l4_kip_memdesc_api
  */
 L4_INLINE
@@ -79,7 +79,7 @@ l4_kernel_info_mem_desc_t *
 l4_kernel_info_get_mem_descs(l4_kernel_info_t *kip) L4_NOTHROW;
 
 /**
- * \brief   Get number of memory descriptors in KIP.
+ * Get number of memory descriptors in KIP.
  * \ingroup l4_kip_memdesc_api
  *
  * \return Number of memory descriptors.
@@ -89,15 +89,15 @@ unsigned
 l4_kernel_info_get_num_mem_descs(l4_kernel_info_t *kip) L4_NOTHROW;
 
 /**
- * \brief   Populate a memory descriptor.
+ * Populate a memory descriptor.
  * \ingroup l4_kip_memdesc_api
  *
- * \param md       Pointer to memory descriptor
- * \param start    Start of region
- * \param end      End of region
- * \param type     Type of region
- * \param virt     1 if virtual region, 0 if physical region
- * \param sub_type Sub type.
+ * \param md        Pointer to memory descriptor
+ * \param start     Start of region
+ * \param end       End of region
+ * \param type      Type of region
+ * \param virt      1 if virtual region, 0 if physical region
+ * \param sub_type  Sub type.
  */
 L4_INLINE
 void
@@ -109,7 +109,7 @@ l4_kernel_info_set_mem_desc(l4_kernel_info_mem_desc_t *md,
 			    unsigned sub_type) L4_NOTHROW;
 
 /**
- * \brief   Get start address of the region described by the memory descriptor.
+ * Get start address of the region described by the memory descriptor.
  * \ingroup l4_kip_memdesc_api
  *
  * \return Start address.
@@ -119,7 +119,7 @@ l4_umword_t
 l4_kernel_info_get_mem_desc_start(l4_kernel_info_mem_desc_t *md) L4_NOTHROW;
 
 /**
- * \brief   Get end address of the region described by the memory descriptor.
+ * Get end address of the region described by the memory descriptor.
  * \ingroup l4_kip_memdesc_api
  *
  * \return End address.
@@ -129,7 +129,7 @@ l4_umword_t
 l4_kernel_info_get_mem_desc_end(l4_kernel_info_mem_desc_t *md) L4_NOTHROW;
 
 /**
- * \brief   Get type of the memory region.
+ * Get type of the memory region.
  * \ingroup l4_kip_memdesc_api
  *
  * \return Type of the region (see #l4_mem_type_t).
@@ -139,7 +139,7 @@ l4_umword_t
 l4_kernel_info_get_mem_desc_type(l4_kernel_info_mem_desc_t *md) L4_NOTHROW;
 
 /**
- * \brief   Get sub-type of memory region.
+ * Get sub-type of memory region.
  * \ingroup l4_kip_memdesc_api
  *
  * \return Sub-type.
@@ -152,7 +152,7 @@ l4_umword_t
 l4_kernel_info_get_mem_desc_subtype(l4_kernel_info_mem_desc_t *md) L4_NOTHROW;
 
 /**
- * \brief   Get virtual flag of the memory descriptor.
+ * Get virtual flag of the memory descriptor.
  * \ingroup l4_kip_memdesc_api
  *
  * \return 1 if region is virtual memory, 0 if region is physical memory

@@ -27,8 +27,7 @@ boot_img.x2:	boot_img.x1
 	$(VERBOSE)$(OBJCOPY) --prefix-alloc-sections=.bootstrap --prefix-symbols=bootstrap_ -G bootstrap__boot_start $^ $@
 
 
-
-kernel.ia32.lds: linking.h
+-include .kernel.ia32.lds.d
 
 $(KERNEL):	kernel.ia32.lds boot_img.o $(CRT0) $(OBJ_KERNEL) $(JDB) $(LIBK) $(KERNEL_EXTRA_LIBS) $(ABI) $(JABI) libdrivers.a $(LIBUART) $(CXXLIB) $(MINILIBC) libgluedriverslibc.a
 		$(LINK_MESSAGE)

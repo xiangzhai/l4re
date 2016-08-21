@@ -25,94 +25,6 @@ public:
 
   static Per_cpu<Owner> owner;
 
-  enum Cp0_regs
-  {
-    /* 32 */ Cp0_index            = ( 0 << 3),
-    /* 32 */ Cp0_vp_control       = ( 0 << 3) + 4,
-    /* 32 */ Cp0_random           = ( 1 << 3),
-    /* 64 */ Cp0_entry_lo1        = ( 2 << 3),
-    /* 64 */ Cp0_entry_lo2        = ( 3 << 3),
-    /* 32 */ Cp0_global_number    = ( 3 << 3) + 1,
-    /* 64 */ Cp0_context          = ( 4 << 3),
-    /* 32 */ Cp0_context_config   = ( 4 << 3) + 1,
-    /* 64 */ Cp0_user_local       = ( 4 << 3) + 2,
-    /* 64 */ Cp0_xcontext_config  = ( 4 << 3) + 3,
-    /* 32 */ Cp0_debug_context_id = ( 4 << 3) + 4,
-    /* 64 */ Cp0_page_mask        = ( 5 << 3),
-    /* 32 */ Cp0_page_grain       = ( 5 << 3) + 1,
-    /* 64 */ Cp0_seg_ctl_0        = ( 5 << 3) + 2,
-    /* 64 */ Cp0_seg_ctl_1        = ( 5 << 3) + 3,
-    /* 64 */ Cp0_seg_ctl_2        = ( 5 << 3) + 4,
-    /* 64 */ Cp0_pw_base          = ( 5 << 3) + 5,
-    /* 64 */ Cp0_pw_field         = ( 5 << 3) + 6,
-    /* 64 */ Cp0_pw_size          = ( 5 << 3) + 7,
-    /* 32 */ Cp0_wired            = ( 6 << 3),
-    /* 32 */ Cp0_pw_ctl           = ( 6 << 3) + 6,
-    /* 32 */ Cp0_hw_rena          = ( 7 << 3),
-    /* 64 */ Cp0_bad_v_addr       = ( 8 << 3),
-    /* 32 */ Cp0_bad_instr        = ( 8 << 3) + 1,
-    /* 32 */ Cp0_bad_instr_p      = ( 8 << 3) + 2,
-    /* 32 */ Cp0_count            = ( 9 << 3),
-    /* 64 */ Cp0_entry_hi         = (10 << 3),
-    /* 32 */ Cp0_compare          = (11 << 3),
-    /* 32 */ Cp0_status           = (12 << 3),
-    /* 32 */ Cp0_int_ctl          = (12 << 3) + 1,
-    /* 32 */ Cp0_srs_ctl          = (12 << 3) + 2,
-    /* 32 */ Cp0_srs_map          = (12 << 3) + 3,
-    /* 32 */ Cp0_cause            = (13 << 3),
-    /* 32 */ Cp0_nested_exc       = (13 << 3) + 5,
-    /* 64 */ Cp0_epc              = (14 << 3),
-    /* 64 */ Cp0_nested_epc       = (14 << 3) + 2,
-    /* 32 */ Cp0_proc_id          = (15 << 3),
-    /* 64 */ Cp0_ebase            = (15 << 3) + 1,
-    /* 64 */ Cp0_cdmm_base        = (15 << 3) + 2,
-    /* 64 */ Cp0_cmgcr_base       = (15 << 3) + 3,
-    /* 32 */ Cp0_bevva            = (15 << 3) + 4,
-    /* 32 */ Cp0_config_0         = (16 << 3),
-    /* 32 */ Cp0_config_1         = (16 << 3) + 1,
-    /* 32 */ Cp0_config_2         = (16 << 3) + 2,
-    /* 32 */ Cp0_config_3         = (16 << 3) + 3,
-    /* 32 */ Cp0_config_4         = (16 << 3) + 4,
-    /* 32 */ Cp0_config_5         = (16 << 3) + 5,
-    /* 32 */ Cp0_config_6         = (16 << 3) + 6, ///< unused
-    /* 32 */ Cp0_config_7         = (16 << 3) + 7, ///< unused
-    /* 64 */ Cp0_load_linked_addr = (17 << 3),
-    /* 64 */ Cp0_maar_0           = (17 << 3) + 1,
-    /* 64 */ Cp0_maar_1           = (17 << 3) + 2,
-    /* 64 */ Cp0_watch_lo         = (18 << 3),
-    /* 64 */ Cp0_watch_hi         = (19 << 3),
-    /* 64 */ Cp0_xcontext         = (20 << 3),
-    /* 64 */ Cp0_debug            = (23 << 3),
-    /* 64 */ Cp0_debug_2          = (23 << 3) + 6,
-    /* 64 */ Cp0_depc             = (24 << 3),
-    /* 32 */ Cp0_perf_ctl_0       = (25 << 3),
-    /* 64 */ Cp0_perf_counter_0   = (25 << 3) + 1,
-    /* 32 */ Cp0_perf_ctl_1       = (25 << 3) + 2,
-    /* 64 */ Cp0_perf_counter_1   = (25 << 3) + 3,
-    /* 32 */ Cp0_perf_ctl_2       = (25 << 3) + 4,
-    /* 64 */ Cp0_perf_counter_2   = (25 << 3) + 5,
-    /* 32 */ Cp0_perf_ctl_3       = (25 << 3) + 6,
-    /* 64 */ Cp0_perf_counter_3   = (25 << 3) + 7,
-    /* 64 */ Cp0_err_ctl          = (26 << 3),
-    /* 64 */ Cp0_cache_err        = (27 << 3),
-    /* 64 */ Cp0_tag_lo_0         = (28 << 3),
-    /* 64 */ Cp0_data_lo_0        = (28 << 3) + 1,
-    /* 64 */ Cp0_tag_lo_1         = (28 << 3) + 2,
-    /* 64 */ Cp0_data_lo_1        = (28 << 3) + 3,
-    /* 64 */ Cp0_tag_hi_0         = (29 << 3),
-    /* 64 */ Cp0_data_hi_0        = (29 << 3) + 1,
-    /* 64 */ Cp0_tag_hi_1         = (29 << 3) + 2,
-    /* 64 */ Cp0_data_hi_1        = (29 << 3) + 3,
-    /* 64 */ Cp0_err_epc          = (30 << 3),
-    /* 64 */ Cp0_desave           = (31 << 3),
-    /* 64 */ Cp0_kscratch_1       = (31 << 3) + 2,
-    /* 64 */ Cp0_kscratch_2       = (31 << 3) + 3,
-    /* 64 */ Cp0_kscratch_3       = (31 << 3) + 4,
-    /* 64 */ Cp0_kscratch_4       = (31 << 3) + 5,
-    /* 64 */ Cp0_kscratch_5       = (31 << 3) + 6,
-    /* 64 */ Cp0_kscratch_6       = (31 << 3) + 7,
-  };
-
   struct State
   {
     Mword version;
@@ -210,8 +122,6 @@ public:
     void load_ctl() const;
     void save_ctl();
 
-    static void mfgc0(Mword *v, unsigned reg, unsigned sel);
-    static void mtgc0(Mword v, unsigned reg, unsigned sel);
     void mfg_kscr(unsigned kscr_n, unsigned x);
     void mtg_kscr(unsigned kscr_n, unsigned x) const;
     void mtg_cfg(unsigned x) const;
@@ -261,6 +171,7 @@ IMPLEMENTATION:
 
 #include "cpu.h"
 #include "static_init.h"
+#include "processor.h"
 #include <cstdio>
 #include <cstring>
 
@@ -271,25 +182,13 @@ Vz::Options Vz::options;
 
 STATIC_INITIALIZE(Vz);
 
-IMPLEMENT inline ALWAYS_INLINE
-void
-Vz::State::mfgc0(Mword *v, unsigned reg, unsigned sel)
-{
-  // note: the "m" constraint is to force the compiler to assume
-  // that the asm statement has varying inputs and might not be
-  // moved out of loops etc.
-  asm (".set push\n\t.set virt\n\t"
-       "mfgc0\t%0, $%1, %2\n\t"
-       ".set pop"
-       : "=r"(*v) : "n"(reg), "n"(sel), "m"(*v));
-}
 
 IMPLEMENT inline ALWAYS_INLINE
 void
 Vz::State::mfg_kscr(unsigned kscr_n, unsigned x)
 {
   if (kscr_n & (1 << x))
-    mfgc0(&g_kscr[x], 31, x);
+    Mips::mfgc0(&g_kscr[x], 31, x);
 }
 
 PRIVATE static inline ALWAYS_INLINE
@@ -297,32 +196,17 @@ void
 Vz::mfg_cfg_init(unsigned x)
 {
   if ((x == 0) || guest_cfg.c[x - 1].m())
-    {
-      // note: the "m" constraint is to force the compiler to assume
-      // that the asm statement has varying inputs and might not be
-      // moved out of loops etc.
-      asm (".set push\n\t.set virt\n\t"
-           "mfgc0\t%0, $16, %1\n\t"
-           ".set pop"
-           : "=r"(guest_cfg.c[x]._v) : "n"(x), "m"(guest_cfg.c[x]._v));
-    }
+    guest_cfg.c[x]._v = Mips::mfgc0_32(16, x);
 }
 
-IMPLEMENT inline ALWAYS_INLINE
-void
-Vz::State::mtgc0(Mword v, unsigned reg, unsigned sel)
-{
-  asm (".set push\n\t.set virt\n\t"
-       "mtgc0\t%0, $%1, %2\n\t"
-       ".set pop" : : "r"(v), "n"(reg), "n"(sel));
-}
+
 
 IMPLEMENT inline ALWAYS_INLINE
 void
 Vz::State::mtg_kscr(unsigned kscr_n, unsigned x) const
 {
   if (kscr_n & (1 << x))
-    mtgc0(g_kscr[x], 31, x);
+    Mips::mtgc0(g_kscr[x], 31, x);
 }
 
 IMPLEMENT inline ALWAYS_INLINE
@@ -334,9 +218,7 @@ Vz::State::mtg_cfg(unsigned x) const
       Mword w_mask = guest_cfg_write.c[x]._v;
       Mword v = access_once(&g_cfg[x]);
       v = (v & w_mask) | (guest_cfg.c[x]._v & ~w_mask);
-      asm (".set push\n\t.set virt\n\t"
-           "mtgc0\t%0, $16, %1\n\t"
-           ".set pop" : : "r"(v), "n"(x));
+      Mips::mtgc0_32(v, 16, x);
     }
 }
 
@@ -359,13 +241,8 @@ Vz::init()
         {
           auto gc0 = guest_cfg.r<0>();
           gc0.mt() = 4; // try dual TLB
-          asm volatile (
-              ".set push\n\t.set virt\n\t"
-              "mtgc0\t%0, $16, 0\n\t"
-              "ehb\n\t"
-              ".set pop"
-              : : "r"(gc0._v));
-
+          Mips::mtgc0_32(gc0._v, Mips::Cp0_config_0);
+          Mips::ehb();
           mfg_cfg_init(0);
 
           if (guest_cfg.r<0>().mt() != 4)
@@ -444,7 +321,7 @@ Vz::init()
 #undef ALLOW_WRITE
 #undef FORCE
 
-  auto ctl0 = read_ctl_0();
+  auto ctl0 = Mips::mfc0_32(Mips::Cp0_guest_ctl_0);
   if (ctl0 & (1UL << 19))
     options.ctl_0_ext = 1;
 
@@ -463,10 +340,11 @@ Vz::State::init()
   version = 2;
   size = sizeof(State);
 
-  Unsigned32 _ctl_0 = read_ctl_0();
+  Unsigned32 _ctl_0 = Mips::mfc0_32(Mips::Cp0_guest_ctl_0);
 
   if (_ctl_0 & (1UL << 19))
-    ctl_0_ext = (read_ctl_0_ext() & Ctl_0_ext_dflz) | Ctl_0_ext_dfl1;
+    ctl_0_ext = (Mips::mfc0_32(Mips::Cp0_guest_ctl_0_ext) & Ctl_0_ext_dflz)
+                | Ctl_0_ext_dfl1;
   else
     ctl_0_ext = 0;
 
@@ -485,19 +363,21 @@ IMPLEMENT inline
 void
 Vz::State::save_guest_tlb_entry(int guest_id, unsigned i)
 {
+  using namespace Mips;
   auto &tlb = g_tlb_wired[i];
-  mtgc0(i, 0, 0);
-  asm volatile ("ehb");
+  mtgc0_32(i, Cp0_index);
+  ehb();
   asm volatile (".set push; .set virt; tlbgr; .set pop");
-  asm volatile ("ehb");
-  auto ctl1 = Vz::read_ctl_1();
+  ehb();
+  auto ctl1 = Mips::mfc0_32(Mips::Cp0_guest_ctl_1);
 
   if ((unsigned)guest_id == ((ctl1 >> 16) & 0xff))
     {
-      mfgc0(&tlb.mask, 5, 0);
-      mfgc0(&tlb.entry_hi, 10, 0);
-      mfgc0(&tlb.entry_lo[0], 2, 0);
-      mfgc0(&tlb.entry_lo[1], 3, 0);
+      // no BPA supported in the guest, so far
+      mfgc0_32(&tlb.mask, Cp0_page_mask);
+      mfgc0(&tlb.entry_hi, Cp0_entry_hi);
+      mfgc0(&tlb.entry_lo[0], Cp0_entry_lo1);
+      mfgc0(&tlb.entry_lo[1], Cp0_entry_lo2);
     }
   else
     tlb.entry_hi = 1UL << 10; // EHINV
@@ -514,6 +394,7 @@ IMPLEMENT
 void
 Vz::State::save_full(int guest_id)
 {
+  using namespace Mips;
   auto c_map = current_cp0_map;
   write_now(&current_cp0_map, (Unsigned32)~0);
 
@@ -521,7 +402,7 @@ Vz::State::save_full(int guest_id)
     save_ctl();
 
   if (EXPECT_TRUE(!(c_map & M_status)))
-    mfgc0(&g_status, 12, 0);
+    mfgc0_32(&g_status, Mips::Cp0_status);
 
   // 12, 2 .. 3 SRSxxx not implemented (disabled in guest_config)
   if (EXPECT_TRUE(!(c_map & M_cause)))
@@ -529,25 +410,25 @@ Vz::State::save_full(int guest_id)
       // need the timestamp when we save the cause register
       _saved_cause_timestamp = Timer::get_current_counter();
       // alex: not sure if this is needed of if reads from cp0 are ordered
-      asm volatile ("ehb");
-      mfgc0(&g_cause, 13, 0);
+      ehb();
+      mfgc0_32(&g_cause, Cp0_cause);
     }
 
   if (EXPECT_TRUE(!(c_map & M_compare)))
-    mfgc0(&g_compare, 11, 0);
+    mfgc0_32(&g_compare, Cp0_compare);
 
   if (EXPECT_TRUE(!(c_map & M_mmu)))
     {
-      mfgc0(&g_index, 0, 0);
-      mfgc0(&g_entry_lo[0], 2, 0);
-      mfgc0(&g_entry_lo[1], 3, 0);
-      mfgc0(&g_context, 4, 0);
+      mfgc0_32(&g_index, Cp0_index);
+      mfgc0(&g_entry_lo[0], Cp0_entry_lo1);
+      mfgc0(&g_entry_lo[1], Cp0_entry_lo2);
+      mfgc0(&g_context, Cp0_context);
       // 4, 3 XContextConfig not supported
-      mfgc0(&g_page_mask, 5, 0);
+      mfgc0_32(&g_page_mask, Cp0_page_mask);
       Mword w;
-      mfgc0(&w, 6, 0);
+      mfgc0_32(&w, Cp0_wired);
       g_wired = w;
-      mfgc0(&g_entry_hi, 10, 0);
+      mfgc0(&g_entry_hi, Cp0_entry_hi);
 
       w &= 0xff;
       if (EXPECT_FALSE(w > Max_guest_wired))
@@ -563,65 +444,64 @@ Vz::State::save_full(int guest_id)
   // 4, 1 ContextConfig not supported
   if (EXPECT_TRUE(!(c_map & M_xlat)))
     {
-      mfgc0(&g_page_grain, 5, 1);
+      mfgc0_32(&g_page_grain, Cp0_page_grain);
 
       if (guest_cfg.r<3>().sc())
         {
-          mfgc0(&g_seg_ctl[0], 5, 2);
-          mfgc0(&g_seg_ctl[1], 5, 3);
-          mfgc0(&g_seg_ctl[2], 5, 4);
+          mfgc0(&g_seg_ctl[0], Cp0_seg_ctl_0);
+          mfgc0(&g_seg_ctl[1], Cp0_seg_ctl_1);
+          mfgc0(&g_seg_ctl[2], Cp0_seg_ctl_2);
         }
     }
 
   if (EXPECT_TRUE(!(c_map & M_pw)) && guest_cfg.r<3>().pw())
     {
-      mfgc0(&g_pw_base, 5, 5);
-      mfgc0(&g_pw_field, 5, 6);
-      mfgc0(&g_pw_size, 5, 7);
-      mfgc0(&g_pw_ctl, 6, 6);
+      mfgc0(&g_pw_base, Cp0_pw_base);
+      mfgc0(&g_pw_field, Cp0_pw_field);
+      mfgc0(&g_pw_size, Cp0_pw_size);
+      mfgc0_32(&g_pw_ctl, Cp0_pw_ctl);
     }
 
   if (EXPECT_TRUE(!(c_map & M_intctl)))
-    mfgc0(&g_intctl, 12, 1);
+    mfgc0_32(&g_intctl, Cp0_int_ctl);
 
   if (EXPECT_TRUE(!(c_map & M_ulr)) && guest_cfg.r<3>().ulri())
-    mfgc0(&g_ulr, 4, 2);
+    mfgc0(&g_ulr, Cp0_user_local);
 
 
   // 13, 5 NestedExc not supproted in guest
   if (EXPECT_TRUE(!(c_map & M_epc)))
     {
-      mfgc0(&g_epc, 14, 0);
-      mfgc0(&g_error_epc, 30, 0);
+      mfgc0(&g_epc, Cp0_epc);
+      mfgc0(&g_error_epc, Cp0_err_epc);
     }
 
   if (EXPECT_TRUE(!(c_map & M_ebase)))
-    mfgc0(&g_ebase, 15, 1);
+    mfgc0(&g_ebase, Cp0_ebase);
 
 
   if (EXPECT_TRUE(!(c_map & M_hwrena)))
-    mfgc0(&g_hwrena, 7, 0);
+    mfgc0_32(&g_hwrena, Cp0_hw_rena);
 
   if (EXPECT_TRUE(!(c_map & M_bad)))
     {
-      mfgc0(&g_bad_v_addr, 8, 0);
+      mfgc0(&g_bad_v_addr, Cp0_bad_v_addr);
 
       if (guest_cfg.r<3>().bi())
-        mfgc0(&g_bad_instr, 8, 1);
+        mfgc0_32(&g_bad_instr, Cp0_bad_instr);
 
       if (guest_cfg.r<3>().bp())
-        mfgc0(&g_bad_instr_p, 8, 2);
+        mfgc0_32(&g_bad_instr_p, Cp0_bad_instr_p);
     }
 
   // FIXME: Think about Tag and Data registers
 
   if (guest_cfg.r<1>().ep() & EXPECT_TRUE(!(c_map & M_desave)))
-    mfgc0(&g_kscr[0], 31, 0);
+    mfgc0(&g_kscr[0], Cp0_desave);
 
   auto kscr_n = guest_cfg.r<4>().k_scr_num();
   if (EXPECT_TRUE(!(c_map & M_kscr)))
     {
-      mfg_kscr(kscr_n, 1);
       mfg_kscr(kscr_n, 2);
       mfg_kscr(kscr_n, 3);
       mfg_kscr(kscr_n, 4);
@@ -656,25 +536,22 @@ IMPLEMENT inline
 void
 Vz::State::load_cause()
 {
+  using namespace Mips;
   enum { Cause_TI = 1UL << 30 };
 
-  mtgc0(g_cause, 13, 0);
+  mtgc0_32(g_cause, Cp0_compare);
   if (g_cause & Cause_TI)
     return;
 
   // make sure Guest.Cause is written before we read the counter
   // Note, this additionally ensures guest compare is written before we
   // read it below.
-  asm volatile ("ehb");
+  ehb();
   Unsigned64 ct = Timer::get_current_counter();
   Unsigned64 gc = ct + ctl_gtoffset;
   Unsigned64 last_gc = _saved_cause_timestamp + ctl_gtoffset;
 
-  Unsigned32 gcmp;
-  asm (".set push\n\t.set virt\n\t"
-       "mfgc0\t%0, $11, 0\n\t"
-       ".set pop" : "=r"(gcmp));
-
+  Unsigned32 gcmp = mfgc0_32(Cp0_compare);
   Unsigned64 gcomp = gcmp | (last_gc & 0xffffffff00000000);
 
   if (gcomp < last_gc)
@@ -683,7 +560,7 @@ Vz::State::load_cause()
   if (gcomp <= gc)
     {
       g_cause |= Cause_TI;
-      mtgc0(g_cause, 13, 0); // Cause
+      mtgc0_32(g_cause, Cp0_cause);
     }
 }
 
@@ -691,6 +568,7 @@ IMPLEMENT inline
 void
 Vz::State::load_guest_tlb_entry(int guest_id, unsigned i)
 {
+  using namespace Mips;
   auto const &tlb = g_tlb_wired[i];
   if (0)
     printf("VZ[%p|%d]: load TLB[%u] (%s) mask=%lx hi=%lx lo=%lx|%lx\n",
@@ -698,11 +576,11 @@ Vz::State::load_guest_tlb_entry(int guest_id, unsigned i)
            tlb.mask, tlb.entry_hi, tlb.entry_lo[0],
            tlb.entry_lo[1]);
 
-  mtgc0(i, 0, 0);
-  mtgc0(tlb.mask, 5, 0);
-  mtgc0(tlb.entry_hi, 10, 0);
-  mtgc0(tlb.entry_lo[0], 2, 0);
-  mtgc0(tlb.entry_lo[1], 3, 0);
+  mtgc0_32(i, Cp0_index);
+  mtgc0_32(tlb.mask, Cp0_page_mask);
+  mtgc0(tlb.entry_hi, Cp0_entry_hi);
+  mtgc0(tlb.entry_lo[0], Cp0_entry_lo1);
+  mtgc0(tlb.entry_lo[1], Cp0_entry_lo2);
   asm volatile (
       ".set push\n\t"
       ".set noat\n\t"
@@ -710,9 +588,9 @@ Vz::State::load_guest_tlb_entry(int guest_id, unsigned i)
       "  ins \t$1, %0, 16, 8\n\t"
       "  mtc0\t$1, $10, 4\n\t"
       ".set pop" : : "r"(guest_id));
-  asm volatile ("ehb");
+  ehb();
   asm volatile (".set push; .set virt; tlbgwi; .set pop");
-  asm volatile ("ehb");
+  ehb();
 }
 
 
@@ -720,12 +598,13 @@ IMPLEMENT
 void
 Vz::State::load_full(int guest_id)
 {
+  using namespace Mips;
   write_now(&modified_cp0_map, 0);
 
   load_ctl();
 
-  mtgc0(g_status, 12, 0);
-  mtgc0(g_compare, 11, 0); // Compare (must be loaded before load_cause)
+  mtgc0_32(g_status, Mips::Cp0_status);
+  mtgc0_32(g_compare, Cp0_compare); // Compare (must be loaded before load_cause)
   load_cause();
 
   mtg_cfg(0);
@@ -737,7 +616,7 @@ Vz::State::load_full(int guest_id)
 
 
   unsigned w = access_once(&g_wired);
-  mtgc0(w, 6, 0);
+  mtgc0_32(w, Cp0_wired);
 
   w &= 0xff;
   if (EXPECT_FALSE(w > Max_guest_wired))
@@ -749,57 +628,56 @@ Vz::State::load_full(int guest_id)
   for (unsigned i = 0; i < w; ++i)
     load_guest_tlb_entry(guest_id, i);
 
-  mtgc0(g_index, 0, 0);
-  mtgc0(g_entry_lo[0], 2, 0);
-  mtgc0(g_entry_lo[1], 3, 0);
-  mtgc0(g_context, 4, 0);
-  mtgc0(g_page_mask, 5, 0);
-  mtgc0(g_entry_hi, 10, 0);
+  mtgc0_32(g_index, Cp0_index);
+  mtgc0(g_entry_lo[0], Cp0_entry_lo1);
+  mtgc0(g_entry_lo[1], Cp0_entry_lo2);
+  mtgc0(g_context, Cp0_context);
+  mtgc0_32(g_page_mask, Cp0_page_mask);
+  mtgc0(g_entry_hi, Cp0_entry_hi);
 
-  mtgc0(g_page_grain, 5, 1);
+  mtgc0_32(g_page_grain, Cp0_page_grain);
 
   if (guest_cfg.r<3>().sc())
     {
-      mtgc0(g_seg_ctl[0], 5, 2);
-      mtgc0(g_seg_ctl[1], 5, 3);
-      mtgc0(g_seg_ctl[2], 5, 4);
+      mtgc0(g_seg_ctl[0], Cp0_seg_ctl_0);
+      mtgc0(g_seg_ctl[1], Cp0_seg_ctl_1);
+      mtgc0(g_seg_ctl[2], Cp0_seg_ctl_2);
     }
 
   // 4, 3 XContextConfig not supported
   if (guest_cfg.r<3>().pw())
     {
-      mtgc0(g_pw_base, 5, 5);
-      mtgc0(g_pw_field, 5, 6);
-      mtgc0(g_pw_size, 5, 7);
-      mtgc0(g_pw_ctl, 6, 6);
+      mtgc0(g_pw_base, Cp0_pw_base);
+      mtgc0(g_pw_field, Cp0_pw_field);
+      mtgc0(g_pw_size, Cp0_pw_size);
+      mtgc0_32(g_pw_ctl, Cp0_pw_ctl);
     }
 
-  mtgc0(g_intctl, 12, 1);
+  mtgc0_32(g_intctl, Cp0_int_ctl);
   if (guest_cfg.r<3>().ulri())
-    mtgc0(g_ulr, 4, 2);
+    mtgc0(g_ulr, Cp0_user_local);
 
   // 12, 2 .. 3 SRSxxx not implemented (disabled in guest_config)
   // 13, 5 NestedExc not supproted in guest
-  mtgc0(g_epc, 14, 0);
-  mtgc0(g_error_epc, 30, 0);
-  mtgc0(g_ebase, 15, 1);
+  mtgc0(g_epc, Cp0_epc);
+  mtgc0(g_error_epc, Cp0_err_epc);
+  mtgc0(g_ebase, Cp0_ebase);
 
-  mtgc0(g_hwrena, 7, 0);
-  mtgc0(g_bad_v_addr, 8, 0);
+  mtgc0_32(g_hwrena, Cp0_hw_rena);
+  mtgc0(g_bad_v_addr, Cp0_bad_v_addr);
 
   if (guest_cfg.r<3>().bi())
-    mtgc0(g_bad_instr, 8, 1); // BadInstr
+    mtgc0_32(g_bad_instr, Cp0_bad_instr); // BadInstr
 
   if (guest_cfg.r<3>().bp())
-    mtgc0(g_bad_instr_p, 8, 2); // BadInstrP
+    mtgc0_32(g_bad_instr_p, Cp0_bad_instr_p); // BadInstrP
 
 
   // FIXME: Think about Tag and Data registers
   if (guest_cfg.r<1>().ep())
-    mtgc0(g_kscr[0], 31, 0);
+    mtgc0(g_kscr[0], Cp0_desave);
 
   auto kscr_n = guest_cfg.r<4>().k_scr_num();
-  mtg_kscr(kscr_n, 1);
   mtg_kscr(kscr_n, 2);
   mtg_kscr(kscr_n, 3);
   mtg_kscr(kscr_n, 4);
@@ -812,6 +690,7 @@ IMPLEMENT
 void
 Vz::State::load_selective(int guest_id)
 {
+  using namespace Mips;
   auto mod_map = modified_cp0_map;
   write_now(&modified_cp0_map, 0);
 
@@ -820,17 +699,17 @@ Vz::State::load_selective(int guest_id)
       auto c0 = access_once(&ctl_0);
       c0 &= Ctl_0_mbz;
       c0 |= Ctl_0_mb1;
-      Vz::write_ctl_0(c0);
+      mtc0_32(c0, Cp0_guest_ctl_0);
     }
 
   if (EXPECT_FALSE(mod_map & M_status))
-    mtgc0(g_status, 12, 0);
+    mtgc0_32(g_status, Mips::Cp0_status);
 
   if (EXPECT_FALSE(mod_map & M_gtoffset))
-    Vz::write_gt_offset(ctl_gtoffset);
+    mtc0_32(ctl_gtoffset, Cp0_gt_offset);
 
   if (EXPECT_FALSE(mod_map & M_compare))
-    mtgc0(g_compare, 11, 0); // Compare (must be loaded before load_cause)
+    mtgc0_32(g_compare, Cp0_compare); // Compare (must be loaded before load_cause)
 
   if (EXPECT_FALSE(mod_map & M_cause))
     load_cause();
@@ -841,14 +720,14 @@ Vz::State::load_selective(int guest_id)
       auto c0 = access_once(&ctl_0_ext);
       c0 &= Ctl_0_ext_mbz;
       c0 |= Ctl_0_ext_mb1;
-      Vz::write_ctl_0_ext(c0);
+      mtc0_32(c0, Cp0_guest_ctl_0_ext);
     }
 
   if (EXPECT_FALSE(mod_map & M_ctl_2) && Vz::options.ctl_2)
     {
       auto c2 = access_once(&ctl_2);
       c2 &= Ctl_2_mbz;
-      Vz::write_ctl_2(c2);
+      mtc0_32(c2, Cp0_guest_ctl_2);
     }
 
   // Guest config
@@ -866,7 +745,7 @@ Vz::State::load_selective(int guest_id)
   if (EXPECT_FALSE(mod_map & M_mmu))
     {
       unsigned w = access_once(&g_wired);
-      mtgc0(w, 6, 0);
+      mtgc0_32(w, Cp0_wired);
 
       w &= 0xff;
       if (EXPECT_FALSE(w > Max_guest_wired))
@@ -878,64 +757,64 @@ Vz::State::load_selective(int guest_id)
       for (unsigned i = 0; i < w; ++i)
         load_guest_tlb_entry(guest_id, i);
 
-      mtgc0(g_index, 0, 0);
-      mtgc0(g_entry_lo[0], 2, 0);
-      mtgc0(g_entry_lo[1], 3, 0);
-      mtgc0(g_context, 4, 0);
-      mtgc0(g_page_mask, 5, 0);
-      mtgc0(g_entry_hi, 10, 0);
+      mtgc0_32(g_index, Cp0_index);
+      mtgc0(g_entry_lo[0], Cp0_entry_lo1);
+      mtgc0(g_entry_lo[1], Cp0_entry_lo2);
+      mtgc0(g_context, Cp0_context);
+      mtgc0_32(g_page_mask, Cp0_page_mask);
+      mtgc0(g_entry_hi, Cp0_entry_hi);
     }
 
   // Address Translation segmentation
   if (EXPECT_FALSE(mod_map & M_xlat))
     {
-      mtgc0(g_page_grain, 5, 1);
+      mtgc0_32(g_page_grain, Cp0_page_grain);
 
       if (guest_cfg.r<3>().sc())
         {
-          mtgc0(g_seg_ctl[0], 5, 2);
-          mtgc0(g_seg_ctl[1], 5, 3);
-          mtgc0(g_seg_ctl[2], 5, 4);
+          mtgc0(g_seg_ctl[0], Cp0_seg_ctl_0);
+          mtgc0(g_seg_ctl[1], Cp0_seg_ctl_1);
+          mtgc0(g_seg_ctl[2], Cp0_seg_ctl_2);
         }
     }
 
   if (EXPECT_FALSE(mod_map & M_pw)
       && guest_cfg.r<3>().pw())
     {
-      mtgc0(g_pw_base, 5, 5);
-      mtgc0(g_pw_field, 5, 6);
-      mtgc0(g_pw_size, 5, 7);
-      mtgc0(g_pw_ctl, 6, 6);
+      mtgc0(g_pw_base, Cp0_pw_base);
+      mtgc0(g_pw_field, Cp0_pw_field);
+      mtgc0(g_pw_size, Cp0_pw_size);
+      mtgc0_32(g_pw_ctl, Cp0_pw_ctl);
     }
 
   if (EXPECT_FALSE(mod_map & M_intctl))
-    mtgc0(g_intctl, 12, 1);
+    mtgc0_32(g_intctl, Cp0_int_ctl);
 
   if (EXPECT_FALSE(mod_map & M_ulr)
       && guest_cfg.r<3>().ulri())
-    mtgc0(g_ulr, 4, 2);
+    mtgc0(g_ulr, Cp0_user_local);
 
   if (EXPECT_FALSE(mod_map & M_epc))
     {
-      mtgc0(g_epc, 14, 0);
-      mtgc0(g_error_epc, 30, 0);
+      mtgc0(g_epc, Cp0_epc);
+      mtgc0(g_error_epc, Cp0_err_epc);
     }
 
   if (EXPECT_FALSE(mod_map & M_ebase))
-    mtgc0(g_ebase, 15, 1);
+    mtgc0(g_ebase, Cp0_ebase);
 
   if (EXPECT_FALSE(mod_map & M_hwrena))
-    mtgc0(g_hwrena, 7, 0);
+    mtgc0_32(g_hwrena, Cp0_hw_rena);
 
   if (EXPECT_FALSE(mod_map & M_bad))
     {
-      mtgc0(g_bad_v_addr, 8, 0);
+      mtgc0(g_bad_v_addr, Cp0_bad_v_addr);
 
       if (guest_cfg.r<3>().bi())
-        mtgc0(g_bad_instr, 8, 1);
+        mtgc0_32(g_bad_instr, Cp0_bad_instr);
 
       if (guest_cfg.r<3>().bp())
-        mtgc0(g_bad_instr_p, 8, 2);
+        mtgc0_32(g_bad_instr_p, Cp0_bad_instr_p);
     }
 
   // 12, 2 .. 3 SRSxxx not implemented (disabled in guest_config)
@@ -944,12 +823,11 @@ Vz::State::load_selective(int guest_id)
 
 
   if (guest_cfg.r<1>().ep() & EXPECT_FALSE(mod_map & M_desave))
-    mtgc0(g_kscr[0], 31, 0);
+    mtgc0(g_kscr[0], Cp0_desave);
 
   auto kscr_n = guest_cfg.r<4>().k_scr_num();
   if (EXPECT_FALSE(mod_map & M_kscr))
     {
-      mtg_kscr(kscr_n, 1);
       mtg_kscr(kscr_n, 2);
       mtg_kscr(kscr_n, 3);
       mtg_kscr(kscr_n, 4);
@@ -968,127 +846,44 @@ Vz::State::save_on_exit(Entry_frame::Cause)
     save_ctl();   // save GuestCtl0
 
   if (!(c_map & M_status))
-    mfgc0(&g_status, 12, 0); // Status
+    Mips::mfgc0_32(&g_status, Mips::Cp0_status);
 
   write_now(&current_cp0_map, c_map | M_ctl_0 | M_status);
 }
 
-PRIVATE inline static
-Unsigned32
-Vz::read_ctl_0()
-{
-  Mword v;
-  asm volatile ("mfc0 %0, $12, 6" : "=r"(v));
-  return v;
-}
-
-PRIVATE inline static
-Unsigned32
-Vz::read_ctl_0_ext()
-{
-  Mword v;
-  asm volatile ("mfc0 %0, $11, 4" : "=r"(v));
-  return v;
-}
-
-PUBLIC inline static
-Unsigned32
-Vz::read_ctl_1()
-{
-  Mword v;
-  asm volatile ("mfc0 %0, $10, 4" : "=r"(v));
-  return v;
-}
-
-PRIVATE inline static
-Unsigned32
-Vz::read_ctl_2()
-{
-  Mword v;
-  asm volatile ("mfc0 %0, $10, 5" : "=r"(v));
-  return v;
-}
-
-PRIVATE inline static
-Unsigned32
-Vz::read_ctl_3()
-{
-  Mword v;
-  asm volatile ("mfc0 %0, $10, 6" : "=r"(v));
-  return v;
-}
-
-PRIVATE inline static
-Unsigned32
-Vz::read_gt_offset()
-{
-  Mword v;
-  asm volatile ("mfc0 %0, $12, 7" : "=r"(v));
-  return v;
-}
-
-PRIVATE inline static
-void
-Vz::write_ctl_0(Unsigned32 v)
-{ asm volatile ("mtc0 %0, $12, 6" : : "r"(v)); }
-
-PRIVATE inline static
-void
-Vz::write_ctl_0_ext(Unsigned32 v)
-{ asm volatile ("mtc0 %0, $11, 4" : : "r"(v)); }
-
-PUBLIC inline static
-void
-Vz::write_ctl_1(Unsigned32 v)
-{ asm volatile ("mtc0 %0, $10, 4" : : "r"(v)); }
-
-PRIVATE inline static
-void
-Vz::write_ctl_2(Unsigned32 v)
-{ asm volatile ("mtc0 %0, $10, 5" : : "r"(v)); }
-
-PRIVATE inline static
-void
-Vz::write_ctl_3(Unsigned32 v)
-{ asm volatile ("mtc0 %0, $10, 6" : : "r"(v)); }
-
-PRIVATE inline static
-void
-Vz::write_gt_offset(Unsigned32 v)
-{ asm volatile ("mtc0 %0, $12, 7" : : "r"(v)); }
-
-IMPLEMENT inline NEEDS[Vz::write_ctl_0, Vz::write_gt_offset,
-                       Vz::write_ctl_2, Vz::write_ctl_0_ext]
+IMPLEMENT inline
 void
 Vz::State::load_ctl() const
 {
+  using namespace Mips;
+
   auto c0 = access_once(&ctl_0);
   c0 &= Ctl_0_mbz;
   c0 |= Ctl_0_mb1;
-  Vz::write_ctl_0(c0);
-  Vz::write_gt_offset(ctl_gtoffset);
+  mtc0_32(c0, Cp0_guest_ctl_0);
+  mtc0_32(ctl_gtoffset, Cp0_gt_offset);
 
   if (Vz::options.ctl_0_ext)
     {
       auto c0 = access_once(&ctl_0_ext);
       c0 &= Ctl_0_ext_mbz;
       c0 |= Ctl_0_ext_mb1;
-      Vz::write_ctl_0_ext(c0);
+      mtc0_32(c0, Cp0_guest_ctl_0_ext);
     }
 
   if (Vz::options.ctl_2)
     {
       auto c2 = access_once(&ctl_2);
       c2 &= Ctl_2_mbz;
-      Vz::write_ctl_2(c2);
+      mtc0_32(c2, Cp0_guest_ctl_2);
     }
 }
 
-IMPLEMENT inline NEEDS[Vz::read_ctl_0]
+IMPLEMENT inline
 void
 Vz::State::save_ctl()
 {
-  ctl_0 = Vz::read_ctl_0();
+  ctl_0 = Mips::mfc0_32(Mips::Cp0_guest_ctl_0);
 }
 
 

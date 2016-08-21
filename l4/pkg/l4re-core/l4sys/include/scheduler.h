@@ -1,6 +1,6 @@
 /**
  * \file
- * \brief Scheduler object functions.
+ * Scheduler object functions.
  */
 /*
  * (c) 2008-2009 Adam Lackorzynski <adam@os.inf.tu-dresden.de>,
@@ -28,7 +28,7 @@
 /**
  * \defgroup l4_scheduler_api Scheduler
  * \ingroup  l4_kernel_object_api
- * \brief C interface of the Scheduler kernel object.
+ * C interface of the Scheduler kernel object.
  *
  * The Scheduler interface allows a client to manage CPU resources. The API
  * provides functions to query scheduler information, check the online state
@@ -38,7 +38,7 @@
  */
 
 /**
- * \brief CPU sets.
+ * CPU sets.
  * \ingroup l4_scheduler_api
  */
 typedef struct l4_sched_cpu_set_t
@@ -73,7 +73,7 @@ typedef struct l4_sched_cpu_set_t
 } l4_sched_cpu_set_t;
 
 /**
- * \brief
+ *
  * \ingroup l4_scheduler_api
  *
  * \param offset       Offset.
@@ -89,6 +89,7 @@ l4_sched_cpu_set(l4_umword_t offset, unsigned char granularity,
 /**
  * \ingroup l4_scheduler_api
  * \copybrief L4::Scheduler::info
+ *
  * \param         scheduler  Scheduler object.
  * \param[out]    cpu_max    Maximum number of CPUs ever available.
  * \param[in,out] cpus       \a cpus.offset is first CPU of interest.
@@ -112,7 +113,7 @@ l4_scheduler_info_u(l4_cap_idx_t scheduler, l4_umword_t *cpu_max,
 
 
 /**
- * \brief Scheduler parameter set.
+ * Scheduler parameter set.
  * \ingroup l4_scheduler_api
  */
 typedef struct l4_sched_param_t
@@ -123,7 +124,7 @@ typedef struct l4_sched_param_t
 } l4_sched_param_t;
 
 /**
- * \brief Construct scheduler parameter.
+ * Construct scheduler parameter.
  * \ingroup l4_scheduler_api
  */
 L4_INLINE l4_sched_param_t
@@ -133,6 +134,7 @@ l4_sched_param(unsigned prio,
 /**
  * \ingroup l4_scheduler_api
  * \copybrief L4::Scheduler::run_thread
+ *
  * \param scheduler  Scheduler object.
  * \copydetails L4::Scheduler::run_thread
  */
@@ -150,6 +152,7 @@ l4_scheduler_run_thread_u(l4_cap_idx_t scheduler, l4_cap_idx_t thread,
 /**
  * \ingroup l4_scheduler_api
  * \copybrief L4::Scheduler::idle_time
+ *
  * \param scheduler   Scheduler object.
  * \copydetails L4::Scheduler::idle_time
  */
@@ -169,6 +172,7 @@ l4_scheduler_idle_time_u(l4_cap_idx_t scheduler, l4_sched_cpu_set_t const *cpus,
 /**
  * \ingroup l4_scheduler_api
  * \copybrief L4::Scheduler::is_online
+ *
  * \param scheduler  Scheduler object.
  * \param cpu        CPU number whose online status should be queried.
  *
@@ -188,7 +192,7 @@ l4_scheduler_is_online_u(l4_cap_idx_t scheduler, l4_umword_t cpu,
 
 
 /**
- * \brief Operations on the Scheduler object.
+ * Operations on the Scheduler object.
  * \ingroup l4_scheduler_api
  * \hideinitializer
  * \internal

@@ -65,7 +65,12 @@ public:
    * \param label  Label to assign to `this` IPC gate. The two least significant
    *               bits should usually be set to zero.
    *
-   * \return System call return tag.
+   * \return Syscall return tag containing one of the following return codes.
+   *
+   * \retval L4_EOK      Operation successful.
+   * \retval -L4_EINVAL  `t` is not a thread object or other arguments were
+   *                     malformed.
+   * \retval -L4_EPERM   `t` is missing #L4_CAP_FPAGE_S right.
    */
   L4_INLINE_RPC_OP(L4_IPC_GATE_BIND_OP,
       l4_msgtag_t, bind_thread, (Ipc::Cap<Thread> t, l4_umword_t label));

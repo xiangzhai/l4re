@@ -1,4 +1,4 @@
-IMPLEMENTATION [mips32]:
+IMPLEMENTATION [mips]:
 
 #include <cassert>
 #include <cstdlib>

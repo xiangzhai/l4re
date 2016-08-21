@@ -36,13 +36,6 @@ Jdb_factory::show_kobject(Kobject_common *, int )
 }
 
 PUBLIC
-char const *
-Jdb_factory::kobject_type(Kobject_common *) const
-{
-  return JDB_ANSI_COLOR(yellow) "Factory" JDB_ANSI_COLOR(default);
-}
-
-PUBLIC
 void
 Jdb_factory::show_kobject_short(String_buffer *buf, Kobject_common *o)
 {

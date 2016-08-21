@@ -54,10 +54,10 @@ public:
    *
    * \return Syscall return tag.
    *
-   * Note that if `label` is NULL this function is a send-only operation and
-   * there is no return value except for a failed send operation. Use
-   * l4_ipc_error() to check for errors, **do not** use l4_error(), because
-   * l4_error() will always return an error.
+   * \note If `label` is NULL this function is a send-only operation
+   *       and there is no return value except for a failed send operation.
+   *       In this case use l4_ipc_error() to check for errors, **do not**
+   *       use l4_error(), because l4_error() will always return an error.
    */
   l4_msgtag_t unmask(unsigned irqnum, l4_umword_t *label = 0,
                      l4_timeout_t to = L4_IPC_NEVER,
@@ -78,15 +78,14 @@ struct Triggerable : Kobject_t<Triggerable, Irq_eoi, L4_PROTO_IRQ>
    * Trigger.
    *
    * \utcb{utcb}
+   *
    * \return Syscall return tag for a send-only operation, use l4_ipc_error()
    *         to check for errors (**do not** use l4_error()).
    *
-   * Note that this function is a send-only operation, this means there is no
-   * return value except for a failed send operation. Use l4_ipc_error() to
-   * check for errors, **do not** use l4_error(), because l4_error() will
-   * always return an error.
-   *
-   * Use l4_ipc_error() to check for (send) errors.
+   * \note This function is a send-only operation, this means there
+   *       is no return value except for a failed send operation. Use
+   *       l4_ipc_error() to check for errors, **do not** use l4_error(),
+   *       because l4_error() will always return an error.
    */
   l4_msgtag_t trigger(l4_utcb_t *utcb = l4_utcb()) throw()
   { return l4_irq_trigger_u(cap(), utcb); }
@@ -123,6 +122,8 @@ public:
    * \utcb{utcb}
    *
    * \return Syscall return tag
+   *
+   * see Ipc_gate for a description of the *protected label*.
    */
   l4_msgtag_t attach(l4_umword_t label,
                      Cap<Thread> const &thread = Cap<Thread>::Invalid,
@@ -145,7 +146,9 @@ public:
    *
    * \param timeout    Timeout.
    * \utcb{utcb}
+   *
    * \return Syscall return tag
+   *
    * \note If this is the function normally used for your IRQs consider using
    *       L4::Semaphore instead of L4::Irq.
    */
@@ -174,14 +177,16 @@ public:
    * \return Syscall return tag for a send-only operation, use l4_ipc_error()
    *         to check for errors (**do not** use l4_error()).
    *
-   * Note that this function is a send-only operation, this means there is no
-   * return value except for a failed send operation. Use l4_ipc_error() to
-   * check for errors, **do not** use l4_error(), because l4_error() will
-   * always return an error.
+   * \note This function is a send-only operation, this means there is no
+   *       return value except for a failed send operation. Use l4_ipc_error()
+   *       to check for errors, **do not** use l4_error(), because l4_error()
+   *       will always return an error.
+   *
+   * Irq::wait() and Irq::receive() operations already include an unmask(), do
+   * not use an extra unmask() in these cases.
    *
    * \deprecated Use L4::Irq_eoi::unmask()
    *
-   * \note wait() and receive() are doing the unmask already.
    */
   l4_msgtag_t unmask(l4_utcb_t *utcb = l4_utcb()) throw()
   { return unmask(-1, 0, L4_IPC_NEVER, utcb); }
@@ -320,12 +325,12 @@ public:
   /**
    * Get MSI info about IRQ.
    *
-   * \param irqnum    IRQ line at the ICU.
-   * \param source    Platform dependent requester ID for MSIs. On IA32 we use
-   *                  a 20bit source filter value as described in the Intel IRQ
-   *                  remapping specification.
-   * \param msi_info  A l4_icu_msi_info_t structure receiving the address and
-   *                  the data value to trigger this MSI.
+   * \param      irqnum    IRQ line at the ICU.
+   * \param      source    Platform dependent requester ID for MSIs. On IA32 we
+   *                       use a 20bit source filter value as described in the
+   *                       Intel IRQ remapping specification.
+   * \param[out] msi_info  A l4_icu_msi_info_t structure receiving the address
+   *                       and the data value to trigger this MSI.
    *
    * \return Syscall return tag
    */

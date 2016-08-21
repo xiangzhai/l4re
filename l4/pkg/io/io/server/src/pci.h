@@ -74,6 +74,7 @@ public:
   unsigned bus() const { return (_a >> 20) & 0xff; }
   unsigned dev() const { return (_a >> 15) & 0x1f; }
   unsigned fn() const { return (_a >> 12) & 0x7; }
+  unsigned devfn() const { return (_a >> 12) & 0xff; }
   unsigned reg() const { return _a & 0xfff; }
 
   Cfg_addr operator + (unsigned reg_offs) const

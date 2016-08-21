@@ -16,6 +16,8 @@ bad_array_new.cc \
 bad_cast.cc \
 bad_typeid.cc \
 class_type_info.cc \
+del_ops.cc \
+del_opvs.cc \
 dyncast.cc \
 enum_type_info.cc \
 function_type_info.cc \

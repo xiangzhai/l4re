@@ -42,18 +42,20 @@ public:
   virtual bool invoke(Kobject_common *o, Syscall_frame *f, Utcb *utcb);
   virtual bool handle_key(Kobject_common *, int /*keycode*/) { return false; }
   virtual Kobject *parent(Kobject_common *) { return 0; }
-  virtual char const *kobject_type(Kobject_common *o) const
+  char const *kobject_type(Kobject_common *o) const
   { return _kobject_type(o); }
 
   static char const *_kobject_type(Kobject_common *o)
   {
-    char const *n = cxx::dyn_typeid(o)->name;
-    static char const prefix[] =
-      "const char* cxx::_dyn::name_of() [with T = ";
+    extern Kobject_typeinfo_name const _jdb_typeinfo_table[];
+    extern Kobject_typeinfo_name const _jdb_typeinfo_table_end[];
 
-    if (strncmp(n, prefix, sizeof(prefix)-1) == 0)
-      return n + sizeof(prefix) - 1;
-    return n;
+    for (Kobject_typeinfo_name const *t = _jdb_typeinfo_table;
+        t != _jdb_typeinfo_table_end; ++t)
+      if (t->type == cxx::dyn_typeid(o))
+        return t->name;
+
+    return cxx::dyn_typeid(o)->name;
   }
 
   bool is_global() const { return !kobj_type; }

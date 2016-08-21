@@ -1,6 +1,6 @@
 /**
  * \file
- * \brief Kernel Info Page access functions.
+ * Kernel Info Page access functions.
  * \ingroup l4_api
  */
 /*
@@ -48,7 +48,7 @@ struct l4_kip_platform_info
  * \addtogroup l4_kip_api
  *
  * C interface for the Kernel Interface Page:<br>
- * <c>\#include <l4/sys/kip.h></c>
+ * \includefile{l4/sys/kip.h}
  */
 /*@{*/
 
@@ -62,29 +62,33 @@ enum l4_kernel_info_consts_t
 };
 
 /**
- * \brief Kernel Info Page identifier ("L4µK").
+ * Kernel Info Page identifier ("L4µK").
  */
 #define L4_KERNEL_INFO_MAGIC (0x4BE6344CL) /* "L4µK" */
 
 
 /**
- * \brief  Get the kernel version.
- * \param kip Kernel Info Page.
+ *  Get the kernel version.
+ *
+ * \param kip  Kernel Info Page.
+ *
  * \return Kernel version string. 0 if KIP could not be mapped.
  */
 L4_INLINE l4_umword_t l4_kip_version(l4_kernel_info_t *kip) L4_NOTHROW;
 
 /**
- * \brief  Get the kernel version string.
- * \param kip Kernel Info Page.
+ *  Get the kernel version string.
+ *
+ * \param kip  Kernel Info Page.
+ *
  * \return Kernel version string.
  */
 L4_INLINE const char *l4_kip_version_string(l4_kernel_info_t *kip) L4_NOTHROW;
 
 /**
- * \brief Return offset in bytes of version_strings relative to the KIP base.
+ * Return offset in bytes of version_strings relative to the KIP base.
  *
- * \param kip	Pointer to the kernel info page (KIP).
+ * \param kip  Pointer to the kernel info page (KIP).
  *
  * \return offset of version_strings relative to the KIP base address, in
  *         bytes.
@@ -93,9 +97,9 @@ L4_INLINE int
 l4_kernel_info_version_offset(l4_kernel_info_t *kip) L4_NOTHROW;
 
 /**
- * \brief Return clock value from the KIP.
+ * Return clock value from the KIP.
  *
- * \param kip	Pointer to the kernel info page (KIP).
+ * \param kip  Pointer to the kernel info page (KIP).
  *
  * \return Value of the clock field in the KIP.
  */
@@ -103,9 +107,9 @@ L4_INLINE l4_cpu_time_t
 l4_kip_clock(l4_kernel_info_t *kip) L4_NOTHROW;
 
 /**
- * \brief Return least significant machine word of clock value from the KIP.
+ * Return least significant machine word of clock value from the KIP.
  *
- * \param kip	Pointer to the kernel info page (KIP).
+ * \param kip  Pointer to the kernel info page (KIP).
  *
  * \return Lower machine word of clock value from the KIP.
  */

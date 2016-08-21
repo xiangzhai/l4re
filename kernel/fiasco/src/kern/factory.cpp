@@ -23,6 +23,8 @@ IMPLEMENTATION:
 #include "entry_frame.h"
 #include "task.h"
 
+JDB_DEFINE_TYPENAME(Factory, "\033[33;1mFactory\033[m");
+
 static Factory _root_factory INIT_PRIORITY(ROOT_FACTORY_INIT_PRIO);
 
 PUBLIC inline

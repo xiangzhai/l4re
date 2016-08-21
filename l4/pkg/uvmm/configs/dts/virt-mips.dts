@@ -71,7 +71,8 @@
         reg = <0x30010000 0x100>;
         interrupt-parent = <&gic>;
         interrupts = <0 4 4>;
-        l4vmm,virtiotype = "net";
+        l4vmm,vdev = "proxy";
+        l4vmm,virtiocap = "net";
     };
 
     virtio_uart@30020000 {
@@ -79,7 +80,7 @@
         reg = <0x30020000 0x100>;
         interrupt-parent = <&gic>;
         interrupts = <0 3 4>;
-        l4vmm,virtiotype = "console";
+        l4vmm,vdev = "console";
     };
 
 };

@@ -132,4 +132,3 @@ Kernel_thread::init_workload()
 
   boot_thread->activate();
 }
-

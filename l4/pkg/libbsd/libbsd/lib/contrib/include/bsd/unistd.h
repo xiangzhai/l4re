@@ -34,7 +34,11 @@
 #ifndef LIBBSD_UNISTD_H
 #define LIBBSD_UNISTD_H
 
+#ifdef LIBBSD_OVERLAY
 #include <sys/cdefs.h>
+#else
+#include <bsd/sys/cdefs.h>
+#endif
 #include <sys/stat.h>
 
 #ifndef S_ISTXT
@@ -60,7 +64,8 @@ void closefrom(int lowfd);
 #define initsetproctitle(c, a, e) setproctitle_init((c), (a), (e))
 
 void setproctitle_init(int argc, char *argv[], char *envp[]);
-void setproctitle(const char *fmt, ...);
+void setproctitle(const char *fmt, ...)
+	__printflike(1, 2);
 
 int getpeereid(int s, uid_t *euid, gid_t *egid);
 __END_DECLS

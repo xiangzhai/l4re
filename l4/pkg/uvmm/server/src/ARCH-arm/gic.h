@@ -809,6 +809,21 @@ public:
     R_cfg
   };
 
+  enum Irq_types
+  {
+    Irq_ppi_base = 16,
+    Irq_ppi_max = 16,
+    Irq_spi_base = Cpu::Num_local,
+  };
+
+  enum Dts_interrupt_cells
+  {
+    Irq_cell_type = 0,
+    Irq_cell_number = 1,
+    Irq_cell_flags = 2,
+    Irq_cells = 3
+  };
+
 
   static Reg_group_info const reg_group[10];
 
@@ -825,37 +840,44 @@ public:
   }
 
   void set(unsigned irq) override
-  { inject_spi(irq - 32, vmm_current_cpu_id); }
+  {
+    if (irq < Cpu::Num_local)
+      inject_local(irq, vmm_current_cpu_id);
+    else
+      inject_irq(this->spi(irq - Cpu::Num_local), irq, vmm_current_cpu_id); // SPI
+  }
 
   void clear(unsigned) override {}
 
   void bind_irq_source(unsigned irq, cxx::Ref_ptr<Irq_source> src) override
-  { spi(irq).set_eoi(src); }
+  { spi(irq - Cpu::Num_local).set_eoi(src); }
 
   int dt_get_num_interrupts(Vdev::Dt_node const &node)
   {
     int size;
     auto prop = node.get_prop<fdt32_t>("interrupts", &size);
 
-    return prop && size >= 3 ? 1 : 0;
+    return prop ? (size / Irq_cells) : 0;
   }
 
   unsigned dt_get_interrupt(Vdev::Dt_node const &node, int irq)
   {
-    if (irq != 0)
-      L4Re::chksys(-L4_ENODEV);
+    auto *prop = node.check_prop<fdt32_t[Irq_cells]>("interrupts", irq + 1);
 
-    auto *prop = node.check_prop<fdt32_t const>("interrupts", 3);
-    if (fdt32_to_cpu(prop[0]) != 0)
-    {
-      Err().printf("virtio devices must use SPIs\n");
-      L4Re::chksys(-L4_EINVAL);
-    }
+    int irqnr = fdt32_to_cpu(prop[irq][Irq_cell_number]);
 
-    return fdt32_to_cpu(prop[1]) + 32;
+    if (fdt32_to_cpu(prop[irq][Irq_cell_type]) == 0)
+      return irqnr + Irq_spi_base;
+
+    if (irqnr >= Irq_ppi_max)
+      L4Re::chksys(-L4_EINVAL, "Only 16 PPI interrupts allowed");
+
+    return irqnr + Irq_ppi_base;
   }
 
-  void init_device(Vdev::Device_lookup const &, Vdev::Dt_node const &) override {}
+  void init_device(Vdev::Device_lookup const *,
+                   Vdev::Dt_node const &) override
+  {}
 
   Dist(unsigned tnlines, unsigned char cpus);
 
@@ -933,12 +955,6 @@ public:
                   irq.enabled() ? "enabled " : "",
                   (unsigned)irq.target(), (int)irq.cpu(), (int)irq.prio());
       }
-  }
-
-  void
-  inject_spi(unsigned spi, unsigned current_cpu)
-  {
-    inject_irq(this->spi(spi), spi + 32, current_cpu);
   }
 
   void

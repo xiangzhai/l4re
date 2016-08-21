@@ -155,13 +155,23 @@ l4_factory_create_factory_u(l4_cap_idx_t factory, l4_cap_idx_t target_cap,
  * \param      factory     Capability selector for factory to use for creation.
  * \param[out] target_cap  The kernel stores the new IPC gate's capability into
  *                         this slot.
- * \param      thread_cap  Capability selector of the thread to bind the gate
- *                         to.
- * \param      label       Label of the gate.
+ * \param      thread_cap  Optional capability selector of the thread to
+ *                         bind the gate to. Use #L4_INVALID_CAP to create
+ *                         an unbound IPC gate.
+ * \param      label       Optional label of the gate (is used if
+ *                         `thread_cap` is valid).
  *
- * \return Syscall return tag
+ * \return Syscall return tag containing one of the following return codes.
  *
- * \see \ref l4_kernel_object_gate_api
+ * \retval L4_EOK      No error occurred.
+ * \retval -L4_ENOMEM  Out-of-memory during allocation of the Ipc_gate object.
+ * \retval -L4_ENOENT  `thread_cap` is void or points to something that is not
+ *                     a thread.
+ * \retval -L4_EPERM   No write rights on `thread_cap`.
+ *
+ * An unbound IPC gate can be bound to a thread using #l4_ipc_gate_bind_thread.
+ *
+ * \see  l4_kernel_object_gate_api
  */
 L4_INLINE l4_msgtag_t
 l4_factory_create_gate(l4_cap_idx_t factory,

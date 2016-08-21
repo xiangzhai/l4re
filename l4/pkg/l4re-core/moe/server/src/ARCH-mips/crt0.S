@@ -12,6 +12,8 @@
  * \brief	Startup code
  */
 
+#include <sys/asm.h>
+
 /*--- .text (program code) -------------------------*/
 
 .section .text, "ax"
@@ -20,9 +22,12 @@
 .set noreorder
 _real_start:
 	.cpload $25 /* load gp */
-	la    $29, _stack_top
-	j     __start
-	  subu  $29, 6 * 4
+	SETUP_GPX64($25, $0)
+	PTR_LA	$29, _stack_top
+	PTR_LA	$25, __start
+	PTR_SUBU  $29, (NARGSAVE * SZREG)
+	jalr $25
+	   nop
 1:
 	b   1b
 

@@ -87,7 +87,7 @@ IMPLEMENTATION:
 #include <string.h>
 
 PUBLIC
-Gic::Gic(Address mmio, unsigned cpu_int) : _r(mmio)
+Gic::Gic(Address mmio, unsigned cpu_int) : _r(mmio), _mode_lock(Spin_lock<>::Unlocked)
 {
   Mword cfg = _r[Sh_config];
   unsigned vpes = (cfg & 0x3f) + 1;
@@ -184,7 +184,7 @@ Gic::set_mode(Mword pin, Mode mode) override
   auto pol = sh_irq_reg(Sh_pol, pin);
   auto trig = sh_irq_reg(Sh_trigger, pin);
   auto dual = sh_irq_reg(Sh_dual_edge, pin);
-  Unsigned32 bit = sh_irq_bit(pin);
+  Unsigned32 bit = 1 << sh_irq_bit(pin);
 
   auto guard = lock_guard(_mode_lock);
 

@@ -17,12 +17,14 @@ endif
 
 ifneq ($(filter 4.2 4.3 4.4 4.5 4.6,$(GCCVERSION)),)
   USE_VERSION = 4.3
+endif
+ifneq ($(filter 4.7 4.8,$(GCCVERSION)),)
+  USE_VERSION = 4.7
+endif
+ifneq ($(filter 4.9,$(GCCVERSION)),)
+  USE_VERSION = 4.9
 else
-  ifneq ($(filter 4.7 4.8,$(GCCVERSION)),)
-    USE_VERSION = 4.7
-  else
-    USE_VERSION = 4.9
-  endif
+  USE_VERSION = 5
 endif
 
 PRIVATE_INCDIR = $(PKGDIR)/lib/contrib/gcc-$(USE_VERSION)/libgomp \
@@ -38,6 +40,10 @@ SRC_C     = affinity.c alloc.c critical.c error.c iter.c loop.c ordered.c \
             time.c team.c lock.c mutex.c single.c bar.c
 SRC_C-4.7 = task.c iter_ull.c loop_ull.c ptrlock.c 
 SRC_C-4.9 = task.c iter_ull.c loop_ull.c ptrlock.c target.c
+SRC_C-5   = task.c iter_ull.c loop_ull.c ptrlock.c target.c \
+            oacc-async.c oacc-host.c oacc-mem.c oacc-plugin.c \
+            oacc-cuda.c oacc-init.c oacc-parallel.c splay-tree.c
+
 SRC_C    += $(SRC_C-$(USE_VERSION))
 
 REQUIRES_LIBS = libpthread

@@ -8,7 +8,11 @@ struct P5600 : Cpu::Hooks
   void init(Cpu_number, bool, Unsigned32) override
   {
     // enable FTLB with prio 2
-    asm volatile ("mtc0 %0, $16, 6" : : "r"((2 << 16) | (1 << 15)));
+    Mword v;
+    asm volatile ("mfc0 %0, $16, 6" : "=r" (v));
+    v &= ~(3 << 16);
+    v |= (2 << 16) | (1 << 15);
+    asm volatile ("mtc0 %0, $16, 6" : : "r" (v));
     asm volatile ("ehb");
   }
 };

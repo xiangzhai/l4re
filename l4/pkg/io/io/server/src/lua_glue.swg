@@ -206,6 +206,9 @@ function Io.Res.io(start, _end, flags)
 end
 
 function Io.Res.mmio(start, _end, flags)
+  if start >= _end then
+    error("Mmio region start >= end. This is impossible.", 2);
+  end
   local f = flags or 0
   return Io.Resource(Io.Resource_Mmio_res, f, start, _end or start)
 end

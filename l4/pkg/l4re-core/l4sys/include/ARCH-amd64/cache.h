@@ -24,44 +24,50 @@
 
 #include_next <l4/sys/cache.h>
 
-L4_INLINE void
+L4_INLINE int
 l4_cache_clean_data(unsigned long start,
                     unsigned long end) L4_NOTHROW
 {
   (void)start; (void)end;
+  return 0;
 }
 
-L4_INLINE void
+L4_INLINE int
 l4_cache_flush_data(unsigned long start,
                     unsigned long end) L4_NOTHROW
 {
   (void)start; (void)end;
+  return 0;
 }
 
-L4_INLINE void
+L4_INLINE int
 l4_cache_inv_data(unsigned long start,
                   unsigned long end) L4_NOTHROW
 {
   (void)start; (void)end;
+  return 0;
 }
 
-L4_INLINE void
+L4_INLINE int
 l4_cache_coherent(unsigned long start,
                   unsigned long end) L4_NOTHROW
 {
   (void)start; (void)end;
+  return 0;
 }
 
-L4_INLINE void
+L4_INLINE int
 l4_cache_dma_coherent(unsigned long start,
                       unsigned long end) L4_NOTHROW
 {
   (void)start; (void)end;
+  return 0;
 }
 
-L4_INLINE void
+L4_INLINE int
 l4_cache_dma_coherent_full(void) L4_NOTHROW
 {
+  return 0;
 }
 
 #endif /* ! __L4SYS__INCLUDE__ARCH_AMD64__CACHE_H__ */

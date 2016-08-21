@@ -49,6 +49,8 @@ public:
   }
 };
 
+JDB_DEFINE_TYPENAME(Jdb_object, "Jdb");
+
 static Jdb_object __jdb_kobject;
 
 extern "C" void sys_invoke_debug(Kobject_iface *o, Syscall_frame *f) __attribute__((weak));

@@ -26,84 +26,37 @@ EXTERN_C_BEGIN
  *** Implementation
  *****************************************************************************/
 
-/* set bit */
-#define __L4UTIL_BITOPS_HAVE_ARCH_SET_BIT32
-L4_INLINE void
-l4util_set_bit32(int b, volatile l4_uint32_t * dest)
-{
-  __asm__ __volatile__
-    (
-     "btsl  %1,%0   \n\t"
-     :
-     :
-     "m"   (*dest),   /* 0 mem, destination operand */
-     "Ir"  (b)       /* 1,     bit number */
-     :
-     "memory", "cc"
-     );
-}
-
-#define __L4UTIL_BITOPS_HAVE_ARCH_SET_BIT64
-L4_INLINE void
-l4util_set_bit64(int b, volatile l4_uint64_t * dest)
-{
-  __asm__ __volatile__
-    (
-     "btsl  %1,%0   \n\t"
-     :
-     :
-     "m"   (*dest),   /* 0 mem, destination operand */
-     "Ir"  (b)       /* 1,     bit number */
-     :
-     "memory", "cc"
-     );
-}
-
 #define __L4UTIL_BITOPS_HAVE_ARCH_SET_BIT
 L4_INLINE void
 l4util_set_bit(int b, volatile l4_umword_t * dest)
 {
-  return l4util_set_bit64(b, (volatile l4_uint64_t*)dest);
+  __asm__ __volatile__
+    (
+     "lock; bts  %1,%0   \n\t"
+     :
+     :
+     "m"   (*dest),   /* 0 mem, destination operand */
+     "Ir"  (b)       /* 1,     bit number */
+     :
+     "memory", "cc"
+     );
 }
 
 /* clear bit */
-#define __L4UTIL_BITOPS_HAVE_ARCH_CLEAR_BIT32
-L4_INLINE void
-l4util_clear_bit32(int b, volatile l4_uint32_t * dest)
-{
-  __asm__ __volatile__
-    (
-     "btrl  %1,%0   \n\t"
-     :
-     :
-     "m"   (*dest),   /* 0 mem, destination operand */
-     "Ir"  (b)        /* 1,     bit number */
-     :
-     "memory", "cc"
-     );
-}
-
-#define __L4UTIL_BITOPS_HAVE_ARCH_CLEAR_BIT64
-L4_INLINE void
-l4util_clear_bit64(int b, volatile l4_uint64_t * dest)
-{
-  __asm__ __volatile__
-    (
-     "btrl  %1,%0   \n\t"
-     :
-     :
-     "m"   (*dest),   /* 0 mem, destination operand */
-     "Ir"  (b)        /* 1,     bit number */
-     :
-     "memory", "cc"
-     );
-}
-
 #define __L4UTIL_BITOPS_HAVE_ARCH_CLEAR_BIT
 L4_INLINE void
 l4util_clear_bit(int b, volatile l4_umword_t * dest)
 {
-  return l4util_clear_bit64(b, (volatile l4_uint64_t*)dest);
+  __asm__ __volatile__
+    (
+     "lock; btr  %1,%0   \n\t"
+     :
+     :
+     "m"   (*dest),   /* 0 mem, destination operand */
+     "Ir"  (b)        /* 1,     bit number */
+     :
+     "memory", "cc"
+     );
 }
 
 /* change bit */
@@ -113,66 +66,37 @@ l4util_complement_bit(int b, volatile l4_umword_t * dest)
 {
   __asm__ __volatile__
     (
-     "btcq  %1,%0   \n\t"
+     "lock; btc  %1,%0   \n\t"
      :
      :
      "m"   (*dest),   /* 0 mem, destination operand */
-     "Ir"  ((l4_umword_t)b)        /* 1,     bit number */
+     "Ir"  (b)        /* 1,     bit number */
      :
      "memory", "cc"
      );
 }
 
 /* test bit */
-#define __L4UTIL_BITOPS_HAVE_ARCH_TEST_BIT32
-L4_INLINE int
-l4util_test_bit32(int b, const volatile l4_uint32_t * dest)
-{
-  l4_int8_t bit;
-
-  __asm__ __volatile__
-    (
-     "btl   %2,%1   \n\t"
-     "setc  %0      \n\t"
-     :
-     "=r"  (bit)      /* 0,     old bit value */
-     :
-     "m"   (*dest),   /* 1 mem, destination operand */
-     "Ir"  (b)        /* 2,     bit number */
-     :
-     "memory", "cc"
-     );
-
-  return (int)bit;
-}
-
-#define __L4UTIL_BITOPS_HAVE_ARCH_TEST_BIT64
-L4_INLINE int
-l4util_test_bit64(int b, const volatile l4_uint64_t * dest)
-{
-  l4_int8_t bit;
-
-  __asm__ __volatile__
-    (
-     "btl   %2,%1   \n\t"
-     "setc  %0      \n\t"
-     :
-     "=r"  (bit)      /* 0,     old bit value */
-     :
-     "m"   (*dest),   /* 1 mem, destination operand */
-     "Ir"  (b)        /* 2,     bit number */
-     :
-     "memory", "cc"
-     );
-
-  return (int)bit;
-}
-
 #define __L4UTIL_BITOPS_HAVE_ARCH_TEST_BIT
 L4_INLINE int
 l4util_test_bit(int b, const volatile l4_umword_t * dest)
 {
-  return l4util_test_bit64(b, (const volatile l4_uint64_t *)dest);
+  l4_int8_t bit;
+
+  __asm__ __volatile__
+    (
+     "bt    %2,%1   \n\t"
+     "setc  %0      \n\t"
+     :
+     "=r"  (bit)      /* 0,     old bit value */
+     :
+     "m"   (*dest),   /* 1 mem, destination operand */
+     "Ir"  (b)        /* 2,     bit number */
+     :
+     "memory", "cc"
+     );
+
+  return (int)bit;
 }
 
 
@@ -185,7 +109,7 @@ l4util_bts(int b, volatile l4_umword_t * dest)
 
   __asm__ __volatile__
     (
-     "btsl  %2,%1   \n\t"
+     "lock; bts  %2,%1   \n\t"
      "setc  %0      \n\t"
      :
      "=r"  (bit)      /* 0,     old bit value */
@@ -208,7 +132,7 @@ l4util_btr(int b, volatile l4_umword_t * dest)
 
   __asm__ __volatile__
     (
-     "btrl  %2,%1   \n\t"
+     "lock; btr  %2,%1   \n\t"
      "setc  %0      \n\t"
      :
      "=r"  (bit)      /* 0,     old bit value */
@@ -231,7 +155,7 @@ l4util_btc(int b, volatile l4_umword_t * dest)
 
   __asm__ __volatile__
     (
-     "btc   %2,%1   \n\t"
+     "lock; btc   %2,%1   \n\t"
      "setc  %0      \n\t"
      :
      "=r"  (bit)      /* 0,     old bit value */

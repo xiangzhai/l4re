@@ -117,6 +117,7 @@ IMPLEMENTATION:
 #include <cstdio>
 #include "cpc.h"
 #include "panic.h"
+#include "mem_layout.h"
 
 Static_object<Cm> Cm::cm;
 
@@ -173,8 +174,7 @@ Cm::Cm()
       return;
     }
 
-  Mword v;
-  asm ("mfc0 %0, $15, 3" : "=r" (v));
+  Mword v = Mips::mfc0(Mips::Cp0_cmgcr_base);
 
   // FIXME: allow 36bit remapping of the GCR
   if (v & 0xf0000000)
@@ -185,7 +185,7 @@ Cm::Cm()
     panic("GCR base out of unmapped KSEG(>512MB phys): %08lx\n", v);
 
   _gcr_phys = Phys_mem_addr(v);
-  _gcr_base.set_mmio_base(0xa0000000 + (v << 4));
+  _gcr_base.set_mmio_base(Mem_layout::ioremap_nocache(v << 4, 0x8000));
 
   printf("MIPS: Coherency Manager (CM) found: phys=%08lx(<<4) virt=%08lx\n",
          v, _gcr_base.get_mmio_base());

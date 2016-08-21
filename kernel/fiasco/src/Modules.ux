@@ -135,8 +135,9 @@ INTERFACES_KERNEL	:= string_buffer mem_region simpleio kernel_console panic warn
                            jdb_list jdb_ipc_gate jdb_obj_space            \
 			   jdb_log jdb_factory scheduler \
                            platform_control_object    \
-			   jdb_scheduler jdb_sender_list            \
-			   jdb_disasm jdb_regex jdb_report jdb_vlog jdb_icu
+			   jdb_sender_list            \
+			   jdb_disasm jdb_regex jdb_report                \
+                           jdb_object
 
 boot_info_IMPL		:= boot_info boot_info-ia32 boot_info-ux
 clock_IMPL              := clock clock-ia32

@@ -7,12 +7,23 @@ AM_CPPFLAGS = \
 	-DLIBBSD_OVERLAY -DLIBBSD_DISABLE_DEPRECATED \
 	-D__REENTRANT
 
+libbsd_la_included_sources = \
+	hash/helper.c \
+	getentropy_aix.c \
+	getentropy_bsd.c \
+	getentropy_hpux.c \
+	getentropy_hurd.c \
+	getentropy_linux.c \
+	getentropy_osx.c \
+	getentropy_solaris.c \
+	$(nil)
+
 EXTRA_DIST = \
 	libbsd.map \
 	libbsd.pc.in \
 	libbsd-ctor.pc.in \
 	libbsd-overlay.pc.in \
-	hash/helper.c \
+	$(libbsd_la_included_sources) \
 	$(nil)
 
 CLEANFILES = \
@@ -39,17 +50,26 @@ hash/md5hl.c: $(srcdir)/hash/helper.c
 	$(AM_V_GEN) sed -e 's:hashinc:md5.h:g' -e 's:HASH:MD5:g' $< > $@
 
 libbsd_la_DEPENDENCIES = \
+	$(libbsd_la_included_sources) \
 	libbsd.map
+libbsd_la_LIBADD = \
+	$(CLOCK_GETTIME_LIBS)
 libbsd_la_LDFLAGS = \
 	-Wl,--version-script=$(srcdir)/libbsd.map \
 	-version-number $(LIBBSD_ABI)
 libbsd_la_SOURCES = \
 	arc4random.c \
+	arc4random.h \
+	arc4random_unix.h \
+	arc4random_openbsd.h \
+	arc4random_uniform.c \
 	bsd_getopt.c \
+	chacha_private.h \
 	closefrom.c \
 	dehumanize_number.c \
 	err.c \
 	expand_number.c \
+	explicit_bzero.c \
 	fgetln.c \
 	fgetwln.c \
 	flopen.c \
@@ -61,10 +81,13 @@ libbsd_la_SOURCES = \
 	getpeereid.c \
 	hash/md5.c \
 	hash/md5hl.c \
+	hash/sha512.h \
+	hash/sha512c.c \
 	heapsort.c \
 	humanize_number.c \
 	inet_net_pton.c \
 	local-elf.h \
+	local-link.h \
 	merge.c \
 	nlist.c \
 	pidfile.c \
@@ -87,6 +110,12 @@ libbsd_la_SOURCES = \
 	wcslcat.c \
 	wcslcpy.c \
 	$(nil)
+
+if !HAVE_GETENTROPY
+libbsd_la_SOURCES += \
+	getentropy.c \
+	$(nil)
+endif
 
 libbsd_ctor_a_SOURCES = \
 	setproctitle_ctor.c \

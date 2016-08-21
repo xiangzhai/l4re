@@ -5,4 +5,3 @@
  * GNU Lesser General Public License 2.1.
  * Please see the COPYING-LGPL-2.1 file for details.
  */
-#include<arm/l4/util/bitops_arch.h>

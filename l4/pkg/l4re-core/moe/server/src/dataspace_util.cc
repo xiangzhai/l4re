@@ -13,6 +13,7 @@
 #include <cstring>
 #include <l4/cxx/iostream>
 #include <l4/cxx/minmax>
+#include <l4/sys/cache.h>
 
 using cxx::min;
 using Moe::Dataspace;
@@ -36,6 +37,12 @@ __do_real_copy(Dataspace *dst, unsigned long &dst_offs,
             dst_a.sz() - dst_a.of()), sz);
 
       memcpy(dst_a.adr(), src_a.adr(), b_sz);
+      // FIXME: we should change the API to pass a flag for executable target pages,
+      // and do the I cache coherence only in this case.
+      // And we should change the cache API to allow for a single call to handle
+      // I-cache coherency and D-cache writeback.
+      l4_cache_coherent((l4_addr_t)dst_a.adr(), (l4_addr_t)dst_a.adr() + b_sz - 1);
+      l4_cache_clean_data((l4_addr_t)dst_a.adr(), (l4_addr_t)dst_a.adr() + b_sz - 1);
 
       src_offs += b_sz;
       dst_offs += b_sz;

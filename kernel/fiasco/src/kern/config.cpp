@@ -10,9 +10,6 @@ INTERFACE:
 
 // special magic to allow old compilers to inline constants
 
-#define STRINGIFY_(x) #x
-#define STRINGIFY(x) STRINGIFY_(x)
-
 #if defined(__clang__)
 # define COMPILER "clang " __clang_version__
 # define GCC_VERSION 409
@@ -222,8 +219,9 @@ IMPLEMENTATION:
 #include "initcalls.h"
 #include "koptions.h"
 #include "panic.h"
+#include "std_macros.h"
 
-KIP_KERNEL_ABI_VERSION(STRINGIFY(FIASCO_KERNEL_SUBVERSION));
+KIP_KERNEL_ABI_VERSION(FIASCO_STRINGIFY(FIASCO_KERNEL_SUBVERSION));
 
 // class variables
 bool Config::esc_hack = false;

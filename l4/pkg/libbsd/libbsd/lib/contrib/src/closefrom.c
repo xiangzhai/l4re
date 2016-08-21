@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004-2005, 2007, 2010
+ * Copyright (c) 2004-2005, 2007, 2010, 2012-2014
  *	Todd C. Miller <Todd.Miller@courtesan.com>
  *
  * Permission to use, copy, modify, and distribute this software for any
@@ -18,7 +18,6 @@
 #include <config.h>
 
 #include <sys/types.h>
-#include <sys/param.h>
 #include <unistd.h>
 #include <stdio.h>
 #ifdef STDC_HEADERS
@@ -30,20 +29,26 @@
 # endif
 #endif /* STDC_HEADERS */
 #include <fcntl.h>
-#ifdef HAVE_DIRENT_H
-# include <dirent.h>
-# define NAMLEN(dirent) strlen((dirent)->d_name)
+#include <limits.h>
+#ifdef HAVE_PSTAT_GETPROC
+# include <sys/param.h>
+# include <sys/pstat.h>
 #else
-# define dirent direct
-# define NAMLEN(dirent) (dirent)->d_namlen
-# ifdef HAVE_SYS_NDIR_H
-#  include <sys/ndir.h>
-# endif
-# ifdef HAVE_SYS_DIR_H
-#  include <sys/dir.h>
-# endif
-# ifdef HAVE_NDIR_H
-#  include <ndir.h>
+# ifdef HAVE_DIRENT_H
+#  include <dirent.h>
+#  define NAMLEN(dirent) strlen((dirent)->d_name)
+# else
+#  define dirent direct
+#  define NAMLEN(dirent) (dirent)->d_namlen
+#  ifdef HAVE_SYS_NDIR_H
+#   include <sys/ndir.h>
+#  endif
+#  ifdef HAVE_SYS_DIR_H
+#   include <sys/dir.h>
+#  endif
+#  ifdef HAVE_NDIR_H
+#   include <ndir.h>
+#  endif
 # endif
 #endif
 
@@ -51,15 +56,24 @@
 # define OPEN_MAX 256
 #endif
 
-#ifndef HAVE_FCNTL_CLOSEM
-# ifndef HAVE_DIRFD
-#   define closefrom_fallback	closefrom
-# endif
+#if defined(HAVE_FCNTL_CLOSEM) && !defined(HAVE_DIRFD)
+# define closefrom	closefrom_fallback
 #endif
+
+static inline void
+closefrom_close(int fd)
+{
+#ifdef __APPLE__
+	/* Avoid potential libdispatch crash when we close its fds. */
+	(void)fcntl(fd, F_SETFD, FD_CLOEXEC);
+#else
+	(void)close(fd);
+#endif
+}
 
 /*
  * Close all file descriptors greater than or equal to lowfd.
- * This is the expensive (ballback) method.
+ * This is the expensive (fallback) method.
  */
 void
 closefrom_fallback(int lowfd)
@@ -80,43 +94,99 @@ closefrom_fallback(int lowfd)
 		maxfd = OPEN_MAX;
 
 	for (fd = lowfd; fd < maxfd; fd++)
-		(void)close((int)fd);
+		closefrom_close(fd);
 }
 
 /*
  * Close all file descriptors greater than or equal to lowfd.
  * We try the fast way first, falling back on the slow method.
  */
-#ifdef HAVE_FCNTL_CLOSEM
+#if defined(HAVE_FCNTL_CLOSEM)
 void
 closefrom(int lowfd)
 {
 	if (fcntl(lowfd, F_CLOSEM, 0) == -1)
 		closefrom_fallback(lowfd);
 }
-#else
-# ifdef HAVE_DIRFD
+#elif defined(HAVE_PSTAT_GETPROC)
 void
 closefrom(int lowfd)
 {
-	struct dirent *dent;
-	DIR *dirp;
-	char *endp;
-	long fd;
+	struct pst_status pstat;
+	int fd;
 
-	/* Use /proc/self/fd directory if it exists. */
-	dirp = opendir("/proc/self/fd");
-	if (dirp != NULL) {
-		while ((dent = readdir(dirp)) != NULL) {
-			fd = strtol(dent->d_name, &endp, 10);
-			if (dent->d_name != endp && *endp == '\0' &&
-			    fd >= 0 && fd < INT_MAX && fd >= lowfd &&
-			    fd != dirfd(dirp))
-				(void)close((int)fd);
-		}
-		(void)closedir(dirp);
-	} else
+	if (pstat_getproc(&pstat, sizeof(pstat), 0, getpid()) != -1) {
+		for (fd = lowfd; fd <= pstat.pst_highestfd; fd++)
+			(void)close(fd);
+	} else {
 		closefrom_fallback(lowfd);
+	}
 }
-#endif /* HAVE_DIRFD */
+#elif defined(HAVE_DIRFD)
+static int
+closefrom_procfs(int lowfd)
+{
+	const char *path;
+	DIR *dirp;
+	struct dirent *dent;
+	int *fd_array = NULL;
+	int fd_array_used = 0;
+	int fd_array_size = 0;
+	int ret = 0;
+	int i;
+
+	/* Use /proc/self/fd (or /dev/fd on FreeBSD) if it exists. */
+# if defined(__FreeBSD__) || defined(__FreeBSD_kernel__) || defined(__APPLE__)
+	path = "/dev/fd";
+# else
+	path = "/proc/self/fd";
+# endif
+	dirp = opendir(path);
+	if (dirp == NULL)
+		return -1;
+
+	while ((dent = readdir(dirp)) != NULL) {
+		const char *errstr;
+		int fd;
+
+		fd = strtonum(dent->d_name, lowfd, INT_MAX, &errstr);
+		if (errstr != NULL || fd == dirfd(dirp))
+			continue;
+
+		if (fd_array_used >= fd_array_size) {
+			int *ptr;
+
+			if (fd_array_size > 0)
+				fd_array_size *= 2;
+			else
+				fd_array_size = 32;
+
+			ptr = reallocarray(fd_array, fd_array_size, sizeof(int));
+			if (ptr == NULL) {
+				ret = -1;
+				break;
+			}
+			fd_array = ptr;
+		}
+
+		fd_array[fd_array_used++] = fd;
+	}
+
+	for (i = 0; i < fd_array_used; i++)
+		closefrom_close(fd_array[i]);
+
+	free(fd_array);
+	(void)closedir(dirp);
+
+	return ret;
+}
+
+void
+closefrom(int lowfd)
+{
+	if (closefrom_procfs(lowfd) == 0)
+		return;
+
+	closefrom_fallback(lowfd);
+}
 #endif /* HAVE_FCNTL_CLOSEM */

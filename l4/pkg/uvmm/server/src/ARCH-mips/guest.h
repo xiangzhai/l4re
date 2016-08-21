@@ -13,7 +13,6 @@
 
 #include "debug.h"
 #include "generic_guest.h"
-#include "gic.h"
 #include "core_ic.h"
 #include "vcpu.h"
 #include "irq.h"
@@ -33,25 +32,27 @@ class Guest : public Generic_guest
   };
 
 public:
-  explicit Guest(L4::Cap<L4Re::Dataspace> ram);
+  enum { Default_rambase = 0 };
 
-  void load_device_tree(char const *name);
+  Guest(L4::Cap<L4Re::Dataspace> ram, l4_addr_t vm_base);
+  cxx::Ref_ptr<Gic::Mips_core_ic> core_ic() const  { return _core_ic; }
 
-  l4_addr_t load_linux_kernel(char const *kernel, char const *cmd_line, Cpu vcpu);
+  void update_device_tree(char const *cmd_line);
+
+  L4virtio::Ptr<void> load_linux_kernel(char const *kernel, l4_addr_t *entry);
+
+  void prepare_linux_run(Cpu vcpu, l4_addr_t entry, char const *kernel,
+                         char const *cmd_line);
 
   void run(Cpu vcpu);
 
   int dispatch_hypcall(Hypcall_code hypcall_code, Cpu &vcpu);
   void handle_entry(Cpu vcpu);
 
-  void show_state_registers() override;
-  void show_state_interrupts() override;
+  void show_state_registers(FILE *) override;
+  void show_state_interrupts(FILE *) override;
 
-  static Guest *create_instance(L4::Cap<L4Re::Dataspace> ram);
-
-  int config_as_core_device(L4::Cap<L4Re::Dataspace> iods,
-                            Vdev::Dt_node const &node,
-                            cxx::Ref_ptr<Vdev::Device> *dev);
+  static Guest *create_instance(L4::Cap<L4Re::Dataspace> ram, l4_addr_t vm_base);
 
 private:
   int handle_gpsi_mfc0(Cpu vcpu, Mips::Instruction insn)
@@ -71,6 +72,8 @@ private:
       case L4_VM_CP0_MAAR_0:
       case L4_VM_CP0_MAAR_1:
       case L4_VM_CP0_ERR_CTL:
+      case L4_VM_CP0_CONFIG_6:
+      case L4_VM_CP0_CONFIG_7:
         *val = 0; break;
       default: return -L4_ENOSYS;
       }
@@ -94,6 +97,8 @@ private:
       case L4_VM_CP0_CONFIG_3:
       case L4_VM_CP0_CONFIG_4:
       case L4_VM_CP0_CONFIG_5:
+      case L4_VM_CP0_CONFIG_6:
+      case L4_VM_CP0_CONFIG_7:
         return Jump_instr; // XXX config registers are read-only atm
       case L4_VM_CP0_MAAR_0:
       case L4_VM_CP0_MAAR_1:

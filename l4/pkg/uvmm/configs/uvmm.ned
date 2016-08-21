@@ -30,18 +30,11 @@ local net_ports = {
 
 local common_bootargs = "console=hvc0 earlyprintk=1";
 
-local ram_align = 10;
-
-if L4.Info.arch() == "arm" then
-  ram_align = 28;
-end
-
 vmm.start_io(io_busses, "rom/io.cfg");
 vmm.start_virtio_switch(net_ports, 0xa, 0x1);
 vmm.start_vm{
   id=1,
   mem=128,
-  mem_align=ram_align,
   vbus=io_busses.vm_hw,
   net=net_ports.net0,
   rd="rom/ramdisk-arm.rd",

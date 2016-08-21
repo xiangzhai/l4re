@@ -141,8 +141,8 @@ formatter_default(String_buffer *buf, Tb_entry *tb, const char *tidstr, int tidl
 
   int idx = tb->type()-Tbuf_dynentries;
 
-  Tb_entry_formatter *fmt = _log_table[idx].fmt;
-  char const *sc = _log_table[idx].name;
+  Tb_entry_formatter *fmt = _jdb_log_table[idx].fmt;
+  char const *sc = _jdb_log_table[idx].name;
   sc += strlen(sc) + 1;
 
   buf->printf("%-3s: %-*s ", sc, tidlen, tidstr);

@@ -303,7 +303,10 @@ public:
    *                        to.
    * \param          size   Size of the data space to attach (in bytes)
    * \param          flags  Flags, see #L4Re::Rm::Attach_flags and
-   *                        #L4Re::Rm::Region_flags
+   *                        #L4Re::Rm::Region_flags. If the `Eager_map` flag is
+   *                        set this function may also return
+   *                        L4Re::Dataspace::map error codes if the mapping
+   *                        fails.
    * \param          mem    Data space
    * \param          offs   Offset into the data space to use
    * \param          align  Alignment of the virtual region, log2-size, default:

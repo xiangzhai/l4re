@@ -377,18 +377,14 @@ public:
    * Check whether a value of type T can be obtained from the stream.
    */
   template< typename T >
-  bool has_more()
+  bool has_more(unsigned long count = 1)
   {
     unsigned apos = cxx::Type_traits<T>::align(_pos);
-    return apos + sizeof(T) <= _tag.words() * sizeof(l4_umword_t);
+    return apos + (sizeof(T) * count) <= _tag.words() * sizeof(l4_umword_t);
   }
 
   /**
    * \name Get/Put Functions.
-   * These functions are basically used to implement the extraction operators
-   * (>>) and should not be called directly.
-   *
-   * See \ref Istream::operator>>()
    */
   //@{
 
@@ -403,10 +399,11 @@ public:
   template< typename T >
   unsigned long get(T *buf, unsigned long elems)
   {
+    if (L4_UNLIKELY(!has_more<T>(elems)))
+      return 0;
+
     unsigned long size = elems * sizeof(T);
     _pos = cxx::Type_traits<T>::align(_pos);
-    if (Utcb_stream_check::check_utcb_data_offset(_pos + size))
-      return 0;
 
     __builtin_memcpy(buf, _current_msg + _pos, size);
     _pos += size;
@@ -419,12 +416,13 @@ public:
    * \param size  Number of elements to skip.
    */
   template< typename T >
-  void skip(unsigned long size)
+  void skip(unsigned long elems)
   {
-    size *= sizeof(T);
-    _pos = cxx::Type_traits<T>::align(_pos);
-    if (Utcb_stream_check::check_utcb_data_offset(_pos + size))
+    if (L4_UNLIKELY(!has_more<T>(elems)))
       return;
+
+    unsigned long size = elems * sizeof(T);
+    _pos = cxx::Type_traits<T>::align(_pos);
     _pos += size;
   }
 
@@ -443,10 +441,11 @@ public:
   template< typename T >
   unsigned long get(Msg_ptr<T> const &buf, unsigned long elems = 1)
   {
+    if (L4_UNLIKELY(!has_more<T>(elems)))
+      return 0;
+
     unsigned long size = elems * sizeof(T);
     _pos = cxx::Type_traits<T>::align(_pos);
-    if (Utcb_stream_check::check_utcb_data_offset(_pos + size))
-      return 0;
 
     buf.set(reinterpret_cast<T*>(_current_msg + _pos));
     _pos += size;
@@ -462,16 +461,18 @@ public:
    * See \ref Istream::operator>>()
    */
   template< typename T >
-  void get(T &v)
+  bool get(T &v)
   {
-    _pos = cxx::Type_traits<T>::align(_pos);
-    if (Utcb_stream_check::check_utcb_data_offset(_pos + sizeof(T)))
+    if (L4_UNLIKELY(!has_more<T>()))
       {
-	v = T();
-        return;
+        v = T();
+        return false;
       }
+
+    _pos = cxx::Type_traits<T>::align(_pos);
     v = *(reinterpret_cast<T*>(_current_msg + _pos));
     _pos += sizeof(T);
+    return true;
   }
 
 

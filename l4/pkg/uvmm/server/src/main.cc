@@ -15,6 +15,7 @@
  */
 
 #include <cstdio>
+#include <cstdlib>
 #include <cerrno>
 #include <cstring>
 #include <iostream>
@@ -41,8 +42,10 @@
 #include "debug.h"
 #include "device_repo.h"
 #include "device_tree.h"
+#include "device_factory.h"
 #include "guest.h"
 #include "monitor_console.h"
+#include "ram_ds.h"
 #include "virt_bus.h"
 
 __thread unsigned vmm_current_cpu_id;
@@ -65,23 +68,19 @@ static void scan_device_tree(Vmm::Guest *vmm, Vmm::Virt_bus *vbus)
       if (!path)
         continue;
 
-      cxx::Ref_ptr<Vdev::Device> dev;
-      int ret = devices.config_as_virtio_device(vmm, node, &dev);
-
-      if (!ret)
-        ret = devices.config_as_syscon(vmm, node, &dev);
-
-      if (!ret)
-        ret = vmm->config_as_core_device(vbus->io_ds(), node, &dev);
-
-      if (ret == -L4_ENODEV)
+      cxx::Ref_ptr<Vdev::Device> dev = Vdev::Factory::create_dev(vmm, vbus, node);
+      if (!dev)
         {
-          Err().printf("Device '%.*s' cannot be virtualised. Disabled.\n",
-                       pathlen, path);
-          node.setprop_string("status", "disabled");
+            if (!node.get_prop<char>("l4vmm,force-enable", nullptr)
+                && (node.get_prop<char>("reg", nullptr)
+                    || node.get_prop<char>("interrupts", nullptr)))
+            {
+              Err().printf("Device '%.*s' needs resources which cannot be virtualised. Disabled.\n",
+                           pathlen, path);
+              node.setprop_string("status", "disabled");
+            }
         }
-
-      if (ret > 0)
+      else
         {
           node.get_path(path_buf, sizeof(path_buf));
           devices.add(path_buf, node.get_phandle(), dev);
@@ -89,13 +88,15 @@ static void scan_device_tree(Vmm::Guest *vmm, Vmm::Virt_bus *vbus)
     }
 }
 
-static char const *const options = "+k:d:r:c:";
+static char const *const options = "+k:d:p:r:c:b:";
 static struct option const loptions[] =
   {
     { "kernel",   1, NULL, 'k' },
     { "dtb",      1, NULL, 'd' },
+    { "dtb-padding", 1, NULL, 'p' },
     { "ramdisk",  1, NULL, 'r' },
     { "cmdline",  1, NULL, 'c' },
+    { "rambase",  1, NULL, 'b' },
     { 0, 0, 0, 0}
   };
 
@@ -113,6 +114,8 @@ static int run(int argc, char *argv[])
   char const *kernel_image = "rom/zImage";
   char const *device_tree  = nullptr;
   char const *ram_disk     = nullptr;
+  l4_addr_t rambase = Vmm::Guest::Default_rambase;
+  size_t dtb_padding = 0x200;
 
   int opt;
   while ((opt = getopt_long(argc, argv, options, loptions, NULL)) != -1)
@@ -123,6 +126,14 @@ static int run(int argc, char *argv[])
         case 'k': kernel_image = optarg; break;
         case 'd': device_tree  = optarg; break;
         case 'r': ram_disk     = optarg; break;
+        case 'b':
+          rambase = optarg[0] == '-'
+                    ? (l4_addr_t)Vmm::Ram_ds::Ram_base_identity_mapped
+                    : strtoul(optarg, nullptr, 0);
+          break;
+        case 'p':
+          dtb_padding = strtoul(optarg, nullptr, 0);
+          break;
         default:
           Err().printf("unknown command-line option\n");
           return 1;
@@ -138,44 +149,47 @@ static int run(int argc, char *argv[])
     vbus_cap = e->get_cap<L4vbus::Vbus>("vm_bus");
 
   auto vbus = cxx::make_ref_obj<Vmm::Virt_bus>(vbus_cap);
-  auto vmm = Vmm::Guest::create_instance(ram);
+  auto vmm = Vmm::Guest::create_instance(ram, rambase);
   auto vcpu = vmm->create_cpu();
 
   vmm->set_fallback_mmio_ds(vbus->io_ds());
 
     {
-      auto mon_con_cap = L4Re::Env::env()->get_cap<L4::Vcon>("mon");
+      const char * const capname = "mon";
+      auto mon_con_cap = L4Re::Env::env()->get_cap<L4::Vcon>(capname);
       if (mon_con_cap)
         {
-          Monitor_console *moncon = new Monitor_console(mon_con_cap, vmm);
+          Monitor_console *moncon = new Monitor_console(capname,
+                                                        mon_con_cap, vmm);
           moncon->register_obj(vmm->registry());
         }
     }
 
+  l4_addr_t entry;
+  auto load_addr = vmm->load_linux_kernel(kernel_image, &entry);
+
   if (device_tree)
     {
-      vmm->load_device_tree(device_tree);
+      load_addr = vmm->load_device_tree_at(device_tree, load_addr, dtb_padding);
+      vmm->update_device_tree(cmd_line);
+
       auto dt = vmm->device_tree();
-
-      if (cmd_line)
-        dt.path_offset("/chosen").setprop_string("bootargs", cmd_line);
-
       scan_device_tree(vmm, vbus.get());
       devices.init_devices(dt);
     }
 
-  auto eok = vmm->load_linux_kernel(kernel_image, cmd_line, vcpu);
-  Dbg().printf("Kernel ends at 0x%lx\n", eok);
-
   if (ram_disk)
-    vmm->load_ramdisk_at(ram_disk, l4_round_size(eok, L4_SUPERPAGESHIFT));
+    {
+      l4_size_t rd_size = 0;
+      L4virtio::Ptr<void> rd_addr(load_addr);
 
-  // XXX Some of the RAM memory might have been unmapped during copy_in()
-  // of the binary and the RAM disk. The VM paging code, however, expects the
-  // entire RAM to be present. Touch the RAM region again, now that setup has
-  // finished to remap the missing parts.
-  l4_touch_rw((void *)vmm->ram().local_start(), vmm->ram().size());
+      vmm->load_ramdisk_at(ram_disk, rd_addr, &rd_size);
+      if (device_tree)
+        vmm->set_ramdisk_params(rd_addr, rd_size);
+    }
 
+  vmm->prepare_linux_run(vcpu, entry, kernel_image, cmd_line);
+  vmm->cleanup_ram_state();
   vmm->run(vcpu);
 
   Err().printf("ERROR: we must never reach this....\n");

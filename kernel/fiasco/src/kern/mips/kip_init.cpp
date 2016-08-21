@@ -1,4 +1,4 @@
-INTERFACE [mips32]:
+INTERFACE [mips]:
 
 #include "kip.h"
 
@@ -6,7 +6,7 @@ class Kip_init {};
 
 
 //---------------------------------------------------------------------------
-IMPLEMENTATION [mips32]:
+IMPLEMENTATION [mips]:
 
 #include <cstring>
 

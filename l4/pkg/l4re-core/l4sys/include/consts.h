@@ -1,6 +1,6 @@
 /**
  * \file
- * \brief   Common constants.
+ * Common constants.
  * \ingroup l4_api
  */
 /*
@@ -30,7 +30,7 @@
 #include <l4/sys/l4int.h>
 
 /**
- * \brief Capability selector flags.
+ * Capability selector flags.
  * \ingroup l4_ipc_api
  *
  * These flags determine the concrete operation when a kernel object
@@ -39,7 +39,7 @@
 enum l4_syscall_flags_t
 {
   /**
-   * \brief Default flags (call to a kernel object).
+   * Default flags (call to a kernel object).
    * \hideinitializer
    *
    * Using this value as flags in the capability selector for an
@@ -48,7 +48,7 @@ enum l4_syscall_flags_t
   L4_SYSF_NONE      = 0x00,
 
   /**
-   * \brief Send-phase flag.
+   * Send-phase flag.
    * \hideinitializer
    *
    * Setting this flag in a capability selector induces a send phase,
@@ -58,7 +58,7 @@ enum l4_syscall_flags_t
   L4_SYSF_SEND      = 0x01,
 
   /**
-   * \brief Receive-phase flag.
+   * Receive-phase flag.
    * \hideinitializer
    *
    * Setting this flag in a capability selector induces a receive phase,
@@ -69,7 +69,7 @@ enum l4_syscall_flags_t
   L4_SYSF_RECV      = 0x02,
 
   /**
-   * \brief Open-wait flag.
+   * Open-wait flag.
    * \hideinitializer
    *
    * This flag indicates that the receive operation (see #L4_SYSF_RECV)
@@ -80,7 +80,7 @@ enum l4_syscall_flags_t
   L4_SYSF_OPEN_WAIT = 0x04,
 
   /**
-   * \brief Reply flag.
+   * Reply flag.
    * \hideinitializer
    *
    * This flag indicates that the send phase shall use the in-kernel reply
@@ -89,7 +89,7 @@ enum l4_syscall_flags_t
   L4_SYSF_REPLY     = 0x08,
 
   /**
-   * \brief Call flags (combines send and receive).
+   * Call flags (combines send and receive).
    * \hideinitializer
    *
    * Combines #L4_SYSF_SEND and L4_SYSF_RECV.
@@ -97,7 +97,7 @@ enum l4_syscall_flags_t
   L4_SYSF_CALL           = L4_SYSF_SEND | L4_SYSF_RECV,
 
   /**
-   * \brief Wait flags (combines receive and open wait).
+   * Wait flags (combines receive and open wait).
    * \hideinitializer
    *
    * Combines #L4_SYSF_RECV and #L4_SYSF_OPEN_WAIT.
@@ -105,7 +105,7 @@ enum l4_syscall_flags_t
   L4_SYSF_WAIT           = L4_SYSF_OPEN_WAIT | L4_SYSF_RECV,
 
   /**
-   * \brief Send-and-wait flags.
+   * Send-and-wait flags.
    * \hideinitializer
    *
    * Combines #L4_SYSF_SEND and #L4_SYSF_WAIT.
@@ -113,7 +113,7 @@ enum l4_syscall_flags_t
   L4_SYSF_SEND_AND_WAIT  = L4_SYSF_OPEN_WAIT | L4_SYSF_CALL,
 
   /**
-   * \brief Reply-and-wait flags.
+   * Reply-and-wait flags.
    * \hideinitializer
    *
    * Combines #L4_SYSF_SEND, #L4_SYSF_REPLY, and #L4_SYSF_WAIT.
@@ -122,25 +122,25 @@ enum l4_syscall_flags_t
 };
 
 /**
- * \brief Constants related to capability selectors.
+ * Constants related to capability selectors.
  * \ingroup l4_cap_api
  */
 enum l4_cap_consts_t
 {
-  /** \brief Capability index shift. \hideinitializer */
+  /** Capability index shift. \hideinitializer */
   L4_CAP_SHIFT   = 12UL,
-  /** \brief Offset of two consecutive capability selectors. \hideinitializer */
+  /** Offset of two consecutive capability selectors. \hideinitializer */
   L4_CAP_SIZE    = 1UL << L4_CAP_SHIFT,
   L4_CAP_OFFSET  = 1UL << L4_CAP_SHIFT,
   /**
-   * \brief Mask to get only the relevant bits of an l4_cap_idx_t.
+   * Mask to get only the relevant bits of an l4_cap_idx_t.
    * \hideinitializer
    */
-  L4_CAP_MASK    = ~0UL << (L4_CAP_SHIFT -1),
-  /** \brief Invalid capability selector. \hideinitializer */
-  L4_INVALID_CAP = ~0UL << (L4_CAP_SHIFT -1),
+  L4_CAP_MASK    = ~0UL << (L4_CAP_SHIFT - 1),
+  /** Invalid capability selector. \hideinitializer */
+  L4_INVALID_CAP = ~0UL << (L4_CAP_SHIFT - 1),
 
-  L4_INVALID_CAP_BIT = 1UL << (L4_CAP_SHIFT -1),
+  L4_INVALID_CAP_BIT = 1UL << (L4_CAP_SHIFT - 1),
 };
 
 enum l4_sched_consts_t
@@ -150,30 +150,30 @@ enum l4_sched_consts_t
 };
 
 /**
- * \brief Flags for the unmap operation.
+ * Flags for the unmap operation.
  * \ingroup l4_task_api
  * \see L4::Task::unmap() and l4_task_unmap()
  */
 enum l4_unmap_flags_t
 {
   /**
-   * \brief Flag to tell the unmap operation to unmap all child mappings
-   *        including the mapping in the invoked task.
+   * Flag to tell the unmap operation to unmap all child mappings including the
+   * mapping in the invoked task.
    * \hideinitializer
    * \see L4::Task::unmap() l4_task_unmap()
    */
   L4_FP_ALL_SPACES   = 0x80000000UL,
 
   /**
-   * \brief Flag that indicates that the unmap operation on a capability
-   *        shall try to delete the corresponding objects immediately.
+   * Flag that indicates that the unmap operation on a capability shall try to
+   * delete the corresponding objects immediately.
    * \hideinitializer
    * \see L4::Task::unmap() l4_task_unmap()
    */
   L4_FP_DELETE_OBJ   = 0xc0000000UL,
 
   /**
-   * \brief Counterpart to #L4_FP_ALL_SPACES, unmap only child mappings.
+   * Counterpart to #L4_FP_ALL_SPACES, unmap only child mappings.
    * \hideinitializer
    * \see L4::Task::unmap() l4_task_unmap()
    */
@@ -181,7 +181,7 @@ enum l4_unmap_flags_t
 };
 
 /**
- * \brief Constants for message items.
+ * Constants for message items.
  * \ingroup l4_msgitem_api
  */
 enum l4_msg_item_consts_t
@@ -189,8 +189,8 @@ enum l4_msg_item_consts_t
   L4_ITEM_MAP       = 8, ///< Identify a message item as \em map \em item.
 
   /**
-   * \brief Donote that the following item shall be put into the same receive
-   *        item as this one.
+   * Denote that the following item shall be put into the same receive item as
+   * this one.
    */
   L4_ITEM_CONT      = 1,
 
@@ -200,20 +200,20 @@ enum l4_msg_item_consts_t
 
   // receive
   /**
-   * \brief Mark the receive buffer to be a small receive item that describes
-   *        a buffer for a single capability.
+   * Mark the receive buffer to be a small receive item that describes a buffer
+   * for a single capability.
    */
   L4_RCV_ITEM_SINGLE_CAP = L4_ITEM_MAP | 2,
 
   /**
-   * \brief The receiver requests to receive a local ID instead of a mapping
-   *        whenever possible.
+   * The receiver requests to receive a local ID instead of a mapping whenever
+   * possible.
    */
   L4_RCV_ITEM_LOCAL_ID   = 4,
 };
 
 /**
- * \brief Constants for buffer descriptors.
+ * Constants for buffer descriptors.
  * \ingroup l4_utcb_br_api
  */
 enum l4_buffer_desc_consts_t
@@ -266,18 +266,18 @@ enum l4_default_caps_t
 
 /**
  * \defgroup l4_memory_api Memory related
- * \brief Memory related constants, data types and functions.
+ * Memory related constants, data types and functions.
  * \ingroup l4_api
  */
 /**
- * \brief Minimal page size (in bytes).
+ * Minimal page size (in bytes).
  * \ingroup l4_memory_api
  * \hideinitializer
  */
 #define L4_PAGESIZE		(1UL << L4_PAGESHIFT)
 
 /**
- * \brief Mask for the page number.
+ * Mask for the page number.
  * \ingroup l4_memory_api
  * \hideinitializer
  *
@@ -286,7 +286,7 @@ enum l4_default_caps_t
 #define L4_PAGEMASK		(~(L4_PAGESIZE - 1))
 
 /**
- * \brief Number of bits used for page offset.
+ * Number of bits used for page offset.
  * \ingroup l4_memory_api
  * \hideinitializer
  *
@@ -295,7 +295,7 @@ enum l4_default_caps_t
 #define L4_LOG2_PAGESIZE	L4_PAGESHIFT
 
 /**
- * \brief Size of a large page.
+ * Size of a large page.
  * \ingroup l4_memory_api
  * \hideinitializer
  *
@@ -304,7 +304,7 @@ enum l4_default_caps_t
 #define L4_SUPERPAGESIZE	(1UL << L4_SUPERPAGESHIFT)
 
 /**
- * \brief Mask for the number of a large page.
+ * Mask for the number of a large page.
  * \ingroup l4_memory_api
  * \hideinitializer
  *
@@ -313,7 +313,7 @@ enum l4_default_caps_t
 #define L4_SUPERPAGEMASK	(~(L4_SUPERPAGESIZE - 1))
 
 /**
- * \brief Number of bits used as offset for a large page.
+ * Number of bits used as offset for a large page.
  * \ingroup l4_memory_api
  * \hideinitializer
  * Size of large page in log2
@@ -321,46 +321,46 @@ enum l4_default_caps_t
 #define L4_LOG2_SUPERPAGESIZE	L4_SUPERPAGESHIFT
 
 /**
- * \brief Round an address down to the next lower page boundary.
+ * Round an address down to the next lower page boundary.
  * \ingroup l4_memory_api
  *
  * The address is rounded down to the next lower mininmal page boundary. On
  * most architectures this is a 4k page. Check #L4_PAGESIZE for the minimal
  * page size.
  *
- * \param   address The address to round.
+ * \param address  The address to round.
  */
 L4_INLINE l4_addr_t l4_trunc_page(l4_addr_t address) L4_NOTHROW;
-L4_INLINE l4_addr_t l4_trunc_page(l4_addr_t x) L4_NOTHROW
-{ return x & L4_PAGEMASK; }
+L4_INLINE l4_addr_t l4_trunc_page(l4_addr_t address) L4_NOTHROW
+{ return address & L4_PAGEMASK; }
 
 /**
- * \brief Round an address down to the next lower flex page with size \a bits.
+ * Round an address down to the next lower flex page with size \a bits.
  * \ingroup l4_memory_api
  *
- * \param address The address to round.
- * \param bits    The size of the flex page (log2).
+ * \param address  The address to round.
+ * \param bits     The size of the flex page (log2).
  */
 L4_INLINE l4_addr_t l4_trunc_size(l4_addr_t address, unsigned char bits) L4_NOTHROW;
-L4_INLINE l4_addr_t l4_trunc_size(l4_addr_t x, unsigned char bits) L4_NOTHROW
-{ return x & (~0UL << bits); }
+L4_INLINE l4_addr_t l4_trunc_size(l4_addr_t address, unsigned char bits) L4_NOTHROW
+{ return address & (~0UL << bits); }
 
 /**
- * \brief Round address up to the next page.
+ * Round address up to the next page.
  * \ingroup l4_memory_api
  *
  * The address is rounded up to the next minimal page boundary. On most
  * architectures this is a 4k page. Check #L4_PAGESIZE for the minimal page
  * size.
  *
- * \param   address The address to round up.
+ * \param address  The address to round up.
  */
 L4_INLINE l4_addr_t l4_round_page(l4_addr_t address) L4_NOTHROW;
-L4_INLINE l4_addr_t l4_round_page(l4_addr_t x) L4_NOTHROW
-{ return (x + L4_PAGESIZE-1) & L4_PAGEMASK; }
+L4_INLINE l4_addr_t l4_round_page(l4_addr_t address) L4_NOTHROW
+{ return (address + L4_PAGESIZE - 1) & L4_PAGEMASK; }
 
 /**
- * \brief Round value up to the next alignment with \a bits size.
+ * Round value up to the next alignment with \a bits size.
  * \ingroup l4_memory_api
  *
  * \param value   The value to round up to the next size-alignment.
@@ -371,7 +371,7 @@ L4_INLINE l4_addr_t l4_round_size(l4_umword_t value, unsigned char bits) L4_NOTH
 { return (value + (1UL << bits) - 1) & (~0UL << bits); }
 
 /**
- * \brief Address related constants.
+ * Address related constants.
  * \ingroup l4_memory_api
  */
 enum l4_addr_consts_t {
@@ -380,17 +380,17 @@ enum l4_addr_consts_t {
 };
 
 /**
- * \brief Invalid address as pointer type.
+ * Invalid address as pointer type.
  * \ingroup l4_memory_api
  */
-#define L4_INVALID_PTR ((void*)L4_INVALID_ADDR)
+#define L4_INVALID_PTR ((void *)L4_INVALID_ADDR)
 
 #ifndef NULL
 #ifndef __cplusplus
 # define NULL ((void *)0)  /**< \ingroup l4sys_defines
-			    **  \hideinitializer
-			    ** NULL
-			    **/
+                            **  \hideinitializer
+                            ** NULL
+                            **/
 #else
 # define NULL 0
 #endif

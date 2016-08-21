@@ -199,7 +199,7 @@ L4_INLINE int l4kd_inchar(void)
  * \ingroup l4_debugger_api
  * \hideinitializer
  *
- * \param text Text to be shown
+ * \param text  Text to be shown
  */
 L4_INLINE void kd_display(char const *text)
 { outstring(text); }

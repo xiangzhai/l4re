@@ -1,7 +1,7 @@
 #pragma once
 /**
  * \file
- * \brief Debugger related definitions.
+ * Debugger related definitions.
  * \ingroup l4_api
  */
 /*
@@ -30,7 +30,7 @@
 /**
  * \defgroup l4_debugger_api Kernel Debugger
  * \ingroup api_calls_fiasco
- * \brief Kernel debugger related functionality.
+ * Kernel debugger related functionality.
  * \attention This API is subject to change!
  *
  * This is a debugging facility, any call to any function might be invalid.
@@ -124,7 +124,7 @@ L4_INLINE unsigned long
 l4_debugger_kobj_to_id_u(l4_cap_idx_t cap, l4_addr_t kobjp, l4_utcb_t *utcb) L4_NOTHROW;
 
 /**
- * \brief Query the log-id for a log type
+ * Query the log-id for a log type
  *
  * \param cap    Debugger capability
  * \param name   Name to query for.
@@ -146,14 +146,14 @@ l4_debugger_query_log_typeid_u(l4_cap_idx_t cap, const char *name,
                                unsigned idx, l4_utcb_t *utcb) L4_NOTHROW;
 
 /**
- * \brief Query the name of a log type given the ID
+ * Query the name of a log type given the ID
  *
- * \param cap          Debugger capability.
- * \param idx          ID to query.
- * \param name         Buffer to copy name to.
- * \param namelen      Buffer length of name.
- * \param shortname    Buffer to copy `shortname` to.
- * \param shortnamelen Buffer length of `shortname`.
+ * \param cap           Debugger capability.
+ * \param idx           ID to query.
+ * \param name          Buffer to copy name to.
+ * \param namelen       Buffer length of name.
+ * \param shortname     Buffer to copy `shortname` to.
+ * \param shortnamelen  Buffer length of `shortname`.
  *
  * \retval 0   Success
  * \retval <0  Error

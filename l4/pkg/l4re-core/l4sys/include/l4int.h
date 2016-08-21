@@ -2,12 +2,12 @@
  * \addtogroup l4_basic_types Integer Types
  * \ingroup l4_api
  *
- * <c>\#include<l4/sys/l4int.h></c>
+ * \includefile{l4/sys/l4int.h}
  */
 
 /**
  * \file
- * \brief   Fixed sized integer types, generic version.
+ * Fixed sized integer types, generic version.
  * \ingroup l4_basic_types
  */
 /*
@@ -32,18 +32,18 @@
 #define __L4_SYS_L4INT_H__
 
 /* fixed sized data types */
-typedef signed char             l4_int8_t;    /**< \brief Signed 8bit value. \ingroup l4_basic_types */
-typedef unsigned char           l4_uint8_t;   /**< \brief Unsigned 8bit value. \ingroup l4_basic_types */
-typedef signed short int        l4_int16_t;   /**< \brief Signed 16bit value. \ingroup l4_basic_types */
-typedef unsigned short int      l4_uint16_t;  /**< \brief Unsigned 16bit value. \ingroup l4_basic_types */
-typedef signed int              l4_int32_t;   /**< \brief Signed 32bit value. \ingroup l4_basic_types */
-typedef unsigned int            l4_uint32_t;  /**< \brief Unsigned 32bit value. \ingroup l4_basic_types */
-typedef signed long long        l4_int64_t;   /**< \brief Signed 64bit value. \ingroup l4_basic_types */
-typedef unsigned long long      l4_uint64_t;  /**< \brief Unsigned 64bit value. \ingroup l4_basic_types */
+typedef signed char             l4_int8_t;    /**< Signed 8bit value. \ingroup l4_basic_types */
+typedef unsigned char           l4_uint8_t;   /**< Unsigned 8bit value. \ingroup l4_basic_types */
+typedef signed short int        l4_int16_t;   /**< Signed 16bit value. \ingroup l4_basic_types */
+typedef unsigned short int      l4_uint16_t;  /**< Unsigned 16bit value. \ingroup l4_basic_types */
+typedef signed int              l4_int32_t;   /**< Signed 32bit value. \ingroup l4_basic_types */
+typedef unsigned int            l4_uint32_t;  /**< Unsigned 32bit value. \ingroup l4_basic_types */
+typedef signed long long        l4_int64_t;   /**< Signed 64bit value. \ingroup l4_basic_types */
+typedef unsigned long long      l4_uint64_t;  /**< Unsigned 64bit value. \ingroup l4_basic_types */
 
 /* some common data types */
-typedef unsigned long           l4_addr_t;    /**< \brief Address type \ingroup l4_basic_types */
-//do-we-need-this?//typedef unsigned long           l4_offs_t;    /**< \brief Address offset type \ingroup l4_basic_types */
+typedef unsigned long           l4_addr_t;    /**< Address type \ingroup l4_basic_types */
+//do-we-need-this?//typedef unsigned long           l4_offs_t;    /**< Address offset type \ingroup l4_basic_types */
 
 
 typedef signed long             l4_mword_t;   /**< Signed machine word.

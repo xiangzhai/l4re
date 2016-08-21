@@ -159,17 +159,9 @@ __map_iomem(l4_addr_t phys, l4_addr_t* virt, unsigned long size, int flags)
   if (!*virt)
     rmflags |= L4Re::Rm::Search_addr;
 
-  int res = L4Re::Env::env()->rm()->attach(virt, size, rmflags,
-                                           L4::Ipc::make_cap_rw(iomem),
-                                           phys, align);
-  if (res)
-    {
-      printf("Cannot attach iomem to virtual address %lx with size %lx: %s(%d).\n",
-             *virt, size, l4sys_errtostr(res), res);
-      return -L4_ENOENT;
-    }
-
-  return 0;
+  return L4Re::Env::env()->rm()->attach(virt, size, rmflags,
+                                        L4::Ipc::make_cap_rw(iomem),
+                                        phys, align);
 }
 
 long

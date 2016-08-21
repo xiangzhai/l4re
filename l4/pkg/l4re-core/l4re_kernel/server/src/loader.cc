@@ -220,9 +220,14 @@ enum
   Loader_stack_size = 8 * 1024,
 };
 
-
+#ifdef L4_LOADER_USE_ASM_STUB
+extern "C" void loader_thread(void);
+extern "C" void loader_thread_c(void);
+void loader_thread_c(void)
+#else
 static void
 loader_thread()
+#endif
 {
   if (!__loader->__start(__binary, __rm))
     {
@@ -246,7 +251,7 @@ bool Loader::start(Cap<Dataspace> bin, Region_map *rm, l4re_aux_t * /*aux*/)
     = Global::local_rm->attach((void*)Mem_layout::Loader_vma_start,
                                Loader_stack_size,
                                Region_handler(__loader_stack, __loader_stack.cap()),
-                               0, Region_map::Search);
+                               Region_map::Search);
 
   if (__loader_stack_p == L4_INVALID_PTR)
     {

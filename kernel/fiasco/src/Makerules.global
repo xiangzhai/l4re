@@ -158,7 +158,7 @@ $(NONDEBUG_C:.c=.S) : %.S: %.c
 
 %.lds:	%.ld
 	$(COMP_MESSAGE)
-	$(VERBOSE)$(CPP) -MD -MP -MF .$*.ld.d -undef -P -DASSEMBLER -o $@ $(CPPFLAGS) $<
+	$(VERBOSE)$(CPP) -MD -MP -MF .$@.d -MT $@ -undef -P -DASSEMBLER -o $@ $(CPPFLAGS) $<
 
 (%): %
 	$(AR_MESSAGE)

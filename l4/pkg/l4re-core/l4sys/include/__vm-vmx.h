@@ -1,7 +1,7 @@
 /**
  * \internal
  * \file
- * \brief X86 virtualization interface.
+ * X86 virtualization interface.
  */
 /*
  * (c) 2010-2013 Adam Lackorzynski <adam@os.inf.tu-dresden.de>,
@@ -27,13 +27,13 @@
 
 /**
  * \defgroup l4_vm_vmx_api VM API for VMX
- * \brief Virtual machine API for VMX.
+ * Virtual machine API for VMX.
  * \ingroup l4_vm_api
  */
 
 
 /**
- * \brief Exported VMX capability registers.
+ * Exported VMX capability registers.
  * \ingroup l4_vm_vmx_api
  */
 enum L4_vm_vmx_caps_regs
@@ -56,7 +56,7 @@ enum L4_vm_vmx_caps_regs
 
 
 /**
- * \brief Exported VMX capability registers (default to 1 bits).
+ * Exported VMX capability registers (default to 1 bits).
  * \ingroup l4_vm_vmx_api
  */
 enum L4_vm_vmx_dfl1_regs
@@ -158,7 +158,7 @@ l4_vm_vmx_field_order(unsigned field) L4_NOTHROW;
  * \param vmcs   Pointer to VMCS buffer.
  * \param field  Field number.
  *
- * \param Pointer to field in the VMCS.
+ * \return Pointer to field in the VMCS.
  */
 L4_INLINE
 void *
@@ -167,8 +167,9 @@ l4_vm_vmx_field_ptr(void *vmcs, unsigned field) L4_NOTHROW;
 /**
  * Saves cached state from the kernel VMCS to the user VMCS.
  * \ingroup l4_vm_vmx_api
- * \param vmcs Pointer to the kernel VMCS.
- * \param user_vmcs Pointer to the user VMCS.
+ *
+ * \param vmcs       Pointer to the kernel VMCS.
+ * \param user_vmcs  Pointer to the user VMCS.
  *
  * This function is comparable to VMX vmclear.
  */
@@ -179,8 +180,9 @@ l4_vm_vmx_clear(void *vmcs, void *user_vmcs) L4_NOTHROW;
 /**
  * Loads the user_vmcs as the current VMCS.
  * \ingroup l4_vm_vmx_api
- * \param vmcs Pointer to the kernel VMCS.
- * \param user_vmcs Pointer to the user VMCS.
+ *
+ * \param vmcs       Pointer to the kernel VMCS.
+ * \param user_vmcs  Pointer to the user VMCS.
  *
  * This function is comparable to VMX vmptrld.
  */
@@ -211,8 +213,9 @@ l4_vm_vmx_get_cr2_index(void const *vmcs) L4_NOTHROW;
  * Read a natural width VMCS field.
  * \ingroup l4_vm_vmx_api
  *
- * \param vmcs Pointer to the software VMCS.
- * \param field The VMCS field index as used on VMX hardware.
+ * \param vmcs   Pointer to the software VMCS.
+ * \param field  The VMCS field index as used on VMX hardware.
+ *
  * \return The value of the VMCS field with the given index.
  */
 L4_INLINE
@@ -223,8 +226,9 @@ l4_vm_vmx_read_nat(void *vmcs, unsigned field) L4_NOTHROW;
  * Read a 16bit VMCS field.
  * \ingroup l4_vm_vmx_api
  *
- * \param vmcs Pointer to the software VMCS.
- * \param field The VMCS field index as used on VMX hardware.
+ * \param vmcs   Pointer to the software VMCS.
+ * \param field  The VMCS field index as used on VMX hardware.
+ *
  * \return The value of the VMCS field with the given index.
  */
 L4_INLINE
@@ -235,8 +239,9 @@ l4_vm_vmx_read_16(void *vmcs, unsigned field) L4_NOTHROW;
  * Read a 32bit VMCS field.
  * \ingroup l4_vm_vmx_api
  *
- * \param vmcs Pointer to the software VMCS.
- * \param field The VMCS field index as used on VMX hardware.
+ * \param vmcs   Pointer to the software VMCS.
+ * \param field  The VMCS field index as used on VMX hardware.
+ *
  * \return The value of the VMCS field with the given index.
  */
 L4_INLINE
@@ -247,8 +252,9 @@ l4_vm_vmx_read_32(void *vmcs, unsigned field) L4_NOTHROW;
  * Read a 64bit VMCS field.
  * \ingroup l4_vm_vmx_api
  *
- * \param vmcs Pointer to the software VMCS.
- * \param field The VMCS field index as used on VMX hardware.
+ * \param vmcs   Pointer to the software VMCS.
+ * \param field  The VMCS field index as used on VMX hardware.
+ *
  * \return The value of the VMCS field with the given index.
  */
 L4_INLINE
@@ -259,8 +265,9 @@ l4_vm_vmx_read_64(void *vmcs, unsigned field) L4_NOTHROW;
  * Read any VMCS field.
  * \ingroup l4_vm_vmx_api
  *
- * \param vmcs Pointer to the software VMCS.
- * \param field The VMCS field index as used on VMX hardware.
+ * \param vmcs   Pointer to the software VMCS.
+ * \param field  The VMCS field index as used on VMX hardware.
+ *
  * \return The value of the VMCS field with the given index.
  */
 L4_INLINE
@@ -405,7 +412,7 @@ l4_vm_vmx_field_ptr(void *vmcs, unsigned field) L4_NOTHROW
 }
 
 /**
- * \brief Copy full vmcs state
+ * Copy full vmcs state
  * \internal
  */
 L4_INLINE

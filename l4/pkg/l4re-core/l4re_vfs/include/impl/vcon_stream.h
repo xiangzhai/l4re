@@ -37,7 +37,7 @@ public:
   ssize_t readv(const struct iovec*, int iovcnt) throw();
   ssize_t writev(const struct iovec*, int iovcnt) throw();
   int fstat64(struct stat64 *buf) const throw();
-  int get_status_flags() const throw() { return O_RDONLY; }
+  int get_status_flags() const throw() { return O_RDWR; }
   int set_status_flags(long) throw() { return 0; }
   int ioctl(unsigned long request, va_list args) throw();
 

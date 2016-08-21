@@ -48,7 +48,8 @@
 # So: what we actually do:
 # 
 #   pass the specified command to the linker as-is, except, add
-#   "-static" and "-Ttext=<argv[1]>" and "-T$ENV["L4_LDS_stat_bin"]" to it.
+#   "-static" and "-Ttext=<argv[1]>" and "-T$ENV["L4_LDS_stat_bin"]" to it,
+#   and tune options.
 #
 
 use warnings;
@@ -70,7 +71,9 @@ my $cmdadd  = " -static -Wl,--defsym=__executable_start=$ala -Wl,-T$linkscript";
 
 # Add the rest of the parameters
 foreach my $n (1 .. $#ARGV) {
-   $cmdline = "$cmdline $ARGV[$n]";
+   my $a = $ARGV[$n];
+   $a = "-Wl,$a" if $a eq '--whole-archive' or $a eq '--no-whole-archive';
+   $cmdline .= " $a";
 }
 
 $cmdline .= $cmdadd;

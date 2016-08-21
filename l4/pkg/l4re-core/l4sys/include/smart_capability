@@ -1,7 +1,7 @@
 // vim:set ft=cpp:
 /**
  * \file
- * \brief  L4::Capability class.
+ * L4::Capability class.
  *
  * \author Alexander Warg <alexander.warg@os.inf.tu-dresden.de>
  *
@@ -30,7 +30,7 @@
 namespace L4 {
 
 /**
- * \brief Smart capability class.
+ * Smart capability class.
  */
 template< typename T, typename SMART >
 class Smart_cap : public Cap_base, private SMART
@@ -57,13 +57,12 @@ public:
   Smart_cap(Cap_base::Cap_type t) throw() : Cap_base(t) {}
 
   /**
-   * \brief Internal Constructor, use to generate a capability from a \a this
-   *        pointer.
+   * Internal constructor, use to generate a capability from a `this` pointer.
    *
    * \attention This constructor is only useful to generate a capability
-   *            from the \a this pointer of an objected that is an L4::Kobject.
-   *            Do \em never use this constructor for something else!
-   * \param p The \a this pointer of the Kobject or derived object
+   *            from the `this` pointer of an objected that is an L4::Kobject.
+   *            Do `never` use this constructor for something else!
+   * \param p  The `this` pointer of the Kobject or derived object
    */
   template< typename O >
   Smart_cap(Cap<O> const &p) throw() : Cap_base(p.cap())
@@ -114,7 +113,7 @@ public:
   }
 
   /**
-   * \brief Member access of a \a T.
+   * Member access of a `T`.
    */
   Cap<T> operator -> () const throw() { return Cap<T>(_c); }
 
@@ -154,7 +153,14 @@ namespace Cap_traits {
 };
 
 /**
- * \brief static_cast for capabilities.
+ * `static_cast` for (smart) capabilities.
+ *
+ * \tparam T      Type to cast the capability to.
+ * \tparam F      (implicit) Type of the passed capability.
+ * \tparam SMART  (implicit) Class implementing the Smart_cap interface.
+ * \param  c      Capability to be casted.
+ *
+ * \return A smart capability with new type `T`.
  */
 template< typename T, typename F, typename SMART >
 inline
@@ -166,7 +172,14 @@ Smart_cap<T, SMART> cap_cast(Smart_cap<F, SMART> const &c) throw()
 
 
 /**
- * \brief reinterpret_cast for capabilities.
+ * `reinterpret_cast` for (smart) capabilities.
+ *
+ * \tparam T      Type to cast the capability to.
+ * \tparam F      (implicit) Type of the passed capability.
+ * \tparam SMART  (implicit) Class implementing the Smart_cap interface.
+ * \param  c      Capability to be casted.
+ *
+ * \return A smart capability with new type `T`.
  */
 template< typename T, typename F, typename SMART >
 inline

@@ -20,7 +20,9 @@ INTERNAL_CRT0       := y # the defualt is to use our internal crt0
 DEFAULT_RELOC_arm   := 0x01000000
 DEFAULT_RELOC_x86   := 0x002d0000
 DEFAULT_RELOC_amd64 := 0x002d0000
-DEFAULT_RELOC_mips  := 0x80200000
+DEFAULT_RELOC_mips32:= 0x802d0000
+DEFAULT_RELOC_mips64:= 0xffffffff802d0000
+DEFAULT_RELOC_mips   = $(DEFAULT_RELOC_mips$(CPU_ABI))
 DEFAULT_RELOC_ppc32 := 0x002d0000
 DEFAULT_RELOC_sparc := 0x00800000
 RELOC_PHYS          := y
@@ -137,6 +139,7 @@ DEFINES         += -DCMDLINE="\"$(BOOTSTRAP_CMDLINE)\""
 DEFINES         += -DPLATFORM_TYPE=\"$(PLATFORM_TYPE)\"
 DEFINES         += -DPLATFORM_TYPE_$(PLATFORM_TYPE)
 DEFINES         += -DPLATFORM_UART_NR=$(PLATFORM_UART_NR)
+DEFINES         += -DCPU_ABI=$(CPU_ABI)
 
 MOD_ADDR         = 0x02000000
 
@@ -215,7 +218,7 @@ endif
 .redo-change-tracker: FORCE
 	$(VERBOSE)echo "$(ENTRY) '$(COMPRESS)' '$(BOOTSTRAP_CMDLINE)' '$(BOOTSTRAP_SEARCH_PATH):$(BOOTSTRAP_MODULE_PATH_BINLIB)' '$(RAM_SIZE_MB)' '$(PLATFORM_TYPE)' '$(PLATFORM_UART_NR)' '$(od)' '$(OPT_STRIP)'" > $@.tmp
 	$(if $(BUILD_MOD_CMD),$(VERBOSE)$(call BUILD_MOD_CMD,dump) >> $@.tmp)
-	$(call move_if_changed,$@,$@.tmp)
+	$(VERBOSE)$(call move_if_changed,$@,$@.tmp)
 
 ifneq ($(ENTRY),)
 
@@ -273,7 +276,7 @@ all:: $(addprefix $(IMAGES_DIR)/,$(INSTALL_FILES))
 	$(VERBOSE)for f in $(filter bootstrap_$(ENTRY_FN).elf bootstrap.raw bootstrap.uimage, $(INSTALL_FILES)); do \
 	  find $(if $(od),$(od),.) -name $$f -printf " %30f:  %s\n"; \
 	done
-	$(if $(LDFLAGS_bootstrap.elf),$(VERBOSE)echo "  Start address: $(patsubst --defsym=__executable_start=%,%,$(LDFLAGS_bootstrap.elf))")
+	$(if $(LDFLAGS_$(od)bootstrap.elf),$(VERBOSE)echo "  Start address: $(patsubst --defsym=__executable_start=%,%,$(LDFLAGS_$(od)bootstrap.elf))")
 	$(VERBOSE)echo "  --> Build-Nr: $$(cat .build_nr)"
 
 # install images into easy to reach directory in build dir

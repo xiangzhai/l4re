@@ -124,6 +124,7 @@ config ARM_CORTEX_A15
 	bool "ARM Cortex-A15 CPU"
 	depends on CAN_ARM_CPU_CORTEX_A15
 	select HAS_MP_OPTION
+	select HAS_CPU_VIRT
 
 endchoice
 
@@ -163,6 +164,7 @@ config ARM_EM_NS
 
 config ARM_EM_TZ
 	bool "TrustZone secure side"
+	depends on !CPU_VIRT
 	depends on ARM_1176 || ARM_CORTEX_A7 || ARM_CORTEX_A8 || ARM_CORTEX_A9 || ARM_CORTEX_A15
 	help
 	  In a system with ARM TrustZone extension, run on the secure side,

@@ -1,7 +1,7 @@
 // vi:ft=cpp
 /**
  * \file
- * \brief Platform control object.
+ * Platform control object.
  */
 /*
  * (c) 2014 Steffen Liebergeld <steffen.liebergeld@kernkonzept.com>
@@ -57,7 +57,8 @@ public:
   };
 
   /**
-   * \brief Enter suspend to RAM.
+   * Enter suspend to RAM.
+   *
    * \param extras  some extra platform-specific information needed to enter
    *                suspend to RAM.
    */
@@ -65,14 +66,15 @@ public:
                    l4_msgtag_t, system_suspend, (l4_umword_t extras));
 
   /**
-   * \brief Shutdown/Reboot the system.
+   * Shutdown/Reboot the system.
+   *
    * \param reboot 1 for reboot, 0 for power off
    */
   L4_INLINE_RPC_OP(L4_PLATFORM_CTL_SYS_SHUTDOWN_OP,
                    l4_msgtag_t, system_shutdown, (l4_umword_t reboot));
 
   /**
-   * \brief Enable an offline CPU.
+   * Enable an offline CPU.
    *
    * \param phys_id  Physical CPU id of CPU (e.g. local APIC id) to enable.
    *
@@ -82,7 +84,7 @@ public:
                    l4_msgtag_t, cpu_enable, (l4_umword_t phys_id));
 
   /**
-   * \brief Disable an online CPU.
+   * Disable an online CPU.
    *
    * \param phys_id  Physical CPU id of CPU (e.g. local APIC id) to disable.
    *

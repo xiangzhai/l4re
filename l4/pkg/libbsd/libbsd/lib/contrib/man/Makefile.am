@@ -23,12 +23,13 @@ dist_man_MANS = \
 	closefrom.3 \
 	dehumanize_number.3 \
 	expand_number.3 \
+	explicit_bzero.3 \
 	fgetln.3 \
 	fgetwln.3 \
 	flopen.3 \
 	fmtcheck.3 \
 	fparseln.3 \
-	funopen.3 \
+	funopen.3bsd \
 	getbsize.3 \
 	getmode.3 \
 	getpeereid.3 \
@@ -42,6 +43,7 @@ dist_man_MANS = \
 	queue.3bsd \
 	radixsort.3 \
 	readpassphrase.3 \
+	reallocarray.3 \
 	reallocf.3 \
 	setmode.3 \
 	setproctitle.3 \

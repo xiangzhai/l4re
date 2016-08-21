@@ -99,15 +99,14 @@ public:
    *                       previous CPU flags of the thread.
    * \param         utcb   UTCB to use for this operation.
    *
-   * \return System call return tag
+   * \return System call return tag. [out] parameters are only valid if the
+   *         function returns successfully. Use l4_error() to check.
    *
    * This method allows to manipulate and start a thread. The basic
    * functionality is to set the instruction pointer and the stack pointer of a
    * thread. Additionally, this method allows also to cancel ongoing IPC
    * operations and to force the thread to raise an artificial exception (see
    * `flags`).
-   *
-   * Returned values are valid only if function returns successfully.
    */
   l4_msgtag_t ex_regs(l4_addr_t *ip, l4_addr_t *sp,
                       l4_umword_t *flags,
@@ -179,6 +178,7 @@ public:
 
      /**
       * Bind the thread to a task.
+      *
       * \param thread_utcb  The UTCB address of the thread within the task
       *                     specified by `task`.
       * \param task         The capability selector for the task the thread
@@ -199,6 +199,7 @@ public:
 
      /**
       * Allow host system calls on Fiasco-UX.
+      *
       * \pre Running on Fiasco-UX.
       */
      void ux_host_syscall(int on) throw()
@@ -208,6 +209,7 @@ public:
 
   /**
    * Commit the given thread-attributes object.
+   *
    * \param attr the attribute object to commit to the thread.
    */
   l4_msgtag_t control(Attr const &attr) throw()
@@ -215,6 +217,7 @@ public:
 
   /**
    * Switch execution to this thread.
+   *
    * \param utcb the UTCB of the current thread.
    *
    * \note The current time slice is inherited to this thread.
@@ -224,6 +227,7 @@ public:
 
   /**
    * Get consumed time of thread in us.
+   *
    * \param      utcb  UTCB of the current thread.
    * \param[out] us    Consumed time in µs.
    *
@@ -296,6 +300,14 @@ public:
   /**
    * Register an IRQ that will trigger upon deletion events.
    *
+   * \param irq  Capability selector for the IRQ object to be triggered.
+   * \utcb{u}
+   *
+   * \return System call return tag containing the return code.
+   *
+   * An example of a deletion event is the removal of an IPC gate
+   * that is bound to this thread.
+   *
    * \see l4_thread_register_del_irq
    */
   l4_msgtag_t register_del_irq(Cap<Irq> irq, l4_utcb_t *u = l4_utcb()) throw()
@@ -354,7 +366,7 @@ public:
   /**
    * Apply sender modifiction rules.
    *
-   * \param todo   Prepared sender modification rules.
+   * \param todo  Prepared sender modification rules.
    *
    * \return System call return tag.
    */

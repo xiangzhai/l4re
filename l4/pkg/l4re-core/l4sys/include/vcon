@@ -46,9 +46,11 @@ class Vcon :
 public:
   /**
    * Send data to `this` virtual console.
+   *
    * \param buf   Pointer to the data buffer.
    * \param size  Size of the data buffer in bytes.
    * \param utcb  UTBC pointer of the calling thread.
+   *
    * \return Syscall return tag
    *
    * \note Size must not exceed #L4_VCON_WRITE_SIZE, a proper value of the
@@ -60,9 +62,11 @@ public:
 
   /**
    * Write data to `this` virtual console.
+   *
    * \param buf   Pointer to the data buffer.
    * \param size  Size of the data buffer in bytes.
    * \param utcb  UTCB pointer of the calling thread.
+   *
    * \retval <0   Error.
    * \retval >=0  Number of bytes written to the virtual console.
    */
@@ -72,9 +76,11 @@ public:
 
   /**
    * Read data from `this` virtual console.
+   *
    * \param[out] buf   Pointer to data buffer.
    * \param      size  Size of the data buffer in bytes.
    * \param      utcb  UTCB pointer of the calling thread.
+   *
    * \retval <0      Error code.
    * \retval >size   More bytes to read, `size` bytes are in the buffer `buf`.
    * \retval <=size  Number of bytes read.
@@ -87,9 +93,11 @@ public:
 
   /**
    * Read data from `this` virtual console which also returns flags.
+   *
    * \param[out] buf   Pointer to data buffer.
    * \param      size  Size of the data buffer in bytes.
    * \param      utcb  UTCB pointer of the calling thread.
+   *
    * \retval <0      Error code.
    * \retval >size   More bytes to read, `size` bytes are in the buffer `buf`.
    * \retval <=size  Number of bytes read.
@@ -110,9 +118,11 @@ public:
 
   /**
    * Set the attributes of `this` virtual console.
+   *
    * \param attr  Attribute structure with the attributes for the virtual
    *              console.
    * \param utcb  UTCB pointer of the calling thread.
+   *
    * \return Syscall return tag.
    */
   l4_msgtag_t
@@ -121,9 +131,11 @@ public:
 
   /**
    * Get attributes of `this` virtual console.
+   *
    * \param[out] attr  Attribute structure. Contains the attributes after a
    *                   successfull call of this function.
    * \param      utcb  UTCB pointer of the calling thread.
+   *
    * \return Syscall return tag.
    */
   l4_msgtag_t

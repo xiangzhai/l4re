@@ -32,6 +32,8 @@ IMPLEMENTATION:
 #include "l4_types.h"
 #include "entry_frame.h"
 
+
+JDB_DEFINE_TYPENAME(Scheduler, "\033[34mSched\033[m");
 Scheduler Scheduler::scheduler;
 
 PUBLIC void

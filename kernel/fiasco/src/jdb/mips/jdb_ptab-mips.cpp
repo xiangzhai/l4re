@@ -1,4 +1,4 @@
-IMPLEMENTATION [mips32]:
+IMPLEMENTATION [mips]:
 
 IMPLEMENT_OVERRIDE
 void *
@@ -12,7 +12,7 @@ void
 Jdb_ptab::print_entry(Pdir::Pte_ptr const &entry)
 {
   if (dump_raw)
-    printf("%04lx", *entry.e);
+    printf("%08lx", *entry.e);
   else
     {
       if (!entry.is_valid())

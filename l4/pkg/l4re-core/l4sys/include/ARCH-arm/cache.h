@@ -80,66 +80,75 @@ enum L4_mem_cache_ops
   L4_MEM_CACHE_OP_L2_INV            = 8,
 };
 
-L4_INLINE void
+L4_INLINE int
 l4_cache_clean_data(unsigned long start,
                     unsigned long end) L4_NOTHROW
 {
   l4_cache_op_arm_call(L4_MEM_CACHE_OP_CLEAN_DATA, start, end);
+  return 0;
 }
 
-L4_INLINE void
+L4_INLINE int
 l4_cache_flush_data(unsigned long start,
                     unsigned long end) L4_NOTHROW
 {
   l4_cache_op_arm_call(L4_MEM_CACHE_OP_FLUSH_DATA, start, end);
+  return 0;
 }
 
-L4_INLINE void
+L4_INLINE int
 l4_cache_inv_data(unsigned long start,
                   unsigned long end) L4_NOTHROW
 {
   l4_cache_op_arm_call(L4_MEM_CACHE_OP_INV_DATA, start, end);
+  return 0;
 }
 
-L4_INLINE void
+L4_INLINE int
 l4_cache_coherent(unsigned long start,
                   unsigned long end) L4_NOTHROW
 {
   l4_cache_op_arm_call(L4_MEM_CACHE_OP_COHERENT, start, end);
+  return 0;
 }
 
-L4_INLINE void
+L4_INLINE int
 l4_cache_dma_coherent(unsigned long start,
                       unsigned long end) L4_NOTHROW
 {
   l4_cache_op_arm_call(L4_MEM_CACHE_OP_DMA_COHERENT, start, end);
+  return 0;
 }
 
-L4_INLINE void
+L4_INLINE int
 l4_cache_dma_coherent_full(void) L4_NOTHROW
 {
   l4_cache_op_arm_call(L4_MEM_CACHE_OP_DMA_COHERENT_FULL, 0, 0);
+  return 0;
 }
 
-L4_INLINE void
+L4_INLINE int
 l4_cache_l2_clean(unsigned long start,
                   unsigned long end) L4_NOTHROW
 {
   l4_cache_op_arm_call(L4_MEM_CACHE_OP_L2_CLEAN, start, end);
+  return 0;
 }
 
-L4_INLINE void
+L4_INLINE int
 l4_cache_l2_flush(unsigned long start,
                   unsigned long end) L4_NOTHROW
 {
   l4_cache_op_arm_call(L4_MEM_CACHE_OP_L2_FLUSH, start, end);
+  return 0;
 }
 
-L4_INLINE void
+L4_INLINE int
 l4_cache_l2_inv(unsigned long start,
                 unsigned long end) L4_NOTHROW
 {
   l4_cache_op_arm_call(L4_MEM_CACHE_OP_L2_INV, start, end);
+  return 0;
 }
 
 #endif /* ! __L4SYS__INCLUDE__ARCH_ARM__CACHE_H__ */

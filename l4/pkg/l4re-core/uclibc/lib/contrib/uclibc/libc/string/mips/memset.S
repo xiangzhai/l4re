@@ -53,8 +53,31 @@ L(ueven):
 	andi	ta0, 0x7
 	beq	ta0, zero, L(chkw)
 	PTR_SUBU a2, ta0
+#if __mips_isa_rev >= 6
+	andi	t2, ta0, 0x3
+	beq	t2, zero, L(sb4)
+	addiu	t2, -1		# prepare to set 1, 2, or 3 bytes
+	beq	t2, zero, L(sb1)
+	addiu	t2, -1
+	beq	t2, zero, L(sb2)
+	 nop
+L(sb3):
+	sb	a1, 2(a0)
+L(sb2):
+	sb	a1, 1(a0)
+L(sb1):
+	sb	a1, 0(a0)
+	andi	t2, ta0, 0x4
+	beq	t2, zero, L(sbend)
+	 nop
+L(sb4):
+	PTR_ADDU a0, ta0		# Now both a0 and a2 are updated
+	sw	a1, -4(a0)
+L(sbend):
+#else
 	SDHI	a1, 0(a0)		# Yes, handle first unaligned part
 	PTR_ADDU a0, ta0		# Now both a0 and a2 are updated
+#endif
 
 L(chkw):
 	andi	ta0, a2, 0xf		# Enough left for one loop iteration?

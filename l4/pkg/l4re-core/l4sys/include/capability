@@ -1,7 +1,7 @@
 // vim:set ft=cpp:
 /**
  * \file
- * \brief  L4::Cap class.
+ * L4::Cap related definitions.
  *
  * \author Alexander Warg <alexander.warg@os.inf.tu-dresden.de>
  *
@@ -43,10 +43,9 @@ class Vm;
 class Kobject;
 
 /**
- * \brief Disable copy of a class.
- * \param _class is the name of the class that shall not have
- *               value copy semantics.
+ * Disable copy of a class.
  *
+ * \param _class  Name of the class that shall not have value copy semantics.
  *
  * The typical use of this is:
  * ~~~
@@ -58,10 +57,18 @@ class Kobject;
  * }
  * ~~~
  */
-#define L4_DISABLE_COPY(_class)         \
+#if __cplusplus >= 201103L
+#  define L4_DISABLE_COPY(_class)                \
+  public:                                        \
+    _class(_class const &) = delete;             \
+    _class operator = (_class const &) = delete; \
+  private:
+#else
+#  define L4_DISABLE_COPY(_class)       \
   private:                              \
     _class(_class const &);             \
     _class operator = (_class const &);
+#endif
 
 
 #define L4_KOBJECT_DISABLE_COPY(_class) \
@@ -87,13 +94,15 @@ Cap_base::validate(l4_utcb_t *u) const throw()
 namespace L4 {
 
 /**
- * \brief dynamic_cast for capabilities.
- * \tparam T  is the target type of the capability
- * \tparam F  is the source type (and is usually implicitly set)
- * \param c   is the source capability that shall be casted
- * \return A capability typed to the interface `T`.  If the object does not
- *         support the target interface `T` or does not support the
- *         L4::Meta interface the result is the invalid capability selector.
+ * `dynamic_cast` for capabilities.
+ *
+ * \tparam T  The target type of the capability.
+ * \tparam F  The source type (is usually implicitly set).
+ * \param  c  The source capability that shall be casted.
+ *
+ * \retval Cap<T>          Capability of target interface `T`.
+ * \retval L4_INVALID_CAP  `c` does not support the target interface `T` or the
+ *                         L4::Meta interface.
  *
  * The use of this cast operator is similar to the `dynamic_cast<>()` for
  * C++ pointers.  It also induces overhead, because it uses the meta interface

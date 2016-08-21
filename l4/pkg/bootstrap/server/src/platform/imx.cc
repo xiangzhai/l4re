@@ -68,7 +68,7 @@ class Platform_arm_imx : public Platform_single_region_ram
     kuart.irqno = 31;
     static L4::Io_register_block_mmio r(kuart.base_address);
     static L4::Uart_imx51 _uart;
-#elif defined(PLATFORM_TYPE_imx6)
+#elif defined(PLATFORM_TYPE_imx6) || defined(PLATFORM_TYPE_imx6ul)
     switch (PLATFORM_UART_NR) {
       case 1: kuart.base_address = 0x02020000;
               kuart.irqno        = 58;

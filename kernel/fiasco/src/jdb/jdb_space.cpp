@@ -51,13 +51,6 @@ Jdb_space::show_kobject(Kobject_common *o, int lvl)
 }
 
 PUBLIC
-char const *
-Jdb_space::kobject_type(Kobject_common *) const
-{
-  return JDB_ANSI_COLOR(red) "Task" JDB_ANSI_COLOR(default);
-}
-
-PUBLIC
 void
 Jdb_space::show_kobject_short(String_buffer *buf, Kobject_common *o)
 {

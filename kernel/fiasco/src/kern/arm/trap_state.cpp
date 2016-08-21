@@ -71,13 +71,14 @@ public:
 //  static int (*base_handler)(Trap_state *) asm ("BASE_TRAP_HANDLER");
 
   Mword pf_address;
-  Mword error_code;
+  union
+  {
+    Mword error_code;
+    Ts_error_code esr;
+  };
 
   Mword tpidruro;
   Mword r[13];
-
-  Ts_error_code hsr() const { return Ts_error_code(error_code); }
-  Ts_error_code &hsr() { return reinterpret_cast<Ts_error_code&>(error_code); }
 };
 
 class Trap_state : public Trap_state_regs, public Return_frame
@@ -91,7 +92,7 @@ struct Trex
 {
   Trap_state s;
   void set_ipc_upcall()
-  { s.hsr().ec() = 0x3f; }
+  { s.esr.ec() = 0x3f; }
 
   void dump() { s.dump(); }
 };
@@ -137,7 +138,7 @@ Trap_state::ip() const
 PUBLIC inline
 unsigned long
 Trap_state::trapno() const
-{ return hsr().ec(); }
+{ return esr.ec(); }
 
 PUBLIC inline
 Mword
@@ -147,12 +148,12 @@ Trap_state::error() const
 PUBLIC inline
 bool
 Trap_state::exception_is_undef_insn() const
-{ return hsr().ec() == 0; }
+{ return esr.ec() == 0; }
 
 PUBLIC inline
 bool
 Trap_state::is_debug_exception() const
-{ return hsr().ec() == 0x24 && hsr().pf_fsc() == 0x22; }
+{ return esr.ec() == 0x24 && esr.pf_fsc() == 0x22; }
 
 PUBLIC
 void
@@ -177,7 +178,7 @@ Trap_state::dump()
      /* 3C */ 0, 0, "<TrExc>", "<IPC>"};
 
   printf("EXCEPTION: (%02x) %s pfa=%08lx, error=%08lx psr=%08lx\n",
-         (unsigned)hsr().ec(), excpts[hsr().ec()] ? excpts[hsr().ec()] : "",
+         (unsigned)esr.ec(), excpts[esr.ec()] ? excpts[esr.ec()] : "",
          pf_address, error_code, psr);
 
   printf("R[0]: %08lx %08lx %08lx %08lx  %08lx %08lx %08lx %08lx\n"

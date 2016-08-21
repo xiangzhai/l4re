@@ -26,5 +26,8 @@ INTERFACE:
 #define FIASCO_NORETURN         __attribute__ ((__noreturn__))
 #define FIASCO_FLATTEN          __attribute__((__flatten__))
 
+#define FIASCO_STRINGIFY_(x) #x
+#define FIASCO_STRINGIFY(x) FIASCO_STRINGIFY_(x)
+
 IMPLEMENTATION:
 //-

@@ -106,6 +106,8 @@ IMPLEMENTATION [arm]:
 #include "timer.h"
 #include "kmem_slab.h"
 
+JDB_DEFINE_TYPENAME(Vm, "\033[33;1mVm\033[m");
+
 PUBLIC inline virtual
 Page_number
 Vm::map_max_address() const

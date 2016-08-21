@@ -95,6 +95,6 @@
   //physical atddress of kernel image
   DUMP_CONSTANT(KERNEL__START, Mem_layout::Kernel_start)
 #endif
-#ifdef  CONFIG_MIPS32
+#ifdef  CONFIG_MIPS
   DUMP_MEMBER1 (THREAD, Context, _ulr, ULR)
 #endif

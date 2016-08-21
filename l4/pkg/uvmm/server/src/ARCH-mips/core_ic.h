@@ -29,7 +29,9 @@ public:
   Mips_core_ic() : _irqvec(0), _pending{ 0, }
   {}
 
-  void init_device(Vdev::Device_lookup const &, Vdev::Dt_node const &) override {}
+  void init_device(Vdev::Device_lookup const *,
+                   Vdev::Dt_node const &) override
+  {}
 
   void set(unsigned irq) override
   {
@@ -79,7 +81,7 @@ public:
     vcpu.state()->set_modified(L4_VM_MOD_GUEST_CTL_2);
   }
 
-  void show_state(Vmm::Cpu vcpu)
+  void show_state(FILE *f, Vmm::Cpu vcpu)
   {
     auto *s = vcpu.state();
     s->update_state(L4_VM_MOD_STATUS);
@@ -87,10 +89,10 @@ public:
     unsigned ipending = s->g_cause >> 10;
 
     for (unsigned i = 0; i < 6; ++i)
-      printf(" Int %d: %d (HW: %s/%s)\n", i + 2,
-             _pending[i],
-             imask & (1 << i) ? "on" : "off",
-             ipending & (1 << i) ? "pending" : "low");
+      fprintf(f, " Int %d: %d (HW: %s/%s)\n", i + 2,
+              _pending[i],
+              imask & (1 << i) ? "on" : "off",
+              ipending & (1 << i) ? "pending" : "low");
   }
 
 private:

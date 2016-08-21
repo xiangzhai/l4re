@@ -31,9 +31,10 @@ Fpu::init_xsave(Cpu_number cpu)
 
   Cpu::cpus.cpu(cpu).cpuid(0xd, 0, &eax, &ebx, &ecx, &edx);
 
-  Fpu::fpu.cpu(cpu)._xcr0 = ((Unsigned64)edx << 32) | eax;
+  // allow safe features: x87, SSE, and AVX
+  Fpu::fpu.cpu(cpu)._xcr0 = (((Unsigned64)edx << 32) | eax) & 0x07;
 
-  // enable AVX and friends
+  // enable xsave features
   Cpu::cpus.cpu(cpu).set_cr4(Cpu::cpus.cpu(cpu).get_cr4() | CR4_OSXSAVE);
   Cpu::xsetbv(Fpu::fpu.cpu(cpu).get_xcr0(), 0);
 }

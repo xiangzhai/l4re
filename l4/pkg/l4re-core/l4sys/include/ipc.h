@@ -1,6 +1,6 @@
 /**
  * \file
- * \brief Common IPC interface.
+ * Common IPC interface.
  * \ingroup l4_api
  */
 /*
@@ -33,9 +33,9 @@
 /**
  * \defgroup l4_ipc_api Object Invocation
  * \ingroup l4_api
- * \brief API for L4 object invocation.
+ * API for L4 object invocation.
  *
- * <c>\#include <l4/sys/ipc.h></c>
+ * \includefile{l4/sys/ipc.h}
  *
  * General abstractions for L4 object invocation. The basic principle is that
  * all objects are denoted by a capability that is accessed via a capability
@@ -46,7 +46,7 @@
  * object that shall be invoked.
  *
  * Objects may be invoked in various ways, the most common way is to use
- * a \em call operation (l4_ipc_call()). However, there are a lot more
+ * a *call* operation (l4_ipc_call()). However, there are a lot more
  * flavours available that have a semantics depending on the object.
  *
  * \see \ref l4_kernel_object_gate_api
@@ -60,16 +60,16 @@
 /**
  * \defgroup l4_ipc_err_api Error Handling
  * \ingroup l4_ipc_api
- * \brief Error handling for L4 object invocation.
+ * Error handling for L4 object invocation.
  *
- * <c>\#include <l4/sys/ipc.h></c>
+ * \includefile{l4/sys/ipc.h}
  */
 
 /**
- * \brief Error codes in the \em error TCR.
+ * Error codes in the *error* TCR.
  * \ingroup l4_ipc_err_api
  *
- * The error codes are accessible via the \em error TCR, see
+ * The error codes are accessible via the *error* TCR, see
  * #l4_thread_regs_t.error.
  */
 enum l4_ipc_tcr_error_t
@@ -133,7 +133,7 @@ enum l4_ipc_tcr_error_t
 
 
 /**
- * \brief Get the error code for an object invocation.
+ * Get the error code for an object invocation.
  * \ingroup l4_ipc_err_api
  *
  * \param tag   Return value of the invocation.
@@ -147,7 +147,7 @@ l4_ipc_error(l4_msgtag_t tag, l4_utcb_t *utcb) L4_NOTHROW;
 
 
 /**
- * \brief Return error code of a system call return message tag.
+ * Return error code of a system call return message tag.
  * \ingroup l4_ipc_err_api
  * \param tag   System call return message type
  * \return 0 for no error, error number in case of error
@@ -163,7 +163,7 @@ l4_error_u(l4_msgtag_t tag, l4_utcb_t *utcb) L4_NOTHROW;
  *****************************************************************************/
 
 /**
- * \brief Returns whether an error occurred in send phase of an invocation.
+ * Returns whether an error occurred in send phase of an invocation.
  * \ingroup l4_ipc_err_api
  *
  * \pre l4_msgtag_has_error(tag) == true
@@ -174,7 +174,7 @@ l4_error_u(l4_msgtag_t tag, l4_utcb_t *utcb) L4_NOTHROW;
 L4_INLINE int l4_ipc_is_snd_error(l4_utcb_t *utcb) L4_NOTHROW;
 
 /**
- * \brief Returns whether an error occurred in receive phase of an invocation.
+ * Returns whether an error occurred in receive phase of an invocation.
  * \ingroup l4_ipc_err_api
  *
  * \pre l4_msgtag_has_error(tag) == true
@@ -185,7 +185,7 @@ L4_INLINE int l4_ipc_is_snd_error(l4_utcb_t *utcb) L4_NOTHROW;
 L4_INLINE int l4_ipc_is_rcv_error(l4_utcb_t *utcb) L4_NOTHROW;
 
 /**
- * \brief Get the error condition of the last invocation from the TCR.
+ * Get the error condition of the last invocation from the TCR.
  * \ingroup l4_ipc_err_api
  *
  * \pre l4_msgtag_has_error(tag) == true
@@ -209,13 +209,13 @@ L4_INLINE long l4_ipc_to_errno(unsigned long ipc_error_code) L4_NOTHROW;
  *****************************************************************************/
 
 /**
- * \brief Send a message to an object (do \b not wait for a reply).
+ * Send a message to an object (do \b not wait for a reply).
  * \ingroup l4_ipc_api
  *
- * \param dest    Capability selector for the destination object.
- * \param utcb    UTCB of the caller.
- * \param tag     Descriptor for the message to be sent.
- * \param timeout Timeout pair (see #l4_timeout_t) only send part is relevant.
+ * \param dest     Capability selector for the destination object.
+ * \param utcb     UTCB of the caller.
+ * \param tag      Descriptor for the message to be sent.
+ * \param timeout  Timeout pair (see #l4_timeout_t) only send part is relevant.
  *
  * \return  result tag
  *
@@ -231,13 +231,13 @@ l4_ipc_send(l4_cap_idx_t dest, l4_utcb_t *utcb, l4_msgtag_t tag,
 
 
 /**
- * \brief Wait for an incoming message from any possible sender.
+ * Wait for an incoming message from any possible sender.
  * \ingroup l4_ipc_api
  *
- * \param   utcb    UTCB of the caller.
- * \retval  label   Label assigned to the source object (IPC gate or IRQ).
- * \param   timeout Timeout pair (see #l4_timeout_t, only the receive part is
- *          used).
+ * \param   utcb     UTCB of the caller.
+ * \retval  label    Label assigned to the source object (IPC gate or IRQ).
+ * \param   timeout  Timeout pair (see #l4_timeout_t, only the receive part is
+ *                   used).
  *
  * \return  return tag
  *
@@ -256,13 +256,13 @@ l4_ipc_wait(l4_utcb_t *utcb, l4_umword_t *label,
 
 
 /**
- * \brief Wait for a message from a specific source.
+ * Wait for a message from a specific source.
  * \ingroup l4_ipc_api
  *
- * \param   object  Object to receive a message from.
- * \param   timeout Timeout pair (see #l4_timeout_t, only the receive part
+ * \param object   Object to receive a message from.
+ * \param timeout  Timeout pair (see #l4_timeout_t, only the receive part
  *                  matters).
- * \param   utcb    UTCB of the caller.
+ * \param utcb     UTCB of the caller.
  *
  * \return  result tag.
  *
@@ -279,7 +279,7 @@ l4_ipc_receive(l4_cap_idx_t object, l4_utcb_t *utcb,
                l4_timeout_t timeout) L4_NOTHROW;
 
 /**
- * \brief Object call (usual invocation).
+ * Object call (usual invocation).
  * \ingroup l4_ipc_api
  *
  * \param object   Capability selector for the object to call.
@@ -300,13 +300,15 @@ l4_ipc_call(l4_cap_idx_t object, l4_utcb_t *utcb, l4_msgtag_t tag,
 
 
 /**
- * \brief Reply and wait operation (uses the \em reply capability).
+ * Reply and wait operation (uses the *reply* capability).
  * \ingroup l4_ipc_api
  *
- * \param   tag     Describes the message to be sent as reply.
- * \param   utcb    UTCB of the caller.
- * \retval  label   Label assigned to the source object of the received message.
- * \param   timeout Timeout pair (see #l4_timeout_t).
+ * \param      tag      Describes the message to be sent as reply.
+ * \param      utcb     UTCB of the caller.
+ * \param[out] label    Label assigned to the source object of the received
+ *                      message.
+ * \param      timeout  Timeout pair (see #l4_timeout_t).
+ *
  * \return  result tag
  *
  * A message is sent to the previous caller using the implicit reply
@@ -321,14 +323,16 @@ l4_ipc_reply_and_wait(l4_utcb_t *utcb, l4_msgtag_t tag,
                       l4_umword_t *label, l4_timeout_t timeout) L4_NOTHROW;
 
 /**
- * \brief Send a message and do an open wait.
+ * Send a message and do an open wait.
  * \ingroup l4_ipc_api
  *
- * \param   dest    Object to send a message to.
- * \param   utcb    UTCB of the caller.
- * \param   tag     Describes the message that shall be sent.
- * \retval  label   Label assigned to the source object of the receive phase.
- * \param   timeout Timeout pair (see #l4_timeout_t).
+ * \param      dest     Object to send a message to.
+ * \param      utcb     UTCB of the caller.
+ * \param      tag      Describes the message that shall be sent.
+ * \param[out] label    Label assigned to the source object of the receive
+ *                      phase.
+ * \param      timeout  Timeout pair (see #l4_timeout_t).
+ *
  * \return  result tag
  *
  * A message is sent to the destination object and the invoking thread waits
@@ -352,9 +356,9 @@ l4_ipc_send_and_wait(l4_cap_idx_t dest, l4_utcb_t *utcb, l4_msgtag_t tag,
  * Wait for next period.
  * \ingroup l4_ipc_rt_api
  *
- * \param utcb    UTCB of the caller.
- * \param label   Label
- * \param timeout IPC timeout (see #l4_ipc_timeout).
+ * \param utcb     UTCB of the caller.
+ * \param label    Label
+ * \param timeout  IPC timeout (see #l4_ipc_timeout).
  *
  * \return result tag
  */
@@ -366,16 +370,16 @@ l4_ipc_wait_next_period(l4_utcb_t *utcb,
 #endif
 
 /**
- * \brief Generic L4 object invocation.
+ * Generic L4 object invocation.
  * \ingroup l4_ipc_api
  *
- * \param dest    Destination object.
- * \param utcb    UTCB of the caller.
- * \param flags   Invocation flags (see #l4_syscall_flags_t).
- * \param slabel  Send label if applicable (may be seen by the receiver).
- * \param tag     Sending message tag.
- * \retval rlabel Receiving label.
- * \param timeout Timeout pair (see #l4_timeout_t).
+ * \param      dest     Destination object.
+ * \param      utcb     UTCB of the caller.
+ * \param      flags    Invocation flags (see #l4_syscall_flags_t).
+ * \param      slabel   Send label if applicable (may be seen by the receiver).
+ * \param      tag      Sending message tag.
+ * \param[out] rlabel   Receiving label.
+ * \param      timeout  Timeout pair (see #l4_timeout_t).
  *
  * \return return tag
  */
@@ -389,10 +393,10 @@ l4_ipc(l4_cap_idx_t dest,
        l4_timeout_t timeout) L4_NOTHROW;
 
 /**
- * \brief Sleep for an amount of time.
+ * Sleep for an amount of time.
  * \ingroup l4_ipc_api
  *
- * \param   timeout Timeout pair (see #l4_timeout_t, the receive part matters).
+ * \param timeout  Timeout pair (see #l4_timeout_t, the receive part matters).
  *
  * \return  error code:
  *          - #L4_IPC_RETIMEOUT: success
@@ -406,7 +410,7 @@ L4_INLINE l4_msgtag_t
 l4_ipc_sleep(l4_timeout_t timeout) L4_NOTHROW;
 
 /**
- * \brief Add a flex-page to be sent to the UTCB
+ * Add a flex-page to be sent to the UTCB
  * \ingroup l4_ipc_api
  *
  * \param  snd_fpage  Flex-page.

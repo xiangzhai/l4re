@@ -82,6 +82,8 @@ public:
 
 };
 
+JDB_DEFINE_TYPENAME(Pfc, "Icu/Pfc");
+
 Pfc Pfc::pfc;
 
 }

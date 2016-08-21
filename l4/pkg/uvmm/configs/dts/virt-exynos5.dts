@@ -46,14 +46,15 @@
 		compatible = "virtio,mmio";
 		reg = <0x30010000 0x100>;
 		interrupts = <0 123 0>;
-		l4vmm,virtiotype = "net";
+		l4vmm,vdev = "proxy";
+                l4vmm,virtiocap = "net";
 	};
 
 	virtio_uart@30020000 {
 		compatible = "virtio,mmio";
 		reg = <0x30020000 0x100>;
 		interrupts = <0 122 0>;
-		l4vmm,virtiotype = "console";
+		l4vmm,vdev = "console";
 	};
 
 	syscon {

@@ -22,6 +22,8 @@ IMPLEMENTATION:
 
 #include "ipc_timeout.h"
 
+JDB_DEFINE_TYPENAME(Semaphore,  "\033[37mIRQ sem\033[m");
+
 PUBLIC explicit
 Semaphore::Semaphore(Ram_quota *q = 0)
 : Kobject_h<Semaphore, Irq>(q), _queued(0)

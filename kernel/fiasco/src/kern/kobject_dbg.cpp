@@ -7,6 +7,17 @@ INTERFACE[debug]:
 #include <cxx/hlist>
 #include <cxx/dyn_cast>
 
+struct Kobject_typeinfo_name
+{
+  cxx::Type_info const *type;
+  char const *name;
+};
+
+#define JDB_DEFINE_TYPENAME(type, name) \
+  static __attribute__((used, section(".debug.jdb.typeinfo_table"))) \
+  Kobject_typeinfo_name const typeinfo_name__ ## type ## __entry =   \
+    { cxx::Typeid<type>::get(), name }
+
 class Kobject_dbg : public cxx::D_list_item
 {
   friend class Jdb_kobject;
@@ -50,6 +61,8 @@ private:
 
 //----------------------------------------------------------------------------
 INTERFACE[!debug]:
+
+#define JDB_DEFINE_TYPENAME(type, name)
 
 class Kobject_dbg
 {

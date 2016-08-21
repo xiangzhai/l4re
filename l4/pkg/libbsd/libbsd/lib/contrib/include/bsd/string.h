@@ -41,6 +41,8 @@ size_t strlcpy(char *dst, const char *src, size_t siz);
 size_t strlcat(char *dst, const char *src, size_t siz);
 char *strnstr(const char *str, const char *find, size_t str_len);
 void strmode(mode_t mode, char *str);
+
+void explicit_bzero(void *buf, size_t len);
 __END_DECLS
 
 #endif

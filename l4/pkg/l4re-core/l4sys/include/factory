@@ -45,7 +45,8 @@ namespace L4 {
  * The factory is equipped with a limit that limits the amount of kernel
  * memory available to that factory.
  *
- * \note The limit does not give any guarantee for the amount of available               kernel memory.
+ * \note The limit does not give any guarantee for the amount of available
+ *  kernel memory.
  *
  * \includefile{l4/sys/factory}
  *
@@ -79,6 +80,10 @@ public:
      */
     int len;
 
+    /**
+     * \param s    Pointer to the c-style string.
+     * \param len  Length in number of characters of the string s.
+     */
     Lstr(char const *s, int len) : s(s), len(len) {}
   };
 
@@ -98,6 +103,8 @@ public:
   public:
     /**
      * Create a copy.
+     *
+     * \param o  Instance of S to copy.
      */
     S(S const &o)
     : u(o.u), t(o.t), f(o.f)
@@ -145,6 +152,8 @@ public:
      * Put a single l4_mword_t as next argument.
      *
      * \param i  The value to add as next argument.
+     *
+     * \return  Reference to this stream.
      */
     S &operator  << (l4_mword_t i)
     {
@@ -156,6 +165,8 @@ public:
      * Put a single l4_umword_t as next argument.
      *
      * \param i  The value to add as next argument.
+     *
+     * \return  Reference to this stream.
      */
     S &operator  << (l4_umword_t i)
     {
@@ -167,6 +178,8 @@ public:
      * Add a zero-terminated string as next argument.
      *
      * \param s  The string to add as next argument.
+     *
+     * \return  Reference to this stream.
      */
     S &operator << (char const *s)
     {
@@ -178,6 +191,8 @@ public:
      * Add a pascal string as next argument.
      *
      * \param s  The string to add as next argument.
+     *
+     * \return  Reference to this stream.
      */
     S &operator << (Lstr const &s)
     {
@@ -187,6 +202,8 @@ public:
 
     /**
      * Add an empty argument.
+     *
+     * \return  Reference to this stream.
      */
     S &operator << (Nil)
     {
@@ -198,6 +215,8 @@ public:
      * Add a flex page as next argument.
      *
      * \param d  The flex page to add (there will be no map operation).
+     *
+     * \return  Reference to this stream.
      */
     S &operator << (l4_fpage_t d)
     {
@@ -236,6 +255,17 @@ public:
     return S(cap(), obj, target, utcb);
   }
 
+  /**
+   * Create call for typed capabilities.
+   *
+   * \tparam      OBJ     Capability type of the object to be created.
+   * \param[out]  target  Capability of type OBJ.
+   * \param       utcb    UTCB to use.
+   *
+   * \return  Argument stream to call the factory.
+   *
+   * \see create
+   */
   template<typename OBJ>
   S create(Cap<OBJ> target, l4_utcb_t *utcb = l4_utcb()) throw()
   {
@@ -252,9 +282,11 @@ public:
    *
    * \param[out] target_cap  The kernel stores the new task's capability into
    *                         this slot.
-   * \param      utcb_area   Flexpage that describes an area of kernel-user
-   *                         memory that can be used for UTCBs and vCPU
-   *                         state-save-areas of the new task.
+   * \param      utcb_area   Flexpage that describes an area in the address
+   *                         space of the new task, where the kernel should
+   *                         map the kernel-allocated kernel-user memory to.
+   *                         The kernel uses the kernel-user memory to store
+   *                         UTCBs and vCPU state-save-areas of the new task.
    * \param      utcb        The UTCB to use for the operation.
    *
    * \return Syscall return tag
@@ -308,12 +340,23 @@ public:
    *
    * \param[out] target_cap  The kernel stores the new IPC gate's capability
    *                         into this slot.
-   * \param      thread_cap  Capability selector of the thread to bind the gate
-   *                         to.
-   * \param      label       Label of the gate.
+   * \param      thread_cap  Optional capability selector of the thread to
+   *                         bind the gate to. Use #L4_INVALID_CAP to create
+   *                         an unbound IPC gate.
+   * \param      label       Optional label of the gate (is used if
+   *                         `thread_cap` is valid).
    * \param      utcb        The UTCB to use for the operation.
    *
-   * \return Syscall return tag
+   * \return Syscall return tag containing one of the following return codes.
+   *
+   * \retval L4_EOK      No error occurred.
+   * \retval -L4_ENOMEM  Out-of-memory during allocation of the Ipc_gate object.
+   * \retval -L4_ENOENT  `thread_cap` is void or points to something that is not
+   *                     a thread.
+   * \retval -L4_EPERM   No write rights on `thread_cap`.
+   *
+   * An unbound IPC gate can be bound to a thread using
+   * L4::Ipc_gate::bind_thread().
    *
    * \see L4::Ipc_gate
    */

@@ -52,11 +52,37 @@ ENTRY (memcpy)
 	andi	t1, 0x7			# a0/a1 are aligned, but are we
 	beq	t1, zero, L(chk8w)	#  starting in the middle of a word?
 	PTR_SUBU a2, t1
+#if __mips_isa_rev >= 6
+	andi	t2, t1, 0x3             # Yes we are...
+	beq	t2, zero, L(cpb4)
+	addiu	t2, -1                  # copy 1, 2 or 3 bytes
+	beq	t2, zero, L(cpb1)
+	addiu	t2, -1
+	beq	t2, zero, L(cpb2)
+	nop
+L(cpb3):
+	lb	t0, 2(a1)
+	sb	t0, 2(a0)
+L(cpb2):
+	lb	t0, 1(a1)
+	sb	t0, 1(a0)
+L(cpb1):
+	lb	t0, 0(a1)
+	sb	t0, 0(a0)
+L(cpb4):
+	andi	t2, t1, 0x4            # and copy bytes 4-7 if necessary
+	PTR_ADDU	a0, t1
+	beq	t2, zero, L(cpbend)
+	PTR_ADDU	a1, t1
+	lw	t0, -4(a1)
+	sw	t0, -4(a0)
+L(cpbend):
+#else
 	LDHI	t0, 0(a1)		# Yes we are... take care of that
 	PTR_ADDU a1, t1
 	SDHI	t0, 0(a0)
 	PTR_ADDU a0, t1
-
+#endif
 L(chk8w):
 	andi	t0, a2, 0x3f		# 64 or more bytes left?
 	beq	t0, a2, L(chk1w)
@@ -115,18 +141,63 @@ L(shift):
 	andi	a3, 0x7			#  (unoptimized case...)
 	beq	a3, zero, L(shft1)
 	PTR_SUBU a2, a3			# a2 = bytes left
+#if __mips_isa_rev >= 6
+	andi	t2, a3, 0x3
+	beq	t2, zero, L(shb4)
+	addiu	t2, -1		# load 4 bytes from Src and copy up to
+	beq	t2, zero, L(shb1)	#  4 bytes to bring Dest to alignment
+	addiu	t2, -1
+	beq	t2, zero, L(shb2)
+	 nop
+L(shb3):
+	lb	t0, 2(a1)
+	sb	t0, 2(a0)
+L(shb2):
+	lb	t0, 1(a1)
+	sb	t0, 1(a0)
+L(shb1):
+	lb	t0, 0(a1)
+	sb	t0, 0(a0)
+L(shb4):
+	andi	t2, a3, 4
+	PTR_ADDU	a1, a3
+	beq	t2, zero, L(shbend)
+	PTR_ADDU	a0, a3
+	lw	t0, -4(a1)
+	sw	t0, -4(a0)
+L(shbend):
+#else
 	LDHI	t0, 0(a1)		# Take care of first odd part
 	LDLO	t0, 7(a1)
 	PTR_ADDU a1, a3
 	SDHI	t0, 0(a0)
 	PTR_ADDU a0, a3
+#endif
 L(shft1):
 	andi	t0, a2, 0x7
 	PTR_SUBU a3, a2, t0
 	PTR_ADDU a3, a1
 L(shfth):
+#if __mips_isa_rev >= 6
+	lb	t1, 0(a1)               # load byte by byte, store as dword
+	lb	t2, 1(a1)
+	dins	t1, t2, 8, 8
+	lb	t2, 2(a1)
+	dins	t1, t2, 16, 8
+	lb	t2, 3(a1)
+	dins	t1, t2, 24, 8
+	lb	t2, 4(a1)
+	dins	t1, t2, 32, 8
+	lb	t2, 5(a1)
+	dins	t1, t2, 40, 8
+	lb	t2, 6(a1)
+	dins	t1, t2, 48, 8
+	lb	t2, 7(a1)
+	dins	t1, t2, 56, 8
+#else
 	LDHI	t1, 0(a1)		# Limp through, dword by dword
 	LDLO	t1, 7(a1)
+#endif
 	PTR_ADDIU a0, 8
 	PTR_ADDIU a1, 8
 	bne	a1, a3, L(shfth)

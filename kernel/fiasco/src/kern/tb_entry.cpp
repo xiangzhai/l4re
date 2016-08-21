@@ -37,8 +37,8 @@ struct Tb_log_table_entry
   Tb_entry_formatter *fmt;
 };
 
-extern Tb_log_table_entry _log_table[];
-extern Tb_log_table_entry _log_table_end;
+extern Tb_log_table_entry _jdb_log_table[];
+extern Tb_log_table_entry _jdb_log_table_end;
 
 
 
@@ -115,7 +115,7 @@ public:
   static Tb_entry_formatter const *get_fmt(Tb_entry const *e)
   {
     if (e->type() >= Tbuf_dynentries)
-      return _log_table[e->type() - Tbuf_dynentries].fmt;
+      return _jdb_log_table[e->type() - Tbuf_dynentries].fmt;
 
     return _fixed[e->type()];
   }

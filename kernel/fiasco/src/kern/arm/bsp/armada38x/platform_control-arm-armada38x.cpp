@@ -4,6 +4,9 @@ INTERFACE [arm && armada38x]:
 
 IMPLEMENTATION [arm && armada38x]:
 
+#include "kmem.h"
+#include "mmio_register_block.h"
+
 IMPLEMENT_OVERRIDE
 void
 Platform_control::init(Cpu_number cpu)

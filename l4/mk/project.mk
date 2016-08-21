@@ -7,7 +7,7 @@ ifneq ($(S),)
 comma := ,
 ALL_SUBDIRS   := $(subst :, ,$(subst $(comma), ,$(S)))
 
-BID_DCOLON_TARGETS := all clean cleanall install scrub
+BID_DCOLON_TARGETS := all clean cleanall install scrub DROPSCONF_CONFIG_MK_POST_HOOK
 
 all:: $(ALL_SUBDIRS)
 
@@ -109,7 +109,7 @@ $(PKGCONF_DIR):
 $(OBJ_DIR)/.Package.deps.pkgs: FORCE
 	$(VERBOSE)mkdir -p $(dir $@)
 	$(VERBOSE)echo $(BUILD_SUBDIRS) > $@.tmp
-	$(call move_if_changed,$@,$@.tmp)
+	$(VERBOSE)$(call move_if_changed,$@,$@.tmp)
 
 # deps on disappearing aliases.d-files are not handled...
 $(OBJ_DIR)/.Package.deps: $(L4DIR)/mk/pkgdeps $(OBJ_DIR)/.Package.deps.pkgs \
@@ -118,7 +118,7 @@ $(OBJ_DIR)/.Package.deps: $(L4DIR)/mk/pkgdeps $(OBJ_DIR)/.Package.deps.pkgs \
                           $(wildcard $(foreach d,$(BUILD_SUBDIRS),$(d)/Control)) \
                           $(PKGCONF_DIR)
 	$(VERBOSE)$(PKGDEPS_CMD) generate $(SRC_DIR) $(ALL_SUBDIRS) > $@.tmp
-	$(call move_if_changed,$@,$@.tmp)
+	$(VERBOSE)$(call move_if_changed,$@,$@.tmp)
 
 include $(OBJ_DIR)/.Package.deps
 

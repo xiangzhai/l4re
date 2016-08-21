@@ -12,9 +12,9 @@
 #include <l4/re/error_helper>
 #include <l4/vbus/vbus>
 
-#include "io_proxy.h"
 #include "irq.h"
 #include "guest.h"
+#include "device_factory.h"
 
 static cxx::unique_ptr<Vmm::Guest> guest;
 
@@ -49,90 +49,126 @@ c_vcpu_entry(l4_vcpu_state_t *vcpu)
 namespace Vmm {
 
 Guest::Guest(L4::Cap<L4Re::Dataspace> ram, l4_addr_t vm_base)
-: Generic_guest(ram, vm_base)
+: Generic_guest(ram, vm_base),
+  _gic(Vdev::make_device<Gic::Dist>(4, 2)), // 4 * 32 spis, 2 cpus
+  _timer(Vdev::make_device<Vdev::Core_timer>())
 {
-  if (_ram.vm_start() & ~0xf0000000)
+  if (_ram.vm_start() & ((1 << 27) - 1))
+    Dbg().printf(
+      "\033[01;31mWARNING: Guest memory not 128MB aligned!\033[m\n"
+      "       If you run Linux as a guest, Linux will likely fail to boot\n"
+      "       as it assumes a 128MB alignment of its memory.\n"
+      "       Current guest RAM alignment is only %dMB\n",
+      (1 << __builtin_ctz(_ram.vm_start())) >> 20);
+  else if (_ram.vm_start() & ~0xf0000000)
     Dbg(Dbg::Info).printf(
         "WARNING: Guest memory not 256MB aligned!\n"
-        "         If you run Linux as a guest, you might hit a bug\n"
-        "         in the arch/arm/boot/compressed/head.S code\n"
-        "         that misses an ISB after code has been relocated.\n"
-        "         According to the internet a fix for this issue\n"
-        "         is floating around.\n");
+        "       If you run Linux as a guest, you might hit a bug\n"
+        "       in the arch/arm/boot/compressed/head.S code\n"
+        "       that misses an ISB after code has been relocated.\n"
+        "       According to the internet a fix for this issue\n"
+        "       is floating around.\n");
 }
 
 Guest *
-Guest::create_instance(L4::Cap<L4Re::Dataspace> ram)
+Guest::create_instance(L4::Cap<L4Re::Dataspace> ram, l4_addr_t vm_base)
 {
-  guest.reset(new Guest(ram));
+  guest.reset(new Guest(ram, vm_base));
   return guest.get();
 }
 
-int
-Guest::config_as_core_device(L4::Cap<L4Re::Dataspace> iods,
-                             Vdev::Dt_node const &node,
-                             cxx::Ref_ptr<Vdev::Device> *dev)
+namespace {
+
+using namespace Vdev;
+
+struct F : Factory
 {
-  if (node.is_compatible("arm,cortex-a9-gic")
-      && node.is_compatible("arm,cortex-a15-gic"))
-    return 0;
+  cxx::Ref_ptr<Vdev::Device> create(Vmm::Guest *vmm,
+                                    Vmm::Virt_bus *vbus,
+                                    Vdev::Dt_node const &node)
+  {
+    Dbg info;
+    if (!vbus->io_ds())
+      {
+        Err().printf("ERROR: ARM GIC virtualization does not work without passing GICD via the vbus\n");
+        return nullptr; // missing hardware part, disable GIC
+      }
 
-  Dbg info;
-  auto *prop = node.check_prop<fdt32_t const>("reg", 4);
+    // attach GICD to VM
+    auto gic = vmm->gic();
+    vmm->register_mmio_device(gic, node);
 
-  uint32_t base = fdt32_to_cpu(prop[0]);
-  uint32_t size = fdt32_to_cpu(prop[1]);
+    L4vbus::Device vdev;
+    L4Re::chksys(vbus->bus()->root().device_by_hid(&vdev, "arm-gicc"),
+                 "getting ARM GIC from IO");
 
-  info.printf("GICD: @ %x %x\n", base, size);
+    l4vbus_resource_t res;
+    L4Re::chksys(vdev.get_resource(0, &res),
+                 "getting memory resource");
 
-  // 4 * 32 spis, 2 cpus
-  _gic = Vdev::make_device<Gic::Dist>(4, 2);
+    info.printf("ARM GIC: %08lx-%08lx\n", res.start, res.end);
 
-  // attach GICD to VM
-  _memmap[Region::ss(base, size)] = _gic;
+    auto g2 = Vdev::make_device<Ds_handler>(vbus->io_ds(), 0,
+                                            res.end - res.start + 1, res.start);
+    vmm->register_mmio_device(cxx::move(g2), node, 1);
+    return gic;
+  }
+};
 
-  if (!iods)
-    return -L4_ENODEV; // missing hardware part, disable GIC
+static F f;
+static Vdev::Device_type t1 = { "arm,cortex-a9-gic", nullptr, &f };
+static Vdev::Device_type t2 = { "arm,cortex-a15-gic", nullptr, &f };
 
-  L4vbus::Device vdev;
-  auto vbus = L4::cap_reinterpret_cast<L4vbus::Vbus>(iods);
-  L4Re::chksys(vbus->root().device_by_hid(&vdev, "arm-gicc"),
-               "getting ARM GIC from IO");
+struct F_timer : Factory
+{
+  cxx::Ref_ptr<Vdev::Device> create(Vmm::Guest *vmm, Vmm::Virt_bus *,
+                                    Vdev::Dt_node const &)
+  {
+    return vmm->timer();
+  }
+};
 
-  l4vbus_resource_t res;
-  L4Re::chksys(vdev.get_resource(0, &res),
-               "getting memory resource");
+static F_timer ftimer;
+static Vdev::Device_type tt = { "arm,armv7-timer", nullptr, &ftimer };
 
-  info.printf("ARM GIC: %08lx-%08lx\n", res.start, res.end);
+} // namespace
 
-  base = fdt32_to_cpu(prop[2]);
-  size = fdt32_to_cpu(prop[3]);
+L4virtio::Ptr<void>
+Guest::load_linux_kernel(char const *kernel, l4_addr_t *entry)
+{
+  enum { Default_entry =  0x208000 };
+  *entry = _ram.vm_start() + Default_entry;
+  auto end = load_binary_at(kernel, Default_entry, entry);
 
-  _memmap[Region::ss(base, size)] =
-     Vdev::make_device<Ds_handler>(iods, 0, size, res.start);
+  /* If the kernel relocates itself it either decompresses itself
+   * directly to the final adress or it moves itself behind the end of
+   * bss before starting decompression. So we should be safe if we
+   * place anything (e.g. initrd/device tree) at 3/4 of the ram.
+   */
+  l4_size_t def_offs = l4_round_size((_ram.size() * 3) / 4,
+                                     L4_SUPERPAGESHIFT);
+  L4virtio::Ptr<void> def_end(_ram.vm_start() + def_offs);
 
-  *dev = _gic;
-  return 1;
+  if (def_end.get() < end.get())
+    L4Re::chksys(-L4_ENOMEM, "Not enough space to run Linux");
+
+  Dbg().printf("Linux end at %llx, reserving space up to :%llx\n",
+               end.get(), def_end.get());
+  return def_end;
 }
 
-l4_addr_t
-Guest::load_linux_kernel(char const *kernel, char const *cmd_line, Cpu vcpu)
+void
+Guest::prepare_linux_run(Cpu vcpu, l4_addr_t entry, char const * /* kernel */,
+                         char const * /* cmd_line */)
 {
-  (void)cmd_line;
-  l4_size_t size;
-  auto kernel_vm = _ram.load_file(kernel, 0x208000, &size);
-
-  // now set up the VCPU state as expected by Linux entry
+  // Set up the VCPU state as expected by Linux entry
   vcpu->r.flags = 0x00000013;
   vcpu->r.sp    = 0;
   vcpu->r.r[0]  = 0;
   vcpu->r.r[1]  = ~0UL;
-  vcpu->r.r[2]  = _device_tree.get();
+  vcpu->r.r[2]  = has_device_tree() ? _device_tree.get() : 0;
   vcpu->r.r[3]  = 0;
-  vcpu->r.ip    = kernel_vm.get();
-
-  // ARM Linux relocates itself, so keep enough space
-  return 0x2000000;
+  vcpu->r.ip    = entry;
 }
 
 void
@@ -159,7 +195,7 @@ Guest::run(Cpu vcpu)
 }
 
 void
-Guest::show_state_registers()
+Guest::show_state_registers(FILE *mon)
 {
   for (int i = 0; i < Nr_cpus; ++i)
     {
@@ -167,22 +203,22 @@ Guest::show_state_registers()
       //  interrupt_vcpu(i);
 
       Cpu v = *_vcpu[i];
-      printf("CPU %d:\n", i);
-      printf("pc=%08lx lr=%08lx sp=%08lx flags=%08lx\n",
-             v->r.ip, v->r.lr, v->r.sp, v->r.flags);
-      printf(" r0=%08lx  r1=%08lx  r2=%08lx  r3=%08lx\n",
-             v->r.r[0], v->r.r[1], v->r.r[2], v->r.r[3]);
-      printf(" r4=%08lx  r5=%08lx  r6=%08lx  r7=%08lx\n",
-             v->r.r[4], v->r.r[5], v->r.r[6], v->r.r[7]);
-      printf(" r8=%08lx  r9=%08lx r10=%08lx r11=%08lx\n",
-             v->r.r[8], v->r.r[9], v->r.r[10], v->r.r[11]);
-      printf("r12=%08lx\n",
-             v->r.r[12]);
+      fprintf(mon, "CPU %d:\n", i);
+      fprintf(mon, "pc=%08lx lr=%08lx sp=%08lx flags=%08lx\n",
+              v->r.ip, v->r.lr, v->r.sp, v->r.flags);
+      fprintf(mon, " r0=%08lx  r1=%08lx  r2=%08lx  r3=%08lx\n",
+              v->r.r[0], v->r.r[1], v->r.r[2], v->r.r[3]);
+      fprintf(mon, " r4=%08lx  r5=%08lx  r6=%08lx  r7=%08lx\n",
+              v->r.r[4], v->r.r[5], v->r.r[6], v->r.r[7]);
+      fprintf(mon, " r8=%08lx  r9=%08lx r10=%08lx r11=%08lx\n",
+              v->r.r[8], v->r.r[9], v->r.r[10], v->r.r[11]);
+      fprintf(mon, "r12=%08lx\n",
+              v->r.r[12]);
     }
 }
 
 void
-Guest::show_state_interrupts()
+Guest::show_state_interrupts(FILE *)
 {
 }
 
@@ -213,7 +249,7 @@ Guest::handle_entry(Cpu vcpu)
           _gic->handle_maintenance_irq(vmm_current_cpu_id);
           break;
         case 1: // VTMR IRQ
-          _gic->inject_local(27, vmm_current_cpu_id);
+          _timer->inject();
           break;
         default:
           Err().printf("unknown virtual PPI: %d\n", (int)hsr.svc_imm());

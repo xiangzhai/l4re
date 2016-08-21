@@ -1616,9 +1616,14 @@ Cpu::init()
 
   set_cr4 (cr4);
 
-  // reset time stamp counter (better for debugging)
   if ((features() & FEAT_TSC) && can_wrmsr())
-    wrmsr(0, 0, MSR_TSC);
+    {
+      if (_ext_07_ebx & FEATX_IA32_TSC_ADJUST)
+        wrmsr(0, 0, MSR_IA32_TSC_ADJUST);
+      else
+        // at least reset time stamp counter (better for debugging)
+        wrmsr(0, 0, MSR_TSC);
+    }
 
   if ((features() & FEAT_PAT) && can_wrmsr())
     wrmsr(0x00010406, 0x00070406, MSR_PAT);

@@ -33,7 +33,7 @@ UCLIBC_ARCH_sparc := sparc
 UCLIBC_BASE       = $(PKGDIR)/../uclibc
 UCLIBC_SYSDEPS    = $(UCLIBC_BASE)/lib/contrib/uclibc/libc/sysdeps/linux/$(UCLIBC_ARCH_$(ARCH))
 
-PRIVATE_INCDIR    = $(PKGDIR) $(PKGDIR)/ARCH-$(ARCH) $(UCLIBC_SYSDEPS)
+PRIVATE_INCDIR    = $(PKGDIR) $(UCLIBC_SYSDEPS)
 
 vpath %.S $(UCLIBC_SYSDEPS)
 
@@ -51,5 +51,5 @@ crti.o: crti_s.o kip_addr.o
 	@$(GEN_MESSAGE)
 	$(VERBOSE)[ "$(LDVERSION)" -lt "218" ] && \
 	  CPP_ARGS="-DMAXPAGESIZE=$(MAXPAGESIZE_$(ARCH)) -DCOMMONPAGESIZE=$(COMMONPAGESIZE_$(ARCH)) -DCONSTANT(x)=x"; \
-	  cpp -nostdinc -include $(SRC_DIR)/generic.h \
-	      -Wno-trigraphs -Ui386 -P $$CPP_ARGS $< $@
+	  $(CPP) -nostdinc -include $(SRC_DIR)/generic.h \
+	      -Wno-trigraphs -U$(UCLIBC_ARCH_$(ARCH)) $(CFLAGS) -P $$CPP_ARGS $< $@

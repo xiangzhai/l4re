@@ -1,7 +1,6 @@
-# ARCH:           MIPS32 mips32
-# ARCHDESCR:      MIPS32 processor family
+# ARCH:           MIPS mips
+# ARCHDESCR:      MIPS processor family
 #
-# ARCHSELECT:     BIT32
 # ARCHSELECT:     HAS_FPU_OPTION
 # ARCHSELECT:     HAS_SERIAL_OPTION
 # ARCHSELECT:     HAS_CPU_VIRT
@@ -16,7 +15,8 @@ choice
 
 config CPU_MIPS32_R2
 	bool "MIPS32 Release 2"
-	depends on SYS_HAS_CPU_MIPS32_R2
+	depends on SYS_HAS_CPU_MIPS32_R2 || SYS_HAS_CPU_MIPS64_R2
+	select BIT32
 	select CPU_MIPS32
 	select CPU_MIPSR2
 	help
@@ -24,13 +24,36 @@ config CPU_MIPS32_R2
 
 config CPU_MIPS32_R6
 	bool "MIPS32 Release 6"
-	depends on SYS_HAS_CPU_MIPS32_R6
+	depends on SYS_HAS_CPU_MIPS32_R6 || SYS_HAS_CPU_MIPS64_R6
+	select BIT32
 	select CPU_MIPS32
 	select CPU_MIPSR6
 	select WEAK_ORDERING
 	select LIGHTWEIGHT_BARRIERS
 	help
 	  Choose this if you have a MIPS32 Release 6 CPU and toolchain.
+
+config CPU_MIPS64_R2
+	bool "MIPS64 Release 2"
+	depends on SYS_HAS_CPU_MIPS64_R2
+	select BIT64
+	select CPU_MIPS64
+	select CPU_MIPSR2
+	select CONTEXT_8K
+	help
+	  Choose this if you have a MIPS64 Release 2 CPU.
+
+config CPU_MIPS64_R6
+	bool "MIPS64 Release 6"
+	depends on SYS_HAS_CPU_MIPS64_R6
+	select BIT64
+	select CPU_MIPS64
+	select CPU_MIPSR6
+	select CONTEXT_8K
+	select WEAK_ORDERING
+	select LIGHTWEIGHT_BARRIERS
+	help
+	  Choose this if you have a MIPS64 Release 6 CPU and toolchain.
 
 endchoice
 
@@ -64,6 +87,12 @@ config SYS_HAS_CPU_MIPS32_R2
 config SYS_HAS_CPU_MIPS32_R6
 	bool
 
+config SYS_HAS_CPU_MIPS64_R2
+	bool
+
+config SYS_HAS_CPU_MIPS64_R6
+	bool
+
 config HAS_WEAK_ORDERING_OPTION
 	bool
 
@@ -71,6 +100,9 @@ config HAS_LIGHTWEIGHT_BARRIERS_OPTION
 	bool
 
 config CPU_MIPS32
+	bool
+
+config CPU_MIPS64
 	bool
 
 config CPU_MIPSR2
@@ -86,7 +118,7 @@ config CAN_MIPS_VZ_ASE
 
 config MIPS_CPU_FREQUENCY
 	int "CPU frequency (MHz)"
-	depends on MIPS32
+	depends on MIPS
 	default 200
 	help
 	  Set the CPU frequency to match the platform's cpu frequency

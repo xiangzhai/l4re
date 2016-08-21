@@ -120,6 +120,9 @@ IMPLEMENTATION:
 #include "l4_buf_iter.h"
 #include "vkey.h"
 
+JDB_DEFINE_TYPENAME(Irq_sender, "\033[37mIRQ ipc\033[m");
+JDB_DEFINE_TYPENAME(Irq_muxer,  "\033[37mIRQ mux\033[m");
+
 namespace {
 static Irq_base *irq_base_dcast(Kobject_iface *o)
 { return cxx::dyn_cast<Irq*>(o); }

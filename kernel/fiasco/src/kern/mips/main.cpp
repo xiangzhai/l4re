@@ -1,8 +1,8 @@
-INTERFACE [mips32]:
+INTERFACE [mips]:
 #include <cstddef>
 
 //---------------------------------------------------------------------------
-IMPLEMENTATION [mips32]:
+IMPLEMENTATION [mips]:
 
 #include <cstdlib>
 #include <cstdio>
@@ -93,7 +93,7 @@ extern "C" void kernel_main()
 }
 
 //------------------------------------------------------------------------
-IMPLEMENTATION[mips32 && mp]:
+IMPLEMENTATION[mips && mp]:
 
 #include <cstdio>
 #include "config.h"

@@ -29,7 +29,7 @@
 /**
  * \defgroup l4_task_api Task
  * \ingroup  l4_kernel_object_api
- * \brief C interface of the Task kernel object.
+ * C interface of the Task kernel object.
  *
  * A task represents a combination of the address spaces provided
  * by the L4Re micro kernel. A task consists of at least a memory address space
@@ -242,8 +242,8 @@ l4_task_add_ku_mem_u(l4_cap_idx_t task, l4_fpage_t ku_mem,
  * Add kernel-user memory.
  * \ingroup l4_task_api
  *
- * \param task   Capability selector of the task to add the memory to
- * \param ku_mem Flexpage describing the virtual area the memory goes to.
+ * \param task    Capability selector of the task to add the memory to
+ * \param ku_mem  Flexpage describing the virtual area the memory goes to.
  *
  * \return Syscall return tag
  */
@@ -259,7 +259,7 @@ l4_task_cap_equal_u(l4_cap_idx_t task, l4_cap_idx_t cap_a,
                     l4_cap_idx_t cap_b, l4_utcb_t *utcb) L4_NOTHROW;
 
 /**
- * \brief Operations on task objects.
+ * Operations on task objects.
  * \ingroup l4_protocol_ops
  */
 enum L4_task_ops

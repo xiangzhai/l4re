@@ -49,14 +49,6 @@ EXTERN_C_BEGIN
 L4_INLINE void
 l4util_set_bit(int b, volatile l4_umword_t * dest);
 
-L4_INLINE void
-l4util_set_bit32(int b, volatile l4_uint32_t * dest);
-
-#if L4_MWORD_BITS >= 64
-L4_INLINE void
-l4util_set_bit64(int b, volatile l4_uint64_t * dest);
-#endif
-
 /**
  * \brief Clear bit in memory
  * \ingroup l4util_bitops
@@ -66,14 +58,6 @@ l4util_set_bit64(int b, volatile l4_uint64_t * dest);
  */
 L4_INLINE void
 l4util_clear_bit(int b, volatile l4_umword_t * dest);
-
-L4_INLINE void
-l4util_clear_bit32(int b, volatile l4_uint32_t * dest);
-
-#if L4_MWORD_BITS >= 64
-L4_INLINE void
-l4util_clear_bit64(int b, volatile l4_uint64_t * dest);
-#endif
 
 /**
  * \brief Complement bit in memory
@@ -96,14 +80,6 @@ l4util_complement_bit(int b, volatile l4_umword_t * dest);
  */
 L4_INLINE int
 l4util_test_bit(int b, const volatile l4_umword_t * dest);
-
-L4_INLINE int
-l4util_test_bit32(int b, const volatile l4_uint32_t * dest);
-
-#if L4_MWORD_BITS >= 64
-L4_INLINE int
-l4util_test_bit64(int b, const volatile l4_uint64_t * dest);
-#endif
 
 /**
  * \brief Bit test and set
@@ -238,7 +214,7 @@ l4util_set_bit(int b, volatile l4_umword_t * dest)
   do
     {
       oldval = *dest;
-      newval = oldval | (1 << b);
+      newval = oldval | (1UL << b);
     }
   while (!l4util_cmpxchg(dest, oldval, newval));
 }
@@ -257,7 +233,7 @@ l4util_clear_bit(int b, volatile l4_umword_t * dest)
   do
     {
       oldval = *dest;
-      newval = oldval & ~(1 << b);
+      newval = oldval & ~(1UL << b);
     }
   while (!l4util_cmpxchg(dest, oldval, newval));
 }
@@ -266,17 +242,6 @@ l4util_clear_bit(int b, volatile l4_umword_t * dest)
 #ifndef __L4UTIL_BITOPS_HAVE_ARCH_TEST_BIT
 L4_INLINE int
 l4util_test_bit(int b, const volatile l4_umword_t * dest)
-{
-  dest += b / (sizeof(*dest) * 8);
-  b    &= sizeof(*dest) * 8 - 1;
-
-  return (*dest >> b) & 1;
-}
-#endif
-
-#ifndef __L4UTIL_BITOPS_HAVE_ARCH_TEST_BIT32
-L4_INLINE int
-l4util_test_bit32(int b, const volatile l4_uint32_t * dest)
 {
   dest += b / (sizeof(*dest) * 8);
   b    &= sizeof(*dest) * 8 - 1;
@@ -298,7 +263,7 @@ l4util_bts(int b, volatile l4_umword_t * dest)
   do
     {
       oldval = *dest;
-      newval = oldval | (1 << b);
+      newval = oldval | (1UL << b);
     }
   while (!l4util_cmpxchg(dest, oldval, newval));
 
@@ -320,7 +285,7 @@ l4util_btr(int b, volatile l4_umword_t * dest)
   do
     {
       oldval = *dest;
-      newval = oldval & ~(1 << b);
+      newval = oldval & ~(1UL << b);
     }
   while (!l4util_cmpxchg(dest, oldval, newval));
 
@@ -339,7 +304,7 @@ l4util_bsr(l4_umword_t word)
     return -1;
 
   for (i = 8 * sizeof(word) - 1; i >= 0; i--)
-    if ((1 << i) & word)
+    if ((1UL << i) & word)
       return i;
 
   return -1;
@@ -356,7 +321,7 @@ l4util_bsf(l4_umword_t word)
     return -1;
 
   for (i = 0; i < sizeof(word) * 8; i++)
-    if ((1 << i) & word)
+    if ((1UL << i) & word)
       return i;
 
   return -1;
@@ -382,7 +347,7 @@ l4util_find_first_zero_bit(const void * dest, l4_size_t size)
 	  j = 0;
 	  v++;
 	}
-      if (!((1 << j) & *v))
+      if (!((1UL << j) & *v))
 	return i;
     }
   return size + 1;
@@ -423,12 +388,6 @@ l4util_next_power2(unsigned long val)
 /* Non-implemented version, catch with a linker warning */
 
 extern int __this_l4util_bitops_function_is_not_implemented_for_this_arch__sorry(void);
-
-#ifndef __L4UTIL_BITOPS_HAVE_ARCH_CLEAR_BIT32
-L4_INLINE void
-l4util_clear_bit32(int b, volatile l4_uint32_t * dest)
-{ (void)b; (void)dest; __this_l4util_bitops_function_is_not_implemented_for_this_arch__sorry(); }
-#endif
 
 #ifndef __L4UTIL_BITOPS_HAVE_ARCH_BIT_TEST_AND_COMPLEMENT
 L4_INLINE int

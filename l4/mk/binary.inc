@@ -58,7 +58,7 @@ ifneq ($(strip $(SRC_F)$(foreach t,$(TARGET),$(SRC_F_$(t)))),)
       $(info $(shell echo -e "\033[32mFortran compiler (gcc-4.6 or later) missing, skipping directory '$(SRC_DIR)'.\033[0m"))
       SYSTEMS =
     else
-      ifeq ($(filter 4.6 4.7 4.8 4.9 5,$(GCCVERSION)),)
+      ifeq ($(filter 4.6 4.7 4.8 4.9 5 6,$(GCCVERSION)),)
         $(info $(shell echo -e "\033[32mFortran compiler gcc version 4.6 or later required, skipping directory '$(SRC_DIR)'.\033[0m"))
         SYSTEMS =
       endif
@@ -69,7 +69,7 @@ endif
 ifneq ($(SRC_CC_IS_CXX11),)
   ifneq ($(SRC_CC_IS_CXX11),c++0x)
     # gcc-4.5 and 4.6 only know about c++0x
-    ifeq ($(filter 4.7 4.8 4.9 5,$(GCCVERSION)),)
+    ifeq ($(filter 4.7 4.8 4.9 5 6,$(GCCVERSION)),)
       $(info $(shell echo -e "\033[32mGCC too old to compile C++11 sources in directory '$(SRC_DIR)'. At least version 4.7 required.\033[0m"))
       SYSTEMS =
     endif
@@ -108,10 +108,10 @@ FILTER_SYSTEM = $(shell echo $(2)|$(AWKP) '\
 BID_ORIG_SYSTEM = $(shell echo $(2)|$(AWKP) '\
 		    BEGIN{m=s="$(1)";sub("_[^-]*","",m)}\
 		    {for(i=1;i<=NF;i++){\
-		 	if(m==$$i||s==$$i){if(s=="$(1)"){print $$i;exit}};\
+		 	if(m==$$i||s==$$i){print $$i;exit};\
 		 	if(index(m,$$i)==1||index(s,$$i)==1)\
 			    {t=s;sub("-.*","",t);\
-                             if(t=="$(1)"){print $$i;exit}}}}')
+                             if(m==$$i&&t=="$(1)"){print $$i;exit}}}}')
 
 ifeq ($(ROLE),idl.mk)
 TARGET_SYSTEMS := $(sort $(foreach sys,$(sort \
@@ -142,7 +142,7 @@ $(foreach sys,$(TARGET_SYSTEMS),$(OBJ_DIR)/OBJ-$(sys)/$(BID_OBJ_Makefile)):$(OBJ
 	@echo 'ARCH=$(call SYSTEM_TO_ARCH,$*)'>>$@
 	@echo 'CPU=$(call SYSTEM_TO_CPU,$*)'>>$@
 	@echo 'L4API=$(call SYSTEM_TO_L4API,$*)'>>$@
-	@for ext in .c .cc .cpp $(FORTRAN_FILE_EXTENSIONS) .S .y .l .ld .dpe; \
+	@for ext in .c .cc .cpp $(FORTRAN_FILE_EXTENSIONS) $(BID_ASM_FILE_EXTENSIONS) .y .l .ld .dpe .dts; \
 	  do echo "vpath %$$ext $(VPATH_SRC_BASE)">>$@ ; done
 	@echo '.general.d: $(SRC_DIR)/$(if $(wildcard Make.rules),Make.rules,Makefile)'>>$@
 	@echo 'include $(SRC_DIR)/$(if $(wildcard Make.rules),Make.rules,Makefile)'>>$@
@@ -405,7 +405,7 @@ WARNINGS         ?= $(WARNINGS_FULL)
 
 ifeq ($(MODE),host)
 # never cross compile in host mode
-CROSS_COMPILE = 
+override CROSS_COMPILE = 
 CC            = $(HOST_CC)
 CXX           = $(HOST_CXX)
 LIBS         += $(REQUIRES_LIBS_LIST)
@@ -508,7 +508,7 @@ CXXFLAGS_L4_GENERIC += $(GCCSTACKPROTECTOROPT)
 CXXFLAGS_L4_GENERIC += -fuse-cxa-atexit
 endif
 
-CXXFLAGS_CXX11 = $(if $(filter 4.7 4.8 4.9 5,$(GCCVERSION)),-std=gnu++11,-std=gnu++0x)
+CXXFLAGS_CXX11 = $(if $(filter 4.7 4.8 4.9 5 6,$(GCCVERSION)),-std=gnu++11,-std=gnu++0x)
 
 ifneq ($(SRC_CC_IS_CXX11),)
   CXXFLAGS+= $(CXXFLAGS_CXX11)
@@ -617,6 +617,8 @@ get_target_var = $(strip                                     \
 #      2 - infix between the basename and the .o
 convert_f_to_o_file = $(foreach e,$(FORTRAN_FILE_EXTENSIONS),$(patsubst %$e,%$(2).o,$(filter %$e,$(1))))
 
+convert_asm_to_o_file = $(foreach e,$(BID_ASM_FILE_EXTENSIONS),$(patsubst %$e,%$(2).o,$(filter %$e,$(1))))
+
 #
 # generic source to object file name converters
 # args: 1 - (list of) source file(s)
@@ -624,7 +626,7 @@ convert_f_to_o_file = $(foreach e,$(FORTRAN_FILE_EXTENSIONS),$(patsubst %$e,%$(2
 #
 gen_SRC_CC_obj = $(call convert_cc_to_o_file,$(1),$(2))
 gen_SRC_C_obj  = $(1:.c=$(2).o)
-gen_SRC_S_obj  = $(1:.S=$(2).o)
+gen_SRC_S_obj  = $(call convert_asm_to_o_file,$(1),$(2))
 gen_SRC_F_obj  = $(call convert_f_to_o_file,$(1),$(2))
 gen_SRC_DATA_obj = $(addsuffix .bin.o,$1)
 
@@ -832,7 +834,7 @@ $(eval $(call BID_GENERATE_C_MAKE_RULES,c))
 # generate rules to compile %.f90 files to %.o, %.s.o etc
 $(foreach e,$(FORTRAN_FILE_EXTENSIONS),$(eval $(call BID_GENERATE_F_MAKE_RULES,$(subst .,,$e))))
 # generate rules to compile %.S files to %.o, %.s.o etc
-$(eval $(call BID_GENERATE_DEFAULT_MAKE_RULES,%,%.S,AS))
+$(foreach e,$(BID_ASM_FILE_EXTENSIONS),$(eval $(call BID_GENERATE_ASM_MAKE_RULES,$(subst .,,$e))))
 
 # Reset implicit rules, mind the TAB.
 define reset_implicit_rule =
@@ -840,7 +842,7 @@ define reset_implicit_rule =
 	
 endef
 
-$(foreach e,.c .cc .cpp .S $(FORTRAN_FILE_EXTENSIONS),$(eval $(call reset_implicit_rule,$e)))
+$(foreach e,.c .cc .cpp $(BID_ASM_FILE_EXTENSIONS) $(FORTRAN_FILE_EXTENSIONS),$(eval $(call reset_implicit_rule,$e)))
 
 $(eval $(call BID_GENERATE_I_MAKE_RULE,%.i,%.c,$(CC),$(CFLAGS)))
 $(eval $(call BID_GENERATE_I_MAKE_RULE,%.s.i,%.c,$(CC),$(CFLAGS) $(PICFLAGS)))
@@ -868,6 +870,14 @@ $(if $(BID_ALLOW_CPP_AS_CPLUSPLUS_FILE),$(eval $(call BID_GENERATE_S_MAKE_RULE,%
 	@$(GEN_MESSAGE)
 	$(VERBOSE)$(call MAKEDEP,perl) $(GEN_DOPECODE) $< >$@
 
+%.dtb: %.dts
+	@$(BUILD_MESSAGE)
+	$(VERBOSE)$(CPP) $(addprefix -I, $(PRIVATE_INCDIR)) -x assembler-with-cpp -Wp,-MD,.$@.d,-MT$@,-MP -nostdinc -o $@.pre $<
+	$(VERBOSE)$(DTC) $(addprefix -i , $(PRIVATE_INCDIR)) -i $(dir $<) -d .$@.d-x -O dtb -b 0 -o $@ $@.pre
+	$(VERBOSE)$(SED) -e "s|$@.pre|$<|" .$@.d-x | \
+		perl -ne 'print "$$_\n"; if (/^.*:\s*(.*)$$/) { print "$$_:\n" foreach (split(/ /,$$1)); }' >> .$@.d
+	$(VERBOSE)rm -f .$@.d-x $@.pre
+
 define bin_to_asm_recipe
 	echo -e ".section .rodata, \"a\"\n"    \
 	        ".global _binary_$(3)_start\n" \
@@ -888,6 +898,7 @@ $(addsuffix .bin.S,$(SRC_DATA)): %.bin.S: % $(GENERAL_D_LOC)
 
 DEPS	+= $(foreach file,$(ALLOBJS), $(dir $(file)).$(notdir $(file)).d)
 DEPS	+= $(foreach file,$(ALLDPI), $(dir $(file)).$(notdir $(file)).d)
+DEPS	+= $(foreach file,$(filter %.dtb, $(INSTALL_TARGET)), $(dir $(file)).$(notdir $(file)).d)
 
 # Common clean Rules
 

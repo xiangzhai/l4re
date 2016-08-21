@@ -7,6 +7,7 @@
 
 #include "globalconfig.h"
 #include "asm_regs.h"
+#include "asm_mips.h"
 
 .section ".initcall.text", "ax"
 .global _start
@@ -16,7 +17,7 @@ _start:
 	ehb
 	mtc0	$0, $13, 0
 	ehb
-	la	sp, __init_stack
+	ASM_LA	sp, __init_stack
 	subu	sp, 4 * 4 /* a0 .. a3 */
 	j	kernel_main
 	  nop
@@ -155,7 +156,7 @@ MPEND _tramp_mp_cm
  * Snippet to jump t_tramp_mp_entry in cached memory
  */
 MPSNIPPET _tramp_mp_jmp_entry
-	la	t1, _tramp_mp_entry
+	ASM_LA	t1, _tramp_mp_entry
 	jr	t1
 	  nop
 MPEND _tramp_mp_jmp_entry
@@ -168,7 +169,7 @@ MPEND _tramp_mp_jmp_entry
  */
 .section .text.mp_tramp_entry, "ax"
 MPLEAF _tramp_mp_entry
-	la	t1, _tramp_mp_spinlock
+	ASM_LA	t1, _tramp_mp_spinlock
 1:
 	li	t2, 2
 	sync
@@ -180,7 +181,7 @@ MPLEAF _tramp_mp_entry
 	  nop
 
 	sync
-	la	sp, __init_stack
+	ASM_LA	sp, __init_stack
 	subu	sp, 4 * 4 /* a0 .. a3 */
 	j     BOOT_AP_CPU
 	  nop

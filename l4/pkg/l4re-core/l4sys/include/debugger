@@ -47,6 +47,7 @@ public:
 
   /**
    * \copybrief l4_debugger_set_object_name()
+   *
    * \param name  Name
    * \param utcb  The UTCB to use for the operation.
    *
@@ -58,6 +59,7 @@ public:
 
   /**
    * \copybrief l4_debugger_global_id()
+   *
    * \param utcb  The UTCB to use for the operation.
    *
    * \retval ~0UL  The capability is invalid.
@@ -68,6 +70,7 @@ public:
 
   /**
    * \copybrief l4_debugger_kobj_to_id()
+   *
    * \param kobjp  Kobject pointer
    * \param utcb   The UTCB to use for the operation.
    *
@@ -80,6 +83,7 @@ public:
 
   /**
    * \copybrief l4_debugger_query_log_typeid()
+   *
    * \param name   Name to query for.
    * \param idx    Idx to start searching, start with 0
    * \param utcb   The UTCB to use for the operation.
@@ -93,6 +97,7 @@ public:
 
   /**
    * \copybrief l4_debugger_query_log_name()
+   *
    * \param      idx           ID to query.
    * \param[out] name          Buffer to copy name to. The buffer must be
    *                           allocated by the caller.

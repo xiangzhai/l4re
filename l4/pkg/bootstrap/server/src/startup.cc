@@ -89,8 +89,17 @@ struct Elf_info
   Region::Type type;
 };
 
+struct Hdr_info
+{
+  Boot_modules::Module mod;
+  unsigned hdr_type;
+  l4_addr_t start;
+  l4_size_t size;
+};
+
 static exec_handler_func_t l4_exec_read_exec;
 static exec_handler_func_t l4_exec_add_region;
+static exec_handler_func_t l4_exec_find_hdr;
 
 // this function can be provided per architecture
 void __attribute__((weak)) print_cpu_info();
@@ -128,12 +137,26 @@ dump_mbi(l4util_mb_info_t *mbi)
  * After loading the kernel we scan for the magic number at page boundaries.
  */
 static
-void *find_kip()
+void *find_kip(Boot_modules::Module const &mod)
 {
   unsigned char *p, *end;
   void *k = 0;
 
   printf("  find kernel info page...\n");
+
+  const char *error_msg;
+  Hdr_info hdr;
+  hdr.mod = mod;
+  hdr.hdr_type = EXEC_SECTYPE_KIP;
+  int r = exec_load_elf(l4_exec_find_hdr, &hdr.mod,
+                        &error_msg, NULL);
+
+  if (r == 1)
+    {
+      printf("  found kernel info page (via ELF) at %lx\n", hdr.start);
+      return (void *)hdr.start;
+    }
+
   for (Region const *m = regions.begin(); m != regions.end(); ++m)
     {
       if (m->type() != Region::Kernel)
@@ -169,8 +192,21 @@ void *find_kip()
 }
 
 static
-L4_kernel_options::Options *find_kopts(void *kip)
+L4_kernel_options::Options *find_kopts(Boot_modules::Module const &mod, void *kip)
 {
+  const char *error_msg;
+  Hdr_info hdr;
+  hdr.mod = mod;
+  hdr.hdr_type = EXEC_SECTYPE_KOPT;
+  int r = exec_load_elf(l4_exec_find_hdr, &hdr.mod,
+                        &error_msg, NULL);
+
+  if (r == 1)
+    {
+      printf("  found kernel options (via ELF) at %lx\n", hdr.start);
+      return (L4_kernel_options::Options *)hdr.start;
+    }
+
   unsigned long a = (unsigned long)kip + sizeof(l4_kernel_info_t);
 
   // kernel-option directly follow the KIP page
@@ -425,7 +461,6 @@ static void
 add_elf_regions(Boot_modules::Module const &m, Region::Type type)
 {
   Elf_info info;
-  l4_addr_t entry;
   int r;
   const char *error_msg;
 
@@ -435,7 +470,7 @@ add_elf_regions(Boot_modules::Module const &m, Region::Type type)
   printf("  Scanning %s\n", m.cmdline);
 
   r = exec_load_elf(l4_exec_add_region, &info,
-                    &error_msg, &entry);
+                    &error_msg, NULL);
 
   if (r)
     {
@@ -469,11 +504,6 @@ load_elf_module(Boot_modules::Module const &mod)
 
   r = exec_load_elf(l4_exec_read_exec, const_cast<Boot_modules::Module *>(&mod),
                     &error_msg, &entry);
-
-#ifndef RELEASE_MODE
-  /* clear the image for debugging and security reasons */
-  memset((void*)mod.start, 0, mod.end - mod.start);
-#endif
 
   if (r)
     printf("  => can't load module (%s)\n", error_msg);
@@ -571,12 +601,15 @@ setup_and_check_kernel_config(Platform_base *plat, l4_kernel_info_t *kip)
     {
       printf("  Non-HYP kernel detected but running in HYP mode, switching back.\n");
       asm volatile("mcr p15, 0, sp, c13, c0, 2    \n"
-                   "msr spsr, %0                  \n"
+                   "mrs r0, cpsr                  \n"
+                   "bic r0, #0x1f                 \n"
+                   "orr r0, #0x13                 \n"
+                   ".inst 0xe16ef300              \n"  // msr SPSR_hyp, r0
                    "adr r0, 1f                    \n"
                    ".inst 0xe12ef300              \n"  // msr elr_hyp, r0
                    ".inst 0xe160006e              \n"  // eret
                    "1: mrc p15, 0, sp, c13, c0, 2 \n"
-                   : : "r" (0x1d3) : "r0", "memory");
+                   : : : "r0", "memory");
     }
 }
 #endif /* arm */
@@ -708,7 +741,7 @@ startup(char const *cmdline)
                                                "[ROOTTASK]");
 
   /* setup kernel PART TWO (special kernel initialization) */
-  void *l4i = find_kip();
+  void *l4i = find_kip(mods->module(kernel_module));
 
   regions.optimize();
   regions.dump();
@@ -719,7 +752,7 @@ startup(char const *cmdline)
       fill_mem(fill_value);
     }
 
-  L4_kernel_options::Options *lko = find_kopts(l4i);
+  L4_kernel_options::Options *lko = find_kopts(mods->module(kernel_module), l4i);
   kcmdline_parse(L4_CONST_CHAR_PTR(mb_mod[kernel_module].cmdline), lko);
   lko->uart   = kuart;
   lko->flags |= kuart_flags;
@@ -868,5 +901,22 @@ l4_exec_add_region(void *handle,
   regions.add(Region::n(mem_addr, mem_addr + mem_size,
               info->mod.cmdline ? info->mod.cmdline : ".[Unknown]",
               info->type, mem_addr == v_addr ? 1 : 0), true);
+  return 0;
+}
+
+static int
+l4_exec_find_hdr(void *handle,
+                 l4_addr_t /*file_ofs*/, l4_size_t /*file_size*/,
+                 l4_addr_t mem_addr, l4_addr_t /*v_addr*/,
+                 l4_size_t mem_size,
+                 exec_sectype_t section_type)
+{
+  Hdr_info *hdr = reinterpret_cast<Hdr_info *>(handle);
+  if (hdr->hdr_type == (section_type & EXEC_SECTYPE_TYPE_MASK))
+    {
+      hdr->start = mem_addr;
+      hdr->size = mem_size;
+      return 1;
+    }
   return 0;
 }

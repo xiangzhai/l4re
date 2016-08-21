@@ -1,7 +1,7 @@
 /**
  * \internal
  * \file
- * \brief   Common flex-page definitions.
+ * Common flex-page definitions.
  */
 /*
  * (c) 2008-2009 Adam Lackorzynski <adam@os.inf.tu-dresden.de>,
@@ -28,7 +28,7 @@
 /**
  * \defgroup l4_fpage_api Flex pages
  * \ingroup l4_api
- * \brief Flex-page related API.
+ * Flex-page related API.
  *
  * A flex page is a page with a variable size, that can describe memory,
  * IO-Ports (IA32 only), and sets of kernel objects.
@@ -49,7 +49,7 @@
  */
 
 /**
- * \brief L4 flexpage structure
+ * L4 flexpage structure
  * \ingroup l4_fpage_api
  */
 enum l4_fpage_consts
@@ -75,7 +75,7 @@ enum l4_fpage_consts
 };
 
 /**
- * \brief L4 flexpage type
+ * L4 flexpage type
  * \ingroup l4_fpage_api
  */
 typedef union {
@@ -83,7 +83,7 @@ typedef union {
   l4_umword_t raw;            ///< Raw value
 } l4_fpage_t;
 
-/** \brief Constants for flexpages
+/** Constants for flexpages
  * \ingroup l4_fpage_api
  */
 enum
@@ -92,7 +92,7 @@ enum
 };
 
 /**
- * \brief Send-flex-page types
+ * Send-flex-page types
  * \ingroup l4_fpage_api
  */
 typedef struct {
@@ -101,7 +101,7 @@ typedef struct {
 } l4_snd_fpage_t;
 
 
-/** \brief Flex-page rights
+/** Flex-page rights
  * \ingroup l4_fpage_api
  */
 enum L4_fpage_rights
@@ -115,7 +115,7 @@ enum L4_fpage_rights
 };
 
 /**
- * \brief Cap-flex-page rights.
+ * Cap-flex-page rights.
  * \ingroup l4_fpage_api
  *
  * Capabilities are modified or transfered with map and unmap operations. For
@@ -208,7 +208,7 @@ enum L4_cap_fpage_rights
   L4_CAP_FPAGE_RSD   = L4_CAP_FPAGE_RS | L4_CAP_FPAGE_D,
 };
 
-/** \brief Flex-page type
+/** Flex-page type
  * \ingroup l4_fpage_api
  */
 enum L4_fpage_type
@@ -219,7 +219,7 @@ enum L4_fpage_type
   L4_FPAGE_OBJ     = 3,
 };
 
-/** \brief Flex-page map control flags
+/** Flex-page map control flags
  * \ingroup l4_fpage_api
  */
 enum L4_fpage_control
@@ -228,7 +228,7 @@ enum L4_fpage_control
   L4_FPAGE_CONTROL_MASK = ~0UL << L4_FPAGE_CONTROL_OFFSET_SHIFT,
 };
 
-/** \brief Flex-page map control for capabilities (snd_base)
+/** Flex-page map control for capabilities (snd_base)
  * \ingroup l4_fpage_api
  */
 enum L4_obj_fpage_ctl
@@ -238,7 +238,7 @@ enum L4_obj_fpage_ctl
 };
 
 
-/** \brief Flex-page cacheability option
+/** Flex-page cacheability option
  * \ingroup l4_fpage_api
  */
 enum l4_fpage_cacheability_opt_t
@@ -257,7 +257,7 @@ enum l4_fpage_cacheability_opt_t
 };
 
 
-/** \brief Special constants for IO flex pages
+/** Special constants for IO flex pages
  * \ingroup l4_fpage_api
  */
 enum
@@ -272,20 +272,21 @@ enum
 
 
 /**
- * \brief   Create a memory flex page.
+ * Create a memory flex page.
  * \ingroup l4_fpage_api
  *
  * \param   address      Flex-page start address
  * \param   size         Flex-page size (log2), #L4_WHOLE_ADDRESS_SPACE to
- *                       specify the whole address space (with \a address 0)
- * \param   rights       Access rights, see #l4_fpage_rights
+ *                       specify the whole address space (with `address` 0)
+ * \param   rights       Access rights, see #L4_fpage_rights
+ *
  * \return  Memory flex page
  */
 L4_INLINE l4_fpage_t
 l4_fpage(unsigned long address, unsigned int size, unsigned char rights) L4_NOTHROW;
 
 /**
- * \brief   Get a flex page, describing all address spaces at once.
+ * Get a flex page, describing all address spaces at once.
  * \ingroup l4_fpage_api
  *
  * \return  Special \em all-spaces flex page.
@@ -294,7 +295,7 @@ L4_INLINE l4_fpage_t
 l4_fpage_all(void) L4_NOTHROW;
 
 /**
- * \brief   Get an invalid flex page.
+ * Get an invalid flex page.
  * \ingroup l4_fpage_api
  *
  * \return  Special \em invalid flex page.
@@ -304,12 +305,13 @@ l4_fpage_invalid(void) L4_NOTHROW;
 
 
 /**
- * \brief   Create an IO-port flex page.
+ * Create an IO-port flex page.
  * \ingroup l4_fpage_api
  *
  * \param   port         I/O-flex-page port base
  * \param   size         I/O-flex-page size, #L4_WHOLE_IOADDRESS_SPACE to
- *                       specify the whole I/O address space (with \a port 0)
+ *                       specify the whole I/O address space (with `port` 0)
+ *
  * \return  I/O flex page
  */
 L4_INLINE l4_fpage_t
@@ -317,12 +319,13 @@ l4_iofpage(unsigned long port, unsigned int size) L4_NOTHROW;
 
 
 /**
- * \brief   Create a kernel-object flex page.
+ * Create a kernel-object flex page.
  * \ingroup l4_fpage_api
  *
  * \param   obj       Base capability selector.
  * \param   order     Log2 size (number of capabilities).
  * \param   rights    Access rights
+ *
  * \return  Flex page for a set of kernel objects.
  *
  * \todo What are the possible values for the rights parameter?
@@ -331,11 +334,13 @@ L4_INLINE l4_fpage_t
 l4_obj_fpage(l4_cap_idx_t obj, unsigned int order, unsigned char rights) L4_NOTHROW;
 
 /**
- * \brief Test if the flex page is writable.
+ * Test if the flex page is writable.
  * \ingroup l4_fpage_api
  *
  * \param   fp  Flex page.
- * \return  != 0 if flex page is writable, 0 if not
+ *
+ * \retval !=0 if flex page is writable.
+ * \retval ==0 if flex pags is not writable.
  */
 L4_INLINE int
 l4_is_fpage_writable(l4_fpage_t fp) L4_NOTHROW;
@@ -344,7 +349,7 @@ l4_is_fpage_writable(l4_fpage_t fp) L4_NOTHROW;
 /**
  * \defgroup l4_msgitem_api Message Items
  * \ingroup l4_ipc_api
- * \brief Message item related functions.
+ * Message item related functions.
  *
  * Message items are typed items that can be transferred via IPC
  * operations. Message items are also used to specify receive windows for
@@ -362,15 +367,15 @@ l4_is_fpage_writable(l4_fpage_t fp) L4_NOTHROW;
  */
 
 /**
- * \brief Create the first word for a map item for the memory space.
+ * Create the first word for a map item for the memory space.
  * \ingroup l4_msgitem_api
  *
- * \param spot  Hot spot address, used to determine what is actually mapped
- *              when send and receive flex page have differing sizes.
- * \param cache Cacheability hints for memory flex pages. See
+ * \param spot   Hot spot address, used to determine what is actually mapped
+ *               when send and receive flex page have differing sizes.
+ * \param cache  Cacheability hints for memory flex pages. See
  *               \link l4_fpage_api::l4_fpage_cacheability_opt_t
  *               Cacheability options \endlink
- * \param grant Indicates if it is a map or a grant item.
+ * \param grant  Indicates if it is a map or a grant item.
  *
  * \return The value to be used as first word in a map item for memory.
  */
@@ -378,12 +383,12 @@ L4_INLINE l4_umword_t
 l4_map_control(l4_umword_t spot, unsigned char cache, unsigned grant) L4_NOTHROW;
 
 /**
- * \brief Create the first word for a map item for the object space.
+ * Create the first word for a map item for the object space.
  * \ingroup l4_msgitem_api
  *
- * \param   spot  Hot spot address, used to determine what is actually mapped
- *                when send and receive flex pages have different size.
- * \param   grant Indicates if it is a map item or a grant item.
+ * \param spot   Hot spot address, used to determine what is actually mapped
+ *               when send and receive flex pages have different size.
+ * \param grant  Indicates if it is a map item or a grant item.
  *
  * \return The value to be used as first word in a map item for kernel objects
  *         or IO-ports.
@@ -392,47 +397,51 @@ L4_INLINE l4_umword_t
 l4_map_obj_control(l4_umword_t spot, unsigned grant) L4_NOTHROW;
 
 /**
- * \brief Return rights from a flex page.
+ * Return rights from a flex page.
  * \ingroup l4_fpage_api
  *
  * \param f  Flex page
+ *
  * \return Size part of the given flex page.
  */
 L4_INLINE unsigned
 l4_fpage_rights(l4_fpage_t f) L4_NOTHROW;
 
 /**
- * \brief Return type from a flex page.
+ * Return type from a flex page.
  * \ingroup l4_fpage_api
  *
  * \param f  Flex page
+ *
  * \return Type part of the given flex page.
  */
 L4_INLINE unsigned
 l4_fpage_type(l4_fpage_t f) L4_NOTHROW;
 
 /**
- * \brief Return size from a flex page.
+ * Return size from a flex page.
  * \ingroup l4_fpage_api
  *
  * \param f  Flex page
+ *
  * \return Size part of the given flex page.
  */
 L4_INLINE unsigned
 l4_fpage_size(l4_fpage_t f) L4_NOTHROW;
 
 /**
- * \brief Return page from a flex page.
+ * Return page from a flex page.
  * \ingroup l4_fpage_api
  *
  * \param f  Flex page
+ *
  * \return Page part of the given flex page.
  */
 L4_INLINE unsigned long
 l4_fpage_page(l4_fpage_t f) L4_NOTHROW;
 
 /**
- * \brief Set new right in a flex page.
+ * Set new right in a flex page.
  * \ingroup l4_fpage_api
  *
  * \param  src         Flex page
@@ -444,26 +453,29 @@ L4_INLINE l4_fpage_t
 l4_fpage_set_rights(l4_fpage_t src, unsigned char new_rights) L4_NOTHROW;
 
 /**
- * \brief Test whether a given range is completely within an fpage.
+ * Test whether a given range is completely within an fpage.
  * \ingroup l4_fpage_api
  *
  * \param   fpage    Flex page
  * \param   addr     Address
  * \param   size     Size of range in log2.
+ *
+ * \retval ==0 The range is not completely in the fpage.
+ * \retval !=0 The range is within the fpage.
  */
 L4_INLINE int
 l4_fpage_contains(l4_fpage_t fpage, l4_addr_t addr, unsigned size) L4_NOTHROW;
 
 /**
- * \brief Determine maximum flex page size of a region.
+ * Determine maximum flex page size of a region.
  * \ingroup l4_fpage_api
  *
- * \param order    Order value to start with (e.g. for memory
- *                 L4_LOG2_PAGESIZE would be used)
- * \param addr     Address to be covered by the flex page.
- * \param min_addr Start of region / minimal address (including).
- * \param max_addr End of region / maximal address (excluding).
- * \param hotspot  (Optional) hot spot.
+ * \param order     Order value to start with (e.g. for memory
+ *                  L4_LOG2_PAGESIZE would be used)
+ * \param addr      Address to be covered by the flex page.
+ * \param min_addr  Start of region / minimal address (including).
+ * \param max_addr  End of region / maximal address (excluding).
+ * \param hotspot   (Optional) hot spot.
  *
  * \return Maximum order (log2-size) possible.
  *

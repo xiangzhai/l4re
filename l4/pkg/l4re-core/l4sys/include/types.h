@@ -1,7 +1,7 @@
 /*****************************************************************************/
 /**
  * \file
- * \brief   Common L4 ABI Data Types.
+ * Common L4 ABI Data Types.
  * \ingroup l4_api
  */
 /*
@@ -35,13 +35,13 @@
 /**
  * \defgroup l4_msgtag_api Message Tag
  * \ingroup l4_ipc_api
- * \brief API related to the message tag data type.
+ * API related to the message tag data type.
  *
- * <c>\#include <l4/sys/types.h></c>
+ * \includefile{l4/sys/types.h}
  */
 
 /**
- * \brief Message tag for IPC operations.
+ * Message tag for IPC operations.
  * \ingroup l4_msgtag_api
  *
  * All predefined protocols used by the kernel.
@@ -88,26 +88,26 @@ enum L4_varg_type
 
 
 /**
- * \brief Flags for message tags.
+ * Flags for message tags.
  * \ingroup l4_msgtag_api
  */
 enum l4_msgtag_flags
 {
   // flags for received IPC
   /**
-   * \brief Error indicator flag.
+   * Error indicator flag.
    * \hideinitializer
    */
   L4_MSGTAG_ERROR        = 0x8000,
   /**
-   * \brief Cross-CPU invocation indicator flag.
+   * Cross-CPU invocation indicator flag.
    * \hideinitializer
    */
   L4_MSGTAG_XCPU         = 0x4000,
 
   // flags for sending IPC
   /**
-   * \brief Enable FPU transfer flag for IPC.
+   * Enable FPU transfer flag for IPC.
    * \hideinitializer
    *
    * By enabling this flag when sending IPC, the sender indicates that the
@@ -117,7 +117,7 @@ enum l4_msgtag_flags
    */
   L4_MSGTAG_TRANSFER_FPU = 0x1000,
   /**
-   * \brief Enable schedule in IPC flag.
+   * Enable schedule in IPC flag.
    * \hideinitializer
    *
    * Usually IPC operations donate the remaining time slice of a thread
@@ -126,10 +126,10 @@ enum l4_msgtag_flags
    */
   L4_MSGTAG_SCHEDULE     = 0x2000,
   /**
-   * \brief Enable IPC propagation.
+   * Enable IPC propagation.
    * \hideinitializer
    *
-   * This flag enables IPC propagation, which means an IPC reply-connection 
+   * This flag enables IPC propagation, which means an IPC reply-connection
    * from the current caller will be propagated to the new IPC receiver.
    * This makes it possible to propagate an IPC call to a third thread, which
    * may then directly answer to the caller.
@@ -137,7 +137,7 @@ enum l4_msgtag_flags
   L4_MSGTAG_PROPAGATE    = 0x4000,
 
   /**
-   * \brief Mask for all flags.
+   * Mask for all flags.
    * \hideinitializer
    */
   L4_MSGTAG_FLAGS        = 0xf000,
@@ -145,12 +145,12 @@ enum l4_msgtag_flags
 
 
 /**
- * \brief Message tag data structure.
+ * Message tag data structure.
  * \ingroup l4_msgtag_api
  *
- * <c>\#include <l4/sys/types.h></c>
+ * \includefile{l4/sys/types.h}
  *
- * Describes the details of an IPC operation, in particular 
+ * Describes the details of an IPC operation, in particular
  * which parts of the UTCB have to be transmitted, and also flags
  * to enable real-time and FPU extensions.
  *
@@ -173,7 +173,7 @@ typedef struct l4_msgtag_t
   /// Get the number of typed items.
   unsigned items() const throw() { return (raw >> 6) & 0x3f; }
   /**
-   * \brief Get the flags value.
+   * Get the flags value.
    *
    * The flags are a combination of the flags defined by
    * #l4_msgtag_flags.
@@ -199,13 +199,13 @@ typedef struct l4_msgtag_t
 
 
 /**
- * \brief Create a message tag from the specified values.
+ * Create a message tag from the specified values.
  * \ingroup l4_msgtag_api
  *
- * \param label the user-defined label
- * \param words the number of untyped words within the UTCB
- * \param items the number of typed items (e.g., flex pages) within the UTCB
- * \param flags the IPC flags for realtime and FPU extensions
+ * \param label  The user-defined label
+ * \param words  The number of untyped words within the UTCB
+ * \param items  The number of typed items (e.g., flex pages) within the UTCB
+ * \param flags  The IPC flags for realtime and FPU extensions
  *
  * \return Message tag
  */
@@ -213,44 +213,53 @@ L4_INLINE l4_msgtag_t l4_msgtag(long label, unsigned words, unsigned items,
                                 unsigned flags) L4_NOTHROW;
 
 /**
- * \brief Get the protocol of tag.
+ * Get the protocol of tag.
  * \ingroup l4_msgtag_api
- * \param t The tag
+ *
+ * \param t  The tag
+ *
  * \return Label
  */
 L4_INLINE long l4_msgtag_label(l4_msgtag_t t) L4_NOTHROW;
 
 /**
- * \brief Get the number of untyped words.
+ * Get the number of untyped words.
  * \ingroup l4_msgtag_api
- * \param t The tag
+ *
+ * \param t  The tag
+ *
  * \return Number of words
  */
 L4_INLINE unsigned l4_msgtag_words(l4_msgtag_t t) L4_NOTHROW;
 
 /**
- * \brief Get the number of typed items.
+ * Get the number of typed items.
  * \ingroup l4_msgtag_api
- * \param t The tag
+ *
+ * \param t  The tag
+ *
  * \return Number of items.
  */
 L4_INLINE unsigned l4_msgtag_items(l4_msgtag_t t) L4_NOTHROW;
 
 /**
- * \brief Get the flags.
+ * Get the flags.
  * \ingroup l4_msgtag_api
  *
  * The flag are defined by #l4_msgtag_flags.
  *
- * \param t the tag
+ * \param t  The tag
+ *
  * \return Flags
  */
 L4_INLINE unsigned l4_msgtag_flags(l4_msgtag_t t) L4_NOTHROW;
 
 /**
- * \brief Test for error indicator flag.
+ * Test for error indicator flag.
  * \ingroup l4_msgtag_api
- * \param t the tag
+ *
+ * \param t  The tag
+ *
  * \return >0 for yes, 0 for no
  *
  * Return whether the kernel operation caused a communication error, e.g.
@@ -260,49 +269,60 @@ L4_INLINE unsigned l4_msgtag_flags(l4_msgtag_t t) L4_NOTHROW;
 L4_INLINE unsigned l4_msgtag_has_error(l4_msgtag_t t) L4_NOTHROW;
 
 /**
- * \brief Test for page-fault protocol.
+ * Test for page-fault protocol.
  * \ingroup l4_msgtag_api
- * \param t the tag
+ *
+ * \param t  The tag
+ *
  * \return Boolean value
  */
 L4_INLINE unsigned l4_msgtag_is_page_fault(l4_msgtag_t t) L4_NOTHROW;
 
 /**
- * \brief Test for preemption protocol.
+ * Test for preemption protocol.
  * \ingroup l4_msgtag_api
- * \param t the tag
+ *
+ * \param t  The tag
  * \return Boolean value
  */
 L4_INLINE unsigned l4_msgtag_is_preemption(l4_msgtag_t t) L4_NOTHROW;
 
 /**
- * \brief Test for system-exception protocol.
+ * Test for system-exception protocol.
  * \ingroup l4_msgtag_api
- * \param t the tag
+ *
+ * \param t  The tag
+ *
  * \return Boolean value
  */
 L4_INLINE unsigned l4_msgtag_is_sys_exception(l4_msgtag_t t) L4_NOTHROW;
 
 /**
- * \brief Test for exception protocol.
+ * Test for exception protocol.
  * \ingroup l4_msgtag_api
- * \param t the tag
+ *
+ * \param t  The tag
+ *
  * \return Boolean value
  */
 L4_INLINE unsigned l4_msgtag_is_exception(l4_msgtag_t t) L4_NOTHROW;
 
 /**
- * \brief Test for sigma0 protocol.
+ * Test for sigma0 protocol.
  * \ingroup l4_msgtag_api
- * \param t the tag
+ *
+ * \param t  The tag
+ *
  * \return Boolean value
  */
 L4_INLINE unsigned l4_msgtag_is_sigma0(l4_msgtag_t t) L4_NOTHROW;
 
 /**
- * \brief Test for IO-page-fault protocol.
+ * Test for IO-page-fault protocol.
  * \ingroup l4_msgtag_api
- * \param t the tag
+ *
+ * \param t  The tag
+ *
  * \return Boolean value
  */
 L4_INLINE unsigned l4_msgtag_is_io_page_fault(l4_msgtag_t t) L4_NOTHROW;
@@ -320,34 +340,40 @@ L4_INLINE unsigned l4_msgtag_is_io_page_fault(l4_msgtag_t t) L4_NOTHROW;
  * to your code to use the functions and definitions explained here.
  */
 /**
- * \brief L4 Capability selector Type.
+ * L4 Capability selector Type.
  * \ingroup l4_cap_api
  */
 typedef unsigned long l4_cap_idx_t;
 
 /**
- * \brief Test if a capability selector is the invalid capability.
+ * Test if a capability selector is the invalid capability.
  * \ingroup l4_cap_api
+ *
  * \param c  Capability selector
+ *
  * \retval 0   The capability selector is not the invalid capability.
  * \retval >0  The capability selector is the invalid capability.
  */
 L4_INLINE unsigned l4_is_invalid_cap(l4_cap_idx_t c) L4_NOTHROW;
 
 /**
- * \brief Test if a capability selector is a valid selector.
+ * Test if a capability selector is a valid selector.
  * \ingroup l4_cap_api
+ *
  * \param c  Capability selector
+ *
  * \retval 0   The capability selector is not valid.
  * \retval >0  The capability selector is valid.
  */
 L4_INLINE unsigned l4_is_valid_cap(l4_cap_idx_t c) L4_NOTHROW;
 
 /**
- * \brief Test if two capability selectors are equal.
+ * Test if two capability selectors are equal.
  * \ingroup l4_cap_api
+ *
  * \param c1  Capability
  * \param c2  Capability
+ *
  * \retval 0  The given capabilities are not in the same slot.
  * \retval 1  The given capabilities are in the same slot.
  */
@@ -355,8 +381,10 @@ L4_INLINE unsigned l4_capability_equal(l4_cap_idx_t c1, l4_cap_idx_t c2) L4_NOTH
 
 /**
  * Get the next capability selector after `c`.
+ *
  * \param c  The capability selector for which the next selector shall be
  *           computed.
+ *
  * \returns The next capability selector after `c`.
  */
 L4_INLINE l4_cap_idx_t l4_capability_next(l4_cap_idx_t c) L4_NOTHROW;

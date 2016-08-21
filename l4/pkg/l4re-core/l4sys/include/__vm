@@ -30,7 +30,7 @@
 namespace L4 {
 
 /**
- * \brief Virtual machine.
+ * Virtual machine.
  */
 class Vm : public Kobject_t<Vm, Task, L4_PROTO_VM>
 {

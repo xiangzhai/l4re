@@ -49,7 +49,7 @@ vcpu_host_regs_IMPL	:= vcpu_host_regs-$(CONFIG_XARCH)
 
 INTERFACES_JDB += \
 	jdb jdb_util jdb_core jdb_module jdb_prompt_ext jdb_list           \
-	jdb_handler_queue jdb_attach_irq jdb_scheduler jdb_entry_frame     \
+	jdb_handler_queue jdb_attach_irq jdb_entry_frame                   \
 	jdb_exit_module jdb_bp jdb_factory jdb_input jdb_ipc_gate          \
 	jdb_kobject jdb_kobject_names jdb_lines jdb_prompt_module          \
 	jdb_obj_space jdb_screen jdb_space jdb_symbol jdb_table jdb_tcb    \
@@ -57,7 +57,7 @@ INTERFACES_JDB += \
 	jdb_regex jdb_disasm jdb_tbuf_output jdb_input_task jdb_tbuf_show  \
 	jdb_report jdb_dump jdb_mapdb jdb_timeout jdb_kern_info_kmem_alloc \
 	jdb_kern_info_kip jdb_kern_info jdb_kern_info_data jdb_utcb        \
-	jdb_trap_state jdb_rcupdate jdb_sender_list jdb_vlog jdb_icu
+	jdb_trap_state jdb_rcupdate jdb_sender_list
 
 jdb_IMPL	+= jdb jdb-ansi jdb-thread
 jdb_tbuf_IMPL	+= jdb_tbuf jdb_tbuf-$(CONFIG_XARCH)

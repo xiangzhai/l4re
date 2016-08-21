@@ -42,8 +42,8 @@ Jdb_tbuf_init::allocate(unsigned size)
   Address va = (Address) buffer();
   for (unsigned i = 0; i < size / Config::PAGE_SIZE;
        ++i, va += Config::PAGE_SIZE)
-    if (! Vmem_alloc::page_alloc((void*)va, Vmem_alloc::NO_ZERO_FILL,
-          Vmem_alloc::User))
+    if (!Vmem_alloc::page_alloc((void *)va, Vmem_alloc::NO_ZERO_FILL,
+                                Vmem_alloc::User))
       return i * Config::PAGE_SIZE;
 
   return size;

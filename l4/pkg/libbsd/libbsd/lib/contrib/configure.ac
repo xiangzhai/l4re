@@ -12,8 +12,8 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])],
                             [AC_SUBST([AM_DEFAULT_VERBOSITY], [1])])
 
 LIBBSD_ABI_MAJOR=0
-LIBBSD_ABI_MINOR=7
-LIBBSD_ABI_PATCH=0
+LIBBSD_ABI_MINOR=8
+LIBBSD_ABI_PATCH=3
 
 LIBBSD_ABI="$LIBBSD_ABI_MAJOR:$LIBBSD_ABI_MINOR:$LIBBSD_ABI_PATCH"
 AC_SUBST([LIBBSD_ABI])
@@ -38,9 +38,24 @@ if test "$user_CFLAGS" = unset && test "$GCC" = yes; then
 fi
 
 # Checks for libraries.
+AC_CHECK_LIB([testu01], [unif01_CreateExternGenBits],
+             [TESTU01_LIBS="-ltestu01"])
+AC_SUBST([TESTU01_LIBS])
+AM_CONDITIONAL([HAVE_LIBTESTU01],
+               [test "x$ac_cv_lib_testu01_unif01_CreateExternGenBits" = "xyes"])
+
+# In old glibc versions (< 2.17) clock_gettime() is in librt.
+AS_CASE([$host_os],
+  [*-gnu], [
+    saved_LIBS="$LIBS"
+    AC_SEARCH_LIBS([clock_gettime], [rt], [CLOCK_GETTIME_LIBS="-lrt"])
+    AC_SUBST([CLOCK_GETTIME_LIBS])
+    LIBS="$saved_LIBS"
+  ]
+)
 
 # Checks for header files.
-AC_CHECK_HEADERS([sys/ndir.h sys/dir.h dir.h dirent.h])
+AC_CHECK_HEADERS([sys/ndir.h sys/dir.h ndir.h dirent.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_UID_T
@@ -123,7 +138,10 @@ AC_LINK_IFELSE(
 	 AC_MSG_RESULT([yes])],
 	[AC_MSG_RESULT([no])])
 
-AC_CHECK_FUNCS([clearenv dirfd fopencookie __fpurge getexecname getline sysconf])
+AC_CHECK_FUNCS([clearenv dirfd fopencookie __fpurge \
+                getauxval getentropy getexecname getline \
+                pstat_getproc sysconf])
+AM_CONDITIONAL(HAVE_GETENTROPY, [test "x$ac_cv_func_getentropy" = "xtrue"])
 
 AC_CONFIG_FILES([
 	Makefile

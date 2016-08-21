@@ -10,8 +10,13 @@
 
 #include "ldscript.inc"
 
+#if CPU_ABI == 64
+OUTPUT_FORMAT("elf64-tradlittlemips", "elf64-tradbigmips",
+	      "elf64-tradlittlemips")
+#else
 OUTPUT_FORMAT("elf32-tradlittlemips", "elf32-tradbigmips",
 	      "elf32-tradlittlemips")
+#endif
 /* OUTPUT_ARCH(mips) */
 ENTRY(_start)
 

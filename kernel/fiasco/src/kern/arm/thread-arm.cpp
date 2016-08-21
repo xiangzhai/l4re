@@ -236,7 +236,7 @@ extern "C" {
 
     if (Config::Support_arm_linux_cache_API)
       {
-	if (   ts->hsr().ec() == 0x11
+	if (   ts->esr.ec() == 0x11
             && ts->r[7] == 0xf0002)
 	  {
             if (ts->r[2] == 0)
@@ -342,8 +342,8 @@ Thread::Thread()
   _space.space(Kernel_task::kernel_task());
 
   if (Config::Stack_depth)
-    std::memset((char*)this + sizeof(Thread), '5',
-                Thread::Size-sizeof(Thread)-64);
+    std::memset((char *)this + sizeof(Thread), '5',
+                Thread::Size - sizeof(Thread) - 64);
 
   // set a magic value -- we use it later to verify the stack hasn't
   // been overrun
@@ -360,7 +360,6 @@ Thread::Thread()
   r->sp(0);
   r->ip(0);
   r->psr = Proc::Status_mode_user;
-  //r->psr = 0x1f; //Proc::Status_mode_user;
 
   state_add_dirty(Thread_dead, false);
 
@@ -886,7 +885,7 @@ Thread::handle_fpu_trap(Unsigned32 opcode, Trap_state *ts)
       if (Fpu::is_emu_insn(opcode))
         return Fpu::emulate_insns(opcode, ts);
 
-      ts->hsr().ec() = 0; // tag fpu undef insn
+      ts->esr.ec() = 0; // tag fpu undef insn
     }
   else if (current_thread()->switchin_fpu())
     {
@@ -897,10 +896,10 @@ Thread::handle_fpu_trap(Unsigned32 opcode, Trap_state *ts)
     }
   else
     {
-      ts->hsr().ec() = 0x07;
-      ts->hsr().cond() = opcode >> 28;
-      ts->hsr().cv() = 1;
-      ts->hsr().cpt_cpnr() = 10;
+      ts->esr.ec() = 0x07;
+      ts->esr.cond() = opcode >> 28;
+      ts->esr.cv() = 1;
+      ts->esr.cpt_cpnr() = 10;
     }
 
   return false;

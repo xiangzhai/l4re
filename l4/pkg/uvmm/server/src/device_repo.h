@@ -12,10 +12,6 @@
 
 #include "device.h"
 #include "device_tree.h"
-#include "dev_sysctl.h"
-#include "guest.h"
-#include "virtio_console.h"
-#include "virtio_proxy.h"
 
 namespace Vdev {
 
@@ -70,74 +66,8 @@ public:
         if (!node.is_valid())
           node = dt.path_offset(d.path.c_str());
 
-        d.dev->init_device(*this, node);
+        d.dev->init_device(this, node);
       }
-  }
-
-  int config_as_virtio_device(Vmm::Guest *vmm, Dt_node const &node,
-                              cxx::Ref_ptr<Device> *dev)
-    {
-    if (node.is_compatible("virtio,mmio"))
-      return 0;
-
-    int type_len;
-    auto *type = node.get_prop<char>("l4vmm,virtiotype", &type_len);
-    if (!type)
-      {
-        Err().printf("'l4vmm,virtiotype' property missing from virtio device.\n");
-        return -L4_ENODEV;
-      }
-
-    if (fdt_stringlist_contains(type, type_len, "console"))
-      {
-        Dbg().printf("Create virtual console\n");
-
-        auto cons =
-          Vdev::make_device<Virtio_console_mmio>(&vmm->ram(),
-                                                 L4Re::Env::env()->log());
-        cons->register_obj(vmm->registry());
-        *dev = cons;
-
-        vmm->register_mmio_device(std::move(cons), node);
-        return 1;
-      }
-
-    if (fdt_stringlist_contains(type, type_len, "net"))
-      {
-        Dbg().printf("Create virtual net\n");
-
-        auto cap = L4Re::Env::env()->get_cap<L4virtio::Device>("net");
-        if (!cap)
-          {
-            Dbg(Dbg::Warn).printf("Network switch not found.\n");
-            return -L4_ENODEV;
-          }
-
-        auto &ram = vmm->ram();
-        auto proxy = Vdev::make_device<Vdev::Virtio_proxy_mmio>(&ram);
-        proxy->register_obj(vmm->registry(), cap, ram.ram(), ram.vm_start());
-        *dev = proxy;
-
-        vmm->register_mmio_device(std::move(proxy), node);
-        return 1;
-      }
-
-    Err().printf("unknown virtio device type: '%.*s'\n", type_len, type);
-    return -L4_ENODEV;
-  }
-
-  int config_as_syscon(Vmm::Guest *vmm, Dt_node const &node,
-                       cxx::Ref_ptr<Device> *dev)
-  {
-    if (node.is_compatible("syscon-l4vmm"))
-      return 0;
-
-    auto syscon = Vdev::make_device<Vdev::System_controller_mmio>();
-    *dev = syscon;
-
-    vmm->register_mmio_device(std::move(syscon), node);
-
-    return 1;
   }
 
 private:

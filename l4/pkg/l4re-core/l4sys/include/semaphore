@@ -1,4 +1,8 @@
 // vi:ft=cpp
+/**
+ * \file
+ * Semaphore class definition.
+ */
 /*
  * (c) 2015 Alexander Warg <alexander.warg@kernkonzept.com>
  *
@@ -50,7 +54,9 @@ struct Semaphore : Kobject_t<Semaphore, Triggerable, L4_PROTO_SEMAPHORE>
    * Semaphore up operation (wrapper for trigger()).
    *
    * \utcb{utcb}
-   * \return Send-only IPC message return tag.
+   *
+   * \return Send-only IPC message return tag. Use l4_ipc_error() to check for
+   *         errors, do **not** use l4_error().
    *
    * Increases the semaphore counter by one.
    */
@@ -65,8 +71,9 @@ struct Semaphore : Kobject_t<Semaphore, Triggerable, L4_PROTO_SEMAPHORE>
    *                 significant for blocking, the send part is usually
    *                 non-blocking.
    * \utcb{utcb}
-   * \return IPC message return tag (use l4_ipc_error() to check for
-   *         a timeout or a cancel condition).
+   *
+   * \return IPC message return tag. Use l4_ipc_error() to check for
+   *         a timeout or a cancel condition.
    *
    * This method decrements the semaphore counter by one, or blocks if the
    * counter is already zero, until either a timeout or cancel condition hits

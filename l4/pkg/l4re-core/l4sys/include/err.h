@@ -1,6 +1,6 @@
 /**
  * \file
- * \brief Error codes.
+ * Error codes.
  */
 /*
  * (c) 2008-2009 Adam Lackorzynski <adam@os.inf.tu-dresden.de>,
@@ -26,45 +26,46 @@
 
 /**
  * \defgroup l4_error_api Error codes
- * \brief Common error codes.
+ * Common error codes.
  * \ingroup l4_api
  *
- * <c>\#include <l4/sys/err.h></c>
+ * \includefile{l4/sys/err.h}
  */
 
 /**
- * \brief L4 error codes.
+ * L4 error codes.
  * \ingroup l4_error_api
  *
  * Those error codes are used by both the kernel and the user programs.
  */
 enum l4_error_code_t
 {
-  L4_EOK           =  0,     /**< \brief Ok. */
-  L4_EPERM         =  1,     /**< \brief No permission. */
-  L4_ENOENT        =  2,     /**< \brief No such entity. */
-  L4_EIO           =  5,     /**< \brief I/O error. */
-  L4_EAGAIN        = 11,     /**< \brief Try again. */
-  L4_ENOMEM        = 12,     /**< \brief No memory. */
-  L4_EACCESS       = 13,     /**< \brief Permission denied. */
-  L4_EBUSY         = 16,     /**< \brief Object currently busy, try later. */
-  L4_EEXIST        = 17,     /**< \brief Already exists. */
-  L4_ENODEV        = 19,     /**< \brief No such thing. */
-  L4_EINVAL        = 22,     /**< \brief Invalid argument. */
-  L4_ERANGE        = 34,     /**< \brief Range error. */
-  L4_ENAMETOOLONG  = 36,     /**< \brief Name too long. */
-  L4_ENOSYS        = 38,     /**< \brief No sys. */
-  L4_EBADPROTO     = 39,     /**< \brief Unsupported protocol. */
-  L4_EADDRNOTAVAIL = 99,     /**< \brief Address not available. */
-  L4_ERRNOMAX      = 100,    /**< \brief Maximum error value. */
+  L4_EOK           =  0,     /**< Ok. */
+  L4_EPERM         =  1,     /**< No permission. */
+  L4_ENOENT        =  2,     /**< No such entity. */
+  L4_EIO           =  5,     /**< I/O error. */
+  L4_EAGAIN        = 11,     /**< Try again. */
+  L4_ENOMEM        = 12,     /**< No memory. */
+  L4_EACCESS       = 13,     /**< Permission denied. */
+  L4_EFAULT        = 14,     /**< Invalid memory address. */
+  L4_EBUSY         = 16,     /**< Object currently busy, try later. */
+  L4_EEXIST        = 17,     /**< Already exists. */
+  L4_ENODEV        = 19,     /**< No such thing. */
+  L4_EINVAL        = 22,     /**< Invalid argument. */
+  L4_ERANGE        = 34,     /**< Range error. */
+  L4_ENAMETOOLONG  = 36,     /**< Name too long. */
+  L4_ENOSYS        = 38,     /**< No sys. */
+  L4_EBADPROTO     = 39,     /**< Unsupported protocol. */
+  L4_EADDRNOTAVAIL = 99,     /**< Address not available. */
+  L4_ERRNOMAX      = 100,    /**< Maximum error value. */
 
-  L4_ENOREPLY      = 1000,   /**< \brief No reply. */
-  L4_EMSGTOOSHORT  = 1001,   /**< \brief Message too short. */
-  L4_EMSGTOOLONG   = 1002,   /**< \brief Message too long. */
-  L4_EMSGMISSARG   = 1003,   /**< \brief Message has invalid capability. */
+  L4_ENOREPLY      = 1000,   /**< No reply. */
+  L4_EMSGTOOSHORT  = 1001,   /**< Message too short. */
+  L4_EMSGTOOLONG   = 1002,   /**< Message too long. */
+  L4_EMSGMISSARG   = 1003,   /**< Message has invalid capability. */
 
-  L4_EIPC_LO       = 2000,   /**< \brief Communication error-range low. */
-  L4_EIPC_HI       = 2000 + 0x1f,   /**< \brief Communication error-range high. */
+  L4_EIPC_LO       = 2000,   /**< Communication error-range low. */
+  L4_EIPC_HI       = 2000 + 0x1f,   /**< Communication error-range high. */
 };
 
 __BEGIN_DECLS

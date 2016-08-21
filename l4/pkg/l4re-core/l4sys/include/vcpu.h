@@ -24,11 +24,11 @@
 /**
  * \defgroup l4_vcpu_api vCPU API
  * \ingroup  l4_thread_api
- * \brief vCPU API
+ * vCPU API
  */
 
 /**
- * \brief State of a vCPU
+ * State of a vCPU
  * \ingroup l4_vcpu_api
  */
 typedef struct l4_vcpu_state_t
@@ -52,7 +52,7 @@ typedef struct l4_vcpu_state_t
 } l4_vcpu_state_t;
 
 /**
- * \brief State flags of a vCPU
+ * State flags of a vCPU
  * \ingroup l4_vcpu_api
  */
 enum L4_vcpu_state_flags
@@ -66,7 +66,7 @@ enum L4_vcpu_state_flags
 };
 
 /**
- * \brief Sticky flags of a vCPU
+ * Sticky flags of a vCPU
  * \ingroup l4_vcpu_api
  */
 enum L4_vcpu_sticky_flags
@@ -75,7 +75,7 @@ enum L4_vcpu_sticky_flags
 };
 
 /**
- * \brief Offsets for vCPU state layouts
+ * Offsets for vCPU state layouts
  * \ingroup l4_vcpu_api
  */
 enum L4_vcpu_state_offset
@@ -88,7 +88,8 @@ enum L4_vcpu_state_offset
  * Check if a vCPU state has the right version.
  *
  * \param  vcpu  A pointer to an initialized vCPU state.
- * \retval 1  Iff the vCPU state has a matching version ID for the current
+ *
+ * \retval 1  If the vCPU state has a matching version ID for the current
  *            user-level structures.
  * \retval 0  If the vCPU state has a different (incompatible) version ID than
  *            the current vCPU user-level structures.

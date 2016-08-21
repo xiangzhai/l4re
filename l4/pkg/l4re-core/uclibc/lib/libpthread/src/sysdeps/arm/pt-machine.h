@@ -33,17 +33,7 @@
 L4_INLINE long int
 testandset (int *spinlock)
 {
-  register unsigned int ret;
-
-#if 0
-  __asm__ __volatile__("swp %0, %1, [%2]"
-		       : "=r"(ret)
-		       : "0"(1), "r"(spinlock));
-#else
-   ret = l4_atomic_xchg((volatile long int *)spinlock, 1);
-#endif
-
-  return ret;
+  return __atomic_exchange_n(spinlock, 1, __ATOMIC_ACQUIRE);
 }
 
 
@@ -57,6 +47,9 @@ register char * stack_pointer __asm__ ("sp");
 
 L4_INLINE int
 __compare_and_swap (long int *p, long int oldval, long int newval)
-{ return l4util_cmpxchg32((l4_uint32_t*)p,oldval,newval); }
+{
+  return __atomic_compare_exchange_n(p, &oldval, newval, 0,
+                                     __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+}
 
 #endif /* pt-machine.h */

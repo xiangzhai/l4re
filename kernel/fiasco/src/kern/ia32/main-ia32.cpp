@@ -49,11 +49,11 @@ exit_question()
   if (Config::getchar_does_hlt_works_ok)
     {
       Timer_tick::set_vectors_stop();
-      Timer_tick::enable(Cpu_number::boot_cpu()); // hmexit alway on CPU 0
+      Timer_tick::enable(Cpu_number::boot_cpu()); // hm, exit always on CPU 0
       Proc::sti();
     }
 
-  // make sure that we don't acknowledg the exit question automatically
+  // make sure that we don't acknowledge the exit question automatically
   Kconsole::console()->change_state(Console::PUSH, 0, ~Console::INENABLED, 0);
   puts("\nReturn reboots, \"k\" enters L4 kernel debugger...");
 

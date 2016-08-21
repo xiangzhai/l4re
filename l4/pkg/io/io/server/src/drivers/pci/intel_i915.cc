@@ -31,7 +31,7 @@ struct Pci_intel_i915_drv : Driver
 
     // the opregion address might not be page aligned... (0xdaf68018)
     Resource *res = new Resource(flags, l4_trunc_page(v),
-                                 l4_round_page(v + 0x2000));
+                                 l4_round_page(v + 0x2000) - 1);
     d->host()->add_resource(res);
     Device *p;
     for (p = d->host()->parent(); p && p->parent(); p = p->parent())
@@ -49,6 +49,7 @@ struct Init
 {
   Init()
   {
+    _pci_intel_i915_drv.register_driver(0x8086, 0x0046);
     _pci_intel_i915_drv.register_driver(0x8086, 0x0166);
     _pci_intel_i915_drv.register_driver(0x8086, 0x0412);
   }

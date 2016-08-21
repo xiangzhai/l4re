@@ -89,6 +89,15 @@ define BID_GENERATE_F_MAKE_RULES
 endef
 
 #
+# Generate the ASM set of make rules.
+# prerequisites: %.<arg1> (usually %.S)
+# targets: %.o, %.s.o, %.pr.o, and %.pr.s.o
+#
+define BID_GENERATE_ASM_MAKE_RULES
+  $(call BID_GENERATE_DEFAULT_MAKE_RULES,%,%.$(1),AS,-x assembler-with-cpp)
+endef
+
+#
 # arg 1: target pattern
 #     2: source pattern
 #     3: compiler

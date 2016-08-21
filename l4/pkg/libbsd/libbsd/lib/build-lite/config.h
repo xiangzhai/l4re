@@ -10,9 +10,6 @@
 /* Define to 1 if you have the `dirfd' function. */
 #define HAVE_DIRFD 1
 
-/* Define to 1 if you have the <dir.h> header file. */
-/* #undef HAVE_DIR_H */
-
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #define HAVE_DLFCN_H 1
 
@@ -21,6 +18,12 @@
 
 /* Define to 1 if you have the `fopencookie' function. */
 #define HAVE_FOPENCOOKIE 1
+
+/* Define to 1 if you have the `getauxval' function. */
+/* #undef HAVE_GETAUXVAL */
+
+/* Define to 1 if you have the `getentropy' function. */
+/* #undef HAVE_GETENTROPY */
 
 /* Define to 1 if you have the `getexecname' function. */
 /* #undef HAVE_GETEXECNAME */
@@ -34,8 +37,14 @@
 /* Define to 1 if you have the <memory.h> header file. */
 #define HAVE_MEMORY_H 1
 
+/* Define to 1 if you have the <ndir.h> header file. */
+/* #undef HAVE_NDIR_H */
+
 /* Define to 1 if you have program_invocation_short_name */
 /* #undef HAVE_PROGRAM_INVOCATION_SHORT_NAME */
+
+/* Define to 1 if you have the `pstat_getproc' function. */
+/* #undef HAVE_PSTAT_GETPROC */
 
 /* Define to 1 if you have the <stdint.h> header file. */
 #define HAVE_STDINT_H 1
@@ -76,8 +85,7 @@
 /* Define to 1 if you have __progname */
 #define HAVE___PROGNAME 1
 
-/* Define to the sub-directory in which libtool stores uninstalled libraries.
-   */
+/* Define to the sub-directory where libtool stores uninstalled libraries. */
 #define LT_OBJDIR ".libs/"
 
 /* Name of package */
@@ -90,7 +98,7 @@
 #define PACKAGE_NAME "libbsd"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "libbsd 0.7.0"
+#define PACKAGE_STRING "libbsd 0.8.3"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "libbsd"
@@ -99,7 +107,7 @@
 #define PACKAGE_URL ""
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "0.7.0"
+#define PACKAGE_VERSION "0.8.3"
 
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1
@@ -127,7 +135,7 @@
 
 
 /* Version number of package */
-#define VERSION "0.7.0"
+#define VERSION "0.8.3"
 
 /* Enable large inode numbers on Mac OS X 10.5.  */
 #ifndef _DARWIN_USE_64_BIT_INODE

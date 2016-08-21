@@ -179,6 +179,7 @@ IMPLEMENTATION:
 #include "thread_state.h"
 #include "timeout.h"
 
+JDB_DEFINE_TYPENAME(Thread,  "\033[32mThread\033[m");
 DEFINE_PER_CPU Per_cpu<unsigned long> Thread::nested_trap_recover;
 
 IMPLEMENT

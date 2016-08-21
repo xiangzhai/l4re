@@ -81,6 +81,8 @@ IMPLEMENTATION:
 #include "thread_state.h"
 #include "timer.h"
 
+JDB_DEFINE_TYPENAME(Ipc_gate_obj, "\033[35mGate\033[m");
+
 PUBLIC
 ::Kobject_mappable *
 Ipc_gate_obj::map_root()
@@ -386,6 +388,12 @@ ipc_gate_factory(Ram_quota *q, Space *space,
 
       L4_fpage::Rights thread_rights = L4_fpage::Rights(0);
       thread = cxx::dyn_cast<Thread*>(space->lookup_local(bind_thread.obj_index(), &thread_rights));
+
+      if (EXPECT_FALSE(!thread))
+        {
+          *err = L4_err::ENoent;
+          return 0;
+        }
 
       *err = L4_err::EPerm;
       if (EXPECT_FALSE(!(thread_rights & L4_fpage::Rights::W())))

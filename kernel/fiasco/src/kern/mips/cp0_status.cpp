@@ -39,26 +39,45 @@ public:
   };
 };
 
+// -----------------------------------------------------------------------------
+INTERFACE [mips32]:
+
+EXTENSION class Cp0_status
+{
+public:
+  enum { ST_USER_DEFAULT = ST_KSU_USER | ST_EXL | ST_IE };
+};
+
+// -----------------------------------------------------------------------------
+INTERFACE [mips64]:
+
+EXTENSION class Cp0_status
+{
+public:
+  enum
+  {
+    ST_USER_DEFAULT = ST_FR | ST_UX | ST_SX | ST_KX | ST_KSU_USER | ST_EXL | ST_IE
+  };
+};
+
 //------------------------------------------------------------------------------
 IMPLEMENTATION:
 
-PUBLIC static inline
-Mword
+#include "processor.h"
+
+PUBLIC static inline NEEDS ["processor.h"]
+Unsigned32
 Cp0_status::read()
-{
-  Mword r;
-  __asm__ __volatile__ ("mfc0  %0, $12" : "=r"(r));
-  return r;
-}
+{ return Mips::mfc0_32(Mips::Cp0_status); }
 
-PUBLIC static inline
+PUBLIC static inline NEEDS ["processor.h"]
 void
-Cp0_status::write(Mword v)
+Cp0_status::write(Unsigned32 v)
 {
-  __asm__ __volatile__ ("mtc0  %z0, $12" : : "Jr"(v));
+  Mips::mtc0_32(v, Mips::Cp0_status);
 }
 
-PRIVATE static inline
+PRIVATE static inline NEEDS["processor.h"]
 void
 Cp0_status::check_status_hazards(Mword bits)
 {
@@ -66,7 +85,7 @@ Cp0_status::check_status_hazards(Mword bits)
   enum { mask = ST_IE | ST_CU1 };
 
   if(bits & mask)
-    asm volatile ("ehb");
+    Mips::ehb();
 }
 
 PUBLIC static inline NEEDS[Cp0_status::check_status_hazards]
@@ -98,7 +117,7 @@ Mword
 Cp0_status::status_eret_to_user_ei(Mword status_word)
 {
   status_word &= ~ST_KSU_MASK;
-  status_word |= ST_KSU_USER | ST_EXL | ST_IE;
+  status_word |= ST_USER_DEFAULT;
   return status_word;
 }
 

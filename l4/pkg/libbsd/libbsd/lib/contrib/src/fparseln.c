@@ -35,8 +35,6 @@ __RCSID("$NetBSD: fparseln.c,v 1.10 2009/10/21 01:07:45 snj Exp $");
 #include <string.h>
 #include <stdlib.h>
 
-#define FLOCKFILE(fp)
-#define FUNLOCKFILE(fp)
 #define _DIAGASSERT(t)
 
 static int isescaped(const char *, const char *, int);
@@ -77,7 +75,8 @@ fparseln(FILE *fp, size_t *size, size_t *lineno, const char str[3], int flags)
 {
 	static const char dstr[3] = { '\\', '\\', '#' };
 
-	size_t	s, len;
+	ssize_t	s;
+	size_t len, ptrlen;
 	char   *buf;
 	char   *ptr, *cp;
 	int	cnt;
@@ -87,6 +86,8 @@ fparseln(FILE *fp, size_t *size, size_t *lineno, const char str[3], int flags)
 
 	len = 0;
 	buf = NULL;
+	ptrlen = 0;
+	ptr = NULL;
 	cnt = 1;
 
 	if (str == NULL)
@@ -97,11 +98,11 @@ fparseln(FILE *fp, size_t *size, size_t *lineno, const char str[3], int flags)
 	com = str[2];
 	/*
 	 * XXX: it would be cool to be able to specify the newline character,
-	 * but unfortunately, fgetln does not let us
+	 * getdelim(3) does let us, but supporting it would diverge from BSDs.
 	 */
 	nl  = '\n';
 
-	FLOCKFILE(fp);
+	flockfile(fp);
 
 	while (cnt) {
 		cnt = 0;
@@ -109,7 +110,8 @@ fparseln(FILE *fp, size_t *size, size_t *lineno, const char str[3], int flags)
 		if (lineno)
 			(*lineno)++;
 
-		if ((ptr = fgetln(fp, &s)) == NULL)
+		s = getline(&ptr, &ptrlen, fp);
+		if (s < 0)
 			break;
 
 		if (s && com) {		/* Check and eliminate comments */
@@ -147,8 +149,9 @@ fparseln(FILE *fp, size_t *size, size_t *lineno, const char str[3], int flags)
 		}
 
 		if ((cp = realloc(buf, len + s + 1)) == NULL) {
-			FUNLOCKFILE(fp);
+			funlockfile(fp);
 			free(buf);
+			free(ptr);
 			return NULL;
 		}
 		buf = cp;
@@ -158,7 +161,8 @@ fparseln(FILE *fp, size_t *size, size_t *lineno, const char str[3], int flags)
 		buf[len] = '\0';
 	}
 
-	FUNLOCKFILE(fp);
+	funlockfile(fp);
+	free(ptr);
 
 	if ((flags & FPARSELN_UNESCALL) != 0 && esc && buf != NULL &&
 	    strchr(buf, esc) != NULL) {
@@ -195,36 +199,3 @@ fparseln(FILE *fp, size_t *size, size_t *lineno, const char str[3], int flags)
 		*size = len;
 	return buf;
 }
-
-#ifdef TEST
-
-int main(int, char **);
-
-int
-main(int argc, char **argv)
-{
-	char   *ptr;
-	size_t	size, line;
-
-	line = 0;
-	while ((ptr = fparseln(stdin, &size, &line, NULL,
-	    FPARSELN_UNESCALL)) != NULL)
-		printf("line %d (%d) |%s|\n", line, size, ptr);
-	return 0;
-}
-
-/*
-
-# This is a test
-line 1
-line 2 \
-line 3 # Comment
-line 4 \# Not comment \\\\
-
-# And a comment \
-line 5 \\\
-line 6
-
-*/
-
-#endif /* TEST */

@@ -564,6 +564,7 @@ public:
     EPerm         =  1, ///< Permission denied.
     ENoent        =  2, ///< Some object was not found.
     ENomem        = 12, ///< Out of memory.
+    EFault        = 14, ///< There was an unresolved page fault
     EBusy         = 16, ///< The object is busy, try again.
     EExists       = 17, ///< Some object does already exist.
     ENodev        = 19, ///< Objects of the specified type cannot be created.

@@ -15,7 +15,7 @@ gic_IMPL		+= gic #gic-mips32-malta
 clock_IMPL		+= clock-generic
 uart_IMPL		+= uart-16550
 kernel_uart_IMPL	+= kernel_uart-libuart
-reset_IMPL		+= reset-mips32-malta
+reset_IMPL		+= reset-mips-malta
 platform_control_IMPL	+= platform_control-mips-malta
 timer_tick_IMPL         += timer_tick-single-vector timer_tick-mips-cp0
 
