@@ -47,11 +47,12 @@ all $(filter config %config,$(MAKECMDGOALS)):
 
 else # srcdir != NOT_SET
 
-all: globalconfig.h
+all: globalconfig.h globalconfig.tags
 
 ifeq ($(filter config %config,$(MAKECMDGOALS)),)
 
 -include globalconfig.out
+-include globalconfig.tags
 
 # use patsubst here to prevent confusion of syntax highlighting editors :-)
 CONFIG_XARCH	:= $(patsubst "%",%,$(CONFIG_XARCH))
@@ -79,6 +80,9 @@ else # ! no ABI
 # .Modules.deps, then restart using Makefile.sub1, Makefile.sub2.
 #
 
+$(srcdir)/Makeconf: globalconfig.tags globalconfig.out
+.PRECIOUS: globalconfig.tags
+
 # Read Make configuration
 include $(srcdir)/Makeconf
 
@@ -97,7 +101,7 @@ ALL = $(foreach subsys, $(SUBSYSTEMS), $($(subsys)) $($(subsys)_EXTRA))
 $(foreach m, $(GENERATED_MODULES), auto/stamp-$(m).ready): $(MODULES_FILES)
 
 .PRECIOUS: .Modules.deps
-.Modules.deps: $(MODULES_FILES) globalconfig.h
+.Modules.deps: $(MODULES_FILES) globalconfig.h globalconfig.tags
 	@mkdir -p auto
 	@echo "Cleaning up build directory"
 	$(VERBOSE)$(RM_R) *.lds *.o fiasco *.d .*.d .*.d.new *.d.new
@@ -106,6 +110,7 @@ $(foreach m, $(GENERATED_MODULES), auto/stamp-$(m).ready): $(MODULES_FILES)
 	@($(foreach mod, $(GENERATED_MODULES),				\
 	    echo 'auto/stamp-$(mod).ready:				\
 		  $(addsuffix .cpp,$(call eval_impl,$(mod)))';		\
+	    $(foreach cpp, $(call eval_impl,$(mod)), echo '$(cpp).cpp:';) \
 	    echo '$(patsubst %,auto/%.cc,$(call eval_impl,$(mod)))'	\
 		 'auto/$(mod).h auto/$(mod)_i.h:			\
 		  auto/stamp-$(mod).ready ;				\
@@ -133,9 +138,9 @@ endif # _modules_read_
 # 
 
 .PHONY: create-sources
-create-sources: $(MODULES_FILES) globalconfig.h .Modules.deps source
+create-sources: $(MODULES_FILES) globalconfig.h globalconfig.tags .Modules.deps source
 	$(MAKE) srcdir=$(srcdir) objbase=$(objbase) -f $(srcdir)/Makefile.sub1 
-auto/stamp-%.ready: $(MODULES_FILES) globalconfig.h .Modules.deps 
+auto/stamp-%.ready: $(MODULES_FILES) globalconfig.h globalconfig.tags .Modules.deps 
 	$(MAKE) srcdir=$(srcdir) objbase=$(objbase) -f $(srcdir)/Makefile.sub1 $@
 
 DEPS_FILES=DEPS DEPS.a4 DEPS.tred
@@ -144,10 +149,10 @@ DEPS_FILES=DEPS DEPS.a4 DEPS.tred
 # Makefile.sub2: Create everything else.
 #
 all doc $(addsuffix .ps,$(DEPS_FILES)) $(addsuffix .svg,$(DEPS_FILES)) TAGS tags: \
-  $(MODULES_FILES) .Modules.deps create-sources globalconfig.h
+  $(MODULES_FILES) .Modules.deps create-sources globalconfig.h globalconfig.tags
 	$(MAKE) srcdir=$(srcdir) objbase=$(objbase) -f $(srcdir)/Makefile.sub2 $@
 
-%.o %_t: $(MODULES_FILES) .Modules.deps create-sources globalconfig.h
+%.o %_t: $(MODULES_FILES) .Modules.deps create-sources globalconfig.h globalconfig.tags
 	$(MAKE) srcdir=$(srcdir) objbase=$(objbase) -f $(srcdir)/Makefile.sub2 $@
 
 
@@ -208,6 +213,9 @@ $(KCONFIG_FILE): $(KCONFIG_SRC_FILE) $(KCONFIG_PART_FILES) .$(KCONFIG_FILE).part
 globalconfig.out: $(KCONFIG_FILE)
 	+$(kconfig_call) oldconfig
 
+globalconfig.tags: globalconfig.out
+	$(tooldir)/config-tags $< >$@
+
 globalconfig.h: globalconfig.out
 	+$(kconfig_call) silentoldconfig
 
@@ -251,7 +259,7 @@ clean: $(foreach subsys, $(SUBSYSTEMS), clean-$(subsys))
 cleanall: clean $(foreach subsys, $(SUBSYSTEMS), cleanall-$(subsys))
 	$(foreach subdir, $(SUBDIRS), $(RM) $(subdir)/*.d $(subdir)/.*.d)
 	$(RM) *.d .*.d .*.d.new *.d.new *~
-	$(RM) globalconfig.h globalconfig.h.old Circular
+	$(RM) globalconfig.h globalconfig.tags globalconfig.h.old Circular
 	$(RM) .Modules.deps source
 
 mrproper: cleanall

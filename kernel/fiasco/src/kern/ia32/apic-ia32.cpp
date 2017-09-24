@@ -175,7 +175,8 @@ Apic::us_to_apic(Unsigned64 us)
        "addl  %%ecx, %%eax		\n\t"
        "shll  $11, %%eax		\n\t"
       :"=a" (apic), "=d" (dummy1), "=&c" (dummy2)
-      : "A" (us),   "g" (scaler_us_to_apic)
+      : "A" (us),   "g" ((Unsigned32)scaler_us_to_apic)
+        // scaler_us_to_apic is actually 32-bit
        );
   return apic;
 }
@@ -654,7 +655,7 @@ Apic::test_present_but_disabled()
 }
 
 // activate APIC by writing to appropriate MSR
-static FIASCO_INIT_CPU_AND_PM
+PUBLIC static FIASCO_INIT_CPU_AND_PM
 void
 Apic::activate_by_msr()
 {

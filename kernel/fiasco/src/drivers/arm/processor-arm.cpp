@@ -1,5 +1,67 @@
 INTERFACE[arm]:
 
+#include <cxx/bitfield>
+
+class Arm_esr
+{
+public:
+  Arm_esr() = default;
+  explicit Arm_esr(Mword ec) : _raw(ec) {}
+  Mword _raw;
+
+  Mword raw() const { return _raw; }
+
+  CXX_BITFIELD_MEMBER(26, 31, ec, _raw);
+  CXX_BITFIELD_MEMBER(25, 25, il, _raw);
+  CXX_BITFIELD_MEMBER(24, 24, cv, _raw);
+  CXX_BITFIELD_MEMBER(20, 23, cond, _raw);
+
+  /** \pre ec == 0x01 */
+  CXX_BITFIELD_MEMBER( 0,  0, wfe_trapped, _raw);
+
+  CXX_BITFIELD_MEMBER(17, 19, mcr_opc2, _raw);
+  CXX_BITFIELD_MEMBER(16, 19, mcrr_opc1, _raw);
+  CXX_BITFIELD_MEMBER(14, 16, mcr_opc1, _raw);
+  CXX_BITFIELD_MEMBER(10, 13, mcr_crn, _raw);
+  CXX_BITFIELD_MEMBER(10, 13, mcrr_rt2, _raw);
+  CXX_BITFIELD_MEMBER( 5,  8, mcr_rt, _raw);
+  CXX_BITFIELD_MEMBER( 1,  4, mcr_crm, _raw);
+  CXX_BITFIELD_MEMBER( 0,  0, mcr_read, _raw);
+
+  Mword mcr_coproc_register() const { return _raw & 0xffc1f; }
+
+  static Mword mcr_coproc_register(unsigned opc1, unsigned crn, unsigned crm, unsigned opc2)
+  { return   mcr_opc1_bfm_t::val_dirty(opc1)
+           | mcr_crn_bfm_t::val_dirty(crn)
+           | mcr_crm_bfm_t::val_dirty(crm)
+           | mcr_opc2_bfm_t::val_dirty(opc2); }
+
+  static Mword mrc_coproc_register(unsigned opc1, unsigned crn, unsigned crm, unsigned opc2)
+  { return mcr_coproc_register(opc1, crn, crm, opc2) | 1; }
+
+  CXX_BITFIELD_MEMBER(12, 19, ldc_imm, _raw);
+  CXX_BITFIELD_MEMBER( 5,  8, ldc_rn, _raw);
+  CXX_BITFIELD_MEMBER( 4,  4, ldc_offset_form, _raw);
+  CXX_BITFIELD_MEMBER( 1,  3, ldc_addressing_mode, _raw);
+
+  CXX_BITFIELD_MEMBER( 5,  5, cpt_simd, _raw);
+  CXX_BITFIELD_MEMBER( 0,  3, cpt_cpnr, _raw);
+
+  CXX_BITFIELD_MEMBER( 0,  3, bxj_rm, _raw);
+
+  CXX_BITFIELD_MEMBER( 0, 15, svc_imm, _raw);
+
+  CXX_BITFIELD_MEMBER(24, 24, pf_isv, _raw);
+  CXX_BITFIELD_MEMBER(22, 23, pf_sas, _raw);
+  CXX_BITFIELD_MEMBER(21, 21, pf_sse, _raw);
+  CXX_BITFIELD_MEMBER(16, 19, pf_srt, _raw);
+  CXX_BITFIELD_MEMBER( 9,  9, pf_ea, _raw);
+  CXX_BITFIELD_MEMBER( 8,  8, pf_cache_maint, _raw);
+  CXX_BITFIELD_MEMBER( 7,  7, pf_s1ptw, _raw);
+  CXX_BITFIELD_MEMBER( 6,  6, pf_write, _raw);
+  CXX_BITFIELD_MEMBER( 0,  5, pf_fsc, _raw);
+};
+
 EXTENSION class Proc
 {
 private:
@@ -12,7 +74,6 @@ private:
 public:
   enum : unsigned
   {
-    Status_mode_user           = 0x10,
     Status_mode_mask           = 0x1f,
 
     Status_interrupts_disabled = Status_FIQ_disabled | Status_IRQ_disabled,
@@ -32,6 +93,7 @@ public:
   static Cpu_phys_id cpu_id();
 };
 
+//--------------------------------------------------------------------
 INTERFACE[arm && !arm_em_tz]:
 
 #define ARM_CPS_INTERRUPT_FLAGS "if"
@@ -45,10 +107,11 @@ public:
       Sti_mask                = Status_interrupts_disabled,
       Status_preempt_disabled = Status_IRQ_disabled,
       Status_interrupts_mask  = Status_interrupts_disabled,
-      Status_always_mask      = 0x110,
+      Status_always_mask      = Status_mode_always_on,
     };
 };
 
+//--------------------------------------------------------------------
 INTERFACE[arm && arm_em_tz]:
 
 #define ARM_CPS_INTERRUPT_FLAGS "f"
@@ -62,20 +125,23 @@ public:
       Sti_mask                = Status_FIQ_disabled,
       Status_preempt_disabled = Status_FIQ_disabled,
       Status_interrupts_mask  = Status_FIQ_disabled,
-      Status_always_mask      = 0x110 | Status_IRQ_disabled,
+      Status_always_mask      = Status_mode_always_on | Status_IRQ_disabled,
     };
 };
 
-INTERFACE[arm && !hyp]:
+//--------------------------------------------------------------------
+INTERFACE[arm && !cpu_virt]:
 
 EXTENSION class Proc
 { public: enum : unsigned { Is_hyp = 0, Status_mode_supervisor = PSR_m_svc }; };
 
-INTERFACE[arm && hyp]:
+//--------------------------------------------------------------------
+INTERFACE[arm && cpu_virt]:
 
 EXTENSION class Proc
 { public: enum : unsigned { Is_hyp = 1, Status_mode_supervisor = PSR_m_hyp }; };
 
+//--------------------------------------------------------------------
 IMPLEMENTATION[arm]:
 
 #include "types.h"
@@ -95,22 +161,6 @@ void Proc::stack_pointer(Mword sp)
   asm volatile ("mov sp, %0" : : "r" (sp));
 }
 
-IMPLEMENT static inline
-Mword Proc::program_counter()
-{
-  Mword pc;
-  asm ("mov %0, pc" : "=r" (pc));
-  return pc;
-}
-
-IMPLEMENT static inline
-Proc::Status Proc::interrupts()
-{
-  Status ret;
-  asm volatile("mrs %0, cpsr" : "=r" (ret));
-  return !(ret & Sti_mask);
-}
-
 IMPLEMENT static inline ALWAYS_INLINE
 void Proc::sti_restore(Status st)
 {
@@ -124,72 +174,6 @@ void Proc::irq_chance()
   asm volatile ("nop; nop" : : : "memory");
 }
 
-IMPLEMENTATION [arm && !armv6plus]:
-
-IMPLEMENT static inline
-void Proc::cli()
-{
-  Mword v;
-  asm volatile("mrs %0, cpsr    \n"
-               "orr %0, %0, %1  \n"
-               "msr cpsr_c, %0  \n"
-               : "=r" (v)
-               : "I" (Cli_mask)
-               : "memory");
-}
-
-IMPLEMENT static inline ALWAYS_INLINE
-void Proc::sti()
-{
-  Mword v;
-  asm volatile("mrs %0, cpsr    \n"
-               "bic %0, %0, %1  \n"
-               "msr cpsr_c, %0  \n"
-               : "=r" (v)
-               : "I" (Sti_mask)
-               : "memory");
-}
-
-IMPLEMENT static inline ALWAYS_INLINE
-Proc::Status Proc::cli_save()
-{
-  Status ret;
-  Mword v;
-  asm volatile("mrs %0, cpsr    \n"
-               "orr %1, %0, %2  \n"
-               "msr cpsr_c, %1  \n"
-               : "=r" (ret), "=r" (v)
-               : "I" (Cli_mask)
-               : "memory");
-  return ret;
-}
-
-IMPLEMENTATION [arm && armv6plus]:
-
-IMPLEMENT static inline
-void Proc::cli()
-{
-  asm volatile("cpsid " ARM_CPS_INTERRUPT_FLAGS : : : "memory");
-}
-
-IMPLEMENT static inline ALWAYS_INLINE
-void Proc::sti()
-{
-  asm volatile("cpsie " ARM_CPS_INTERRUPT_FLAGS : : : "memory");
-}
-
-IMPLEMENT static inline ALWAYS_INLINE
-Proc::Status Proc::cli_save()
-{
-  Status prev;
-  asm volatile("mrs %0, cpsr \n"
-               "cpsid " ARM_CPS_INTERRUPT_FLAGS
-               : "=r" (prev)
-               :
-               : "memory");
-  return prev;
-}
-
 //----------------------------------------------------------------
 IMPLEMENTATION[arm && !mp]:
 
@@ -198,18 +182,7 @@ Cpu_phys_id Proc::cpu_id()
 { return Cpu_phys_id(0); }
 
 //----------------------------------------------------------------
-IMPLEMENTATION[arm && mp]:
-
-IMPLEMENT static inline
-Cpu_phys_id Proc::cpu_id()
-{
-  unsigned mpidr;
-  __asm__("mrc p15, 0, %0, c0, c0, 5": "=r" (mpidr));
-  return Cpu_phys_id(mpidr & 0x7); // mind gic softirq
-}
-
-//----------------------------------------------------------------
-IMPLEMENTATION[arm && (pxa || sa1100 || s3c2410)]:
+IMPLEMENTATION[arm && (arm_pxa || arm_sa || arm_920t)]:
 
 IMPLEMENT static inline
 void Proc::halt()
@@ -220,67 +193,7 @@ void Proc::pause()
 {}
 
 //----------------------------------------------------------------
-IMPLEMENTATION[arm && 926]:
-
-IMPLEMENT static inline
-void Proc::pause()
-{
-}
-
-IMPLEMENT static inline
-void Proc::halt()
-{
-  Status f = cli_save();
-  asm volatile("mov     r0, #0                                              \n\t"
-               "mrc     p15, 0, r1, c1, c0, 0       @ Read control register \n\t"
-               "mcr     p15, 0, r0, c7, c10, 4      @ Drain write buffer    \n\t"
-               "bic     r2, r1, #1 << 12                                    \n\t"
-               "mcr     p15, 0, r2, c1, c0, 0       @ Disable I cache       \n\t"
-               "mcr     p15, 0, r0, c7, c0, 4       @ Wait for interrupt    \n\t"
-               "mcr     15, 0, r1, c1, c0, 0        @ Restore ICache enable \n\t"
-               :::"memory",
-               "r0", "r1", "r2", "r3", "r4", "r5",
-               "r6", "r7", "r8", "r9", "r10", "r11",
-               "r12", "r13", "r14", "r15"
-      );
-  sti_restore(f);
-}
-
-//----------------------------------------------------------------
-IMPLEMENTATION[arm && arm1136]:
-
-IMPLEMENT static inline
-void Proc::pause()
-{}
-
-IMPLEMENT static inline
-void Proc::halt()
-{
-  Status f = cli_save();
-  asm volatile("mcr     p15, 0, r0, c7, c10, 4  @ DWB/DSB \n\t"
-               "mcr     p15, 0, r0, c7, c0, 4   @ WFI \n\t");
-  sti_restore(f);
-}
-
-
-//----------------------------------------------------------------
-IMPLEMENTATION[arm && (arm1176 || mpcore)]:
-
-IMPLEMENT static inline
-void Proc::pause()
-{}
-
-IMPLEMENT static inline
-void Proc::halt()
-{
-  Status f = cli_save();
-  asm volatile("mcr     p15, 0, r0, c7, c10, 4  @ DWB/DSB \n\t"
-               "wfi \n\t");
-  sti_restore(f);
-}
-
-//----------------------------------------------------------------
-IMPLEMENTATION[arm && (armca8 || armca9)]:
+IMPLEMENTATION[arm_v7 || arm_v8]:
 
 IMPLEMENT static inline
 void Proc::pause()
@@ -292,7 +205,7 @@ IMPLEMENT static inline
 void Proc::halt()
 {
   Status f = cli_save();
-  asm volatile("dsb \n\t"
+  asm volatile("dsb sy \n\t"
                "wfi \n\t");
   sti_restore(f);
 }

@@ -1,6 +1,4 @@
 ifneq ($(SYSTEM),)
-# Io is C++11
-SRC_CC_IS_CXX11    := c++0x
 PRIVATE_INCDIR     += $(PKGDIR)/server/src
 
 # do not generate PC files for this lib
@@ -16,11 +14,21 @@ OBJS_$(TARGET)     += $(SUBDIR_OBJS)
 all::
 
 # our bultin.a dependency
-$(TARGET): $(SUBDIR_OBJS)
+$(TARGET): $(SUBDIR_OBJS) $(PKGDIR)/server/src/Makefile.config
 
-$(SUBDIR_OBJS): $(OBJ_DIR)/%/OBJ-$(SYSTEM)/$(TARGET): %
+# Make.rules is here as it contains the config what to
+# include
+$(SUBDIR_OBJS): $(OBJ_DIR)/%/OBJ-$(SYSTEM)/$(TARGET): % $(PKGDIR)/server/src/Make.rules $(PKGDIR)/server/src/Makefile.config
 	$(VERBOSE)$(MAKE) $(MAKECMDGOALS) OBJ_BASE=$(OBJ_BASE) \
                           -C $(SRC_DIR)/$* $(MKFLAGS)
 endif
+
+all::
+
+clean-subdir-%:
+	$(VERBOSE)$(MAKE) clean OBJ_BASE=$(OBJ_BASE) \
+                          -C $(SRC_DIR)/$* $(MKFLAGS)
+
+clean:: $(addprefix clean-subdir-,$(SUBDIRS))
 
 include $(L4DIR)/mk/lib.mk

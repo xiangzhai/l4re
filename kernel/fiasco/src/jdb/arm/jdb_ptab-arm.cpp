@@ -4,7 +4,7 @@ IMPLEMENTATION [arm]:
 #include "simpleio.h"
 
 // -----------------------------------------------------------------------
-IMPLEMENTATION [arm && armv5]:
+IMPLEMENTATION [arm && arm_v5]:
 
 PRIVATE inline
 bool
@@ -32,7 +32,7 @@ Jdb_ptab::ap_char(unsigned ap)
 
 
 // -----------------------------------------------------------------------
-IMPLEMENTATION [arm && (armv6 || armv7) && !arm_lpae]:
+IMPLEMENTATION [arm && arm_v6plus && !arm_lpae]:
 
 PRIVATE inline
 bool
@@ -79,7 +79,7 @@ void
 Jdb_ptab::print_entry(Pte_ptr const &entry)
 {
   if (dump_raw)
-    printf("%08lx", *entry.pte);
+    printf("%08x", *entry.pte);
   else
     {
       if (!entry.is_valid())
@@ -123,7 +123,7 @@ Jdb_ptab::print_entry(Pte_ptr const &entry)
 }
 
 // -----------------------------------------------------------------------
-IMPLEMENTATION [arm && arm_lpae && !hyp]:
+IMPLEMENTATION [arm && arm_lpae && !cpu_virt]:
 
 PRIVATE inline
 char
@@ -134,7 +134,7 @@ Jdb_ptab::ap_char(Pte_ptr const &entry)
 }
 
 // -----------------------------------------------------------------------
-IMPLEMENTATION [arm && arm_lpae && hyp]:
+IMPLEMENTATION [arm && arm_lpae && cpu_virt]:
 
 PRIVATE inline
 char

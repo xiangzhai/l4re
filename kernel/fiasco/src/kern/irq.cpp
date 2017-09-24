@@ -137,6 +137,18 @@ static Irq_base_cast register_irq_base_cast;
 }
 
 PROTECTED inline
+int
+Irq::get_irq_opcode(L4_msg_tag tag, Utcb const *utcb)
+{
+  if (tag.proto() == L4_msg_tag::Label_irq && tag.words() == 0)
+    return Op_trigger;
+  if (EXPECT_FALSE(tag.words() < 1))
+    return -1;
+
+  return access_once(utcb->values) & 0xffff;
+}
+
+PROTECTED inline
 L4_msg_tag
 Irq::dispatch_irq_proto(Unsigned16 op, bool may_unmask)
 {
@@ -307,25 +319,14 @@ Irq_muxer::kinvoke(L4_obj_ref, L4_fpage::Rights /*rights*/, Syscall_frame *f,
                    Utcb const *utcb, Utcb *)
 {
   L4_msg_tag tag = f->tag();
+  int op = get_irq_opcode(tag, utcb);
 
-  if (EXPECT_FALSE(tag.words() < 1))
+  if (EXPECT_FALSE(op < 0))
     return commit_result(-L4_err::EInval);
-
-  Unsigned16 op = access_once(utcb->values + 0) & 0xffff;
 
   switch (tag.proto())
     {
     case L4_msg_tag::Label_irq:
-      // start BACKWARD COMPAT
-      switch (op)
-        {
-        case Op_compat_chain:
-          printf("KERNEL: backward compat IRQ-MUX chain, recompile your user code");
-          return sys_attach(tag, utcb, f);
-        default:
-          break;
-        }
-      // end BACKWARD COMPAT
       return dispatch_irq_proto(op, false);
 
     case L4_msg_tag::Label_irq_mux:
@@ -573,12 +574,12 @@ Irq_sender::modify_label(Mword const *todo, int cnt)
 
 PRIVATE static
 Context::Drq::Result
-Irq_sender::handle_remote_hit(Context::Drq *, Context *, void *arg)
+Irq_sender::handle_remote_hit(Context::Drq *, Context *target, void *arg)
 {
   Irq_sender *irq = (Irq_sender*)arg;
   irq->set_cpu(current_cpu());
   auto t = access_once(&irq->_irq_thread);
-  if (EXPECT_TRUE(t->home_cpu() == current_cpu()))
+  if (EXPECT_TRUE(t == target))
     {
       if (EXPECT_TRUE(irq->send_msg(t, false)))
         return Context::Drq::no_answer_resched();
@@ -732,28 +733,14 @@ Irq_sender::kinvoke(L4_obj_ref, L4_fpage::Rights /*rights*/, Syscall_frame *f,
                     Utcb const *utcb, Utcb *)
 {
   L4_msg_tag tag = f->tag();
+  int op = get_irq_opcode(tag, utcb);
 
-  if (EXPECT_FALSE(tag.words() < 1))
+  if (EXPECT_FALSE(op < 0))
     return commit_result(-L4_err::EInval);
-
-  Unsigned16 op = access_once(utcb->values + 0);
 
   switch (tag.proto())
     {
     case L4_msg_tag::Label_irq:
-      // start BACKWARD COMPAT
-      switch (op)
-        {
-        case Op_compat_attach:
-          printf("KERNEL: backward compat IRQ attach, recompile your user code\n");
-          return sys_attach(tag, utcb, f);
-        case Op_compat_detach:
-          printf("KERNEL: backward compat IRQ detach, recompile your user code\n");
-          return sys_detach();
-        default:
-          break;
-        }
-      // end BACKWARD COMPAT
       return dispatch_irq_proto(op, _queued < 1);
 
     case L4_msg_tag::Label_irq_sender:
@@ -801,9 +788,9 @@ Irq::operator delete (void *_l)
 {
   Irq *l = reinterpret_cast<Irq*>(_l);
   if (l->_q)
-    l->_q->free(sizeof(Irq));
-
-  allocator()->free(l);
+    allocator()->q_free(l->_q, l);
+  else
+    allocator()->free(l);
 }
 
 PUBLIC template<typename T> inline NEEDS[Irq::allocator, Irq::operator new]

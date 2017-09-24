@@ -5,6 +5,9 @@ INTERFACE [arm && arm_generic_timer]:
 
 EXTENSION class Timer
 {
+public:
+  typedef Generic_timer::Gtimer Gtimer;
+
 private:
   enum
   {
@@ -19,21 +22,6 @@ private:
   static Mword _interval;
   static Mword _freq0;
 };
-
-// --------------------------------------------------------------------------
-INTERFACE [arm && arm_generic_timer && hyp]:
-
-EXTENSION class Timer { public: typedef Generic_timer::T<Generic_timer::Hyp> Gtimer; };
-
-// --------------------------------------------------------------------------
-INTERFACE [arm && arm_generic_timer && arm_em_tz]:
-
-EXTENSION class Timer { public: typedef Generic_timer::T<Generic_timer::Physical> Gtimer; };
-
-// --------------------------------------------------------------------------
-INTERFACE [arm && arm_generic_timer && (!hyp && (arm_em_ns || arm_em_std))]:
-
-EXTENSION class Timer { public: typedef Generic_timer::T<Generic_timer::Virtual> Gtimer; };
 
 // --------------------------------------------------------------
 IMPLEMENTATION [arm && arm_generic_timer]:
@@ -50,11 +38,7 @@ Mword Timer::_freq0;
 IMPLEMENT_DEFAULT
 static inline
 Unsigned32 Timer::frequency()
-{
-  Unsigned32 v;
-  asm volatile ("mrc p15, 0, %0, c14, c0, 0": "=r" (v));
-  return v;
-}
+{ return Gtimer::frequency(); }
 
 PUBLIC static void Timer::configure(const Cpu_number &)
 { /* Remove me -- need reinit function */ }
@@ -77,7 +61,7 @@ void Timer::init(Cpu_number cpu)
   else if (_freq0 != frequency())
     {
       printf("Different frequency on AP CPUs");
-      asm volatile ("mcr p15, 0, %0, c14, c0, 0": :"r" (_freq0));
+      Gtimer::frequency(_freq0);
     }
 
   Gtimer::setup_timer_access();

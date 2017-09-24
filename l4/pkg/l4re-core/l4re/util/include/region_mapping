@@ -27,7 +27,7 @@
 #pragma once
 
 #include <l4/cxx/avl_map>
-#include <l4/sys/l4int.h>
+#include <l4/sys/types.h>
 #include <l4/re/rm>
 
 
@@ -61,7 +61,7 @@ class Region_handler
 private:
   l4_addr_t _offs;
   DS _mem;
-  l4_cap_idx_t _client_cap;
+  l4_cap_idx_t _client_cap = L4_INVALID_CAP;
   unsigned short _flags;
 
 public:

@@ -10,7 +10,7 @@ install-dirs  := tool pkg
 clean-dirs    := tool pkg tests doc
 cleanall-dirs := tool pkg tests doc
 
-BUILD_TOOLS	= bash gawk gcc g++ ld perl pkg-config tput
+BUILD_TOOLS	= bash gawk gcc g++ ld perl tput
 
 CMDS_WITHOUT_OBJDIR := help checkbuild checkbuild.% up update check_build_tools
 CMDS_NO_PROJECT_MK  := $(CMDS_WITHOUT_OBJDIR) \
@@ -98,6 +98,9 @@ ifneq ($(strip $(B)),)
 BUILDDIR_TO_CREATE := $(B)
 endif
 ifneq ($(strip $(BUILDDIR_TO_CREATE)),)
+ifneq ($(wildcard $(L4DIR)/mk/defconfig/config.$(T)),)
+  DROPSCONF_DEFCONFIG=$(L4DIR)/mk/defconfig/config.$(T)
+endif
 all:: check_build_tools
 	@echo "Creating build directory \"$(BUILDDIR_TO_CREATE)\"..."
 	@if [ -e "$(BUILDDIR_TO_CREATE)" ]; then	\
@@ -106,6 +109,7 @@ all:: check_build_tools
 	fi
 	@mkdir -p "$(BUILDDIR_TO_CREATE)"
 	@cp $(DROPSCONF_DEFCONFIG) $(BUILDDIR_TO_CREATE)/.kconfig
+	@echo CONFIG_PLATFORM_TYPE_$(PT)=y >> $(BUILDDIR_TO_CREATE)/.kconfig
 	@$(MAKE) B= BUILDDIR_TO_CREATE= O=$(BUILDDIR_TO_CREATE) olddefconfig
 	@echo "done."
 else
@@ -279,8 +283,8 @@ endef
 
 KCONFIGS_ARCH := $(wildcard $(L4DIR)/mk/arch/Kconfig.*.inc)
 
-$(KCONFIG_FILE): $(KCONFIG_FILE_SRC) Makefile $(wildcard $(L4DIR)/conf/platforms/*.conf $(L4DIR)/conf/platforms/*.conf) \
-                 $(KCONFIGS_ARCH)
+$(KCONFIG_FILE): $(KCONFIG_FILE_SRC) Makefile $(wildcard $(L4DIR)/mk/platforms/*.conf $(L4DIR)/conf/platforms/*.conf) \
+                 $(KCONFIGS_ARCH) $(L4DIR)/tool/bin/gen_kconfig
 	$(VERBOSE)echo $(KCONFIG_FILE): $^ > $(KCONFIG_FILE_DEPS)
 	$(VERBOSE)$(foreach f,$^,echo $(f): >> $(KCONFIG_FILE_DEPS) ; )
 	$(VERBOSE)$(L4DIR)/tool/bin/gen_kconfig $(KCONFIG_FILE_SRC) $(KCONFIG_FILE).im $(KCONFIGS_ARCH)
@@ -330,7 +334,7 @@ Makeconf.bid.local-helper:
 	                GCCVERSION GCCMAJORVERSION GCCMINORVERSION      \
 			GCCPATCHLEVEL GCC_HAS_ATOMICS                   \
 			GCCNOSTACKPROTOPT GCCSTACKPROTOPT GCCSTACKPROTALLOPT LDVERSION \
-			GCCSYSLIBDIRS GCCFORTRANAVAIL                                 \
+			GCCSYSLIBDIRS GCCFORTRANAVAIL GCCINCFIXEDPATH                  \
 			$(if $(GCCNOFPU_$(ARCH)_f),GCCNOFPU_$(ARCH))    \
 			$(if $(GCCIS_$(ARCH)_leon_f),GCCIS_$(ARCH)_leon),   \
 			echo $(v)=$(call $(v)_f,$(ARCH))                \
@@ -395,7 +399,7 @@ endif
 	      break;                                                     \
 	    fi;                                                          \
 	  done;                                                          \
-	  if [ "$$found_it" == "1" ]; then                               \
+	  if [ "$$found_it" = "1" ]; then                                \
 	    break;                                                       \
 	  fi;                                                            \
 	done;                                                            \
@@ -437,13 +441,16 @@ define set_ml
 	   [ -n "$(MODULES_LIST)" ] && ml=$(MODULES_LIST)
 endef
 define entryselection
-	unset e;                                                 \
+	   unset e;                                              \
 	   $(set_ml);                                            \
 	   [ -n "$(ENTRY)"       ] && e="$(ENTRY)";              \
 	   [ -n "$(E)"           ] && e="$(E)";                  \
 	   if [ -z "$$e" ]; then                                 \
-	     BACKTITLE="No entry given. Use 'make $@ E=entryname' to avoid menu." \
-	       L4DIR=$(L4DIR) $(L4DIR)/tool/bin/entry-selector menu $$ml 2> $(OBJ_BASE)/.entry-selector.tmp; \
+	     BACKTITLE="No entry given. Use                      \
+	                'make $@ E=entryname' to avoid menu."    \
+	       L4DIR=$(L4DIR) $(common_envvars)                  \
+	       $(L4DIR)/tool/bin/entry-selector menu $$ml        \
+	         2> $(OBJ_BASE)/.entry-selector.tmp;             \
 	     if [ $$? != 0 ]; then                               \
 	       cat $(OBJ_BASE)/.entry-selector.tmp;              \
 	       exit 1;                                           \
@@ -484,15 +491,22 @@ QEMU_ARCH_MAP_$(ARCH) ?= qemu-system-$(ARCH)
 QEMU_KERNEL_TYPE          ?= elfimage
 QEMU_KERNEL_FILE-elfimage  = $(IMAGES_DIR)/bootstrap.elf
 QEMU_KERNEL_FILE-uimage    = $(IMAGES_DIR)/bootstrap.uimage
+QEMU_KERNEL_FILE-itb       = $(IMAGES_DIR)/bootstrap.itb
 QEMU_KERNEL_FILE-rawimage  = $(IMAGES_DIR)/bootstrap.raw
 QEMU_KERNEL_FILE          ?= $(QEMU_KERNEL_FILE-$(QEMU_KERNEL_TYPE))
 
 FASTBOOT_BOOT_CMD    ?= fastboot boot
 
 check_and_adjust_ram_base:
-	$(VERBOSE)if [ -z "$(PLATFORM_RAM_BASE)" ]; then   \
-	  echo "Platform \"$(PLATFORM_TYPE)\" not known."; \
-	  exit 1;                                          \
+	$(VERBOSE)if [ -z "$(PLATFORM_RAM_BASE)" ]; then          \
+	  echo "ERROR: Platform \"$(PLATFORM_TYPE)\" not known."; \
+	  echo "Available platform:";                             \
+	  $(MAKE) listplatforms;                                  \
+	  exit 1;                                                 \
+	fi
+	$(VERBOSE)if [ -z "$(filter $(ARCH),$(PLATFORM_ARCH))" ]; then     \
+	  echo "Platform \"$(PLATFORM_TYPE)\" not available for $(ARCH)."; \
+	  exit 1;                                                          \
 	fi
 	+$(VERBOSE)if [ $$(($(RAM_BASE))) != $$(($(PLATFORM_RAM_BASE))) -o -z "$(RAM_BASE)" -o -z "$(RAM_BASE_SWITCH_OK)" ]; then \
 	  echo "=========== Updating RAM_BASE for platform $(PLATFORM_TYPE) to $(PLATFORM_RAM_BASE) =========" ; \
@@ -500,7 +514,7 @@ check_and_adjust_ram_base:
 	fi
 
 listentries:
-	$(VERBOSE)$(set_ml); \
+	$(VERBOSE)$(set_ml); $(common_envvars) \
 	  L4DIR=$(L4DIR) $(L4DIR)/tool/bin/entry-selector list $$ml
 
 shellcodeentry:
@@ -515,6 +529,9 @@ elfimage: check_and_adjust_ram_base
 uimage: check_and_adjust_ram_base
 	$(call genimage,BOOTSTRAP_DO_UIMAGE=y BOOTSTRAP_DO_RAW_IMAGE=)
 	$(VERBOSE)$(if $(POST_IMAGE_CMD),$(call POST_IMAGE_CMD,$(IMAGES_DIR)/bootstrap.uimage))
+
+itb: check_and_adjust_ram_base
+	$(call genimage,BOOTSTRAP_DO_ITB=y)
 
 rawimage: check_and_adjust_ram_base
 	$(call genimage,BOOTSTRAP_DO_UIMAGE= BOOTSTRAP_DO_RAW_IMAGE=y)
@@ -597,15 +614,18 @@ grub1iso:
 grub2iso:
 	$(call geniso,2)
 
-exportpack:
+exportpack: $(if $(filter $(ARCH),x86 amd64),,$(QEMU_KERNEL_TYPE))
 	$(if $(EXPORTPACKTARGETDIR),, \
 	  @echo Need to specific target directory as EXPORTPACKTARGETDIR=dir; exit 1)
 	$(VERBOSE)$(entryselection);                                      \
 	 TARGETDIR=$(EXPORTPACKTARGETDIR);                                \
 	 qemu=$(if $(QEMU_PATH),$(QEMU_PATH),$(QEMU_ARCH_MAP_$(ARCH)));   \
 	 QEMU=$$qemu L4DIR=$(L4DIR) QEMU_OPTIONS="$(QEMU_OPTIONS)"        \
+	 IMAGE_FILE="$(QEMU_KERNEL_FILE)"                                 \
 	 $(tool_envvars) $(common_envvars)                                \
 	  $(L4DIR)/tool/bin/genexportpack --timeout=$(GRUB_TIMEOUT)       \
+	                                  --grubpathprefix=$(GRUB_PATHPREFIX) \
+	                                  --grubentrytitle="$(GRUB_ENTRY_TITLE)" \
 	                                   $$ml $$TARGETDIR $$e;
 
 help::
@@ -615,6 +635,7 @@ help::
 	@echo "  elfimage   - Generate an ELF image, containing all modules."
 	@echo "  rawimage   - Generate a raw image (memory dump), containing all modules."
 	@echo "  uimage     - Generate a uimage for u-boot, containing all modules."
+	@echo "  itb        - Generate a FIT image for u-boot, containing all modules."
 	@echo "  grub1iso   - Generate an ISO using GRUB1 in images/<name>.iso [x86, amd64]" 
 	@echo "  grub2iso   - Generate an ISO using GRUB2 in images/<name>.iso [x86, amd64]" 
 	@echo "  qemu       - Use Qemu to run 'name'." 
@@ -651,7 +672,7 @@ listplatforms:
 .PHONY: elfimage rawimage uimage qemu vbox ux switch_ram_base \
         grub1iso grub2iso listentries shellcodeentry exportpack \
         fastboot fastboot_rawimage fastboot_uimage \
-	check_and_adjust_ram_base listplatforms
+	check_and_adjust_ram_base listplatforms itb
 
 switch_ram_base:
 	$(VERBOSE)$(call switch_ram_base_func,$(RAM_BASE))
@@ -677,6 +698,7 @@ $(CHECK_BASE_DIR)/config.%/.kconfig: mk/defconfig/config.% checkbuild_prepare.%
 	cp $< $@
 
 $(CHECK_BASE_DIR)/config.%/.config.all: $(CHECK_BASE_DIR)/config.%/.kconfig FORCE
+	find $(@D) -xtype l -delete
 	$(MAKE) -j 1 O=$(@D) olddefconfig $(call BID_CHECKBUILD_LOG_REDIR_f, $*)
 
 checkbuild.%: $(CHECK_BASE_DIR)/config.%/.config.all $(CHECK_BASE_DIR)/config.%/.kconfig check_base_dir
@@ -754,13 +776,15 @@ report:
 	elif [ -e /etc/redhat-release ]; then                  \
 	  echo -n "Redhat: ";                                  \
 	  cat /etc/redhat-release;                             \
-	  [ -e /etc/redhat_version ]                           \
-	    && echo "  Version: `cat /etc/redhat_version`";    \
+	  if [ -e /etc/redhat_version ]; then                  \
+	    echo "  Version: `cat /etc/redhat_version`";       \
+	  fi;                                                  \
 	elif [ -e /etc/slackware-release ]; then               \
 	  echo -n "Slackware: ";                               \
 	  cat /etc/slackware-release;                          \
-	  [ -e /etc/slackware-version ]                        \
-	    && echo "  Version: `cat /etc/slackware-version`"; \
+	  if [ -e /etc/slackware-version ]; then               \
+	    echo "  Version: `cat /etc/slackware-version`";    \
+	  fi;                                                  \
 	elif [ -e /etc/mandrake-release ]; then                \
 	  echo -n "Mandrake: ";                                \
 	  cat /etc/mandrake-release;                           \

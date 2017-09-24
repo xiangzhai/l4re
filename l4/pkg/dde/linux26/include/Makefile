@@ -13,10 +13,12 @@ include $(L4DIR)/mk/include.mk
 ifneq ($(BUILD_ARCH),amd64)
 ifneq ($(BUILD_ARCH),ppc32)
 ifneq ($(BUILD_ARCH),sparc)
+ifneq ($(BUILD_ARCH),arm64)
 ifneq ($(BUILD_ARCH),mips)
 SUFFIX_amd64 = x86_64
 SUFFIX_x86   = x86
 SUFFIX_arm   = arm
+SUFFIX_arm64 = arm64
 SUFFIX_ppc32 = powerpc
 SUFFIX_sparc = sparc
 SUFFIX_mips  = mips
@@ -35,6 +37,7 @@ install::
 	$(VERBOSE)$(call MAKELINK, \
 		$(INSTALLDIR)/$(ARCH)/$(INSTALL_INC_PREFIX)/asm-$(SUFFIX_$(ARCH)),\
 		$(INSTALLDIR)/$(ARCH)/$(INSTALL_INC_PREFIX)/asm, asm-$(SUFFIX_$(ARCH)))
+endif
 endif
 endif
 endif

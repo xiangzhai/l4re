@@ -67,8 +67,7 @@ static SHAREDMEM *shm_alloc(long size)
   if (l4re_rm_attach(&n->addr, size, L4RE_RM_SEARCH_ADDR | L4RE_RM_EAGER_MAP, n->ds, 0,
                      L4_PAGESHIFT))
     {
-      l4re_ma_free(n->ds);
-      l4re_util_cap_free(n->ds);
+      l4re_util_cap_free_um(n->ds);
       return NULL;
     }
 
@@ -87,8 +86,7 @@ static void shm_destroy(SHAREDMEM *sm)
     return;
 
   l4re_rm_detach(sm->addr);
-  l4re_ma_free(sm->ds);
-  l4re_util_cap_free(sm->ds);
+  l4re_util_cap_free_um(sm->ds);
   free(sm);
 }
 

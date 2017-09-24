@@ -78,7 +78,7 @@ TARGET	+= $(TARGET_PROFILE) $(TARGET_PROFILE_SHARED) $(TARGET_PROFILE_PIC)
 LDFLAGS += $(addprefix -L, $(PRIVATE_LIBDIR) $(PRIVATE_LIBDIR_$(OSYSTEM)) $(PRIVATE_LIBDIR_$@) $(PRIVATE_LIBDIR_$@_$(OSYSTEM)))
 LDFLAGS += $(addprefix -L, $(L4LIBDIR))
 LDFLAGS += $(LIBCLIBDIR)
-LDFLAGS_SO ?= -shared -nostdlib
+LDFLAGS_SO ?= -shared
 
 BID_LDFLAGS_FOR_LINKING_DYN_LD  = $(LDFLAGS)
 BID_LDFLAGS_FOR_GCC_DYN         = $(filter     -static -shared -nostdlib -Wl$(BID_COMMA)% -L% -l%,$(LDFLAGS))
@@ -88,8 +88,6 @@ BID_LDFLAGS_FOR_LINKING_DYN_GCC = $(addprefix -Wl$(BID_COMMA),$(BID_LDFLAGS_FOR_
 
 LDSCRIPT       = $(LDS_so)
 LDSCRIPT_INCR ?= /dev/null
-CRT0           = $(CRTI_so) $(CRTBEGIN_so) $(CRT1_so)
-CRTN           = $(CRTN_so)
 
 # install.inc eventually defines rules for every target
 include $(L4DIR)/mk/install.inc
@@ -112,21 +110,22 @@ PC_FILES_CONTENTS := $(strip $(foreach pcfile,$(PC_FILENAMES),\
   $(call get_cont,CONTRIB_INCDIR,$(pcfile)) \
   $(call get_cont,PC_LIBS,$(pcfile)) \
   $(call get_cont,REQUIRES_LIBS,$(pcfile)) \
-  $(call get_cont,PC_CFLAGS,$(pcfile))))
+  $(call get_cont,PC_CFLAGS,$(pcfile)) $(call get_cont,PC_EXTRA,$(pcfile))))
 
 ifneq ($(PC_FILES_CONTENTS),)
 
 # when adding something to generate_pcfile it must also be added to the
 # PC_FILES_CONTENTS above, otherwise PC files may not be generated
-$(OBJ_BASE)/pc/%.pc: $(GENERAL_D_LOC)
-	$(VERBOSE)$(call generate_pcfile,$*,$@,$(call get_cont,CONTRIB_INCDIR,$*),$(call get_cont,PC_LIBS,$*),$(call get_cont,REQUIRES_LIBS,$*),$(call get_cont,PC_CFLAGS,$*))
+$(patsubst %,$(OBJ_BASE)/pc/%.pc,$(PC_FILENAMES)):$(OBJ_BASE)/pc/%.pc: $(GENERAL_D_LOC)
+	@$(call GEN_MESSAGE,$(@F))
+	$(VERBOSE)$(call generate_pcfile,$*,$@,$(call get_cont,CONTRIB_INCDIR,$*),$(call get_cont,PC_LIBS,$*),$(call get_cont,REQUIRES_LIBS,$*),$(call get_cont,PC_CFLAGS,$*),$(call get_cont,PC_EXTRA,$*))
 
 all:: $(PC_FILES)
 
 endif
 endif
 
-DEPS	+= $(foreach file,$(TARGET), $(dir $(file)).$(notdir $(file)).d)
+DEPS	+= $(foreach file,$(TARGET), $(call BID_LINK_DEPS,$(file)))
 
 $(filter-out $(LINK_INCR) %.so %.o.a %.o.pr.a, $(TARGET)):%.a: $(OBJS)
 	@$(AR_MESSAGE)
@@ -136,13 +135,11 @@ $(filter-out $(LINK_INCR) %.so %.o.a %.o.pr.a, $(TARGET)):%.a: $(OBJS)
 	@$(BUILT_MESSAGE)
 
 # shared lib
-$(filter %.so, $(TARGET)):%.so: $(OBJS) $(CRTN) $(CRT0) $(CRTP) $(LIBDEPS)
+$(filter %.so, $(TARGET)):%.so: $(OBJS) $(LIBDEPS)
 	@$(LINK_SHARED_MESSAGE)
 	$(VERBOSE)[ -d "$(dir $@)" ] || $(MKDIR) $(dir $@)
-	$(VERBOSE)$(call MAKEDEP,$(LD)) $(LD) \
-	   -o $@ $(LDFLAGS_SO) $(addprefix -T,$(LDSCRIPT)) $(CRTP) \
-	   $(OBJS) $(REQUIRES_LIBS_LIST) $(LDFLAGS) \
-	   $(GCCLIB_SO) $(GCCLIB_EH) $(CRTN)
+	$(VERBOSE)$(call MAKEDEP,$(LD)) $(BID_LINK) -MD -MF $(call BID_link_deps_file,$@) -o $@ $(LDFLAGS_SO) \
+	  $(LDFLAGS) $(OBJS) $(addprefix -PC,$(REQUIRES_LIBS))
 	@$(BUILT_MESSAGE)
 
 # build an object file (which looks like a lib to a later link-call), which

@@ -80,10 +80,6 @@ static int free_mem(void *virt_addr)
   if ((r = L4Re::Env::env()->rm()->detach(virt_addr, &ds)))
     return r;
 
-  /* Free memory at our memory allocator, this is optional */
-  if ((r = L4Re::Env::env()->mem_alloc()->free(ds)))
-    return r;
-
   /* Release and return capability slot to allocator */
   L4Re::Util::cap_alloc.free(ds, L4Re::Env::env()->task().cap());
 

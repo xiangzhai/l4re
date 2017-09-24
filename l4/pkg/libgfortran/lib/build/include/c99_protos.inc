@@ -174,7 +174,7 @@
 #if !defined(HAVE_CEXP)
 #define HAVE_CEXP 1
 #endif
-#if !defined(HAVE_CEXPL) && defined(HAVE_COSL) && defined(HAVE_SINL) && defined(EXPL)
+#if !defined(HAVE_CEXPL) && defined(HAVE_COSL) && defined(HAVE_SINL) && defined(HAVE_EXPL)
 #define HAVE_CEXPL 1
 #endif
 #if !defined(HAVE_CLOGF)

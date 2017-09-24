@@ -101,7 +101,7 @@ Canvas<PT>::_draw_box(char *dst_line, int _w, int h, CT color, int a)
       int w;
       Pixel *dst = reinterpret_cast<Pixel*>(dst_line);
       for (w = _w; w--; dst++)
-	if (!CT::A::Size)
+	if (CT::A::Size == 0)
 	  *dst = c;
 	else
 	  *dst = Color::Traits::mix(*dst, c, a);
@@ -149,7 +149,7 @@ Canvas<PT>::__draw_string(Point const &p, Font const *font,
   char *dst = _pixels + y * _bpl;
   Color pix = color_conv<Color>(color);
   int alpha = 255;
-  if (Alphas)
+  if (Alphas != 0)
     alpha = color.a() << (8 - Alphas);
 
   /* draw glyphs */
@@ -248,6 +248,7 @@ Canvas<PT>::draw_texture(Mag_gfx::Texture const *texture,
 	    clipped.h(), clipped.w(), src_w))
 	break;
       // Fall through to solid!
+      /* FALLTHRU */
     case Solid:
       //	for (j = clipped.h(); j--; src += src_w, dst += _bpl)
       //	  for (i = clipped.w(), s = src, d = dst; i--; ++s, d += sizeof(Pixel))

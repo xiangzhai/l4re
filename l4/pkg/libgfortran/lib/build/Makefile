@@ -1,7 +1,7 @@
 PKGDIR          ?= ../..
 L4DIR           ?= $(PKGDIR)/../..
 
-TARGET          = libgfortran.a libgfortran.so libgfortranbegin.a
+TARGET          = libgfortran.a libgfortran.so
 PC_FILENAMES	= libgfortran
 
 # The -fallow-leading-underscore is only needed for some Fortran
@@ -12,7 +12,8 @@ FFLAGS         += -fno-underscoring -fimplicit-none -fno-repack-arrays \
 
 include $(L4DIR)/mk/Makeconf
 
-REQUIRES_LIBS = libc_be_sig libc_support_misc libstdc++ libc libquadmath
+REQUIRES_LIBS = libc_be_sig libc_support_misc libstdc++ libc \
+                libquadmath libbacktrace
 
 include $(SRC_DIR)/Makefile.dist-c
 include $(SRC_DIR)/Makefile.dist-f
@@ -28,19 +29,23 @@ $(foreach f,$(eval CFLAGS_$(f) = -funroll-loops),$(i_matmull_c))
 IEEE_FFLAGS = -Wno-unused-dummy-argument -Wno-c-binding-type \
               -ffree-line-length-0 -fallow-leading-underscore
 
-FFLAGS_ieee/ieee_arithmetic.o   = $(IEEE_FFLAGS)
-FFLAGS_ieee/ieee_exceptions.o   = $(IEEE_FFLAGS)
-FFLAGS_ieee/ieee_features.o     = $(IEEE_FFLAGS)
+$(GENERAL_D_LOC): nonpic pic
 
-FFLAGS_ieee/ieee_arithmetic.s.o = $(IEEE_FFLAGS)
-FFLAGS_ieee/ieee_exceptions.s.o = $(IEEE_FFLAGS)
-FFLAGS_ieee/ieee_features.s.o   = $(IEEE_FFLAGS)
+nonpic pic:
+	$(VERBOSE)$(MKDIR) $@
+
+FFLAGS_ieee/ieee_arithmetic.o   = -Jnonpic $(IEEE_FFLAGS)
+FFLAGS_ieee/ieee_exceptions.o   = -Jnonpic $(IEEE_FFLAGS)
+FFLAGS_ieee/ieee_features.o     = -Jnonpic $(IEEE_FFLAGS)
+
+FFLAGS_ieee/ieee_arithmetic.s.o = -Jpic $(IEEE_FFLAGS)
+FFLAGS_ieee/ieee_exceptions.s.o = -Jpic $(IEEE_FFLAGS)
+FFLAGS_ieee/ieee_features.s.o   = -Jpic $(IEEE_FFLAGS)
 
 SRC_C_libgfortran.a      = $(C_FILES)
 SRC_F_libgfortran.a      = $(F_FILES)
 SRC_C_libgfortran.so     = $(C_FILES)
 SRC_F_libgfortran.so     = $(F_FILES)
-SRC_C_libgfortranbegin.a = fmain.c
 
 $(SRC_DIR)/Makefile: $(SRC_DIR)/Makefile.dist-c $(SRC_DIR)/Makefile.dist-f
 

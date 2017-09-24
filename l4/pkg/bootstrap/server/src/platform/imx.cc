@@ -28,6 +28,8 @@ class Platform_arm_imx : public Platform_single_region_ram
 
   void init()
   {
+    _wdog_phys = 0;
+
     // set defaults for reg_shift and baud_rate
     kuart.baud      = 115200;
     kuart.reg_shift = 0;
@@ -57,15 +59,18 @@ class Platform_arm_imx : public Platform_single_region_ram
               kuart.irqno        = 18;
               break;
     }
+    _wdog_phys = 0x53fdc000;
     static L4::Io_register_block_mmio r(kuart.base_address);
 #elif defined(PLATFORM_TYPE_imx51)
     kuart.base_address = 0x73fbc000;
     kuart.irqno = 31;
+    _wdog_phys = 0x73f98000;
     static L4::Io_register_block_mmio r(kuart.base_address);
     static L4::Uart_imx51 _uart;
 #elif defined(PLATFORM_TYPE_imx53)
     kuart.base_address = 0x53fbc000;
     kuart.irqno = 31;
+    _wdog_phys = 0x53f98000;
     static L4::Io_register_block_mmio r(kuart.base_address);
     static L4::Uart_imx51 _uart;
 #elif defined(PLATFORM_TYPE_imx6) || defined(PLATFORM_TYPE_imx6ul)
@@ -87,14 +92,54 @@ class Platform_arm_imx : public Platform_single_region_ram
               kuart.irqno        = 62;
               break;
     };
+    _wdog_phys = 0x020bc000;
     static L4::Io_register_block_mmio r(kuart.base_address);
     static L4::Uart_imx6 _uart;
+#elif defined(PLATFORM_TYPE_imx7)
+    switch (PLATFORM_UART_NR) {
+      default:
+      case 1: kuart.base_address = 0x30860000;
+              kuart.irqno        = 32 + 26;
+              break;
+      case 2: kuart.base_address = 0x30870000;
+              kuart.irqno        = 32 + 27;
+              break;
+      case 3: kuart.base_address = 0x30880000;
+              kuart.irqno        = 32 + 28;
+              break;
+      case 4: kuart.base_address = 0x30a60000;
+              kuart.irqno        = 32 + 29;
+              break;
+      case 5: kuart.base_address = 0x30a70000;
+              kuart.irqno        = 32 + 30;
+              break;
+      case 6: kuart.base_address = 0x30a80000;
+              kuart.irqno        = 32 + 16;
+              break;
+    };
+    _wdog_phys = 0x30280000;
+    static L4::Io_register_block_mmio r(kuart.base_address);
+    static L4::Uart_imx7 _uart;
 #else
 #error Which platform type?
 #endif
     _uart.startup(&r);
     set_stdio_uart(&_uart);
   }
+
+  void reboot()
+  {
+    if (_wdog_phys)
+      {
+        L4::Io_register_block_mmio r(_wdog_phys);
+        r.modify<unsigned short>(0, 0xff00, 1 << 2);
+      }
+
+    while (1)
+      ;
+  }
+private:
+  unsigned long _wdog_phys;
 };
 }
 

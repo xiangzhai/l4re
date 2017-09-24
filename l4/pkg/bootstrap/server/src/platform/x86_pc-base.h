@@ -281,6 +281,7 @@ struct Pci_iterator
   unsigned classcode() const { return pci_read(0x0b, 8); }
   unsigned subclass()  const { return pci_read(0x0a, 8); }
   unsigned prog() const { return pci_read(9, 8); }
+  unsigned pci_class() const { return pci_read(0x08, 32) >> 8; }
 
   bool operator == (Pci_iterator const &o) const
   { return bus == o.bus && dev == o.dev && func == o.func; }
@@ -605,10 +606,30 @@ struct Pci_com_moschip : public Pci_com_drv
 
 };
 
+struct Pci_com_wch_chip : public Pci_com_drv
+{
+  bool setup(Pci_iterator const &dev, Serial_board *board) const
+  {
+    read_bars(dev, board);
+
+    board->port_offset = 8;
+    board->base_baud = L4::Uart_16550::Base_rate_x86;
+    board->base_bar = board->first_io_bar();
+    board->num_ports = 2;
+    board->base_offset = 0xc0;
+    board->flags = 0;
+    printf("   detected serial IO card: bar=%d ports=%d\n",
+           board->base_bar, board->num_ports);
+    dev.enable_io();
+    return true;
+  }
+};
+
 static Pci_com_drv_fallback _fallback_pci_com;
 static Pci_com_drv_default _default_pci_com;
 static Pci_com_drv_oxsemi _oxsemi_pci_com;
 static Pci_com_moschip _moschip;
+static Pci_com_wch_chip _wch_chip;
 
 #define PCI_DEVICE_ID(vendor, device) \
   (((unsigned)(device) << 16) | (unsigned)(vendor & 0xffff)), 0xffffffffU
@@ -626,6 +647,7 @@ Pci_com_dev _devs[] = {
   { PCI_DEVICE_ID(0x9710, 0x9835), &_moschip },
   { PCI_DEVICE_ID(0x9710, 0x9865), &_moschip },
   { PCI_DEVICE_ID(0x9710, 0x9922), &_moschip },
+  { PCI_DEVICE_ID(0x1c00, 0x3253), &_wch_chip }, // dual port card
   { PCI_DEVICE_ID(0x8086, 0x8c3d), &_default_pci_com },
   { PCI_ANY_DEVICE, &_fallback_pci_com },
 };
@@ -775,7 +797,7 @@ class Platform_x86 : public Platform_base
 {
 public:
 #ifdef ARCH_amd64
-  ptab64_mem_info_t const *ptab64_info;
+  boot32_info_t const *boot32_info;
 #endif
   bool probe() { return true; }
 
@@ -824,8 +846,47 @@ public:
     return 0;
   }
 
+  static unsigned cpuid_features()
+  {
+    unsigned ver, brand, ext_feat, feat;
+
+    asm("cpuid"
+	: "=a" (ver), "=b" (brand), "=c" (ext_feat), "=d" (feat)
+	: "a" (1));
+
+    return feat;
+  }
+
+  /* To use esp. library code in bootstrap, we enable the FPU
+   * so that FPU usage by those libs is possible */
   void init()
-  {};
+  {
+    unsigned long tmp;
+
+    /* Enable CR4_OSXSAVE if SSE2 is available */
+    if (cpuid_features() & (1 << 26))
+      asm volatile("mov %%cr4, %0      \n\t"
+                   "or  $(1 << 9), %0  \n\t"
+                   "mov %0, %%cr4      \n\t"
+                   : "=r" (tmp));
+  }
+
+  void boot_kernel(unsigned long entry)
+  {
+    unsigned long tmp;
+
+    /* Disable CR4_OSXSAVE if SSE2 is available */
+    if (cpuid_features() & (1 << 26))
+      asm volatile("mov %%cr4, %0      \n\t"
+                   "and $~(1 << 9), %0 \n\t"
+                   "mov %0, %%cr4      \n\t"
+                   : "=r" (tmp));
+
+
+    typedef void (*func)(void);
+    ((func)entry)();
+    exit(-100);
+  }
 
   void setup_uart(char const *cmdline)
   {

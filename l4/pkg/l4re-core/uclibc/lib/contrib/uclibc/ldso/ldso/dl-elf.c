@@ -121,7 +121,7 @@ _dl_protect_relro (struct elf_resolve *l)
 	ElfW(Addr) base = (ElfW(Addr)) DL_RELOC_ADDR(l->loadaddr, l->relro_addr);
 	ElfW(Addr) start = (base & PAGE_ALIGN);
 	ElfW(Addr) end = ((base + l->relro_size) & PAGE_ALIGN);
-	_dl_if_debug_dprint("RELRO protecting %s:  start:%x, end:%x\n", l->libname, start, end);
+	_dl_if_debug_dprint("RELRO protecting %s:  start:%zx, end:%zx\n", l->libname, start, end);
 	if (start != end &&
 	    _dl_mprotect ((void *) start, end - start, PROT_READ) < 0) {
 		_dl_dprintf(2, "%s: cannot apply additional memory protection after relocation", l->libname);
@@ -193,6 +193,7 @@ unsigned long _dl_internal_error_number;
 struct elf_resolve *_dl_load_shared_library(unsigned rflags, struct dyn_elf **rpnt,
 	struct elf_resolve *tpnt, char *full_libname, int attribute_unused trace_loaded_objects)
 {
+	(void) tpnt;
 	char *pnt;
 	struct elf_resolve *tpnt1;
 	char *libname;
@@ -456,7 +457,6 @@ struct elf_resolve *_dl_load_elf_shared_library(unsigned rflags,
 #endif
 	char *status, *header;
 	unsigned long dynamic_info[DYNAMIC_SIZE];
-	unsigned long *lpnt;
 	unsigned long libaddr;
 	unsigned long minvma = 0xffffffff, maxvma = 0;
 	unsigned int rtld_flags;
@@ -852,12 +852,7 @@ struct elf_resolve *_dl_load_elf_shared_library(unsigned rflags,
 	 * resolved.
 	 */
 
-	lpnt = (unsigned long *) dynamic_info[DT_PLTGOT];
-
-	if (lpnt) {
-		lpnt = (unsigned long *) (dynamic_info[DT_PLTGOT]);
-		INIT_GOT(lpnt, tpnt);
-	}
+	elf_machine_setup(tpnt->loadaddr, dynamic_info, tpnt, !(tpnt->rtld_flags & RTLD_NOW));
 
 #ifdef __DSBT__
 	/* Handle DSBT initialization */
@@ -930,8 +925,8 @@ struct elf_resolve *_dl_load_elf_shared_library(unsigned rflags,
 	}
 #endif
 	_dl_if_debug_dprint("\n\tfile='%s';  generating link map\n", libname);
-	_dl_if_debug_dprint("\t\tdynamic: %x  base: %x\n", dynamic_addr, DL_LOADADDR_BASE(lib_loadaddr));
-	_dl_if_debug_dprint("\t\t  entry: %x  phdr: %x  phnum: %x\n\n",
+	_dl_if_debug_dprint("\t\tdynamic: %lx  base: %zx\n", dynamic_addr, DL_LOADADDR_BASE(lib_loadaddr));
+	_dl_if_debug_dprint("\t\t  entry: %zx  phdr: %p  phnum: %lx\n\n",
 			DL_RELOC_ADDR(lib_loadaddr, epnt->e_entry), tpnt->ppnt, tpnt->n_phent);
 
 	_dl_munmap(header, _dl_pagesize);
@@ -1023,11 +1018,9 @@ int _dl_fixup(struct dyn_elf *rpnt, struct r_scope_elem *scope, int now_flag)
 /* Minimal printf which handles only %s, %d, and %x */
 void _dl_dprintf(int fd, const char *fmt, ...)
 {
-#if __WORDSIZE > 32
 	long int num;
-#else
-	int num;
-#endif
+
+	enum Size { INT, LONG } sz = INT;
 	va_list args;
 	char *start, *ptr, *string;
 	char *buf;
@@ -1070,8 +1063,20 @@ void _dl_dprintf(int fd, const char *fmt, ...)
 		if (*ptr == '%') {
 			*ptr++ = '\0';
 			_dl_write(fd, start, _dl_strlen(start));
-
+next_fmt_char:
 			switch (*ptr++) {
+				case 'z':
+#if __WORDSIZE > 32
+					sz = INT;
+#else
+					sz = LONG;
+#endif
+					goto next_fmt_char;
+
+				case 'l':
+					sz = LONG;
+					goto next_fmt_char;
+
 				case 's':
 					string = va_arg(args, char *);
 
@@ -1085,11 +1090,11 @@ void _dl_dprintf(int fd, const char *fmt, ...)
 				case 'd':
 					{
 						char tmp[22];
-#if __WORDSIZE > 32
-						num = va_arg(args, long int);
-#else
-						num = va_arg(args, int);
-#endif
+						if (sz == LONG)
+							num = va_arg(args, long int);
+						else
+							num = va_arg(args, int);
+
 						string = _dl_simple_ltoa(tmp, num);
 						_dl_write(fd, string, _dl_strlen(string));
 						break;
@@ -1124,6 +1129,73 @@ void _dl_dprintf(int fd, const char *fmt, ...)
 	_dl_memcpy(br, &store_br, sizeof(store_br));
 #endif
 	return;
+}
+
+/*
+ * This function is tken from glibc 2.24 (GPL v2.1)
+ */
+unsigned long int
+internal_function
+_dl_higher_prime_number (unsigned long int n)
+{
+  /* These are primes that are near, but slightly smaller than, a
+     power of two.  */
+  static const uint32_t primes[] = {
+    UINT32_C (7),
+    UINT32_C (13),
+    UINT32_C (31),
+    UINT32_C (61),
+    UINT32_C (127),
+    UINT32_C (251),
+    UINT32_C (509),
+    UINT32_C (1021),
+    UINT32_C (2039),
+    UINT32_C (4093),
+    UINT32_C (8191),
+    UINT32_C (16381),
+    UINT32_C (32749),
+    UINT32_C (65521),
+    UINT32_C (131071),
+    UINT32_C (262139),
+    UINT32_C (524287),
+    UINT32_C (1048573),
+    UINT32_C (2097143),
+    UINT32_C (4194301),
+    UINT32_C (8388593),
+    UINT32_C (16777213),
+    UINT32_C (33554393),
+    UINT32_C (67108859),
+    UINT32_C (134217689),
+    UINT32_C (268435399),
+    UINT32_C (536870909),
+    UINT32_C (1073741789),
+    UINT32_C (2147483647),
+				       /* 4294967291L */
+    UINT32_C (2147483647) + UINT32_C (2147483644)
+  };
+
+  const uint32_t *low = &primes[0];
+  const uint32_t *high = &primes[sizeof (primes) / sizeof (primes[0])];
+
+  while (low != high)
+    {
+      const uint32_t *mid = low + (high - low) / 2;
+      if (n > *mid)
+       low = mid + 1;
+      else
+       high = mid;
+    }
+
+#if 0
+  /* If we've run out of primes, abort.  */
+  if (n > *low)
+    {
+      fprintf (stderr, "Cannot find prime bigger than %lu\n", n);
+      abort ();
+    }
+#endif
+
+  return *low;
 }
 
 char *_dl_strdup(const char *string)

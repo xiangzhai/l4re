@@ -22,10 +22,9 @@ EFI_ARCH-amd64  = x86_64
 EFI_ARCH-x86    = ia32
 EFI_ARCH        = $(EFI_ARCH-$(ARCH))
 
-CRT0            = $(OBJ_BASE)/lib/$(SYSTEM)/crt0-efi-$(EFI_ARCH).o
-CRTN_stat_bin   = 
-
+OBJ           += $(OBJ_BASE)/lib/$(SYSTEM)/crt0-efi-$(EFI_ARCH).o
+LDFLAGS_all_sigma0 =
 CPPFLAGS       += -fshort-wchar -fPIC \
                   -I$(OBJ_BASE)/include/contrib/gnu-efi/$(EFI_ARCH)
-LDFLAGS         = -T$(LDSCRIPT) -L$(OBJ_BASE)/lib/$(SYSTEM) \
-		  -nostdlib -shared -Bsymbolic $(L4_LIBS)
+LDFLAGS         = -nocrt -T$(LDSCRIPT) -L$(OBJ_BASE)/lib/$(SYSTEM) \
+		  -nostdlib -shared -Bsymbolic

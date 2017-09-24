@@ -31,6 +31,7 @@ SECTIONS
   .text :
   {
     *(.init)
+    KEEP(*(.multiboot2))
     *(.text .text.* .gnu.linkonce.t*)
 
     *(.rodata*)
@@ -62,7 +63,7 @@ SECTIONS
   {
     . = ALIGN(16);
     _module_info_start = .;
-    *(.module_info .module_info.*)
+    KEEP(*(.module_info .module_info.*))
     _module_info_end = .;
   } : data
 

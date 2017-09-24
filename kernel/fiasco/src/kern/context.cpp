@@ -854,7 +854,7 @@ Context::schedule()
       if (EXPECT_TRUE(current_cpu == ::current_cpu()))
         rq->schedule_in_progress = 0;
       else
-        return; // we got migrated and selected on our new CPU, so wen may run
+        return; // we got migrated and selected on our new CPU, so we may run
     }
 }
 
@@ -1041,7 +1041,7 @@ Cpu_time
 Context::consumed_time()
 {
   if (Config::Fine_grained_cputime)
-    return _clock.current().us(_consumed_time);
+    return _clock.cpu(home_cpu()).us(_consumed_time);
 
   return _consumed_time;
 }
@@ -1454,7 +1454,7 @@ Context::handle_drq()
   resched |= _drq_q.handle_requests();
   state_del_dirty(Thread_drq_ready);
 
-  //LOG_MSG_3VAL(this, "xdrq", state(), ret, cpu_lock.test());
+  //LOG_MSG_3VAL(this, "xdrq", state(), 0, cpu_lock.test());
 
   /*
    * When the context is marked as dead (Thread_dead) then we must not execute
@@ -2185,7 +2185,11 @@ bool
 Context::_execute_drq(Drq *rq, bool offline_cpu = false)
 {
   bool do_sched = _drq_q.execute_request(rq, Drq_q::No_drop, true);
-  assert (offline_cpu || home_cpu() == current_cpu());
+  // the DRQ function executed above might be preemptible in the case
+  // of local execution
+  if (EXPECT_FALSE(!offline_cpu && home_cpu() != current_cpu()))
+    return false;
+
   if (!in_ready_list() && (state(false) & Thread_ready_mask))
     {
       if (EXPECT_FALSE(offline_cpu))

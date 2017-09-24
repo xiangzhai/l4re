@@ -13,12 +13,13 @@ ifeq ($(origin _L4DIR_MK_TEST_MK),undefined)
 _L4DIR_MK_TEST_MK=y
 
 # auto-fill TARGET with builds for test_*.c[c] if necessary
+# TARGETS_$(ARCH) - contains a list of tests specific for this architecture
 ifndef TARGET
 TARGETS_CC := $(patsubst $(SRC_DIR)/%.cc,%,$(wildcard $(SRC_DIR)/test_*.cc))
 $(foreach t, $(TARGETS_CC), $(eval SRC_CC_$(t) += $(t).cc))
 TARGETS_C := $(patsubst $(SRC_DIR)/%.c,%,$(wildcard $(SRC_DIR)/test_*.c))
 $(foreach t, $(TARGETS_C), $(eval SRC_C_$(t) += $(t).c))
-TARGET += $(TARGETS_CC) $(TARGETS_C)
+TARGET += $(TARGETS_CC) $(TARGETS_C) $(TARGETS_$(ARCH))
 endif
 
 MODE ?= shared
@@ -54,10 +55,14 @@ else
 test_script = $(L4DIR)/tool/bin/run_test
 endif
 
+# L4RE_ABS_SOURCE_DIR_PATH is used in gtest-internal.h to shorten absolute path
+# names to L4Re relative paths.
+CPPFLAGS += -DL4RE_ABS_SOURCE_DIR_PATH='"$(L4DIR_ABS)"'
+
 # variables that are forwarded to the test runner environment
 testvars_fix    := MODE ARCH MOE_CFG REQUIRED_MODULES KERNEL_CONF L4LINUX_CONF \
                     TEST_SETUP TEST_TARGET TEST_EXPECTED OBJ_BASE
-testvars_conf   := PLATFORM_TYPE TEST_TIMEOUT TEST_EXPECTED_REPEAT
+testvars_conf   := TEST_TIMEOUT TEST_EXPECTED_REPEAT
 testvars_append := QEMU_ARGS MOE_ARGS
 
 # use either a target-specific value or the general version of a variable

@@ -65,16 +65,12 @@ int main(int argc, char **argv)
       return 1;
     }
 
-  if ((unsigned)png_w > fbi.width || (unsigned)png_h > fbi.height)
-    {
-      printf("Picture too large, cannot display\n");
-      return 1;
-    }
-
-  libpng_render_mem(bildmem, (void *)vidmem,
-                    st.st_size,
-                    l4re_ds_size(l4re_util_video_goos_fb_buffer(&gfb)),
-                    &fbi);
+  libpng_render_mem2(bildmem, (void *)vidmem,
+                     st.st_size,
+                     l4re_ds_size(l4re_util_video_goos_fb_buffer(&gfb)),
+                     ((int)fbi.width - png_w) / 2,
+                     ((int)fbi.height - png_h) / 2,
+                     &fbi);
 
   l4re_util_video_goos_fb_refresh(&gfb, 0, 0, png_w, png_h);
 

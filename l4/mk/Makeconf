@@ -52,8 +52,8 @@ L4_KIP_OFFS_SYS_DEBUGGER = 0x900
 L4_STACK_ADDR           ?= $(L4_STACK_ADDR_$(ARCH))
 L4_STACK_SIZE           ?= $(if $(L4_STACK_SIZE_MAIN_THREAD),$(L4_STACK_SIZE_MAIN_THREAD),0x8000)
 
-CC_WHITELIST-gcc     := 4.6 4.7 4.8 4.9 5 6
-CC_WHITELIST-clang   := 3.5 3.6 3.7 4.9
+CC_WHITELIST-gcc     := 4.6 4.7 4.8 4.9 5 6 7
+CC_WHITELIST-clang   := 3.5 3.6 3.7 3.8 3.9
 
 # This is quite bad: There is no other chance to disable the page-alignedment
 # of the linker. The linker aligns the first section at 0x100000 for AMD64!
@@ -145,7 +145,7 @@ absfilename     = $(shell PWD=$$($(PWDCMD)) $(L4DIR)/mk/rel2abs.sh $(1))
 findfile	= $(firstword $(wildcard $(addsuffix /$(1),$(2))) $(1)_NOT_FOUND)
 is_dir          = $(shell test -d '$(1)' && echo yes)
 define create_dir
-  $(if $(wildcard $(1)),,$(VERBOSE)$(INSTALL) -d $(1))
+  $(VERBOSE)$(if $(wildcard $(1)),:,$(INSTALL) -d $(1))
 endef
 
 # Move $(2) to $(1) if content of both files differ
@@ -257,6 +257,8 @@ INCLUDE_BOOT_CONFIG := required
 endif
 
 ifneq ($(INCLUDE_BOOT_CONFIG),)
+ -include $(L4DIR)/conf/Makeconf.boot
+ -include $(OBJ_BASE)/conf/Makeconf.boot
  PLATFORM_CONF_FILE := $(firstword $(wildcard $(L4DIR)/conf/platforms/$(PLATFORM_TYPE).conf $(L4DIR)/mk/platforms/$(PLATFORM_TYPE).conf))
  ifneq ($(PLATFORM_TYPE),$(patsubst "%",%,$(CONFIG_PLATFORM_TYPE)))
   include $(PLATFORM_CONF_FILE)
@@ -273,8 +275,6 @@ ifneq ($(INCLUDE_BOOT_CONFIG),)
    endif
   endif
  endif
- -include $(L4DIR)/conf/Makeconf.boot
- -include $(OBJ_BASE)/conf/Makeconf.boot
  -include $(OBJ_BASE)/Makeconf.ram_base
  BID_RAM_BASE_DEP := $(if $(wildcard $(OBJ_BASE)/Makeconf.ram_base),$(OBJ_BASE)/Makeconf.ram_base)
  ifeq ($(RAM_BASE),)
@@ -354,13 +354,16 @@ endif
 FORTRAN_FILE_EXTENSIONS = .f .F .f90 .F90 .f95 .F95
 
 # We recognize the following file extensions for assembly.
-BID_ASM_FILE_EXTENSIONS = .S
+BID_ASM_FILE_EXTENSIONS ?= .S
+BID_ASM_CPP_FILE_EXTENSIONS ?= .S
 
 # macros used here and in packages
 checkcc   = $(shell if $(CC)  $(CCXX_FLAGS) $(1) -o /dev/null -c -x c \
                     /dev/null > /dev/null 2>&1; then echo "$(1)"; fi)
 checkcxx  = $(shell if $(CXX) $(CCXX_FLAGS) $(1) -o /dev/null -c -x c++ \
                     /dev/null > /dev/null 2>&1; then echo "$(1)"; fi)
+checkdtc  = $(shell if $(DTC) $(1) --version /dev/null > /dev/null 2>&1; \
+                    then echo "$(1)"; fi)
 
 callcc    = LC_ALL=C $(CC)  $(CCXX_FLAGS)
 callcxx   = LC_ALL=C $(CXX) $(CCXX_FLAGS)
@@ -406,7 +409,6 @@ GCCLIB_file_f   = $(shell $(callcc) -print-file-name=$(1))
 GCCLIB_HOST_f	= $(shell $(callcc) -print-libgcc-file-name)
 GCCLIB_S_SO_f	= $(filter /%,$(shell $(callcc) -print-file-name=libgcc_s.so))
 GCCLIB_EH_f	= $(filter /%,$(shell $(callcc) -print-file-name=libgcc_eh.a))
-GCCINCDIR_f	= $(addprefix $(call GCCDIR_f),/include /include-fixed)
 GCCNOSTACKPROTOPT_f= $(call checkcc,-fno-stack-protector)
 GCCSTACKPROTOPT_f = $(call checkcc,-fstack-protector)
 GCCSTACKPROTALLOPT_f = $(call checkcc,-fstack-protector-all)
@@ -415,12 +417,16 @@ GCC_HAS_ATOMICS_f = $(shell if echo '\#include <bits/c++config.h>' | \
 		               $(callcxx) -dD -E -x c++ - | \
 			       grep -q _GLIBCXX_ATOMIC_BUILTINS; then \
 			         echo y; fi)
+GCCINCFIXEDPATH_f = $(patsubst %/limits.h,%,$(strip $(firstword $(wildcard \
+                      $(addsuffix /limits.h, \
+                        $(call GCCDIR_f)/include-fixed$(if $(filter .,$(shell $(callcc) -print-multi-directory)),,/$(shell $(callcc) -print-multi-directory)) \
+                        $(call GCCDIR_f)/include-fixed)))))
 
 BID_NOSTDINC_clang ?= #-nostdlibinc
 BID_NOSTDINC_gcc   ?= -nostdinc
 BID_NOSTDINC       ?= $(BID_NOSTDINC_$(BID_COMPILER_TYPE))
 ifneq ($(strip $(GCCDIR)),)
-GCCINCDIR	= $(GCCDIR)/include $(GCCDIR)/include-fixed
+GCCINCDIR	= $(GCCDIR)/include $(GCCINCFIXEDPATH)
 I_GCCINCDIR	= $(addprefix -isystem ,$(GCCINCDIR))
 endif
 
@@ -454,7 +460,7 @@ HOST_LINK        := 1
 HOST_LINK_HOST   := 1
 endif
 
-ifneq ($(filter l4linux,$(MODE)),)
+ifneq ($(filter l4linux targetsys,$(MODE)),)
 HOST_LINK        := 1
 HOST_LINK_TARGET := 1
 endif
@@ -565,7 +571,7 @@ BUILT_MESSAGE              ?= echo -e $(EMPHSTART)'  [$(PKGNAME_DIRNAME)] ==> $@
 COMP_MESSAGE               ?= echo -e "  [$(PKGNAME_DIRNAME)] ... Compiling $@"
 COMP_P_MESSAGE             ?= echo -e "  [$(PKGNAME_DIRNAME)] ... Compiling PIC $@"
 COMP_PR_MESSAGE            ?= echo -e "  [$(PKGNAME_DIRNAME)] ... Compiling PROFILE $@"
-GEN_MESSAGE                ?= echo -e "  [$(PKGNAME_DIRNAME)] ... Generating $@"
+GEN_MESSAGE                ?= echo -e "  [$(PKGNAME_DIRNAME)] ... Generating $(if $(1),$(1),$@)"
 LINK_MESSAGE               ?= echo -e "  [$(PKGNAME_DIRNAME)] ==> Linking $@"
 LINK_SHARED_MESSAGE        ?= echo -e "  [$(PKGNAME_DIRNAME)] ==> Linking to shared $@"
 LINK_PARTIAL_MESSAGE       ?= echo -e "  [$(PKGNAME_DIRNAME)] ==> Partial linking to $@"
@@ -606,6 +612,11 @@ addfileheader:
 # Common functions
 #
 
+define newline
+
+
+endef
+
 # 1: name
 # 2: output file
 # 3: inc path (one only)
@@ -613,7 +624,7 @@ addfileheader:
 # 5: requires_libs
 # 6: PC_CFLAGS
 generate_pcfile =                                                            \
-	mkdir -p $(dir $(2))                                                 \
+	[ -d $(dir $(2)) ] || mkdir -p $(dir $(2))                           \
 	;echo -n                                                    > $(2)   \
 	$(if $(3),;echo "incdir=/empty_incdir"                     >> $(2))  \
 	;echo "Name: $(1)"                                         >> $(2)   \
@@ -624,6 +635,7 @@ generate_pcfile =                                                            \
 	$(if $(6),;echo " $(6)" >> $(2),;echo "" >> $(2))                    \
 	$(if $(4),;echo "Libs: $(4)"                               >> $(2))  \
 	$(if $(5),;echo "Requires: $(5)"                           >> $(2))  \
+	$(if $(7),;echo -e '$(subst $(newline),\n,$(7))' >> $(2)) \
 	$(if $(BID_GEN_CONTROL),;echo "Provides: $(1)"             >> $(PKGDIR)/Control) \
 	$(if $(BID_GEN_CONTROL),;echo "Requires: $(5)"             >> $(PKGDIR)/Control) ;
 

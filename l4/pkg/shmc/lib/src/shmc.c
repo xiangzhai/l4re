@@ -65,7 +65,10 @@ l4shmc_create(const char *shm_name, l4_umword_t shm_size)
     return -L4_ENOMEM;
 
   if ((r = l4re_ma_alloc(shm_size, shm_ds, 0)))
-    goto out_shm_free_cap;
+    {
+      l4re_util_cap_free(shm_ds);
+      return r;
+    }
 
   if ((r = l4re_rm_attach((void **)&s, shm_size, L4RE_RM_SEARCH_ADDR,
                           shm_ds | L4_CAP_FPAGE_RW,
@@ -77,16 +80,16 @@ l4shmc_create(const char *shm_name, l4_umword_t shm_size)
 
   if ((r = l4re_ns_register_obj_srv(shm_cap, "shm", shm_ds | L4_CAP_FPAGE_RW,
                                     L4RE_NS_REGISTER_RW)))
-    goto out_shm_free_mem;
+    goto out_shm_detach;
 
   l4re_rm_detach_unmap((l4_addr_t)s, L4RE_THIS_TASK_CAP);
 
   return 0;
 
+out_shm_detach:
+  l4re_rm_detach_unmap((l4_addr_t)s, L4RE_THIS_TASK_CAP);
 out_shm_free_mem:
-  l4re_ma_free(shm_ds);
-out_shm_free_cap:
-  l4re_util_cap_free(shm_ds);
+  l4re_util_cap_free_um(shm_ds);
   return r;
 }
 
@@ -122,7 +125,7 @@ l4shmc_attach_to(const char *shm_name, l4_umword_t timeout_ms,
   if (r < 0)
     {
       r = -L4_ENOMEM;
-      goto out_free_cap;
+      goto out_free_cap_um;
     }
   shmarea->_size = r;
 
@@ -130,9 +133,13 @@ l4shmc_attach_to(const char *shm_name, l4_umword_t timeout_ms,
                           L4RE_RM_SEARCH_ADDR,
                           shmarea->_shm_ds | L4_CAP_FPAGE_RW,
                           0, L4_PAGESHIFT)))
-    goto out_free_cap;
+    goto out_free_cap_um;
 
   return L4_EOK;
+
+out_free_cap_um:
+  l4re_util_cap_free_um(shmarea->_shm_ds);
+  return r;
 
 out_free_cap:
   l4re_util_cap_free(shmarea->_shm_ds);

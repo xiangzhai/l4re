@@ -1,4 +1,3 @@
-
 /* Also look into example.c of libpng */
 
 #include <l4/libpng/l4png_wrap.h>
@@ -22,8 +21,7 @@ enum { _DEBUG = 0 };
 
 enum
 {
-  PNG_BYTES_TO_CHECK = 4,
-  PNG_ROW_MEM_SIZE   = 8,
+  PNG_BYTES_TO_CHECK = 8,
 };
 
 static int check_if_png(char *png_data)
@@ -256,6 +254,7 @@ convert_pixel_from_rgb888(unsigned srcval, void *dst, l4re_video_view_info_t *fb
 static int
 internal_render(enum mode_t mode, void *png_data, char * const dst,
                 int png_data_size, unsigned dst_buf_size,
+                int offset_x, int offset_y,
                 l4re_video_view_info_t *dst_descr, FILE *fp)
 {
   png_structp png_ptr;
@@ -269,7 +268,7 @@ internal_render(enum mode_t mode, void *png_data, char * const dst,
 
   // ----------
   png_uint_32 width, height;
-  unsigned char *row_ptr;
+  png_bytep row_ptr;
   unsigned row;
   int bit_depth, color_type, interlace_type;
 
@@ -277,9 +276,16 @@ internal_render(enum mode_t mode, void *png_data, char * const dst,
   png_get_IHDR(png_ptr, info_ptr, &width, &height, &bit_depth, &color_type,
                &interlace_type, NULL, NULL);
 
+
   if (_DEBUG)
-    printf("bit_depth: %d, color_type: %d, width: %d, height: %d",
+    printf("bit_depth: %d, color_type: %d, width: %d, height: %d\n",
            bit_depth, color_type, width, height);
+
+  // don't wrap around and don't write behind dst
+  if (width + offset_x > dst_descr->width)
+    width = dst_descr->width - offset_x;
+  if (height + offset_y > dst_descr->height)
+    height = dst_descr->height - offset_y;
 
   if (dst_buf_size < height * dst_descr->bytes_per_line)
     {
@@ -301,12 +307,21 @@ internal_render(enum mode_t mode, void *png_data, char * const dst,
 
   /* set down to 8bit value */
   if (bit_depth == 16)
-    png_set_strip_16(png_ptr);
+#ifdef PNG_READ_SCALE_16_TO_8_SUPPORTED
+     png_set_scale_16(png_ptr);
+#else
+     png_set_strip_16(png_ptr);
+#endif
 
   if (color_type == PNG_COLOR_TYPE_RGB_ALPHA)
     png_set_strip_alpha(png_ptr);
 
-  row_ptr = malloc(png_get_rowbytes(png_ptr, info_ptr) * PNG_ROW_MEM_SIZE);
+  if (dst_descr->pixel_info.bytes_per_pixel != 2)
+    png_set_filler(png_ptr, 0xff, PNG_FILLER_BEFORE);
+
+  png_read_update_info(png_ptr, info_ptr);
+
+  row_ptr = malloc(png_get_rowbytes(png_ptr, info_ptr));
 
   if (!row_ptr)
     {
@@ -314,36 +329,65 @@ internal_render(enum mode_t mode, void *png_data, char * const dst,
       return -1;
     }
 
+  char *_dst = dst + offset_y * dst_descr->bytes_per_line;
+
   if (dst_descr->pixel_info.bytes_per_pixel == 2)
     {
-      char *_dst = dst;
       // special case for 16bit, with dithering
       if (interlace_type == PNG_INTERLACE_NONE)
-        for (row = 0; row < height; row++)
-          {
-            png_read_row(png_ptr, (png_bytep)row_ptr, NULL);
-            convert_line_24to16(row_ptr, (short *)_dst, width, row);
-            _dst += dst_descr->bytes_per_line;
-          }
+        {
+          if (offset_x >= 0)
+            for (row = 0; row < height; row++)
+              {
+                png_read_row(png_ptr, row_ptr, NULL);
+                if (_dst >= dst)
+                  convert_line_24to16(row_ptr, (short *)_dst + offset_x,
+                                      width, row);
+                _dst += dst_descr->bytes_per_line;
+              }
+          else
+            for (row = 0; row < height; row++)
+              {
+                png_read_row(png_ptr, row_ptr, NULL);
+                if (_dst >= dst)
+                  convert_line_24to16((unsigned char *)row_ptr + 3 * (-offset_x),
+                                      (short *)_dst, width + offset_x, row);
+                _dst += dst_descr->bytes_per_line;
+              }
+        }
     }
   else
     {
-      png_set_filler(png_ptr, 0xff, PNG_FILLER_BEFORE);
-      char *_dst = dst;
       for (row = 0; row < height; row++)
         {
           png_read_row(png_ptr, (png_bytep)row_ptr, NULL);
-          unsigned *r = (unsigned *)row_ptr;
-          unsigned o = 0;
-          for (unsigned j = 0; j < width;
-               ++j, ++r, o += dst_descr->pixel_info.bytes_per_pixel)
-            convert_pixel_from_rgb888(*r >> 8, _dst + o, dst_descr);
+
+          if (_dst >= dst)
+            {
+              unsigned *r = (unsigned *)row_ptr;
+              unsigned o;
+
+              if (offset_x >= 0)
+                o = offset_x * dst_descr->pixel_info.bytes_per_pixel;
+              else
+                {
+                  o = 0;
+                  r += -offset_x;
+                }
+
+              for (unsigned j = 0; j < width;
+                   ++j, ++r, o += dst_descr->pixel_info.bytes_per_pixel)
+                convert_pixel_from_rgb888(*r >> 8, _dst + o, dst_descr);
+            }
 
           _dst += dst_descr->bytes_per_line;
         }
     }
 
   free(row_ptr);
+
+  if (0) /* If we do not read all rows this emit a warning */
+    png_read_end(png_ptr, info_ptr);
 
   png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
 
@@ -356,6 +400,18 @@ int libpng_render_mem(void *png_data, void *dst_buf,
 {
   return internal_render(M_MEMORY, png_data, dst_buf,
                          png_data_size, dst_size,
+                         0, 0,
+                         dst_descr, NULL);
+}
+
+int libpng_render_mem2(void *png_data, void *dst_buf,
+                       unsigned png_data_size, unsigned dst_size,
+                       int offset_x, int offset_y,
+                       l4re_video_view_info_t *dst_descr)
+{
+  return internal_render(M_MEMORY, png_data, dst_buf,
+                         png_data_size, dst_size,
+                         offset_x, offset_y,
                          dst_descr, NULL);
 }
 
@@ -369,7 +425,7 @@ int libpng_render_file(const char *filename, void *dst_buf,
   if (!(fp = fopen(filename, "rb")))
     return -1;
 
-  r = internal_render(M_MEMORY, 0, dst_buf, 0, dst_size, dst_descr, fp);
+  r = internal_render(M_MEMORY, 0, dst_buf, 0, dst_size, 0, 0, dst_descr, fp);
 
   fclose(fp);
   return r;

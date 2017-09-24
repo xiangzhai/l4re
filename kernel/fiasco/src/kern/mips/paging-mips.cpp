@@ -6,10 +6,6 @@ INTERFACE [mips]:
 
 #include <cxx/cxx_int>
 
-class PF
-{
-};
-
 class Tlb_entry
 {
 public:
@@ -51,50 +47,48 @@ public:
 };
 
 // ------------------------------------------------------------
-INTERFACE [mips]:
+INTERFACE [mips && 32bit]:
 
-class Page
+class Pdir_defs
 {
 public:
-  /*** FIXME: start duplicate of generic paging.cpp */
-  typedef L4_msg_item::Memory_type Type;
-
-  struct Kern
-  : cxx::int_type_base<unsigned char, Kern>,
-    cxx::int_bit_ops<Kern>,
-    cxx::int_null_chk<Kern>
+  enum : Mword
   {
-    Kern() = default;
-    explicit Kern(Value v) : cxx::int_type_base<unsigned char, Kern>(v) {}
+    Used_levels = 2, // must be consistent with the used slots in PWSize
+    Depth = 4,       // for JDB, it skips zero bit levels itself
+    PT_level = 3,    // Level index for the final page table
+    PWField_ptei = 6,
+    PWField = (21 << 24) | (0 << 18) | (0 << 12) | (Config::PAGE_SHIFT        << 6) | PWField_ptei,
+    PWSize  = (11 << 24) | (0 << 18) | (0 << 12) | ((21 - Config::PAGE_SHIFT) << 6) | 0,
 
-    static Kern Global() { return Kern(1); }
+    PWCtl_psn = 0
   };
-
-  typedef L4_fpage::Rights Rights;
-
-  struct Attr
-  {
-    Rights rights;
-    Type type;
-    Kern kern;
-
-    Attr() = default;
-    explicit Attr(Rights r, Type t = Type::Normal(), Kern k = Kern(0))
-    : rights(r), type(t), kern(k) {}
-
-    Attr apply(Attr o) const
-    {
-      Attr n = *this;
-      n.rights &= o.rights;
-      if ((o.type & Type::Set()) == Type::Set())
-        n.type = o.type & ~Type::Set();
-      return n;
-    }
-  };
-  /*** FIXME: end duplicate of generic paging.cpp */
 };
 
-class Pdir
+// ------------------------------------------------------------
+INTERFACE [mips && 64bit]:
+
+class Pdir_defs
+{
+public:
+  enum : Mword
+  {
+    Used_levels = 4, // must be consistent with the used slots in PWSize
+    Depth = 4,       // for JDB, it skips zero bit levels itself
+    PT_level = 3,    // Level index for the final page table
+    PWField_ptei = 6,
+    PWField = (39 << 24) | (30 << 18) | (21 << 12) | (Config::PAGE_SHIFT        << 6) | PWField_ptei,
+    PWSize  = ( 9 << 24) | ( 9 << 18) | ( 9 << 12) | ((21 - Config::PAGE_SHIFT) << 6) | 0,
+
+    PWCtl_psn = 0
+  };
+
+};
+
+// ------------------------------------------------------------
+INTERFACE [mips]:
+
+class Pdir : public Pdir_defs
 {
 public:
   typedef Page_number Va;
@@ -200,15 +194,6 @@ public:
 
   enum : Mword
   {
-    Used_levels = 2, // must be consistent with the used slots in PWSize
-    Depth = 4,       // for JDB, it skips zero bit lavels itself
-    PT_level = 3,    // Level index for the final page table
-    PWField_ptei = 6,
-    PWField = (21 << 24) | (0 << 18) | (0 << 12) | (Config::PAGE_SHIFT        << 6) | PWField_ptei,
-    PWSize  = (11 << 24) | (0 << 18) | (0 << 12) | ((21 - Config::PAGE_SHIFT) << 6) | 0,
-
-    PWCtl_psn = 0,
-
     Valid = Tlb_entry::Valid << PWField_ptei,
     XI    = 1UL << (PWField_ptei - 2),
     RI    = 2UL << (PWField_ptei - 2),
@@ -263,19 +248,24 @@ IMPLEMENTATION [mips]:
 
 #include "trap_state.h"
 
-PUBLIC static inline NEEDS["trap_state.h"]
+IMPLEMENT inline NEEDS["trap_state.h"]
 Mword
 PF::is_usermode_error(Mword error)
 { return (error & Trap_state::C_src_context_mask) == Trap_state::C_src_user; }
 
-PUBLIC static inline NEEDS["trap_state.h"]
+IMPLEMENT inline
 Mword
-PF::is_read_error(Trap_state::Cause const cause)
+PF::is_read_error(Mword cause)
 {
   // bit 0 in the exception code denotes a write / store access
   // in all TLB, Address, and bus errors
-  return !(cause.raw & 4);
+  return !(cause & 4);
 }
+
+PUBLIC static inline NEEDS["trap_state.h"]
+Mword
+PF::is_read_error(Trap_state::Cause const cause)
+{ return is_read_error(cause.raw); }
 
 PUBLIC static inline NEEDS["trap_state.h"]
 Mword
@@ -285,8 +275,13 @@ PF::is_translation_error(Trap_state::Cause const cause)
          || cause.exc_code() == 3; // TLBS
 }
 
-PUBLIC static inline NEEDS["trap_state.h", PF::is_read_error]
-Mword PF::addr_to_msgword0(Address pfa, Trap_state::Cause const cause)
+IMPLEMENT inline NEEDS["trap_state.h"]
+Mword
+PF::is_translation_error(Mword cause)
+{ return is_translation_error(Trap_state::Cause(cause)); }
+
+IMPLEMENT inline NEEDS[PF::is_read_error]
+Mword PF::addr_to_msgword0(Address pfa, Mword cause)
 {
   Mword a = pfa & ~7;
   if (is_translation_error(cause))

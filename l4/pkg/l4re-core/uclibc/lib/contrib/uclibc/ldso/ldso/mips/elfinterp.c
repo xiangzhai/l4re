@@ -72,7 +72,7 @@ unsigned long __dl_runtime_resolve(unsigned long sym_index,
 	{
 		_dl_dprintf(_dl_debug_file, "\nresolve function: %s", symname);
 		if (_dl_debug_detail) _dl_dprintf(_dl_debug_file,
-				"\n\tpatched %x ==> %x @ %x\n", *got_addr, new_addr, got_addr);
+				"\n\tpatched %p ==> %lx @ %p\n", *got_addr, new_addr, got_addr);
 	}
 	if (!_dl_debug_nofixups) {
 		*got_addr = (char*)new_addr;
@@ -123,7 +123,7 @@ __dl_runtime_pltresolve(struct elf_resolve *tpnt, int reloc_entry)
 			_dl_dprintf(_dl_debug_file, "\nresolve function: %s", symname);
 			if (_dl_debug_detail)
 				_dl_dprintf(_dl_debug_file,
-				            "\n\tpatched: %x ==> %x @ %x",
+				            "\n\tpatched: %p ==> %p @ %p",
 				            *got_addr, new_addr, got_addr);
 		}
 	}
@@ -140,6 +140,9 @@ __dl_runtime_pltresolve(struct elf_resolve *tpnt, int reloc_entry)
 void _dl_parse_lazy_relocation_information(struct dyn_elf *rpnt,
 	unsigned long rel_addr, unsigned long rel_size)
 {
+	(void) rpnt;
+	(void) rel_addr;
+	(void) rel_size;
 	/* Nothing to do */
 	return;
 }
@@ -154,7 +157,8 @@ int _dl_parse_relocation_information(struct dyn_elf *xpnt,
 	unsigned long *got;
 	unsigned long *reloc_addr=NULL;
 	unsigned long symbol_addr;
-	int reloc_type, symtab_index;
+	int reloc_type;
+	unsigned symtab_index;
 	struct elf_resolve *tpnt = xpnt->dyn;
 	char *symname = NULL;
 #if defined (__SUPPORT_LD_DEBUG__)
@@ -286,7 +290,7 @@ int _dl_parse_relocation_information(struct dyn_elf *xpnt,
 #if defined (__SUPPORT_LD_DEBUG__)
 				if (_dl_debug_move)
 					_dl_dprintf(_dl_debug_file,
-						    "\n%s move %d bytes from %x to %x",
+						    "\n%s move %d bytes from %lx to %p",
 						    symname, symtab[symtab_index].st_size,
 						    symbol_addr, reloc_addr);
 #endif
@@ -315,7 +319,7 @@ int _dl_parse_relocation_information(struct dyn_elf *xpnt,
 		}
 #if defined (__SUPPORT_LD_DEBUG__)
 		if (_dl_debug_reloc && _dl_debug_detail && reloc_addr)
-			_dl_dprintf(_dl_debug_file, "\tpatched: %x ==> %x @ %x\n", old_val, *reloc_addr, reloc_addr);
+			_dl_dprintf(_dl_debug_file, "\tpatched: %lx ==> %lx @ %p\n", old_val, *reloc_addr, reloc_addr);
 #endif
 	}
 
@@ -383,5 +387,18 @@ void _dl_perform_mips_global_got_relocations(struct elf_resolve *tpnt, int lazy)
 			sym++;
 		}
 	}
+}
+
+static __always_inline void
+elf_machine_setup(ElfW(Addr) load_off, unsigned long const *dynamic_info,
+                  struct elf_resolve *tpnt, int lazy)
+{
+	(void) load_off;
+	(void) lazy;
+	unsigned long *lpnt = (unsigned long *) dynamic_info[DT_PLTGOT];
+#ifdef ALLOW_ZERO_PLTGOT
+	if (lpnt)
+#endif
+		INIT_GOT(lpnt, tpnt);
 }
 

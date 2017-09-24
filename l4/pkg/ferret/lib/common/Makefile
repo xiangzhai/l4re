@@ -8,7 +8,7 @@ SRC_CC_libferret_comm.a     = comm.cc
 # convert.cc switched off until we know about the tbuf interface
 
 TARGET    = libferret_util.a libferret_comm.a
-REQUIRES_LIBS = libpthread
+REQUIRES_LIBS = libpthread libstdc++
 
 PC_FILENAME = ferret-common
 

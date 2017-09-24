@@ -58,7 +58,7 @@ ifneq ($(strip $(SRC_F)$(foreach t,$(TARGET),$(SRC_F_$(t)))),)
       $(info $(shell echo -e "\033[32mFortran compiler (gcc-4.6 or later) missing, skipping directory '$(SRC_DIR)'.\033[0m"))
       SYSTEMS =
     else
-      ifeq ($(filter 4.6 4.7 4.8 4.9 5 6,$(GCCVERSION)),)
+      ifeq ($(filter 4.6 4.7 4.8 4.9 5 6 7,$(GCCVERSION)),)
         $(info $(shell echo -e "\033[32mFortran compiler gcc version 4.6 or later required, skipping directory '$(SRC_DIR)'.\033[0m"))
         SYSTEMS =
       endif
@@ -69,7 +69,7 @@ endif
 ifneq ($(SRC_CC_IS_CXX11),)
   ifneq ($(SRC_CC_IS_CXX11),c++0x)
     # gcc-4.5 and 4.6 only know about c++0x
-    ifeq ($(filter 4.7 4.8 4.9 5 6,$(GCCVERSION)),)
+    ifeq ($(filter 4.7 4.8 4.9 5 6 7,$(GCCVERSION)),)
       $(info $(shell echo -e "\033[32mGCC too old to compile C++11 sources in directory '$(SRC_DIR)'. At least version 4.7 required.\033[0m"))
       SYSTEMS =
     endif
@@ -204,16 +204,6 @@ L4INCDIR ?=	$(addprefix $(OBJ_BASE)/include/$(ARCH)/,$(L4API)) \
                 $(DROPS_STDDIR)/include/$(ARCH) \
                 $(DROPS_STDDIR)/include
 
-L4INCDIR_SYS ?=	$(addprefix $(OBJ_BASE)/include/sys/$(ARCH)/,$(L4API)) \
-                $(addprefix $(OBJ_BASE)/include/sys/,$(L4API)) \
-                $(OBJ_BASE)/include/sys/$(ARCH)/ \
-                $(OBJ_BASE)/include/sys \
-		$(if $(USE_DICE),$(DICE_INCDIR),)
-                $(addprefix $(DROPS_STDDIR)/include/sys/$(ARCH)/,$(L4API))) \
-                $(addprefix $(DROPS_STDDIR)/include/sys/,$(L4API))) \
-                $(DROPS_STDDIR)/include/sys/$(ARCH) \
-                $(DROPS_STDDIR)/include/sys
-
 L4LIBDIR ?=	$(addprefix $(OBJ_BASE)/lib/$(ARCH)_$(CPU)/,$(L4API)) \
                 $(OBJ_BASE)/lib/$(ARCH)_$(CPU) \
                 $(OBJ_BASE)/lib \
@@ -227,12 +217,6 @@ L4INCDIR ?=	$(addprefix $(OBJ_BASE)/include/$(ARCH)/,$(L4API)) \
                 $(wildcard $(addprefix $(OBJ_BASE)/include/,$(L4API))) \
                 $(OBJ_BASE)/include/$(ARCH) \
                 $(OBJ_BASE)/include \
-		$(if $(USE_DICE),$(DICE_INCDIR),)
-
-L4INCDIR_SYS ?=	$(addprefix $(OBJ_BASE)/include/sys/$(ARCH)/,$(L4API)) \
-                $(addprefix $(OBJ_BASE)/include/sys/,$(L4API)) \
-                $(OBJ_BASE)/include/sys/$(ARCH) \
-                $(OBJ_BASE)/include/sys \
 		$(if $(USE_DICE),$(DICE_INCDIR),)
 
 L4LIBDIR ?=     $(addprefix $(OBJ_BASE)/lib/$(ARCH)_$(CPU)/,$(L4API)) \
@@ -254,7 +238,6 @@ endif
 #
 # Additionally, the following variables are supported:
 # SRC_C, SRC_CC, SRC_F, SRC_S - .c, .cc, .f90, .S source files
-# CRT0, CRTN	- startup and finish code
 # LIBS		- additional libs to link (with -l), including paths (-L)
 # IDL		- interface definition files
 # TARGET	- targets to be built
@@ -287,18 +270,9 @@ endif
 
 LIBCINCDIR    ?= $(call BID_mode_var,LIBCINCDIR)
 LIBCLIBDIR    ?= $(call BID_mode_var,LIBCLIBDIR)
-L4_LIBS       ?= $(call BID_mode_var,L4_LIBS)
-CRT0	      ?= $(call BID_mode_var,CRT0)
-CRTP          ?= $(if $(filter $(CRT0_DEFAULT),$(CRT0)),$(CRTP_DEFAULT),$(CRT0))
-CRTN	      ?= $(call BID_mode_var,CRTN)
 LDSCRIPT      ?= $(call BID_mode_var,LDSCRIPT)
 LDFLAGS       += $(call BID_mode_var,LDFLAGS)
 REQUIRES_LIBS += $(REQUIRES_LIBS_$(ARCH)) $(call BID_mode_var,REQUIRES_LIBS)
-
-# we do not need to put our FLAG-definitions into a special file if we can
-# use the target to parameterize it and if it needs not to appear in the deps 
-#CRT0	=  $(word 1, $(CRT0_$@_$(OSYSTEM)) $(CRT0_$@) $(CRT0_$(OSYSTEM)))
-#CRTN	=  $(word 1, $(CRTN_$@_$(OSYSTEM)) $(CRTN_$@) $(CRTN_$(OSYSTEM)))
 
 LDFLAGS	+= $(strip $(LDFLAGS_$(OSYSTEM)) $(LDFLAGS_$@) $(LDFLAGS_$@_$(OSYSTEM)))
 CARCHFLAGS += $(CARCHFLAGS_$(ARCH)) $(CARCHFLAGS_$(ARCH)_$(CPU))
@@ -312,13 +286,13 @@ BID_MISSING_LIBS :=
 # 2: parameters to pkg-config
 # 3: list of packages
 # use L4_BID_PKG_CONFIG because of export-defs, the function is copied
-L4_BID_PKG_CONFIG = $(PKG_CONFIG)
-BID_PKG_CONFIG = $(if $(strip $(3)),                                     \
+L4_BID_PKG_CONFIG = $(L4DIR)/tool/bin/l4-bender
+BID_PKG_CONFIG =                                      \
                    $(shell PKG_CONFIG_LIBDIR=$(1)/pc                     \
                            PKG_CONFIG_PATH= $(L4_BID_PKG_CONFIG)         \
                            --define-variable=incdir=$(1)/include/contrib \
                            $(if $(VERBOSE),--silence-errors)             \
-			   $(2) $(3) || echo __PKGCONFIG_FAILED__))
+			   $(2) $(3) || echo __PKGCONFIG_FAILED__)
 
 BID_PKG_CONFIG_MISSING =                                        \
      $(if $(strip $(3)),                                        \
@@ -328,6 +302,27 @@ BID_PKG_CONFIG_MISSING =                                        \
                   | LANG=C grep ", not found"))
 
 BID_PKG_CONFIG_FAILED = $(findstring __PKGCONFIG_FAILED__,$(1))
+
+BID_BENDER_DEFINES = \
+	-Dl4obj=$(1)                  \
+	-Dl4dir=$(2)                  \
+	-Dgcclibdir="$(3:-L%=%)"      \
+	-Dl4system=$(4)               \
+	$(if $(5),-Dl4api=$(5))
+
+bid_bender_default_vars = $(call BID_BENDER_DEFINES,$(OBJ_BASE),$(L4DIR),$(GCCSYSLIBDIRS),$(ARCH)_$(CPU),$(L4API))
+
+# linker for L4 libs and applications
+BID_LINK = $(L4DIR)/tool/bin/l4-bender -t ld $(bid_bender_default_vars) -Dlinker="$(LD)" \
+           --spec=$(L4DIR)/mk/bid-bender.spec --
+
+# linker for host mode and l4linux mode
+BID_LINK_MODE_host = $(L4DIR)/tool/bin/l4-bender -t host-ld $(bid_bender_default_vars) -Dlinker="$(1)" \
+                     --spec=$(L4DIR)/mk/bid-bender.spec --
+
+BID_link_deps_file = $(dir $(1)).$(notdir $(1)).pcs.d
+
+BID_LINK_DEPS = $(addprefix $(dir $(1)),$(addprefix .$(notdir $(1)),.d .pcs.d))
 
 ifeq ($(BID_MISSING_PCS),)
  ifneq ($(SYSTEM),)
@@ -408,11 +403,9 @@ ifeq ($(MODE),host)
 override CROSS_COMPILE = 
 CC            = $(HOST_CC)
 CXX           = $(HOST_CXX)
-LIBS         += $(REQUIRES_LIBS_LIST)
 else
 # no architecture specific flags in host mode
 LDFLAGS      += $(LDFLAGS_$(ARCH))
-L4_LIBS      += $(REQUIRES_LIBS_LIST)
 endif
 
 # additional libraries go after the requires-libs-list
@@ -492,11 +485,6 @@ CPPFLAGS+= $(BID_PKG_CONFIG_CFLAGS)
 #CPPFLAGS+= $(if $(CLIENTIDL)$(SERVERIDL)$(addprefix CLIENTIDL_,$(TARGET))$(addprefix SERVERIDL_,$(TARGET)),$(addprefix -I, $(IDL_PATH)))
 ifneq ($(MODE),host)
 CPPFLAGS+= $(addprefix -I, $(L4INCDIR))
-ifneq ($(BID_DISABLE_SYSTEM_HEADERS),)
-CPPFLAGS+= $(addprefix -I ,$(L4INCDIR_SYS))
-else
-CPPFLAGS+= $(addprefix -isystem ,$(L4INCDIR_SYS))
-endif
 endif
 CPPFLAGS+= $(if $(DEBUG_MODE),$(CPPFLAGS-DEBUG_MODE))
 CPPFLAGS+= $(LIBCINCDIR)
@@ -508,7 +496,7 @@ CXXFLAGS_L4_GENERIC += $(GCCSTACKPROTECTOROPT)
 CXXFLAGS_L4_GENERIC += -fuse-cxa-atexit
 endif
 
-CXXFLAGS_CXX11 = $(if $(filter 4.7 4.8 4.9 5 6,$(GCCVERSION)),-std=gnu++11,-std=gnu++0x)
+CXXFLAGS_CXX11 = $(if $(filter 4.7 4.8 4.9 5 6 7,$(GCCVERSION)),-std=gnu++11,-std=gnu++0x)
 
 ifneq ($(SRC_CC_IS_CXX11),)
   CXXFLAGS+= $(CXXFLAGS_CXX11)
@@ -526,6 +514,14 @@ FFLAGS  += $(call bid_flag_variants,FFLAGS)
 FFLAGS  += $(CFLAGS_L4_GENERIC)
 
 PICFLAGS += -fPIC -U__PIC__ -D__PIC__=1
+
+# select NOPIEFLAGS and NOPICFLAGS, use the most specific mode variable
+# first and the try the more generic _all_ and global version
+NOPICFLAGS_all_$(MODE)     ?= $(NOPICFLAGS)
+NOPICFLAGS_$(ARCH)_$(MODE) ?= $(NOPICFLAGS_all_$(MODE))
+
+NOPIEFLAGS_all_$(MODE)     ?= $(NOPIEFLAGS)
+NOPIEFLAGS_$(ARCH)_$(MODE) ?= $(NOPIEFLAGS_all_$(MODE))
 
 ifneq ($(MODE),host)
 ASFLAGS_L4_GENERIC += $(CARCHFLAGS) $(CCXX_FLAGS)
@@ -844,11 +840,11 @@ endef
 
 $(foreach e,.c .cc .cpp $(BID_ASM_FILE_EXTENSIONS) $(FORTRAN_FILE_EXTENSIONS),$(eval $(call reset_implicit_rule,$e)))
 
-$(eval $(call BID_GENERATE_I_MAKE_RULE,%.i,%.c,$(CC),$(CFLAGS)))
+$(eval $(call BID_GENERATE_I_MAKE_RULE,%.i,%.c,$(CC),$(CFLAGS) $(call BID_mode_var,NOPICFLAGS)))
 $(eval $(call BID_GENERATE_I_MAKE_RULE,%.s.i,%.c,$(CC),$(CFLAGS) $(PICFLAGS)))
-$(eval $(call BID_GENERATE_I_MAKE_RULE,%.i,%.cc,$(CXX),$(CXXFLAGS)))
+$(eval $(call BID_GENERATE_I_MAKE_RULE,%.i,%.cc,$(CXX),$(CXXFLAGS) $(call BID_mode_var,NOPICFLAGS)))
 $(eval $(call BID_GENERATE_I_MAKE_RULE,%.s.i,%.cc,$(CXX),$(CXXFLAGS) $(PICFLAGS)))
-$(if $(BID_ALLOW_CPP_AS_CPLUSPLUS_FILE),$(eval $(call BID_GENERATE_I_MAKE_RULE,%.i,%.cpp,$(CXX),$(CXXFLAGS))))
+$(if $(BID_ALLOW_CPP_AS_CPLUSPLUS_FILE),$(eval $(call BID_GENERATE_I_MAKE_RULE,%.i,%.cpp,$(CXX),$(CXXFLAGS) $(call BID_mode_var,NOPICFLAGS))))
 $(if $(BID_ALLOW_CPP_AS_CPLUSPLUS_FILE),$(eval $(call BID_GENERATE_I_MAKE_RULE,%.s.i,%.cpp,$(CXX),$(CXXFLAGS) $(PICFLAGS))))
 $(eval $(call BID_GENERATE_I_MAKE_RULE,%.i,%.S,$(CC),$(ASFLAGS)))
 
@@ -870,13 +866,14 @@ $(if $(BID_ALLOW_CPP_AS_CPLUSPLUS_FILE),$(eval $(call BID_GENERATE_S_MAKE_RULE,%
 	@$(GEN_MESSAGE)
 	$(VERBOSE)$(call MAKEDEP,perl) $(GEN_DOPECODE) $< >$@
 
-%.dtb: %.dts
+%.dtb: %.dts $(GENERAL_D_LOC)
 	@$(BUILD_MESSAGE)
-	$(VERBOSE)$(CPP) $(addprefix -I, $(PRIVATE_INCDIR)) -x assembler-with-cpp -Wp,-MD,.$@.d,-MT$@,-MP -nostdinc -o $@.pre $<
-	$(VERBOSE)$(DTC) $(addprefix -i , $(PRIVATE_INCDIR)) -i $(dir $<) -d .$@.d-x -O dtb -b 0 -o $@ $@.pre
-	$(VERBOSE)$(SED) -e "s|$@.pre|$<|" .$@.d-x | \
-		perl -ne 'print "$$_\n"; if (/^.*:\s*(.*)$$/) { print "$$_:\n" foreach (split(/ /,$$1)); }' >> .$@.d
-	$(VERBOSE)rm -f .$@.d-x $@.pre
+	$(VERBOSE)$(MKDIR) $(@D)
+	$(VERBOSE)$(CPP) $(addprefix -I, $(PRIVATE_INCDIR)) -x assembler-with-cpp -Wp,-MD,$(@D)/.$(@F).d,-MT$@,-MP -nostdinc -o $@.pre $<
+	$(VERBOSE)$(DTC) $(DTC_FLAGS) $(addprefix -i , $(PRIVATE_INCDIR)) -i $(dir $<) -d $(@D)/.$(@F).d-x -O dtb -b 0 -o $@ $@.pre
+	$(VERBOSE)$(SED) -e "s|$@.pre|$<|" $(@D)/.$(@F).d-x | \
+		perl -ne 'print "$$_\n"; if (/^.*:\s*(.*)$$/) { print "$$_:\n" foreach (split(/ /,$$1)); }' >> $(@D)/.$(@F).d
+	$(VERBOSE)$(RM) $(@D)/.$(@F).d-x $@.pre
 
 define bin_to_asm_recipe
 	echo -e ".section .rodata, \"a\"\n"    \
@@ -905,7 +902,8 @@ DEPS	+= $(foreach file,$(filter %.dtb, $(INSTALL_TARGET)), $(dir $(file)).$(notd
 clean cleanall::
 	$(VERBOSE)$(RM) $(strip $(filter-out $(KEEP_ON_CLEAN),\
 		$(wildcard *.dpi) $(wildcard *.o) $(wildcard *.i) \
-		$(wildcard *.S) $(ALLOBJS) $(DEL_ON_CLEAN)))
+		$(wildcard *.S) \
+		$(wildcard $(filter-out -%, $(ALLOBJS) $(DEL_ON_CLEAN)))))
 
 # clean: delete all temporary editor files, objects, binaries
 #        and most generated files

@@ -312,7 +312,7 @@ static int run(void)
 
   l4_touch_rw(thread_stack, sizeof(thread_stack));
 
-  chksys(L4Re::Env::env()->factory()->create_thread(vcpu_cap), "create thread");
+  chksys(L4Re::Env::env()->factory()->create(vcpu_cap), "create thread");
   l4_debugger_set_object_name(vcpu_cap.cap(), "vcpu thread");
 
   // get memory for vCPU state

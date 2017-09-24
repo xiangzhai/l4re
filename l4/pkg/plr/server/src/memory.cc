@@ -394,7 +394,7 @@ static void detach_region(DetachJob *dj)
 		if (((r & L4Re::Rm::Detach_result_mask) == L4Re::Rm::Detached_ds) and
 			//(memcap.cap() != L4_INVALID_CAP) and
 			((memcap.cap() >> L4_CAP_SHIFT) < Romain::FIRST_REPLICA_CAP)) {
-			L4Re::Env::env()->mem_alloc()->free(memcap);
+                        L4Re::Util::cap_alloc.free(memcap, L4Re::This_task);
 		}
 
 		if (!dj->rh.writable()) {

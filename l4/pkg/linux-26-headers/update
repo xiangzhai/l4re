@@ -26,6 +26,7 @@ cd $linuxtree
 
 install_header x86
 install_header arm
+install_header arm64
 install_header mips
 install_header powerpc
 install_header sparc

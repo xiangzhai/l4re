@@ -5,11 +5,13 @@ IMPLEMENTATION [arm]:
 #pragma GCC diagnostic ignored "-Wframe-larger-than="
 
 #include "mem_unit.h"
-#include "kmem_space.h"
 #include "ram_quota.h"
 
 //----------------------------------------------------------------------------
-IMPLEMENTATION [arm && !hyp]:
+IMPLEMENTATION [arm && !cpu_virt && noncont_mem]:
+
+#include "mem_layout.h"
+#include "kmem_space.h"
 
 PRIVATE //inline
 bool
@@ -24,8 +26,9 @@ Kmem_alloc::map_pmem(unsigned long phy, unsigned long size)
 
   for (unsigned long i = 0; i <size; i += Config::SUPERPAGE_SIZE)
     {
-      auto pte = Kmem_space::kdir()->walk(Virt_addr(next_map + i), Pdir::Super_level);
-      pte.create_page(Phys_mem_addr(phy + i), Page::Attr(Page::Rights::RW()));
+      auto pte = Mem_layout::kdir->walk(Virt_addr(next_map + i), Kpdir::Super_level);
+      pte.set_page(pte.make_page(Phys_mem_addr(phy + i),
+                                 Page::Attr(Page::Rights::RW())));
       pte.write_back_if(true, Mem_unit::Asid_kernel);
     }
   Mem_layout::add_pmem(phy, next_map, size);
@@ -37,7 +40,7 @@ PUBLIC inline NEEDS["kmem_space.h"]
 Address
 Kmem_alloc::to_phys(void *v) const
 {
-  return Kmem_space::kdir()->virt_to_phys((Address)v);
+  return Mem_layout::kdir->virt_to_phys((Address)v);
 }
 
 
@@ -83,12 +86,12 @@ Kmem_alloc::Kmem_alloc()
 }
 
 //----------------------------------------------------------------------------
-IMPLEMENTATION [arm && hyp]:
+IMPLEMENTATION [arm && !noncont_mem]:
 
-PUBLIC inline NEEDS["kmem_space.h"]
+PUBLIC inline
 Address
 Kmem_alloc::to_phys(void *v) const
-{ return (Address)v; }
+{ return (Address)v - Mem_layout::Map_base + Mem_layout::Sdram_phys_base; }
 
 
 IMPLEMENT
@@ -96,6 +99,7 @@ Kmem_alloc::Kmem_alloc()
 {
   // The -Wframe-larger-than= warning for this function is known and
   // no problem, because the function runs only on our boot stack.
+  Mword offset = Mem_layout::Map_base - Mem_layout::Sdram_phys_base;
   Mword alloc_size = Config::KMEM_SIZE;
   Mem_region_map<64> map;
   unsigned long available_size = create_free_map(Kip::k(), &map);
@@ -120,7 +124,8 @@ Kmem_alloc::Kmem_alloc()
       alloc_size -= f.size();
     }
 
-  base &= ~((Address)Config::SUPERPAGE_SIZE - 1);
+  base &= Config::SUPERPAGE_MASK;
+  base += offset;
 
   a->init(base);
   alloc_size = Config::KMEM_SIZE;
@@ -131,7 +136,7 @@ Kmem_alloc::Kmem_alloc()
       if (f.size() > alloc_size)
 	f.start += (f.size() - alloc_size);
 
-      a->add_mem((void *)f.start, f.size());
+      a->add_mem((void *)(f.start + offset), f.size());
       alloc_size -= f.size();
     }
 

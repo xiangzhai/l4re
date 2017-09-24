@@ -29,7 +29,7 @@ Phys_fb::setup_ds(char const *name)
   _ds_start = _vidmem_start;
   _ds_size = _vidmem_size;
   _rw_flags = Writable;
-  _cache_flags = L4::Ipc::Gen_fpage<L4::Ipc::Snd_item>::Uncached;
+  _cache_flags = L4::Ipc::Gen_fpage<L4::Ipc::Snd_item>::Buffered;
 }
 
 int

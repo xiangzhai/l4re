@@ -63,7 +63,7 @@ void dump_all()
 static
 void map_kip(Answer *a)
 {
-  a->snd_fpage((l4_umword_t) l4_info, L4_LOG2_PAGESIZE, true);
+  a->snd_fpage((l4_umword_t) l4_info, L4_LOG2_PAGESIZE, L4_FPAGE_RX, true);
 }
 
 static
@@ -82,7 +82,7 @@ void map_tbuf(Answer *a)
 {
   if (tbuf_status != 0x00000000 && tbuf_status != ~0UL)
     {
-      a->snd_fpage(tbuf_status, L4_LOG2_PAGESIZE, false);
+      a->snd_fpage(tbuf_status, L4_LOG2_PAGESIZE, L4_FPAGE_RW, true);
     }
 }
 
@@ -93,7 +93,7 @@ void map_free_page(unsigned size, l4_umword_t t, Answer *a)
   addr = Mem_man::ram()->alloc_first(1UL << size, t);
   if (addr != ~0UL)
     {
-      a->snd_fpage(addr, size);
+      a->snd_fpage(addr, size, L4_FPAGE_RWX, true);
 
       if (t < root_taskno) /* sender == kernel? */
 	a->do_grant(); /* kernel wants page granted */
@@ -107,22 +107,29 @@ static
 void map_mem(l4_fpage_t fp, Memory_type fn, l4_umword_t t, Answer *an)
 {
   Mem_man *m;
+  unsigned mem_flags;
+  bool cached = true;
+  unsigned long addr;
   switch (fn)
     {
     case Ram:
       m = Mem_man::ram();
+      mem_flags = L4_FPAGE_RWX;
+      addr = m->alloc(Region::bs(fp.raw & ~((1UL << 12) - 1),
+                                 1UL << l4_fpage_size(fp), t));
       break;
     case Io_mem:
+      cached = false;
+      /* fall through */
     case Io_mem_cached:
-      m = &iomem;
+      mem_flags = L4_FPAGE_RW;
+      // there is no first-come, first-serve for IO memory
+      addr = fp.raw & ~((1UL << 12) - 1);
       break;
     default:
       an->error(L4_EINVAL);
       return;
     }
-
-  unsigned long addr = m->alloc(Region::bs(fp.raw & ~((1UL << 12) - 1),
-	1UL << l4_fpage_size(fp), t));
 
   if (addr == ~0UL)
     {
@@ -132,7 +139,7 @@ void map_mem(l4_fpage_t fp, Memory_type fn, l4_umword_t t, Answer *an)
 
   /* the Fiasco kernel makes the page non-cachable if the frame
    * address is greater than mem_high */
-  an->snd_fpage(addr, l4_fpage_size(fp), false, fn != Io_mem);
+  an->snd_fpage(addr, l4_fpage_size(fp), mem_flags, cached);
 
   return;
 }
@@ -150,7 +157,7 @@ handle_page_fault(l4_umword_t t, l4_utcb_t *utcb, Answer *answer)
 
   if (addr != ~0UL)
     {
-      answer->snd_fpage(addr, L4_LOG2_PAGESIZE);
+      answer->snd_fpage(addr, L4_LOG2_PAGESIZE, L4_FPAGE_RWX, true);
       return;
     }
   else if (debug_warnings)
@@ -243,7 +250,6 @@ pager(void)
   l4_msgtag_t tag;
 
   l4_utcb_t *utcb = l4_utcb();
-  l4_msg_regs_t *mr = l4_utcb_mr_u(utcb);
   Answer answer(utcb);
 
   /* now start serving the subtasks */
@@ -257,15 +263,17 @@ pager(void)
       //L4::cout << PROG_NAME << ": rcv: " << tag << "\n";
       while (!l4_msgtag_has_error(tag))
 	{
-	  l4_umword_t pfa = mr->mr[0];
+          l4_umword_t pfa;
+          if (debug_warnings)
+            pfa = l4_utcb_mr_u(utcb)->mr[0];
 	  t >>= 4;
 	  /* we received a paging request here */
 	  /* handle the sigma0 protocol */
 
 	  if (debug_ipc)
             {
-              l4_umword_t d1 = mr->mr[0];
-              l4_umword_t d2 = mr->mr[1];
+              l4_umword_t d1 = l4_utcb_mr_u(utcb)->mr[0];
+              l4_umword_t d2 = l4_utcb_mr_u(utcb)->mr[1];
               L4::cout << PROG_NAME": received " << tag << " d1=" << L4::hex
                        << d1 << " d2=" << d2 << L4::dec << " from thread="
                        << t << '\n';
@@ -300,7 +308,7 @@ pager(void)
                   L4::cout << PROG_NAME": can't handle label=" << L4::dec
                            << l4_msgtag_label(tag)
                            << " d1=" << L4::hex << pfa
-                           << " d2=" << mr->mr[1]
+                           << " d2=" << l4_utcb_mr_u(utcb)->mr[1]
                            << " from thread=" << L4::dec << t << '\n';
 	          if (tag.is_page_fault())
 		    Mem_man::ram()->dump();
@@ -311,8 +319,8 @@ pager(void)
 	    }
 
 	  if (debug_ipc)
-	    L4::cout << PROG_NAME": sending d1=" << L4::hex << mr->mr[0]
-	      << " d2=" << mr->mr[1]
+	    L4::cout << PROG_NAME": sending d1=" << L4::hex << l4_utcb_mr_u(utcb)->mr[0]
+	      << " d2=" << l4_utcb_mr_u(utcb)->mr[1]
 	      << " msg=" << answer.tag << L4::dec
 	      << " to thread=" << t << '\n';
 

@@ -59,19 +59,6 @@ Mem_op::l1_inv_dcache(Address start, Address end)
     Mem_unit::inv_dcache((void *)start, (void *)end);
 }
 
-PRIVATE static void
-Mem_op::inv_icache(Address start, Address end)
-{
-  if (Address(end) - Address(start) > 0x2000)
-    asm volatile("mcr p15, 0, r0, c7, c5, 0");
-  else
-    {
-      Mword s = Mem_unit::icache_line_size();
-      for (start &= ~(s - 1);
-           start < end; start += s)
-	asm volatile("mcr p15, 0, %0, c7, c5, 1" : : "r" (start));
-    }
-}
 
 PRIVATE static inline void
 Mem_op::__arm_kmem_l1_cache_maint(int op, void const *kstart, void const *kend)
@@ -114,14 +101,14 @@ Mem_op::__arm_kmem_l1_cache_maint(int op, void const *kstart, void const *kend)
 }
 
 // ------------------------------------------------------------------------
-IMPLEMENTATION [arm && !hyp]:
+IMPLEMENTATION [arm && !cpu_virt]:
 
 PRIVATE static inline void
 Mem_op::__arm_mem_l1_cache_maint(int op, void const *start, void const *end)
 { __arm_kmem_l1_cache_maint(op, start, end); }
 
 // ------------------------------------------------------------------------
-IMPLEMENTATION [arm && hyp]:
+IMPLEMENTATION [arm && cpu_virt]:
 
 PRIVATE static inline void
 Mem_op::__arm_mem_l1_cache_maint(int op, void const *start, void const *end)
@@ -163,6 +150,13 @@ Mem_op::__arm_mem_l1_cache_maint(int op, void const *start, void const *end)
 
 }
 
+extern "C" void sys_arm_mem_op()
+{
+  Entry_frame *e = current()->regs();
+  Mem_op::arm_mem_cache_maint(e->r[0], (void *)e->r[1], (void *)e->r[2]);
+}
+
+
 // ------------------------------------------------------------------------
 IMPLEMENTATION [arm]:
 
@@ -200,6 +194,9 @@ Mem_op::arm_mem_cache_maint(int op, void const *start, void const *end)
     };
 
 }
+
+// ------------------------------------------------------------------------
+IMPLEMENTATION [arm && !cpu_virt]:
 
 PUBLIC static void
 Mem_op::arm_mem_access(Mword *r)

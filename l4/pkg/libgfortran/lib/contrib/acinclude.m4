@@ -1,6 +1,7 @@
 m4_include(../config/acx.m4)
 m4_include(../config/no-executables.m4)
 m4_include(../config/math.m4)
+m4_include(../config/ax_check_define.m4)
 
 dnl Check that we have a working GNU Fortran compiler
 AC_DEFUN([LIBGFOR_WORKING_GFORTRAN], [
@@ -41,21 +42,6 @@ AC_DEFUN([LIBGFOR_CHECK_ATTRIBUTE_VISIBILITY], [
   if test $libgfor_cv_have_attribute_visibility = yes; then
     AC_DEFINE(HAVE_ATTRIBUTE_VISIBILITY, 1,
       [Define to 1 if the target supports __attribute__((visibility(...))).])
-  fi])
-
-dnl Check whether the target supports dllexport
-AC_DEFUN([LIBGFOR_CHECK_ATTRIBUTE_DLLEXPORT], [
-  AC_CACHE_CHECK([whether the target supports dllexport],
-		 libgfor_cv_have_attribute_dllexport, [
-  save_CFLAGS="$CFLAGS"
-  CFLAGS="$CFLAGS -Werror"
-  AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[void __attribute__((dllexport)) foo(void) { }]], [])],
-		    libgfor_cv_have_attribute_dllexport=yes,
-		    libgfor_cv_have_attribute_dllexport=no)
-  CFLAGS="$save_CFLAGS"])
-  if test $libgfor_cv_have_attribute_dllexport = yes; then
-    AC_DEFINE(HAVE_ATTRIBUTE_DLLEXPORT, 1,
-      [Define to 1 if the target supports __attribute__((dllexport)).])
   fi])
 
 dnl Check whether the target supports symbol aliases.
@@ -100,11 +86,27 @@ void foo (void);
 	      [Define to 1 if the target supports #pragma weak])
   fi
   case "$host" in
-    *-*-darwin* | *-*-hpux* | *-*-cygwin* | *-*-mingw* )
+    *-*-darwin* | *-*-hpux* | *-*-cygwin* | *-*-mingw* | *-*-musl* )
       AC_DEFINE(GTHREAD_USE_WEAK, 0,
 		[Define to 0 if the target shouldn't use #pragma weak])
       ;;
   esac])
+
+dnl Check whether target effectively supports weakref
+AC_DEFUN([LIBGFOR_CHECK_WEAKREF], [
+  AC_CACHE_CHECK([whether the target supports weakref],
+		 libgfor_cv_have_weakref, [
+  save_CFLAGS="$CFLAGS"
+  CFLAGS="$CFLAGS -Wunknown-pragmas -Werror"
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+static int mytoto (int) __attribute__((__weakref__("toto")));
+]], [[return (mytoto != 0);]])],
+		 libgfor_cv_have_weakref=yes, libgfor_cv_have_weakref=no)
+  CFLAGS="$save_CFLAGS"])
+  if test $libgfor_cv_have_weakref = yes; then
+    AC_DEFINE(SUPPORTS_WEAKREF, 1,
+	      [Define to 1 if the target supports weakref])
+  fi])
 
 dnl Check whether target can unlink a file still open.
 AC_DEFUN([LIBGFOR_CHECK_UNLINK_OPEN_FILE], [
@@ -390,5 +392,63 @@ AC_DEFUN([LIBGFOR_CHECK_STRERROR_R], [
 		  [char s[128]; strerror_r(5, s);],
 		  AC_DEFINE(HAVE_STRERROR_R_2ARGS, 1,
 		  [Define if strerror_r takes two arguments and is available in <string.h>.]),)
+  CFLAGS="$ac_save_CFLAGS"
+])
+
+dnl Check for AVX
+
+AC_DEFUN([LIBGFOR_CHECK_AVX], [
+  ac_save_CFLAGS="$CFLAGS"
+  CFLAGS="-O2 -mavx"
+  AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+  void _mm256_zeroall (void)
+        {
+           __builtin_ia32_vzeroall ();
+        }]], [[]])],
+	AC_DEFINE(HAVE_AVX, 1,
+	[Define if AVX instructions can be compiled.]),
+	[])
+  CFLAGS="$ac_save_CFLAGS"
+])
+
+dnl Check for AVX2
+
+AC_DEFUN([LIBGFOR_CHECK_AVX2], [
+  ac_save_CFLAGS="$CFLAGS"
+  CFLAGS="-O2 -mavx2"
+  AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+  typedef long long __v4di __attribute__ ((__vector_size__ (32)));
+	__v4di
+	mm256_is32_andnotsi256  (__v4di __X, __v4di __Y)
+        {
+	   return __builtin_ia32_andnotsi256 (__X, __Y);
+        }]], [[]])],
+	AC_DEFINE(HAVE_AVX2, 1,
+	[Define if AVX2 instructions can be compiled.]),
+	[])
+  CFLAGS="$ac_save_CFLAGS"
+])
+
+dnl Check for AVX512f
+
+AC_DEFUN([LIBGFOR_CHECK_AVX512F], [
+  ac_save_CFLAGS="$CFLAGS"
+  CFLAGS="-O2 -mavx512f"
+  AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+	typedef double __m512d __attribute__ ((__vector_size__ (64)));
+	__m512d _mm512_add (__m512d a)
+	{
+	  __m512d b = __builtin_ia32_addpd512_mask (a, a, a, 1, 4);
+	  /* For -m64/-mx32 also verify that code will work even if
+	     the target uses call saved zmm16+ and needs to emit
+	     unwind info for them (e.g. on mingw).  See PR79127.  */
+#ifdef __x86_64__
+	  asm volatile ("" : : : "zmm16", "zmm17", "zmm18", "zmm19");
+#endif
+	  return b;
+        }]], [[]])],
+	AC_DEFINE(HAVE_AVX512F, 1,
+	[Define if AVX512f instructions can be compiled.]),
+	[])
   CFLAGS="$ac_save_CFLAGS"
 ])

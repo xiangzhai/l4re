@@ -447,7 +447,8 @@ public:
     int r() const { return (_c & R::Mask) >> R::Shift; }
     int g() const { return (_c & G::Mask) >> G::Shift; }
     int b() const { return (_c & B::Mask) >> B::Shift; }
-    int a() const { return A::Size ? (_c & A::Mask) >> A::Shift : (Value)Amax; }
+    int a() const
+    { return A::Size != 0 ? (_c & A::Mask) >> A::Shift : (Value)Amax; }
 
     Value v() const { return _c; }
     //operator Value () const { return _c; }

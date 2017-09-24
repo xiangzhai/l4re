@@ -1,7 +1,7 @@
 INTERFACE:
 
-#include "mem_layout.h"
 //#include <cstdio>
+#include <cxx/type_traits>
 
 namespace Ptab
 {
@@ -34,79 +34,90 @@ namespace Ptab
   struct Tupel<T1, T2, T3, X...>
   { typedef Ptab::List<T1, typename Tupel<T2, T3, X...>::List > List; };
 
-  template< typename _T, unsigned _Level >
+  template< typename _T >
   struct Level
   {
     typedef _T Traits;
+    enum { Max_level = 0 };
 
-    static unsigned shift(unsigned)
+    static constexpr unsigned shift(unsigned)
     { return Traits::Shift; }
 
-    static unsigned size(unsigned)
+    static constexpr unsigned size(unsigned)
     { return Traits::Size; }
 
-    static unsigned length(unsigned)
+    static constexpr unsigned long length(unsigned)
     { return 1UL << Traits::Size; }
 
-    static Address index(unsigned /*level*/, Address addr)
+    static constexpr Address index(unsigned /*level*/, Address addr)
     { return (addr >> Traits::Shift) & ((1UL << Traits::Size)-1); }
 
-    static unsigned entry_size(unsigned)
+    static constexpr unsigned entry_size(unsigned)
     { return sizeof(typename Traits::Entry); }
 
+    static constexpr unsigned may_be_leaf(unsigned)
+    { return Traits::May_be_leaf; }
+
+    static constexpr unsigned lower_bound_level(unsigned, unsigned level = 0)
+    { return level; }
   };
 
-  template< typename _Head, typename _Tail, unsigned _Level >
-  struct Level< List<_Head, _Tail>, _Level >
+  template< typename _Head, typename _Tail >
+  struct Level< List<_Head, _Tail> >
   {
-    typedef Level<_Tail, _Level - 1> Next_level;
+    typedef Level<_Tail> Next_level;
     typedef _Head Traits;
+    enum { Max_level = Next_level::Max_level + 1 };
 
-    static unsigned shift(unsigned level)
+    static constexpr unsigned shift(unsigned level)
     {
-      if (!level)
-        return Traits::Shift;
-      else
-        return Next_level::shift(level - 1);
+      return (!level)
+        ? (unsigned)Traits::Shift
+        : Next_level::shift(level - 1);
     }
 
-    static unsigned size(unsigned level)
+    static constexpr unsigned size(unsigned level)
     {
-      if (!level)
-        return Traits::Size;
-      else
-        return Next_level::size(level - 1);
+      return (!level)
+        ? (unsigned)Traits::Size
+        : Next_level::size(level - 1);
     }
 
-    static unsigned length(unsigned level)
+    static constexpr unsigned long length(unsigned level)
     {
-      if (!level)
-	return 1UL << Traits::Size;
-      else
-	return Next_level::length(level - 1);
+      return (!level)
+        ? (1UL << Traits::Size)
+        : Next_level::length(level - 1);
     }
 
-    static Address index(unsigned level, Address addr)
+    static constexpr Address index(unsigned level, Address addr)
     {
-      if (!level)
-	return (addr >> Traits::Shift) & ((1UL << Traits::Size)-1);
-      else
-	return Next_level::index(level - 1, addr);
+      return (!level)
+        ? (addr >> Traits::Shift) & ((1UL << Traits::Size)-1)
+        : Next_level::index(level - 1, addr);
     }
 
-    static unsigned entry_size(unsigned level)
+    static constexpr unsigned entry_size(unsigned level)
     {
-      if (!level)
-        return sizeof(typename Traits::Entry);
-      else
-        return Next_level::entry_size(level - 1);
+      return (!level)
+        ? sizeof(typename Traits::Entry)
+        : Next_level::entry_size(level - 1);
     }
 
-  };
+    static constexpr bool may_be_leaf(unsigned level)
+    {
+      return (!level)
+        ? (bool)Traits::May_be_leaf
+        : Next_level::may_be_leaf(level - 1);
+    }
 
-  template< typename _Head, typename _Tail>
-  struct Level< List<_Head, _Tail>, 0> : Level<_Head, 0>
-  {
+    static constexpr unsigned
+    lower_bound_level(unsigned max_shift, unsigned level = 0)
+    {
+      return (max_shift >= Traits::Shift)
+        ? level
+        : Next_level::lower_bound_level(max_shift, level + 1);
+    }
   };
 
   template< typename _Traits >
@@ -166,11 +177,12 @@ namespace Ptab
     void clear(bool force_write_back)
     { _e.template clear<PTE_PTR>(Depth, force_write_back); }
 
-    template< typename _Alloc >
-    PTE_PTR walk(Address virt, unsigned, bool, _Alloc const &)
+    template< typename _Alloc, typename MEM >
+    PTE_PTR walk(Address virt, unsigned, bool, _Alloc &&, MEM &&)
     { return PTE_PTR(&_e[Vec::idx(virt)], Depth); }
 
-    void unmap(Address &start, unsigned long &size, unsigned, bool force_write_back)
+    template< typename MEM >
+    void unmap(Address &start, unsigned long &size, unsigned, bool force_write_back, MEM &&)
     {
       unsigned idx = Vec::idx(start);
       unsigned cnt = size >> Traits::Shift;
@@ -188,10 +200,10 @@ namespace Ptab
       size  -= (unsigned long)cnt << Traits::Shift;
     }
 
-    template< typename _Alloc >
+    template< typename _Alloc, typename MEM >
     void map(Address &phys, Address &virt, unsigned long &size,
              unsigned long attr, unsigned, bool force_write_back,
-             _Alloc const &)
+             _Alloc &&, MEM &&)
     {
       unsigned idx = Vec::idx(virt);
       unsigned cnt = size >> Traits::Shift;
@@ -209,13 +221,13 @@ namespace Ptab
       size -= (unsigned long)cnt << Traits::Shift;
     }
 
-    template< typename _Alloc >
-    void destroy(Address, Address, unsigned, unsigned, _Alloc const &)
+    template< typename _Alloc, typename MEM >
+    void destroy(Address, Address, unsigned, unsigned, _Alloc &&, MEM &&)
     {}
 
-    template< typename _Alloc >
+    template< typename _Alloc, typename MEM >
     int sync(Address &l_addr, This const &_r, Address &r_addr,
-             Address &size, unsigned, bool force_write_back, _Alloc const &)
+             Address &size, unsigned, bool force_write_back, _Alloc &&, MEM &&)
     {
       unsigned count = size >> Traits::Shift;
       unsigned const l = Vec::idx(l_addr);
@@ -292,7 +304,7 @@ namespace Ptab
     Vec _e;
 
     template< typename _Alloc >
-    Next *alloc_next(PTE_PTR e, _Alloc const &a, bool force_write_back)
+    Next *alloc_next(PTE_PTR e, _Alloc &&a, bool force_write_back)
     {
       Next *n = (Next*)a.alloc(sizeof(Next));
       if (EXPECT_FALSE(!n))
@@ -309,8 +321,8 @@ namespace Ptab
     void clear(bool force_write_back)
     { _e.template clear<PTE_PTR>(Depth, force_write_back); }
 
-    template< typename _Alloc >
-    PTE_PTR walk(Address virt, unsigned level, bool force_write_back, _Alloc const &alloc)
+    template< typename _Alloc, typename MEM >
+    PTE_PTR walk(Address virt, unsigned level, bool force_write_back, _Alloc &&alloc, MEM &&mem)
     {
       PTE_PTR e(&_e[Vec::idx(virt)], Depth);
 
@@ -320,7 +332,9 @@ namespace Ptab
         {
           Next *n;
           if (alloc.valid() && (n = alloc_next(e, alloc, force_write_back)))
-            return n->walk(virt, level - 1, force_write_back, alloc);
+            return n->walk(virt, level - 1, force_write_back,
+                           cxx::forward<_Alloc>(alloc),
+                           cxx::forward<MEM>(mem));
           else
             return e;
         }
@@ -328,18 +342,22 @@ namespace Ptab
         return e;
       else
         {
-          Next *n = (Next*)Mem_layout::phys_to_pmem(e.next_level());
-          return n->walk(virt, level - 1, force_write_back, alloc);
+          Next *n = (Next*)mem.phys_to_pmem(e.next_level());
+          return n->walk(virt, level - 1, force_write_back,
+                         cxx::forward<_Alloc>(alloc),
+                         cxx::forward<MEM>(mem));
         }
     }
 
+    template< typename MEM >
     void unmap(Address &start, unsigned long &size, unsigned level,
-               bool force_write_back)
+               bool force_write_back, MEM &&mem)
     {
       if (!level)
         {
           reinterpret_cast<This*>(this)->unmap(start, size, 0,
-                                               force_write_back);
+                                               force_write_back,
+                                               cxx::forward<MEM>(mem));
           return;
         }
 
@@ -350,20 +368,23 @@ namespace Ptab
           if (!e.is_valid() || e.is_leaf())
             continue;
 
-          Next *n = (Next*)Mem_layout::phys_to_pmem(e.next_level());
-          n->unmap(start, size, level - 1, force_write_back);
+          Next *n = (Next*)mem.phys_to_pmem(e.next_level());
+          n->unmap(start, size, level - 1, force_write_back,
+                   cxx::forward<MEM>(mem));
         }
     }
 
-    template< typename _Alloc >
+    template< typename _Alloc, typename MEM >
     void map(Address &phys, Address &virt, unsigned long &size,
              unsigned long attr, unsigned level, bool force_write_back,
-             _Alloc const &alloc)
+             _Alloc &&alloc, MEM &&mem)
     {
       if (!level)
         {
           reinterpret_cast<This*>(this)->map(phys, virt, size, attr, 0,
-                                             force_write_back, alloc);
+                                             force_write_back,
+                                             cxx::forward<_Alloc>(alloc),
+                                             cxx::forward<MEM>(mem));
           return;
         }
 
@@ -375,7 +396,7 @@ namespace Ptab
             {
               if (alloc.valid() && (n = alloc_next(e, alloc, force_write_back)))
                 n->map(phys, virt, size, attr, level - 1,
-                       force_write_back, alloc);
+                       force_write_back, alloc, mem);
 
               continue;
             }
@@ -383,15 +404,15 @@ namespace Ptab
           if (_Head::May_be_leaf && e.is_leaf())
             continue;
 
-          n = (Next*)Mem_layout::phys_to_pmem(e.next_level());
-          n->map(phys, virt, size, attr, level - 1, force_write_back, alloc);
+          n = (Next*)mem.phys_to_pmem(e.next_level());
+          n->map(phys, virt, size, attr, level - 1, force_write_back, alloc, mem);
         }
     }
 
-    template< typename _Alloc >
+    template< typename _Alloc, typename MEM >
     void destroy(Address start, Address end,
                  unsigned start_level, unsigned end_level,
-                 _Alloc const &alloc)
+                 _Alloc &&alloc, MEM &&mem)
     {
       //printf("destroy: %*.s%lx-%lx lvl=%d:%d depth=%d\n", Depth*2, "            ", start, end, start_level, end_level, Depth);
       if (!alloc.valid() || Depth >= end_level)
@@ -407,11 +428,11 @@ namespace Ptab
           if (!e.is_valid() || (_Head::May_be_leaf && e.is_leaf()))
             continue;
 
-          Next *n = (Next*)Mem_layout::phys_to_pmem(e.next_level());
+          Next *n = (Next*)mem.phys_to_pmem(e.next_level());
           if (Depth < end_level)
             n->destroy(idx > idx_start ? 0 : start,
                        idx + 1 < idx_end ? (1UL << Traits::Shift)-1 : end,
-                       start_level, end_level, alloc);
+                       start_level, end_level, alloc, mem);
           if (Depth >= start_level)
             {
               //printf("destroy: %*.sfree: %p: %p(%d)\n", Depth*2, "            ", this, n, sizeof(Next));
@@ -420,15 +441,16 @@ namespace Ptab
         }
     }
 
-    template< typename _Alloc >
+    template< typename _Alloc, typename MEM >
     int sync(Address &l_a, This2 const &_r, Address &r_a,
              Address &size, unsigned level, bool force_write_back,
-             _Alloc const &alloc)
+             _Alloc &&alloc, MEM &&mem)
     {
       if (!level)
         return reinterpret_cast<This*>(this)
           ->sync(l_a, reinterpret_cast<This const &>(_r), r_a, size, 0,
-              force_write_back, alloc);
+                 force_write_back, cxx::forward<_Alloc>(alloc),
+                 cxx::forward<MEM>(mem));
 
       unsigned count = size >> Traits::Shift;
         {
@@ -464,11 +486,11 @@ namespace Ptab
                 return -1;
             }
           else
-            n = (Next*)Mem_layout::phys_to_pmem(l.next_level());
+            n = (Next*)mem.phys_to_pmem(l.next_level());
 
-          Next *rn = (Next*)Mem_layout::phys_to_pmem(r.next_level());
+          Next *rn = (Next*)mem.phys_to_pmem(r.next_level());
 
-          int err = n->sync(l_a, *rn, r_a, size, level - 1, force_write_back, alloc);
+          int err = n->sync(l_a, *rn, r_a, size, level - 1, force_write_back, alloc, mem);
           if (err > 0)
             need_flush = true;
 
@@ -570,7 +592,8 @@ namespace Ptab
   <
     typename PTE_PTR,
     typename _Traits,
-    typename _Addr = Address_wrap
+    typename _Addr,
+    typename MEM_DFLT
   >
   class Base
   {
@@ -592,7 +615,7 @@ namespace Ptab
   public:
     enum { Depth = Walk::Max_depth };
 
-    typedef Level<Traits, Depth> Levels;
+    typedef Level<Traits> Levels;
 
     static unsigned lsb_for_level(unsigned level)
     { return Levels::shift(level); }
@@ -600,54 +623,58 @@ namespace Ptab
     static unsigned page_order_for_level(unsigned level)
     { return Levels::shift(level) + Base_shift; }
 
-    template< typename _Alloc >
-    PTE_PTR walk(Va virt, unsigned level, bool force_write_back, _Alloc const &alloc)
-    { return _base.walk(_Addr::val(virt), level, force_write_back, alloc); }
+    template< typename _Alloc, typename MEM = MEM_DFLT >
+    PTE_PTR walk(Va virt, unsigned level, bool force_write_back, _Alloc &&alloc, MEM &&mem = MEM())
+    { return _base.walk(_Addr::val(virt), level, force_write_back, cxx::forward<_Alloc>(alloc), cxx::forward<MEM>(mem)); }
 
-    PTE_PTR walk(Va virt, unsigned level = Depth) const
-    { return const_cast<Walk&>(_base).walk(_Addr::val(virt), level, false, Null_alloc()); }
+    template< typename MEM = MEM_DFLT >
+    PTE_PTR walk(Va virt, unsigned level = Depth, MEM &&mem = MEM()) const
+    { return const_cast<Walk&>(_base).walk(_Addr::val(virt), level, false, Null_alloc(), cxx::forward<MEM>(mem)); }
 
-
-    template< typename OPTE_PTR, typename _Alloc >
-    int sync(Va l_addr, Base< OPTE_PTR, _Traits, _Addr> const *_r,
+    template< typename OPTE_PTR, typename _Alloc, typename MEM = MEM_DFLT >
+    int sync(Va l_addr, Base<OPTE_PTR, _Traits, _Addr, MEM_DFLT> const *_r,
              Va r_addr, Vs size, unsigned level = Depth,
              bool force_write_back = false,
-             _Alloc const &alloc = _Alloc())
+             _Alloc &&alloc = _Alloc(), MEM &&mem = MEM())
     {
       Address la = _Addr::val(l_addr);
       Address ra = _Addr::val(r_addr);
       Address sz = _Addr::val(size);
       return _base.sync(la, _r->_base,
                         ra, sz, level, force_write_back,
-                        alloc);
+                        cxx::forward<_Alloc>(alloc),
+                        cxx::forward<MEM>(mem));
     }
 
     void clear(bool force_write_back)
     { _base.clear(force_write_back); }
 
-    void unmap(Va virt, Vs size, unsigned level, bool force_write_back)
+    template< typename MEM = MEM_DFLT >
+    void unmap(Va virt, Vs size, unsigned level, bool force_write_back, MEM &&mem = MEM())
     {
       Address va = _Addr::val(virt);
       unsigned long sz = _Addr::val(size);
-      _base.unmap(va, sz, level, force_write_back);
+      _base.unmap(va, sz, level, force_write_back, cxx::forward<MEM>(mem));
     }
 
-    template< typename _Alloc >
+    template< typename _Alloc, typename MEM = MEM_DFLT >
     void map(Address phys, Va virt, Vs size, unsigned long attr,
              unsigned level, bool force_write_back,
-             _Alloc const &alloc = _Alloc())
+             _Alloc &&alloc = _Alloc(), MEM &&mem = MEM())
     {
       Address va = _Addr::val(virt);
       unsigned long sz = _Addr::val(size);
-      _base.map(phys, va, sz, attr, level, force_write_back, alloc);
+      _base.map(phys, va, sz, attr, level, force_write_back, cxx::forward<_Alloc>(alloc),
+                cxx::forward<MEM>(mem));
     }
 
-    template< typename _Alloc >
+    template< typename _Alloc, typename MEM = MEM_DFLT >
     void destroy(Va start, Va end, unsigned start_level, unsigned end_level,
-                 _Alloc const &alloc = _Alloc())
+                 _Alloc &&alloc = _Alloc(), MEM &&mem = MEM())
     {
       _base.destroy(_Addr::val(start), _Addr::val(end),
-                    start_level, end_level, alloc);
+                    start_level, end_level, cxx::forward<_Alloc>(alloc),
+                    cxx::forward<MEM>(mem));
     }
 
 #if 0
@@ -663,5 +690,4 @@ namespace Ptab
   private:
     Walk _base;
   };
-
 };

@@ -2,9 +2,28 @@
 #MODE   := shared
 TARGET  = io
 
-SUBDIRS       = drivers
+$(GENERAL_D_LOC): $(PKGDIR)/server/src/Makefile.config
 
-SRC_CC_ACPI   = acpi.cc acpi_sci.cc acpi_osl.cc pci-acpi.cc
+include $(PKGDIR)/server/src/Makefile.config
+
+DEFINES-$(CONFIG_L4IO_PCIID_DB) += -DCONFIG_L4IO_PCIID_DB
+DEFINES                         += $(DEFINES-y)
+
+SUBDIRS      = drivers
+
+SRC_CC_ACPI  = acpi.cc acpi_sci.cc acpi_osl.cc pci-acpi.cc
+
+$(foreach i,$(SRC_CC_ACPI),$(eval CXXFLAGS_acpi/$(i:.cc=.o) = -DL4_ACPICA))
+
+SRC_CC-$(CONFIG_L4IO_ACPI) += $(addprefix acpi/,$(SRC_CC_ACPI))
+
+SRC_CC-$(CONFIG_L4IO_PCI)  += virt/pci/vpci.cc \
+                              virt/pci/vpci_virtual_root.cc \
+                              virt/pci/vpci_pci_bridge.cc \
+                              pci/pci.cc \
+                              pci/pci_iomem_root_bridge.cc \
+                              pci/msi.cc \
+                              pci/pm.cc
 
 SRC_CC := main.cc res.cc phys_space.cc resource.cc hw_device.cc \
           hw_root_bus.cc device.cc hw_irqs.cc \
@@ -20,28 +39,23 @@ SRC_CC := main.cc res.cc phys_space.cc resource.cc hw_device.cc \
           virt/vbus.cc \
           virt/vproxy_dev.cc \
           virt/vbus_factory.cc \
-          virt/pci/vpci.cc \
-          virt/pci/vpci_virtual_root.cc \
-          virt/pci/vpci_pci_bridge.cc \
           virt/gpio/vgpio.cc \
-          pci/pci.cc \
-          pci/pci_iomem_root_bridge.cc \
-          pci/msi.cc \
-          pci/pm.cc \
           inhibitor_mux.cc \
           platform_control.cc \
+          $(SRC_CC-y)
 
 
-SRC_CC_x86    = ux.cc $(addprefix acpi/,$(SRC_CC_ACPI))
-SRC_CC_amd64  = ux.cc $(addprefix acpi/,$(SRC_CC_ACPI))
+SRC_CC_x86    = ux.cc
+SRC_CC_amd64  = ux.cc
 
 SRC_CC       += $(SRC_CC_$(ARCH))
 SRC_CC_IS_CXX11 = c++0x
 OPTS         := -g -O3
 
-REQUIRES_LIBS   = libsigma0 libstdc++ libpciids lua++ libpthread
-REQUIRES_LIBS_x86 = acpica
-REQUIRES_LIBS_amd64 = acpica
+REQUIRES_LIBS                          = libsigma0 libstdc++ lua++ libpthread
+REQUIRES_LIBS-$(CONFIG_L4IO_PCIID_DB) += libpciids
+REQUIRES_LIBS-$(CONFIG_L4IO_ACPI)     += acpica
+REQUIRES_LIBS                         += $(REQUIRES_LIBS-y)
 
 REQUIRES_CFLAGS = libio-vbus libio-io
 PRIVATE_INCDIR += $(SRC_DIR)
@@ -51,39 +65,55 @@ SUBDIRS += $(SUBDIRS_$(ARCH)) $(SUBDIRS_$(OSYSTEM))
 SUBDIR_TARGETS := $(addsuffix /OBJ-$(SYSTEM)/builtin.thin.a,$(SUBDIRS))
 SUBDIR_OBJS     = $(addprefix $(OBJ_DIR)/,$(SUBDIR_TARGETS))
 
+# ACPI contrib code has many unused parameters
+CPPFLAGS_acpi/acpi.o     += -Wno-unused-parameter
+CPPFLAGS_acpi/acpi_sci.o += -Wno-unused-parameter
+CPPFLAGS_acpi/acpi_osl.o += -Wno-unused-parameter
+CPPFLAGS_acpi/pci-acpi.o += -Wno-unused-parameter
+
 all::
 
 $(SUBDIR_OBJS): $(OBJ_DIR)/%/OBJ-$(SYSTEM)/builtin.thin.a: %
 	$(VERBOSE)$(MAKE) $(MAKECMDGOALS) OBJ_BASE=$(OBJ_BASE)\
 	                  -C $(SRC_DIR)/$* $(MKFLAGS)
 
-OBJS_io        += $(SUBDIR_OBJS)
+$(TARGET): $(SUBDIR_OBJS)
+
+EXTRA_LIBS += --whole-archive $(SUBDIR_OBJS) --no-whole-archive
+
+clean-subdir-%:
+	$(VERBOSE)$(MAKE) clean OBJ_BASE=$(OBJ_BASE) \
+	                  -C $(SRC_DIR)/$* $(MKFLAGS)
+
+clean:: $(addprefix clean-subdir-,$(SUBDIRS))
 
 # regenerate shipped files
 ifneq ($(REGEN_FILES),)
 all:: $(SRC_DIR)/lua_glue.swg.h $(SRC_DIR)/lua_glue.swg.cc
 
+main.o: $(SRC_DIR)/lua_glue.swg.h
+
+-include .lua_glue.swg.c_cc.d
+
 SWIG_RM_EXT_C ?= $(L4DIR)/tool/bin/swig-rm-extern-c.pl
 SWIG          ?= swig
+SWIG_INCDIR   := -I$(SRC_DIR) -I$(SRC_DIR)/../../include -I$(L4DIR)/pkg
 
 %.swg:
 
-$(SRC_DIR)/%.swg.cc: $(SRC_DIR)/%.swg.c_cc $(SRC_DIR)/Makefile
+$(SRC_DIR)/%.swg.cc: %.swg.c_cc $(SRC_DIR)/Make.rules $(SRC_DIR)/Makefile
 	@$(GEN_MESSAGE)
 	$(VERBOSE)$(SWIG_RM_EXT_C) $< >$@
 
-$(SRC_DIR)/%.swg.h: $(SRC_DIR)/%.swg.c_h
+$(SRC_DIR)/%.swg.h: %.swg.c_h $(SRC_DIR)/Make.rules $(SRC_DIR)/Makefile
 	@$(GEN_MESSAGE)
 	$(VERBOSE)$(SWIG_RM_EXT_C) $< >$@
 
-SWIG_INCDIR:=-I$(SRC_DIR) -I$(SRC_DIR)/../../include -I$(L4DIR)/pkg
-
-$(SRC_DIR)/%.swg.c_cc: $(SRC_DIR)/%.swg $(SRC_DIR)/Makefile
+%.swg.c_cc: $(SRC_DIR)/%.swg $(SRC_DIR)/Make.rules $(SRC_DIR)/Makefile
 	@$(GEN_MESSAGE)
-	$(VERBOSE)$(SWIG) $(SWIG_INCDIR) -c++ -small -lua -o $@ $<
+	$(VERBOSE)$(SWIG) $(SWIG_INCDIR) -MD -MF .$*.swg.c_cc.d -c++ -small -lua -o $@ $<
 
-$(SRC_DIR)/%.swg.c_h:
+%.swg.c_h: $(SRC_DIR)/Make.rules $(SRC_DIR)/Makefile
 	@$(GEN_MESSAGE)
 	$(VERBOSE)$(SWIG) $(SWIG_INCDIR) -c++ -small -lua -external-runtime $@
-
 endif

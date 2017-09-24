@@ -119,7 +119,7 @@ static void rm_test()
 	unsigned size = 1024 * 1024 * 1024; // 1 GB
 	unsigned flags = 0; // L4Re::Mem_alloc::Super_pages | L4Re::Mem_alloc::Continuous;
 	unsigned long long alloc1, alloc2, attach1, attach2, touch1, touch2;
-	
+
 	printf("RM Benchmark\n");
 
 	alloc1 = rdtsc1();
@@ -147,7 +147,6 @@ static void rm_test()
 	touch2 = rdtsc2();
 
 	//L4Re::Env::env()->rm()->detach(a, &dscap2);
-	//L4Re::Env::env()->mem_alloc()->free(dscap);
 
 	printf("mem_alloc: %lld\n", alloc2 - alloc1);
 	printf("attach   : %lld\n", attach2 - attach1);
@@ -180,11 +179,11 @@ static void access_test()
 	l4_addr_t a = 0;
 	error = L4Re::Env::env()->rm()->attach(&a, size, L4Re::Rm::Search_addr /* | L4Re::Rm::Eager_map*/, dscap,
 	                                       0, L4_SUPERPAGESHIFT);
-	
+
 	l4_touch_rw((void*)a, size);
-	
+
 	/* Memory is now attached and paged in. */
-	
+
 #if 0
 	// tell our parent about the shared area address
 	asm volatile ("int $0x42\t\n"
@@ -195,15 +194,13 @@ static void access_test()
 
 	printf("memset...\n");
 
-#if 0
 	set1 = rdtsc1();
-
 	for (unsigned i = 0; i < ITERATIONS; ++i) {
 		memset((void*)a, 0xAB, size);
 	}
-	
+
 	set2 = rdtsc2();
-	
+
 	// setup memcpy
 	unsigned size2 = size >> 2;
 	l4_addr_t dest = a + size2;
@@ -215,8 +212,7 @@ static void access_test()
 		memcpy((void*)dest, (void*)a, size2);
 	}
 	cp2 = rdtsc2();
-#endif
-		
+
 	// setup random addresses
 	static l4_addr_t dests[RAND_ITER];
 	for (unsigned i = 0; i < RAND_ITER; ++i) {
@@ -237,7 +233,7 @@ static void access_test()
 	printf("%llx %llx\n", acc1, acc2);
 	printf("check: %p %p %p\n", (void*)dests[25],
 		   (void*)dests[42], (void*)dests[2555]);
-	
+
 	unsigned long long diff = set2 - set1;
 	printf("memset: %16lld cyc (%16lld / iteration)\n"
 		   "        %16lld us\n",
@@ -268,7 +264,7 @@ int main(int argc, char **argv)
 
 	for (unsigned i = 0; i < max_rounds; ++i) {
 		//malloc_test();
-		//rm_test();
+		if (0) rm_test();
 		access_test();
 	}
 

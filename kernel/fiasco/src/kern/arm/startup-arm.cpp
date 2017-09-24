@@ -4,7 +4,6 @@ IMPLEMENTATION [arm]:
 #include "cpu.h"
 #include "fpu.h"
 #include "ipi.h"
-#include "kern_lib_page.h"
 #include "kernel_task.h"
 #include "kernel_uart.h"
 #include "kip_init.h"
@@ -23,6 +22,23 @@ IMPLEMENTATION [arm]:
 
 #include <cstdlib>
 #include <cstdio>
+
+//------------------------------------------------------------------
+IMPLEMENTATION [arm && 32bit && !cpu_virt]:
+
+#include "static_init.h"
+
+static void add_initial_pmem()
+{
+    // The first 4MB of phys memory are always mapped to Map_base
+  Mem_layout::add_pmem(Mem_layout::Sdram_phys_base, Mem_layout::Map_base,
+                       4 << 20);
+}
+
+STATIC_INITIALIZER_P(add_initial_pmem, 101);
+
+//------------------------------------------------------------------
+IMPLEMENTATION [arm]:
 
 IMPLEMENT FIASCO_INIT FIASCO_NOINLINE
 void
@@ -56,12 +72,11 @@ Startup::stage2()
   Pic::init();
   Thread::init_per_cpu(boot_cpu, false);
 
-  Cpu::init_mmu();
+  Cpu::init_mmu(true);
   Cpu::cpus.cpu(boot_cpu).init(false, true);
   Platform_control::init(boot_cpu);
   Fpu::init(boot_cpu, false);
   Ipi::init(boot_cpu);
   Timer::init(boot_cpu);
-  Kern_lib_page::init();
   Utcb_init::init();
 }

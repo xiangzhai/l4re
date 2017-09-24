@@ -65,6 +65,8 @@ function start_vm(options)
   local align   = 10;
   if L4.Info.arch() == "arm" then
     align = 28;
+  elseif L4.Info.arch() == "arm64" then
+    align = 21;
   end
   align = options.mem_align or align;
 
@@ -106,6 +108,12 @@ function start_vm(options)
 
   if options.jdb then
     caps["jdb"] = L4.Env.jdb
+  end
+
+  if options.ext_args then
+    for _,v in ipairs(options.ext_args) do
+      cmdline[#cmdline+1] = v
+    end
   end
 
   local opts = {

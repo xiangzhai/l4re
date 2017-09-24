@@ -596,6 +596,8 @@ Vmx_info::init()
   exception_bitmap = Bit_defs_32<Vmx_info::Exceptions>(0xffffffff00000000ULL);
 
   max_index = Cpu::rdmsr(0x48a);
+  if (procbased_ctls.allowed(Vmx_info::PRB1_enable_proc_based_ctls_2))
+    procbased_ctls2 = Cpu::rdmsr(0x48b);
 
   assert ((Vmx::F_sw_guest_cr2 & 0x3ff) > max_index);
   max_index = Vmx::F_sw_guest_cr2 & 0x3ff;
@@ -633,7 +635,6 @@ Vmx_info::init()
     {
       procbased_ctls.enforce(Vmx_info::PRB1_enable_proc_based_ctls_2, true);
 
-      procbased_ctls2 = Cpu::rdmsr(0x48b);
       if (procbased_ctls2.allowed(Vmx_info::PRB2_enable_ept))
 	ept_vpid_cap = Cpu::rdmsr(0x48c);
 
@@ -1036,6 +1037,9 @@ Vmx::init_vmcs_infos(void *vcpu_state) const
   i->pinbased = info.pinbased_ctls;
   i->procbased = info.procbased_ctls;
   i->exit = info.exit_ctls;
+  // relax the IRQ on exit for the VMM. Nevertheless,
+  // our API hides this feature completely from the VMM
+  i->exit.relax(Vmx_info::Ex_ack_irq_on_exit);
   i->entry = info.entry_ctls;
   i->misc = info.misc;
   i->cr0_or = info.cr0_defs.must_be_one();

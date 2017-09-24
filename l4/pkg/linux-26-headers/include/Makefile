@@ -6,6 +6,7 @@ PC_FILENAME         = linux-26-headers
 SUFFIX_amd64       := x86
 SUFFIX_x86         := x86
 SUFFIX_arm         := arm
+SUFFIX_arm64       := arm64
 SUFFIX_mips        := mips
 SUFFIX_ppc32       := powerpc
 SUFFIX_sparc       := sparc

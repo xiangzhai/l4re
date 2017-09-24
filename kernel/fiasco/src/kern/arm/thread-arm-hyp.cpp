@@ -1,4 +1,4 @@
-IMPLEMENTATION [arm && hyp]:
+IMPLEMENTATION [arm && 32bit && cpu_virt]:
 
 IMPLEMENT_OVERRIDE
 void
@@ -12,23 +12,22 @@ Thread::arch_init_vcpu_state(Vcpu_state *vcpu_state, bool ext)
   assert (check_for_current_cpu());
 
   Vm_state *v = vm_state(vcpu_state);
-  v->hcr = 0;
+  v->hcr = Cpu::Hcr_host_bits;
   v->csselr = 0;
-  v->sctlr = (Cpu::Cp15_c1_generic | Cpu::Cp15_c1_cache_bits) & ~(Cpu::Cp15_c1_mmu | (1 << 28));
+  v->sctlr = (Cpu::sctlr | Cpu::Cp15_c1_cache_bits) & ~(Cpu::Cp15_c1_mmu | (1 << 28));
   v->actlr = 0;
   v->cpacr = 0x5555555;
   v->fcseidr = 0;
   v->contextidr = 0;
+  v->cntkctl = Host_cntkctl; // allow PL0 access to CNTV
   v->vbar = 0;
   v->amair0 = 0;
   v->amair1 = 0;
 
-  v->guest_regs.hcr = Cpu::Hcr_tge;
+  v->guest_regs.hcr = Cpu::Hcr_tge | Cpu::Hcr_must_set_bits;
   v->guest_regs.sctlr = 0;
 
-  v->host_regs.hcr = 0;
-  v->host_regs.svc.lr = regs()->ulr;
-  v->host_regs.svc.sp = regs()->sp();
+  v->host_regs.hcr = Cpu::Hcr_host_bits;
   v->svc.lr = regs()->ulr;
   v->svc.sp = regs()->sp();
 
@@ -37,17 +36,10 @@ Thread::arch_init_vcpu_state(Vcpu_state *vcpu_state, bool ext)
 
   if (current() == this)
     {
-      asm volatile ("mcr p15, 4, %0, c1, c1, 0"
-                    : : "r"((1 << 2) | Cpu::Hcr_dc | Cpu::Hcr_must_set_bits));
+      asm volatile ("mcr p15, 4, %0, c1, c1, 0" : : "r"(Cpu::Hcr_host_bits));
       asm volatile ("mcr p15, 0, %0, c1, c0, 0" : : "r"(v->sctlr));
-      asm volatile ("msr SP_svc, %0" : : "r"(v->host_regs.svc.sp));
-      asm volatile ("msr LR_svc, %0" : : "r"(v->host_regs.svc.lr));
+      asm volatile ("mcr p15, 0, %0, c14, c1, 0" : : "r"(v->cntkctl));
     }
-
-  if (exception_triggered())
-    _exc_cont.flags(regs(), _exc_cont.flags(regs()) | Proc::PSR_m_svc);
-  else
-    regs()->psr |=  Proc::PSR_m_svc;
 }
 
 extern "C" void slowtrap_entry(Trap_state *ts);
@@ -70,31 +62,31 @@ Thread::peek_user(T const *adr, Context *c)
   return T(~0);
 }
 
-namespace {
-    static Mword get_lr_for_mode(Return_frame const *rf)
+PRIVATE static inline
+Mword
+Thread::get_lr_for_mode(Return_frame const *rf)
+{
+  Mword ret;
+  switch (rf->psr & 0x1f)
     {
-      Mword ret;
-      switch (rf->psr & 0x1f)
-        {
-        case Proc::PSR_m_usr:
-        case Proc::PSR_m_sys:
-          return rf->ulr;
-        case Proc::PSR_m_irq:
-          asm ("mrs %0, lr_irq" : "=r" (ret)); return ret;
-        case Proc::PSR_m_fiq:
-          asm ("mrs %0, lr_fiq" : "=r" (ret)); return ret;
-        case Proc::PSR_m_abt:
-          asm ("mrs %0, lr_abt" : "=r" (ret)); return ret;
-        case Proc::PSR_m_svc:
-          asm ("mrs %0, lr_svc" : "=r" (ret)); return ret;
-        case Proc::PSR_m_und:
-          asm ("mrs %0, lr_und" : "=r" (ret)); return ret;
-        default:
-          assert(false); // wrong processor mode
-          return ~0UL;
-        }
+    case Proc::PSR_m_usr:
+    case Proc::PSR_m_sys:
+      return rf->ulr;
+    case Proc::PSR_m_irq:
+      asm ("mrs %0, lr_irq" : "=r" (ret)); return ret;
+    case Proc::PSR_m_fiq:
+      asm ("mrs %0, lr_fiq" : "=r" (ret)); return ret;
+    case Proc::PSR_m_abt:
+      asm ("mrs %0, lr_abt" : "=r" (ret)); return ret;
+    case Proc::PSR_m_svc:
+      asm ("mrs %0, lr_svc" : "=r" (ret)); return ret;
+    case Proc::PSR_m_und:
+      asm ("mrs %0, lr_und" : "=r" (ret)); return ret;
+    default:
+      assert(false); // wrong processor mode
+      return ~0UL;
     }
-};
+}
 
 extern "C" void hyp_mode_fault(Mword abort_type, Trap_state *ts)
 {
@@ -136,7 +128,7 @@ extern "C" void hyp_mode_fault(Mword abort_type, Trap_state *ts)
 }
 
 //-----------------------------------------------------------------------------
-IMPLEMENTATION [arm && hyp && fpu]:
+IMPLEMENTATION [arm && cpu_virt && fpu && 32bit]:
 
 PUBLIC static
 bool
@@ -163,7 +155,7 @@ Thread::handle_fpu_trap(Trap_state *ts)
 }
 
 //-----------------------------------------------------------------------------
-IMPLEMENTATION [arm && hyp]:
+IMPLEMENTATION [arm && cpu_virt]:
 
 #include "irq_mgr.h"
 
@@ -183,6 +175,7 @@ Thread::vcpu_vgic_upcall(unsigned virq)
   // Before entering kernel mode to have original fpu state before
   // enabling FPU
   save_fpu_state_to_utcb(ts, utcb().access());
+  spill_user_state();
 
   check (vcpu_enter_kernel_mode(vcpu));
   vcpu = vcpu_state().access();
@@ -246,14 +239,11 @@ private:
   unsigned _irq;
 };
 
-PUBLIC inline FIASCO_FLATTEN
+PUBLIC inline NEEDS[Arm_vtimer_ppi::mask] FIASCO_FLATTEN
 void
 Arm_vtimer_ppi::handle(Upstream_irq const *ui)
 {
-  Mword v;
-  asm volatile("mrc p15, 0, %0, c14, c3, 1\n"
-               "orr %0, #0x2              \n"
-               "mcr p15, 0, %0, c14, c3, 1\n" : "=r" (v));
+  mask();
   current_thread()->vcpu_vgic_upcall(1);
   chip()->ack(pin());
   ui->ack();
@@ -274,17 +264,29 @@ struct Local_irq_init
 DEFINE_PER_CPU_LATE static Per_cpu<Local_irq_init> local_irqs;
 }
 
+//-----------------------------------------------------------------------------
+IMPLEMENTATION [arm && 32bit && cpu_virt]:
 
-static inline
-bool
-is_syscall_pc(Address pc)
+PRIVATE inline
+void
+Arm_vtimer_ppi::mask()
 {
-  return Unsigned32(-0x0c) <= pc && pc <= Unsigned32(-0x08);
+  Mword v;
+  asm volatile("mrc p15, 0, %0, c14, c3, 1\n"
+               "orr %0, #0x2              \n"
+               "mcr p15, 0, %0, c14, c3, 1\n" : "=r" (v));
 }
 
-static inline
+PRIVATE static inline
+bool
+Thread::is_syscall_pc(Address pc)
+{
+  return Address(-0x0c) <= pc && pc <= Address(-0x08);
+}
+
+PRIVATE static inline
 Address
-get_fault_ipa(Ts_error_code hsr, bool insn_abt, bool ext_vcpu)
+Thread::get_fault_pfa(Arm_esr hsr, bool insn_abt, bool ext_vcpu)
 {
   Unsigned32 far;
   if (insn_abt)
@@ -322,117 +324,55 @@ get_fault_ipa(Ts_error_code hsr, bool insn_abt, bool ext_vcpu)
   return (par & 0xfffff000UL) | (far & 0xfff);
 }
 
-extern "C" void arm_hyp_entry(Return_frame *rf)
+PRIVATE static inline
+Arm_esr
+Thread::get_esr()
 {
-  Trap_state *ts = static_cast<Trap_state*>(rf);
-  Thread *ct = current_thread();
-
-  Ts_error_code hsr;
+  Arm_esr hsr;
   asm ("mrc p15, 4, %0, c5, c2, 0" : "=r" (hsr));
-  ts->esr = hsr;
+  return hsr;
+}
 
-  Unsigned32 tmp;
-  Mword state = ct->state();
+// ---------------------------------------------------------------
+IMPLEMENTATION [arm && 64bit && cpu_virt]:
 
-  switch (hsr.ec())
+IMPLEMENT_OVERRIDE
+void
+Thread::arch_init_vcpu_state(Vcpu_state *vcpu_state, bool ext)
+{
+  vcpu_state->version = Vcpu_arch_version;
+
+  if (!ext || (state() & Thread_ext_vcpu_enabled))
+    return;
+
+  assert (check_for_current_cpu());
+
+  Vm_state *v = vm_state(vcpu_state);
+  v->hcr = 0;
+  v->csselr = 0;
+  v->sctlr = Cpu::Sctlr_el1_generic;
+  v->actlr = 0;
+  v->cpacr = 0x5555555;
+  v->vbar = 0;
+  v->amair = 0;
+
+  v->guest_regs.hcr = Cpu::Hcr_tge;
+  v->guest_regs.sctlr = 0;
+  v->guest_regs.mdscr = 0;
+
+  v->host_regs.hcr = arm_get_hcr();
+  v->host_regs.mdscr = 0;
+  v->cntkctl = Host_cntkctl;
+
+  v->gic.hcr = Gic_h::Hcr(0);
+  v->gic.apr = 0;
+  v->vmpidr = 1UL << 31; // ARMv8: RES1
+
+  if (current() == this)
     {
-    case 0x20:
-      tmp = get_fault_ipa(hsr, true, state & Thread_ext_vcpu_enabled);
-      if (!pagefault_entry(tmp, hsr.raw(), rf->pc, rf))
-        {
-          Proc::cli();
-          ts->pf_address = tmp;
-          slowtrap_entry(ts);
-        }
-      return;
-
-    case 0x24:
-      tmp = get_fault_ipa(hsr, false, state & Thread_ext_vcpu_enabled);
-      if (!pagefault_entry(tmp, hsr.raw(), rf->pc, rf))
-        {
-          Proc::cli();
-          ts->pf_address = tmp;
-          slowtrap_entry(ts);
-        }
-      return;
-
-    case 0x12: // HVC
-    case 0x11: // SVC
-        {
-          Unsigned32 pc = rf->pc;
-          if (!is_syscall_pc(pc))
-            {
-              slowtrap_entry(ts);
-              return;
-            }
-          rf->pc = get_lr_for_mode(rf);
-          ct->state_del(Thread_cancel);
-          if (state & (Thread_vcpu_user | Thread_alien))
-            {
-              if (state & Thread_dis_alien)
-                ct->state_del_dirty(Thread_dis_alien);
-              else
-                {
-                  slowtrap_entry(ts);
-                  return;
-                }
-            }
-
-          typedef void Syscall(void);
-          extern Syscall *sys_call_table[];
-          sys_call_table[(-pc) / 4]();
-          return;
-        }
-
-    case 0x00: // undef opcode with HCR.TGE=1
-        {
-          ct->state_del(Thread_cancel);
-          Mword state = ct->state();
-          Unsigned32 pc = rf->pc;
-
-          if (state & (Thread_vcpu_user | Thread_alien))
-            {
-              ts->pc += ts->psr & Proc::Status_thumb ? 2 : 4,
-              ct->send_exception(ts);
-              return;
-            }
-          else if (EXPECT_FALSE(!is_syscall_pc(pc + 4)))
-            {
-              ts->pc += ts->psr & Proc::Status_thumb ? 2 : 4,
-              slowtrap_entry(ts);
-              return;
-            }
-
-          rf->pc = get_lr_for_mode(rf);
-          ct->state_del(Thread_cancel);
-          typedef void Syscall(void);
-          extern Syscall *sys_call_table[];
-          sys_call_table[-(pc + 4) / 4]();
-          return;
-        }
-      break;
-
-    case 0x07:
-        {
-          if ((hsr.cpt_simd() || hsr.cpt_cpnr() == 10 || hsr.cpt_cpnr() == 11)
-              && Thread::handle_fpu_trap(ts))
-            return;
-
-          ct->send_exception(ts);
-        }
-      break;
-
-    case 0x03: // CP15 trapped
-        if (hsr.mcr_coproc_register() == hsr.mrc_coproc_register(0, 1, 0, 1))
-          {
-            ts->r[hsr.mcr_rt()] = 1 << 6;
-            ts->pc += 2 << hsr.il();
-            return;
-          }
-      // fall through
-
-    default:
-      ct->send_exception(ts);
-      break;
+      asm volatile ("msr SCTLR_EL1, %0" : : "r"(v->sctlr));
+      asm volatile ("msr CNTKCTL_EL1, %0" : : "r"(v->cntkctl));
     }
+
+  //regs()->pstate = (regs()->pstate & ~0x1fUL) | Proc::Status_mode_vmm;
 }

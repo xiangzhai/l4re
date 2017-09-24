@@ -51,6 +51,7 @@ IMPLEMENTATION:
 #include "config.h"
 #include "cpu.h"
 #include "kmem_alloc.h"
+#include "kmem.h"
 #include "mem_layout.h"
 
 PRIVATE  template< typename SPACE >
@@ -93,7 +94,7 @@ Obj_space_virt<SPACE>::caps_alloc(Cap_index virt)
 
   Mem_space::Status s;
   s = SPACE::mem_space(this)->v_insert(
-      Mem_space::Phys_addr(Mem_space::kernel_space()->virt_to_phys((Address)mem)),
+      Mem_space::Phys_addr(Kmem::kdir->virt_to_phys((Address)mem)),
       cxx::mask_lsb(Virt_addr(cv), Mem_space::Page_order(Config::PAGE_SHIFT)),
       Mem_space::Page_order(Config::PAGE_SHIFT),
       Mem_space::Attr(L4_fpage::Rights::RW()));
@@ -133,14 +134,11 @@ Obj_space_virt<SPACE>::caps_free()
     {
       Entry *c = get_cap(i);
       if (!c)
-	continue;
+        continue;
 
-      Address cp = Address(ms->virt_to_phys(Address(c)));
-      assert (cp != ~0UL);
-      void *cv = (void*)Mem_layout::phys_to_pmem(cp);
-      Obj::remove_cap_page_dbg_info(cv);
+      Obj::remove_cap_page_dbg_info(c);
 
-      a->q_unaligned_free(SPACE::ram_quota(this), Config::PAGE_SIZE, cv);
+      a->q_unaligned_free(SPACE::ram_quota(this), Config::PAGE_SIZE, c);
     }
   ms->dir()->destroy(Virt_addr(Mem_layout::Caps_start),
                      Virt_addr(Mem_layout::Caps_end-1),

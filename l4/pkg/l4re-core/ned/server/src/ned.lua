@@ -22,11 +22,16 @@ Proto = {
   Rm        = 0x4005,
   Event     = 0x4006,
   Inhibitor = 0x4007,
-  Irq       = -1,
   Sigma0    = -6,
   Log       = -13,
   Scheduler = -14,
   Factory   = -15,
+  Vm         = -16,
+  Dma_space  = -17,
+  Irq_sender = -18,
+  Irq_muxer  = -19,
+  Semaphore  = -20,
+  Iommu      = -22,
   Ipc_gate  = 0,
 }
 
@@ -254,6 +259,12 @@ function Loader:startv(env, ...)
   local caps = env.caps or {};
 
   if (type(caps) == "table") then
+    for k, v in pairs(caps) do
+      if type(v) == "table" then
+        caps[k] = self:create_namespace(v)
+      end
+    end
+
     caps.rom = caps.rom or Env.rom;
   end
 

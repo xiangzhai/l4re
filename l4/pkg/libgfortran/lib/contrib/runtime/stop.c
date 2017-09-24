@@ -1,5 +1,5 @@
 /* Implementation of the STOP statement.
-   Copyright (C) 2002-2015 Free Software Foundation, Inc.
+   Copyright (C) 2002-2017 Free Software Foundation, Inc.
    Contributed by Paul Brook <paul@nowt.org>
 
 This file is part of the GNU Fortran runtime library (libgfortran).
@@ -24,8 +24,6 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 <http://www.gnu.org/licenses/>.  */
 
 #include "libgfortran.h"
-#include <stdlib.h>
-#include <string.h>
 
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
@@ -90,24 +88,6 @@ void
 stop_numeric (GFC_INTEGER_4 code)
 {
   report_exception ();
-  if (code == -1)
-    code = 0;
-  else
-    st_printf ("STOP %d\n", (int)code);
-
-  exit (code);
-}
-
-
-/* A Fortran 2008 numeric STOP statement.  */
-
-extern _Noreturn void stop_numeric_f08 (GFC_INTEGER_4);
-export_proto(stop_numeric_f08);
-
-void
-stop_numeric_f08 (GFC_INTEGER_4 code)
-{
-  report_exception ();
   st_printf ("STOP %d\n", (int)code);
   exit (code);
 }
@@ -145,7 +125,7 @@ error_stop_string (const char *string, GFC_INTEGER_4 len)
   (void) write (STDERR_FILENO, string, len);
   estr_write ("\n");
 
-  exit (1);
+  exit_error (1);
 }
 
 
@@ -159,5 +139,5 @@ error_stop_numeric (GFC_INTEGER_4 code)
 {
   report_exception ();
   st_printf ("ERROR STOP %d\n", (int) code);
-  exit (code);
+  exit_error (code);
 }

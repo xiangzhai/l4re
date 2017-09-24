@@ -233,7 +233,7 @@ class Gdt;
 class Tss;
 
 
-EXTENSION class Cpu 
+EXTENSION class Cpu
 {
 public:
   enum Lbr
@@ -803,7 +803,7 @@ Cpu::cache_tlb_intel()
 		}
 	    }
 	}
-    } 
+    }
   while (++count < *desc);
 }
 
@@ -997,9 +997,11 @@ Cpu::identify()
         cpuid(10, &_arch_perfmon_info_eax,
                   &_arch_perfmon_info_ebx,
                   &_arch_perfmon_info_ecx, &i);
+        // FALLTHRU
       case 2:
         if (_vendor == Vendor_intel)
           cache_tlb_intel();
+        // FALLTHRU
       case 1:
         update_features_info();
       }
@@ -1007,6 +1009,9 @@ Cpu::identify()
     if (max >= 5 && has_monitor_mwait())
       cpuid(5, &_monitor_mwait_eax, &_monitor_mwait_ebx,
                &_monitor_mwait_ecx, &_monitor_mwait_edx);
+
+    if (max >= 6 && _vendor == Vendor_intel)
+      try_enable_hw_performance_states();
 
     if (max >= 7 && _vendor == Vendor_intel)
       {
@@ -1055,17 +1060,20 @@ Cpu::identify()
 	switch (max)
 	  {
 	  default:
-	    // All cases fall through!
+	    // FALLTHRU
 	  case 0x80000008:
 	    if (_vendor == Vendor_amd || _vendor == Vendor_intel)
 	      addr_size_info();
+	    // FALLTHRU
 	  case 0x80000007:
 	  case 0x80000006:
 	    if (_vendor == Vendor_amd || _vendor == Vendor_via)
 	      cache_tlb_l2_l3();
+	    // FALLTHRU
 	  case 0x80000005:
 	    if (_vendor == Vendor_amd || _vendor == Vendor_via)
 	      cache_tlb_l1();
+	    // FALLTHRU
 	  case 0x80000004:
 	    {
 	      Unsigned32 *s = (Unsigned32 *)_model_str;
@@ -1074,6 +1082,7 @@ Cpu::identify()
                                       &s[2 + 4*i], &s[3 + 4*i]);
 	      _model_str[48] = 0;
 	    }
+	    // FALLTHRU
 	  case 0x80000003:
 	  case 0x80000002:
 	  case 0x80000001:
@@ -1591,6 +1600,45 @@ Cpu::print_errata()
     }
 }
 
+/**
+ * Enable hardware controlled performance states (HWP) if available.
+ *
+ * HWP enables the processor to autonomously select performance states. The OS
+ * can hint the CPU at the desired optimizations. For example, a system running
+ * on battery may hint the CPU to optimize for low power consumption. We just
+ * enable HWP and configure it to select the performance target autonomously.
+ *
+ * See Intel Manual Volume 3 Chapter 14.4 for details.
+ */
+PRIVATE FIASCO_INIT_CPU
+void
+Cpu::try_enable_hw_performance_states()
+{
+  enum
+  {
+    HWP_SUPPORT = 1 << 7,
+    HIGHEST_PERFORMANCE_MASK = 0xf,
+    LOWEST_PERFORMANCE_MASK = 0xf << 24,
+  };
+
+  Unsigned32 dummy, eax;
+  cpuid(0x6, &eax, &dummy, &dummy, &dummy);
+
+  if (!(eax & HWP_SUPPORT))
+    return;
+
+  // enable
+  wrmsr(0x1ULL, MSR_HWP_PM_ENABLE);
+
+  // let the hardware decide on everything (autonomous operation mode)
+  Unsigned64 hwp_caps = rdmsr(MSR_HWP_CAPABILITIES);
+  wrmsr((hwp_caps & HIGHEST_PERFORMANCE_MASK)
+        | (hwp_caps & LOWEST_PERFORMANCE_MASK), MSR_HWP_REQUEST);
+
+  if (id() == Cpu_number::boot_cpu())
+    printf("HWP: enabled\n");
+}
+
 IMPLEMENT FIASCO_INIT_CPU
 void
 Cpu::init()
@@ -1761,4 +1809,3 @@ PUBLIC static inline
 void
 Cpu::set_gs(Unsigned16 val)
 { asm volatile ("mov %0, %%gs" : : "rm" (val)); }
-

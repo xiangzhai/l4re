@@ -58,7 +58,7 @@
 .macro restore_cp0_status ts_base, ts_offset
 	mfc0	k0, CP0_STATUS
 	ext	k1, k0, 6, 26
-	lw	k0, TS_STATUS(\ts_offset)(\ts_base)
+	ASM_L	k0, TS_STATUS(\ts_offset)(\ts_base)
 	ins	k0, k1, 6, 26
 #ifdef CONFIG_CPU_VIRT
 	ASM_ALTERNATIVE_ORIG_START
@@ -76,7 +76,7 @@
 	mtc0	k0, CP0_GUESTCTL0
 #ifdef CONFIG_PF_SEAD3
 /* The CPU implementation on the FPGA SEAD3 board has a
-   buggy guest timer and does not singal timer interrupts
+   buggy guest timer and does not signal timer interrupts
    correctly to the guest. Work around this by manually
    injecting the timer interrupt via VIP instead.
    Note that this only works as long as Fiasco is uses a
@@ -217,17 +217,9 @@
 .set noreorder
 .set noat
 
-LEAF(ret_from_exception)
-	ASM_L	k0, TS_REG(0, CALL_FRAME_SIZE)(sp)
-	bnez	k0, .Lexec_continuation
-	  nop
-	restore_all_and_eret	29, CALL_FRAME_SIZE
-
-.Lexec_continuation:
-	jr	k0
-	  ASM_S	zero, TS_REG(0, CALL_FRAME_SIZE)(sp) /* delay slot */
-
-END(ret_from_exception)
+LEAF(ret_from_user_invoke)
+	do_eret restore_all_and_eret
+END(ret_from_user_invoke)
 
 .section ".text.fast_ret_from_irq", "ax"
 LEAF(fast_ret_from_irq)
@@ -244,14 +236,14 @@ LEAF(leave_by_trigger_exception)
 	.set push
 	.set at
 	lw	t0, TS_CAUSE(CALL_FRAME_SIZE)(sp)
-	and	t1, t0, ~0x303
-	or	t1, t1, 0x101  /* flag SW exception */
-	sw	t1, TS_CAUSE(CALL_FRAME_SIZE)(sp)
+	and	a0, t0, ~0x3ff
+	or	a0, a0, 0x101  /* flag SW exception */
+	sw	a0, TS_CAUSE(CALL_FRAME_SIZE)(sp)
 	/* clear continuation */
 	ASM_S	zero, TS_REG(0, CALL_FRAME_SIZE)(sp)
 	/* ra is ret_from_exception already, do a tail call */
 	j	thread_handle_trap
-	  nop
+	  ASM_ADDIU	a1, sp, CALL_FRAME_SIZE
 	.set pop
 END(leave_by_trigger_exception)
 
@@ -371,7 +363,7 @@ ENTRY reserved_insn
 	sll	k0, k0, 3      # 32 insn bundles (2 insns) one for each target
 	ASM_LA	k1, 2f         # register at 2f
 	ASM_ADDU	k0, k1, k0     # calculate the address of the target register load
-	lw	k1, TS_STATUS(CALL_FRAME_SIZE)(sp)
+	ASM_L	k1, TS_STATUS(CALL_FRAME_SIZE)(sp)
 	mtc0	k1, CP0_STATUS # restore CP0 Status as the entry code modified it
 	ASM_MFC0	k1, CP0_EPC    # skip the rdhwr insn
 	ASM_ADDIU	k1, k1, 4
@@ -521,7 +513,7 @@ END(kern_kdebug_ipi_entry)
 mips_tlb_refill_handler:
 	generic_exception_entry
 	ext	k1, k0, 3, 2
-	beqz	k1, 1f           # if comming from kernel mode skip loading k-sp
+	beqz	k1, 1f           # if coming from kernel mode skip loading k-sp
 	  move	k1, sp           # capture the current (kernel) sp
 	ASM_MFC0	k1, CP0_ERROREPC # load the kernel SP in ErrorEPC
 1:
@@ -548,7 +540,7 @@ mips_tlb_refill_handler:
 mips_xtlb_refill_handler:
 	generic_exception_entry
 	ext	k1, k0, 3, 2
-	beqz	k1, 1f           # if comming from kernel mode skip loading k-sp
+	beqz	k1, 1f           # if coming from kernel mode skip loading k-sp
 	  move	k1, sp           # capture the current (kernel) sp
 	ASM_MFC0	k1, CP0_ERROREPC # load the kernel SP in ErrorEPC
 1:

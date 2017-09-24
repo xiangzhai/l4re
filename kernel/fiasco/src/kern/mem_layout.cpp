@@ -2,6 +2,8 @@ INTERFACE:
 
 #include "l4_types.h"
 
+class Kpdir;
+
 class Mem_layout
 {
 public:
@@ -19,6 +21,7 @@ public:
 
   static Mword in_tcbs (Address a); // FIXME
   static Mword in_kernel (Address a); // XXX: not right for UX
+  static Kpdir *kdir;
 };
 
 IMPLEMENTATION [obj_space_virt]:
@@ -41,12 +44,12 @@ IMPLEMENTATION:
 
 IMPLEMENT inline
 Mword
-Mem_layout::in_kernel (Address a)
+Mem_layout::in_kernel(Address a)
 {
   return a > User_max;
 }
 
-PUBLIC static inline
+PUBLIC static inline ALWAYS_INLINE
 Mword
 Mem_layout::in_kernel_code (Address a)
 {

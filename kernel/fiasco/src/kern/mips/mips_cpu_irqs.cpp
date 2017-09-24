@@ -1,5 +1,5 @@
 /*
- * MIPS top-level IRQ handling: privide a first stage IRQ chip with 8 slots for
+ * MIPS top-level IRQ handling: provide a first stage IRQ chip with 8 slots for
  * Irq_base object that either signal IRQs to second level IRQ chips or to the
  * user.
  */
@@ -88,7 +88,7 @@ public:
     Mips_cpu_irq_chip::mask(pin);
   }
 
-  int set_mode(Mword, Mode)
+  int set_mode(Mword, Mode) override
   {
     return Mode::Trigger_edge | Mode::Polarity_high;
   }

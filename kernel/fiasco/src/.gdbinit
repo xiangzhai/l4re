@@ -9,7 +9,7 @@ define tcbat
   p *(class thread_t*)($arg0)
 end
 
-file fiasco.image
+file fiasco
 set remotebaud 115200
 
 ## for debugging on COM2

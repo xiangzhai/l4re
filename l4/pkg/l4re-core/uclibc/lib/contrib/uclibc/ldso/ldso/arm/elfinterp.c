@@ -69,7 +69,7 @@ unsigned long _dl_linux_resolver(struct elf_resolve *tpnt, int reloc_entry)
 	got_addr = (char **) instr_addr;
 
 	/* Get the address of the GOT entry */
-	new_addr = _dl_find_hash(symname, &_dl_loaded_modules->symbol_scope,
+	new_addr = (unsigned long)_dl_find_hash(symname, &_dl_loaded_modules->symbol_scope,
 				 tpnt, ELF_RTYPE_CLASS_PLT, NULL);
 	if (unlikely(!new_addr)) {
 		_dl_dprintf(2, "%s: can't resolve symbol '%s'\n",
@@ -85,7 +85,7 @@ unsigned long _dl_linux_resolver(struct elf_resolve *tpnt, int reloc_entry)
 		{
 			_dl_dprintf(_dl_debug_file, "\nresolve function: %s", symname);
 			if (_dl_debug_detail) _dl_dprintf(_dl_debug_file,
-					"\tpatch %x ==> %x @ %x", *got_addr, new_addr, got_addr);
+					"\tpatch %p ==> %lx @ %p", *got_addr, new_addr, got_addr);
 		}
 	}
 	if (!_dl_debug_nofixups) {
@@ -104,7 +104,6 @@ _dl_parse(struct elf_resolve *tpnt, struct r_scope_elem *scope,
 	  int (*reloc_fnc) (struct elf_resolve *tpnt, struct r_scope_elem *scope,
 			    ELF_RELOC *rpnt, ElfW(Sym) *symtab, char *strtab))
 {
-	int i;
 	char *strtab;
 	int goof = 0;
 	ElfW(Sym) *symtab;
@@ -118,6 +117,7 @@ _dl_parse(struct elf_resolve *tpnt, struct r_scope_elem *scope,
 	symtab = (ElfW(Sym) *) tpnt->dynamic_info[DT_SYMTAB];
 	strtab = (char *) tpnt->dynamic_info[DT_STRTAB];
 
+	unsigned i;
 	  for (i = 0; i < rel_size; i++, rpnt++) {
 	        int res;
 
@@ -203,7 +203,7 @@ _dl_do_reloc (struct elf_resolve *tpnt,struct r_scope_elem *scope,
 	symname = strtab + symtab[symtab_index].st_name;
 
 	if (symtab_index) {
-		symbol_addr = _dl_find_hash(symname, scope, tpnt,
+		symbol_addr = (unsigned long)_dl_find_hash(symname, scope, tpnt,
 						elf_machine_type_class(reloc_type), &sym_ref);
 
 		/*
@@ -304,7 +304,7 @@ _dl_do_reloc (struct elf_resolve *tpnt,struct r_scope_elem *scope,
 		}
 #if defined (__SUPPORT_LD_DEBUG__)
 		if (_dl_debug_reloc && _dl_debug_detail)
-			_dl_dprintf(_dl_debug_file, "\tpatch: %x ==> %x @ %x", old_val, *reloc_addr, reloc_addr);
+			_dl_dprintf(_dl_debug_file, "\tpatch: %lx ==> %lx @ %p", old_val, *reloc_addr, reloc_addr);
 	}
 
 #endif
@@ -316,6 +316,10 @@ static int
 _dl_do_lazy_reloc (struct elf_resolve *tpnt, struct r_scope_elem *scope,
 		   ELF_RELOC *rpnt, ElfW(Sym) *symtab, char *strtab)
 {
+	(void) scope;
+	(void) symtab;
+	(void) strtab;
+
 	int reloc_type;
 	unsigned long *reloc_addr;
 
@@ -337,7 +341,7 @@ _dl_do_lazy_reloc (struct elf_resolve *tpnt, struct r_scope_elem *scope,
 		}
 #if defined (__SUPPORT_LD_DEBUG__)
 		if (_dl_debug_reloc && _dl_debug_detail)
-			_dl_dprintf(_dl_debug_file, "\tpatch: %x ==> %x @ %x", old_val, *reloc_addr, reloc_addr);
+			_dl_dprintf(_dl_debug_file, "\tpatch: %lx ==> %lx @ %p", old_val, *reloc_addr, reloc_addr);
 	}
 
 #endif
@@ -355,5 +359,18 @@ int _dl_parse_relocation_information(struct dyn_elf *rpnt,
 	struct r_scope_elem *scope, unsigned long rel_addr, unsigned long rel_size)
 {
 	return _dl_parse(rpnt->dyn, scope, rel_addr, rel_size, _dl_do_reloc);
+}
+
+static __always_inline void
+elf_machine_setup(ElfW(Addr) load_off, unsigned long const *dynamic_info,
+                  struct elf_resolve *tpnt, int lazy)
+{
+	(void) load_off;
+	(void) lazy;
+	unsigned long *lpnt = (unsigned long *) dynamic_info[DT_PLTGOT];
+#ifdef ALLOW_ZERO_PLTGOT
+	if (lpnt)
+#endif
+		INIT_GOT(lpnt, tpnt);
 }
 

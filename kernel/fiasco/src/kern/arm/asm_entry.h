@@ -50,7 +50,7 @@ sys_call_table:
 	.word sys_arm_mem_op
 .endm
 
-.macro GEN_VCPU_UPCALL THREAD_VCPU, LOAD_USR_SP, LOAD_USR_VCPU, USR_ONLY
+.macro GEN_VCPU_UPCALL THREAD_VCPU, LOAD_USR_SP, LOAD_USR_VCPU
 .align 4
 .global leave_by_vcpu_upcall;
 
@@ -71,17 +71,10 @@ leave_by_vcpu_upcall:
 
 	ldr 	r0, [r1, #(OFS__THREAD__EXCEPTION_IP)]
 	str	r0, [r2, #RF(PC, 0)]
-        .if ! \USR_ONLY
-          ldr     r0, [r1, #(OFS__THREAD__STATE)]
-          tst     r0, #VAL__Thread_ext_vcpu_enabled
-        .endif
 	ldr	r0, [r1, #(OFS__THREAD__EXCEPTION_PSR)]
 	str	r0, [r2, #RF(PSR, 0)]
-	bic	r0, #0x20 // force ARM mode
-        .if ! \USR_ONLY
-          bicne   r0, #0xf
-          orrne   r0, #0x13
-        .endif
+	bic	r0, #0x2f // force ARM mode
+	orr   r0, #0x10
 	str	r0, [sp, #RF(PSR, 3*4)]
 
         ldr	r0, [sp, #RF(USR_LR, 3*4)]
@@ -134,7 +127,6 @@ leave_by_vcpu_upcall:
 	str	lr, [sp, #RF(PSR, 0)]
 
 	stmdb	sp!, {r0 - r12}
-	sub sp, sp, #4
 	mov	r0, #-1			@ pfa
 	mov	r1, #GET_HSR(0x33)	@ err
 	orr	r1, #\type		@ + type
@@ -145,7 +137,7 @@ leave_by_vcpu_upcall:
 	ldr	pc, 3f
 
 1:
-	add	sp, sp, #12		@ pfa, err and tpidruro
+	add	sp, sp, #8		@ pfa, err
 	ldmia	sp!, {r0 - r12}
 	ldr	lr, [sp, #RF(PSR, 0)]
 	msr	cpsr, lr
@@ -210,7 +202,7 @@ exception_return:
 	disable_irqs
 	ldr	sp, [sp]
 __return_from_user_invoke:
-	add	sp, sp, #12 // pfa, err & tpidruro
+	add	sp, sp, #8 // pfa, err
 	ldmia	sp!, {r0 - r12}
 	return_from_exception
 .endm
@@ -229,15 +221,13 @@ leave_by_trigger_exception:
 	sub 	sp, sp, #RF_SIZE   @ restore old return frame
 	stmdb 	sp!, {r0 - r12}
 
-	sub sp, sp, #4
-
 	/* restore original IP */
 	CONTEXT_OF r1, sp
 	ldr 	r0, [r1, #(OFS__THREAD__EXCEPTION_IP)]
-	str	r0, [sp, #RF(PC, 14*4)]
+	str	r0, [sp, #RF(PC, 13*4)]
 
 	ldr	r0, [r1, #(OFS__THREAD__EXCEPTION_PSR)]
-	str	r0, [sp, #RF(PSR, 14*4)]
+	str	r0, [sp, #RF(PSR, 13*4)]
 
 	mov     r0, #~0
 	str	r0, [r1, #(OFS__THREAD__EXCEPTION_IP)]

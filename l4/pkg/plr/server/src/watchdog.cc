@@ -35,7 +35,7 @@ Romain::Watchdog::enable(App_instance *i, App_thread *t)
 	t->watchdog_irq(chkcap(L4Re::Util::cap_alloc.alloc<L4::Irq>(), tmp));
 	
 	snprintf(tmp, 25, "watchdog irq %i", i->id());
-	chksys(L4Re::Env::env()->factory()->create_irq(t->watchdog_irq()), tmp);
+	chksys(L4Re::Env::env()->factory()->create(t->watchdog_irq()), tmp);
 	
 	l4_debugger_set_object_name(t->watchdog_irq().cap(), tmp);
 

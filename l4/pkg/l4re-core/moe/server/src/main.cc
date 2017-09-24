@@ -150,17 +150,14 @@ static void find_memory()
               Single_page_alloc_base::_avail() / 1024);
 
   // adjust min_addr and max_addr to also contain boot modules
-  L4::Kip::Mem_desc const *md  = L4::Kip::Mem_desc::first(kip());
-  L4::Kip::Mem_desc const *end = md + L4::Kip::Mem_desc::count(kip());
-
-  for (; md < end; ++md)
+  for (auto const &md: L4::Kip::Mem_desc::all(kip()))
     {
-      if (md->is_virtual())
+      if (md.is_virtual())
         continue;
 
-      L4::Kip::Mem_desc::Mem_type type = md->type();
-      unsigned long end = l4_round_page(md->end());
-      unsigned long start = l4_trunc_page(md->start());
+      L4::Kip::Mem_desc::Mem_type type = md.type();
+      unsigned long end = l4_round_page(md.end());
+      unsigned long start = l4_trunc_page(md.start());
       switch (type)
         {
         case L4::Kip::Mem_desc::Bootloader:
@@ -209,16 +206,13 @@ l4_addr_t Moe::Virt_limit::end;
 static void
 init_virt_limits()
 {
-  L4::Kip::Mem_desc *md = L4::Kip::Mem_desc::first(const_cast<l4_kernel_info_t*>(kip()));
-  unsigned long cnt = L4::Kip::Mem_desc::count(const_cast<l4_kernel_info_t*>(kip()));
-
-  for (L4::Kip::Mem_desc *m = md; m < md + cnt; ++m)
+  for (auto const &m: L4::Kip::Mem_desc::all(kip()))
     {
-      if (m->type() != L4::Kip::Mem_desc::Conventional || !m->is_virtual())
+      if (m.type() != L4::Kip::Mem_desc::Conventional || !m.is_virtual())
         continue;
 
-      Moe::Virt_limit::start = m->start();
-      Moe::Virt_limit::end = m->end();
+      Moe::Virt_limit::start = m.start();
+      Moe::Virt_limit::end = m.end();
     }
 
   info.printf("virtual user address space [%lx-%lx]\n",
@@ -490,6 +484,18 @@ static void init_env()
 
 static __attribute__((used, section(".preinit_array")))
    const void *pre_init_env = (void *)init_env;
+
+static void init_emergency_memory()
+{
+  // populate the page allocator with a few pages of static memory to allow for
+  // dynamic allocation of memory arena during static initialization of stdc++'s
+  // emergency_pool in GCC versions 5 and newer
+  static __attribute__((aligned(L4_PAGESIZE))) char buf[3 * L4_PAGESIZE];
+  Single_page_alloc_base::_free(buf, sizeof(buf), true);
+}
+
+static __attribute__((used, section(".preinit_array")))
+   const void *pre_init_emergency_memory = (void *)init_emergency_memory;
 
 int main(int argc, char**argv)
 {

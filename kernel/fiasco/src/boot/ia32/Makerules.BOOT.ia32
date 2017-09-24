@@ -36,9 +36,10 @@ $(KERNEL):	kernel.ia32.lds boot_img.o $(CRT0) $(OBJ_KERNEL) $(JDB) $(LIBK) $(KER
 		   $(KERNEL_UNRES_SYMS)
 		$(call ADD_CONFIGFILE,$@)
 
-# '$(RM) main' should be removed later - Late 2012
+# Remove '$(RM) fiasco.image' after a transition period -- Added late 2016
 $(BOOT): $(KERNEL)
 		$(LINK_MESSAGE)
 		$(VERBOSE)$(STRIP) -o $@ $<
+		$(VERBOSE)$(OBJCOPY) --add-gnu-debuglink=$< $@
 		$(VERBOSE)chmod 755 $@
-		$(VERBOSE)$(RM) main
+		$(VERBOSE)$(RM) fiasco.image

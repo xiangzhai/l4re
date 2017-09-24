@@ -23,16 +23,13 @@
 Region_map::Region_map()
   : Base(Moe::Virt_limit::start, Moe::Virt_limit::end)
 {
-  L4::Kip::Mem_desc *md = L4::Kip::Mem_desc::first(const_cast<l4_kernel_info_t*>(kip()));
-  unsigned long cnt = L4::Kip::Mem_desc::count(const_cast<l4_kernel_info_t*>(kip()));
-
-  for (L4::Kip::Mem_desc *m = md; m < md + cnt; ++m)
+  for (auto const &m: L4::Kip::Mem_desc::all(kip()))
     {
-      if (m->type() != L4::Kip::Mem_desc::Reserved || !m->is_virtual())
+      if (m.type() != L4::Kip::Mem_desc::Reserved || !m.is_virtual())
         continue;
 
-      l4_addr_t start = m->start();
-      l4_addr_t end = m->end();
+      l4_addr_t start = m.start();
+      l4_addr_t end = m.end();
 
       attach_area(start, end - start + 1, L4Re::Rm::Reserved);
     }
@@ -114,7 +111,7 @@ Region_map::op_io_page_fault(L4::Io_pager::Rights,
                              L4::Ipc::Opt<L4::Ipc::Snd_fpage> &)
 {
   Dbg(Dbg::Warn).printf("IO-port-fault: port=0x%lx size=%d pc=0x%lx\n",
-                        l4_fpage_page(io_pfa), 1 << l4_fpage_size(io_pfa), pc);
+                        l4_fpage_ioport(io_pfa), 1 << l4_fpage_size(io_pfa), pc);
   result = ~0;
   return -1;
 }

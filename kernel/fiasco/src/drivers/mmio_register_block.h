@@ -52,6 +52,7 @@ public:
     enum { Bits = sizeof(VALUE) * 8 };
 
     using Reg_w<REG, VALUE>::operator =;
+    using Reg_r<REG, VALUE>::operator Type;
 
     Type set(Type bits)
     {
@@ -90,9 +91,9 @@ public:
 
   protected:
     friend class Mmio_register_block;
-    friend class Reg_rw<Reg_t<VALUE, true, true>, VALUE>;
-    friend class Reg_r<Reg_t<VALUE, true, true>, VALUE>;
-    friend class Reg_w<Reg_t<VALUE, true, true>, VALUE>;
+    friend struct Reg_rw<Reg_t<VALUE, true, true>, VALUE>;
+    friend struct Reg_r<Reg_t<VALUE, true, true>, VALUE>;
+    friend struct Reg_w<Reg_t<VALUE, true, true>, VALUE>;
     explicit Reg_t(Address a) : _r(a) {}
     Address _r;
   };

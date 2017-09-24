@@ -265,10 +265,15 @@ System_state_tracker::handle_irq()
   L4Re::Event_buffer::Event *e;
   while ((e = _vbus_event.buffer().next()) != NULL)
     {
-      if (e->payload.type != L4RE_EV_PM)
+      auto type = e->payload.type;
+      auto code = e->payload.code;
+
+      e->free();
+
+      if (type != L4RE_EV_PM)
         continue;
 
-      switch (e->payload.code)
+      switch (code)
         {
           case L4VBUS_INHIBITOR_SUSPEND:
             printf("Received suspend event.\n");
@@ -303,7 +308,7 @@ main()
       static System_state_tracker tracker(rtc);
       static Rtc_svr rtc_server(&tracker);
 
-      L4Re::chkcap(server.registry()->register_irq_obj(&tracker, L4::cap_cast<L4::Irq>(tracker.event_irq())),
+      L4Re::chkcap(server.registry()->register_irq_obj(&tracker, tracker.event_irq()),
                    "Could not register state tracker");
       L4Re::chkcap(server.registry()->register_obj(&rtc_server, "rtc"),
                    "Could not register RTC server. 'rtc' cap missing?");

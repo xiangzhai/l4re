@@ -82,19 +82,16 @@ kernel_main()
   //  pic_disable_all();
 
   // create kernel thread
-  static Kernel_thread *kernel = new (Ram_quota::root) Kernel_thread;
+  static Kernel_thread *kernel = new (Ram_quota::root) Kernel_thread(Ram_quota::root);
   Task *const ktask = Kernel_task::kernel_task();
   check(kernel->bind(ktask, User<Utcb>::Ptr(0)));
   assert(((Mword)kernel->init_stack() & 7) == 0);
 
   Mem_unit::tlb_flush();
 
+  extern char call_bootstrap[];
   // switch to stack of kernel thread and bootstrap the kernel
-  asm volatile
-    ("	mov sp, %0            \n"   // switch stack
-     "	mov r0, %1            \n"   // push "this" pointer
-     "	bl call_bootstrap     \n"
-     : : "r" (kernel->init_stack()), "r" (kernel));
+  Thread::arm_fast_exit(kernel->init_stack(), call_bootstrap, kernel);
 }
 
 //------------------------------------------------------------------------
@@ -146,6 +143,7 @@ int boot_ap_cpu()
     Per_cpu_data::run_ctors(_cpu);
 
   Cpu &cpu = Cpu::cpus.cpu(_cpu);
+  cpu.init_mmu(false);
   cpu.init(!cpu_is_new, false);
 
   Pic::init_ap(_cpu, !cpu_is_new);

@@ -239,11 +239,12 @@ IMPLEMENTATION [ppc32]:
     @post state() != 0
  */
 IMPLEMENT
-Thread::Thread()
-  : Sender            (0),	// select optimized version of constructor
-    _pager(Thread_ptr::Invalid),
-    _exc_handler(Thread_ptr::Invalid),
-    _del_observer(0)
+Thread::Thread(Ram_quota *q)
+: Sender(0),
+  _pager(Thread_ptr::Invalid),
+  _exc_handler(Thread_ptr::Invalid),
+  _quota(q),
+  _del_observer(0)
 {
 
   assert(state(false) == 0);
@@ -261,7 +262,7 @@ Thread::Thread()
   _recover_jmpbuf = 0;
   _timeout = 0;
 
-  *reinterpret_cast<void(**)()> (--_kernel_sp) = user_invoke;
+  prepare_switch_to(&user_invoke);
 
   // clear out user regs that can be returned from the thread_ex_regs
   // system call to prevent covert channel

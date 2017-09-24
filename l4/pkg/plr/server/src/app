@@ -155,7 +155,11 @@ class App_instance
 			l4_fpage_t fp;
 			l4_addr_t remote;
 			fp.raw = fpraw;
-			remote = l4_fpage_page(fp) << L4_PAGESHIFT;
+                        if (l4_fpage_type(fp) != L4_FPAGE_MEMORY)
+                          return;
+
+                        remote = l4_fpage_memaddr(fp);
+                        remote = l4_trunc_size(remote, l4_fpage_size(fp));
 
 			l4_addr_t a = _mappings[remote];
 			DEBUG() << "unmap @ " << std::hex << remote << " -> " << "0x" << a;

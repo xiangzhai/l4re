@@ -7,6 +7,7 @@ INTERFACE [arm]:
 #include "paging.h"
 #include "types.h"
 #include "ram_quota.h"
+#include "config.h"
 
 EXTENSION class Mem_space
 {
@@ -36,6 +37,7 @@ public:
     Identity_map = 0,
   };
 
+  Phys_mem_addr dir_phys() const { return _dir_phys; }
 
   static void kernel_space(Mem_space *);
 
@@ -62,7 +64,6 @@ IMPLEMENTATION [arm]:
 #include "paging.h"
 #include "kmem.h"
 #include "kmem_alloc.h"
-#include "kmem_space.h"
 #include "mem_unit.h"
 
 Kmem_slab_t<Mem_space::Dir_type,
@@ -138,8 +139,6 @@ void Mem_space::switchin_context(Mem_space *from)
 
   if (from != this)
     make_current();
-  else
-    tlb_flush(true);
 }
 
 
@@ -173,19 +172,25 @@ Mem_space::v_insert(Phys_addr phys, Vaddr virt, Page_order size,
                    && (i.level != level || Phys_addr(i.page_addr()) != phys)))
     return Insert_err_exists;
 
-  if (i.is_valid())
+  bool const valid = i.is_valid();
+  if (valid)
+    page_attribs.rights |= i.attribs().rights;
+
+  auto entry = i.make_page(phys, page_attribs);
+
+  if (valid)
     {
-      if (EXPECT_FALSE(!i.add_attribs(page_attribs)))
+      if (EXPECT_FALSE(i.entry() == entry))
         return Insert_warn_exists;
 
+      i.set_page(entry);
       i.write_back_if(flush, c_asid());
       return Insert_warn_attrib_upgrade;
     }
   else
     {
-      i.create_page(phys, page_attribs);
+      i.set_page(entry);
       i.write_back_if(flush, Mem_unit::Asid_invalid);
-
       return Insert_ok;
     }
 }
@@ -205,9 +210,9 @@ Mem_space::virt_to_phys(Address virt) const
 }
 
 
-/** Simple page-table lookup.  This method is similar to Mem_space's 
-    lookup().  The difference is that this version handles 
-    Sigma0's address space with a special case: For Sigma0, we do not 
+/** Simple page-table lookup.  This method is similar to Mem_space's
+    lookup().  The difference is that this version handles
+    Sigma0's address space with a special case: For Sigma0, we do not
     actually consult the page table -- it is meaningless because we
     create new mappings for Sigma0 transparently; instead, we return the
     logically-correct result of physical address == virtual address.
@@ -232,7 +237,7 @@ Mem_space::v_lookup(Vaddr virt, Phys_addr *phys,
   if (!i.is_valid())
     return false;
 
-  if (phys) *phys = Virt_addr(i.page_addr());
+  if (phys) *phys = Phys_addr(i.page_addr());
   if (page_attribs) *page_attribs = i.attribs();
 
   return true;
@@ -271,7 +276,6 @@ Mem_space::v_delete(Vaddr virt, Page_order size,
 PUBLIC
 Mem_space::~Mem_space()
 {
-  reset_asid();
   if (_dir)
     {
 
@@ -298,14 +302,12 @@ Mem_space::~Mem_space()
   * task number concurrently).  In this case, the newly-created
   * address space should be deleted again.
   */
-PUBLIC inline NEEDS[Mem_space::asid]
+PUBLIC inline
 Mem_space::Mem_space(Ram_quota *q)
 : _quota(q), _dir(0)
-{
-  asid(Mem_unit::Asid_invalid);
-}
+{}
 
-PROTECTED inline NEEDS[<new>, "kmem_slab.h", "kmem_space.h", Mem_space::asid]
+PROTECTED inline NEEDS[<new>, "kmem_slab.h", "kmem.h"]
 bool
 Mem_space::initialize()
 {
@@ -314,7 +316,7 @@ Mem_space::initialize()
     return false;
 
   _dir->clear(Pte_ptr::need_cache_write_back(false));
-  _dir_phys = Phys_mem_addr(Kmem_space::kdir()->virt_to_phys((Address)_dir));
+  _dir_phys = Phys_mem_addr(Kmem::kdir->virt_to_phys((Address)_dir));
 
   return true;
 }
@@ -323,9 +325,8 @@ PUBLIC
 Mem_space::Mem_space(Ram_quota *q, Dir_type* pdir)
   : _quota(q), _dir (pdir)
 {
-  asid(Mem_unit::Asid_invalid);
   _current.cpu(Cpu_number::boot_cpu()) = this;
-  _dir_phys = Phys_mem_addr(Kmem_space::kdir()->virt_to_phys((Address)_dir));
+  _dir_phys = Phys_mem_addr(Kmem::kdir->virt_to_phys((Address)_dir));
 }
 
 PUBLIC static inline
@@ -344,96 +345,7 @@ Mem_space::init_page_sizes()
 }
 
 //----------------------------------------------------------------------------
-IMPLEMENTATION [arm && !hyp]:
-
-PROTECTED inline NEEDS["kmem_alloc.h"]
-int
-Mem_space::sync_kernel()
-{
-  return _dir->sync(Virt_addr(Mem_layout::User_max + 1), kernel_space()->_dir,
-                    Virt_addr(Mem_layout::User_max + 1),
-                    Virt_size(-(Mem_layout::User_max + 1)), Pdir::Super_level,
-                    Pte_ptr::need_cache_write_back(this == _current.current()),
-                    Kmem_alloc::q_allocator(_quota));
-}
-
-PUBLIC inline NEEDS [Mem_space::virt_to_phys]
-Address
-Mem_space::pmem_to_phys(Address virt) const
-{
-  return virt_to_phys(virt);
-}
-
-//----------------------------------------------------------------------------
-IMPLEMENTATION [arm && hyp]:
-
-static Address __mem_space_syscall_page;
-
-IMPLEMENT_OVERRIDE inline
-template< typename T >
-T
-Mem_space::peek_user(T const *addr)
-{
-  Address pa = virt_to_phys((Address)addr);
-  if (pa == ~0UL)
-    return ~0;
-
-  Address ka = Mem_layout::phys_to_pmem(pa);
-  if (ka == ~0UL)
-    return ~0;
-
-  return *reinterpret_cast<T const *>(ka);
-}
-
-PROTECTED static
-void
-Mem_space::set_syscall_page(void *p)
-{
-  __mem_space_syscall_page = (Address)p;
-}
-
-PROTECTED
-int
-Mem_space::sync_kernel()
-{
-  auto pte = _dir->walk(Virt_addr(Mem_layout::Kern_lib_base),
-      Pdir::Depth, true, Kmem_alloc::q_allocator(ram_quota()));
-  if (pte.level < Pdir::Depth - 1)
-    return -1;
-
-  extern char kern_lib_start[];
-
-  Phys_mem_addr pa((Address)kern_lib_start - Mem_layout::Map_base
-                   + Mem_layout::Sdram_phys_base);
-  pte.create_page(pa, Page::Attr(Page::Rights::URX(), Page::Type::Normal(),
-                                 Page::Kern::Global()));
-
-  pte.write_back_if(true, Mem_unit::Asid_kernel);
-
-  pte = _dir->walk(Virt_addr(Mem_layout::Syscalls),
-      Pdir::Depth, true, Kmem_alloc::q_allocator(ram_quota()));
-
-  if (pte.level < Pdir::Depth - 1)
-    return -1;
-
-  pa = Phys_mem_addr(__mem_space_syscall_page);
-  pte.create_page(pa, Page::Attr(Page::Rights::URX(), Page::Type::Normal(),
-                                 Page::Kern::Global()));
-
-  pte.write_back_if(true, Mem_unit::Asid_kernel);
-
-  return 0;
-}
-
-PUBLIC inline NEEDS [Mem_space::virt_to_phys, "kmem_space.h"]
-Address
-Mem_space::pmem_to_phys(Address virt) const
-{
-  return Kmem_space::kdir()->virt_to_phys(virt);
-}
-
-//----------------------------------------------------------------------------
-IMPLEMENTATION [armv5 || armv6 || armv7]:
+IMPLEMENTATION [arm_v5 || arm_v6 || arm_v7 || arm_v8]:
 
 IMPLEMENT inline
 void
@@ -441,17 +353,7 @@ Mem_space::v_set_access_flags(Vaddr, L4_fpage::Rights)
 {}
 
 //----------------------------------------------------------------------------
-IMPLEMENTATION [armv5]:
-
-PRIVATE inline
-void
-Mem_space::asid(unsigned long)
-{}
-
-PRIVATE inline
-void
-Mem_space::reset_asid()
-{}
+IMPLEMENTATION [arm_v5]:
 
 PUBLIC inline
 unsigned long
@@ -476,76 +378,7 @@ void Mem_space::make_current()
 }
 
 //----------------------------------------------------------------------------
-INTERFACE [armv6 || armca8]:
-
-EXTENSION class Mem_space
-{
-  enum
-  {
-    Asid_num = 256,
-    Asid_base = 0
-  };
-};
-
-//----------------------------------------------------------------------------
-INTERFACE [armv7 && armca9]:
-
-EXTENSION class Mem_space
-{
-  enum
-  {
-    Asid_num = 255,
-    Asid_base = 1
-  };
-};
-
-//----------------------------------------------------------------------------
-INTERFACE [armv6 || armv7]:
-
-#include "id_alloc.h"
-#include "types.h"
-
-EXTENSION class Mem_space
-{
-public:
-  enum { Have_asids = 1 };
-private:
-  typedef Per_cpu_array<unsigned long> Asid_array;
-  Asid_array _asid;
-
-  struct Asid_ops
-  {
-    enum { Id_offset = Asid_base };
-
-    static bool valid(Mem_space *o, Cpu_number cpu)
-    { return o->_asid[cpu] != Mem_unit::Asid_invalid; }
-
-    static unsigned long get_id(Mem_space *o, Cpu_number cpu)
-    { return o->_asid[cpu]; }
-
-    static bool can_replace(Mem_space *v, Cpu_number cpu)
-    { return v != current_mem_space(cpu); }
-
-    static void set_id(Mem_space *o, Cpu_number cpu, unsigned long id)
-    {
-      write_now(&o->_asid[cpu], id);
-      Mem_unit::tlb_flush(id);
-    }
-
-    static void reset_id(Mem_space *o, Cpu_number cpu)
-    { write_now(&o->_asid[cpu], (unsigned long)Mem_unit::Asid_invalid); }
-  };
-
-  struct Asid_alloc : Id_alloc<unsigned char, Mem_space, Asid_ops>
-  {
-    Asid_alloc() : Id_alloc<unsigned char, Mem_space, Asid_ops>(Asid_num) {}
-  };
-
-  static Per_cpu<Asid_alloc> _asid_alloc;
-};
-
-//----------------------------------------------------------------------------
-INTERFACE [!(armv6 || armv7)]:
+INTERFACE [!(arm_v6 || arm_v7 || arm_v8)]:
 
 EXTENSION class Mem_space
 {
@@ -554,91 +387,417 @@ public:
 };
 
 //----------------------------------------------------------------------------
-IMPLEMENTATION [armv6 || armv7]:
+INTERFACE [arm_v6 || arm_lpae]:
 
-DEFINE_PER_CPU Per_cpu<Mem_space::Asid_alloc> Mem_space::_asid_alloc;
-
-PRIVATE inline
-void
-Mem_space::asid(unsigned long a)
+EXTENSION class Mem_space
 {
-  for (Asid_array::iterator i = _asid.begin(); i != _asid.end(); ++i)
-    *i = a;
-}
-
-PUBLIC inline
-unsigned long
-Mem_space::c_asid() const
-{ return _asid[current_cpu()]; }
-
-PRIVATE inline
-unsigned long
-Mem_space::asid()
-{
-  Cpu_number cpu = current_cpu();
-  return _asid_alloc.cpu(cpu).alloc(this, cpu);
+  enum
+  {
+    Asid_base      = 0,
+    Asid_bits      = 8,
+    Asid_num       = 1UL << Asid_bits
+  };
 };
 
-PRIVATE inline
+//----------------------------------------------------------------------------
+INTERFACE [(arm_v7 || arm_v8) && !arm_lpae]:
+
+EXTENSION class Mem_space
+{
+  enum
+  {
+    Asid_base      = 1,
+    Asid_bits      = 8,
+    Asid_num       = 1UL << Asid_bits
+  };
+};
+
+//----------------------------------------------------------------------------
+INTERFACE [arm_v6 || arm_v7 || arm_v8]:
+
+#include "types.h"
+#include "spin_lock.h"
+
+/*
+   The ARM reference manual suggests to use the same address space id
+   across multiple CPUs. Here we introduce a global allocation scheme
+   for ASIDs that uses a tuple of <generation, asid> to quickly decide
+   whether an address space id is valid or not.
+
+   Address space ids become invalid if all ASIDs are allocated and an
+   address space needs a new ASID. In this case we invalidate all
+   ASIDs except the ones currently used on a CPU by increasing the
+   generation and starting to allocate new ASIDs.
+
+   The scheme relies on three fields, "active", "reserved" and
+   "generation":
+   * "generation" is a global variable keeping track of the current
+      generation of ASIDs.
+   * "active" keeps track of the address space id which is currently used
+      on a CPU.
+   * "reserved" keeps track of asids active during a generation change
+
+   If the asid of an address space has an old generation or "active"
+   contains an invalid asid we might need a new ASID. So we enter a
+   critical region and
+
+   * check whether the ASID is a reserved one which can stay as is,
+     otherwise allocate a new ASID if possible
+   * if no ASID is available
+     * invalidate allocated ASIDs by incrementing the generation and by
+       resetting the reserved bitmap
+     * save all valid active ASIDs in "reserved" and mark them as reserved
+       in a bitmap
+     * set active ASID to invalid
+     * mark a tlb flush pending
+
+   "active", "generation" and the asid attribut of a mem_space are
+   read outside of the critical region and are therefore manipulated
+   using atomic operations.
+
+   The usage of a counter for the generation may lead to two address
+   spaces having the same <generation, asid> tuple after the
+   generation overflows and starts with 0 again. With 32 bit and
+   permanent ASID allocation this takes about 400 seconds and the
+   address space has a probability of 2^-24 to get the same generation
+   number. With 64bit it takes about 50000 years.
+
+*/
+
+EXTENSION class Mem_space
+{
+private:
+  /** Asid storage format:
+   * 63                        X      0
+   * +------------------------+--------+
+   * |   generation count     | ASID   |
+   * +------------------------+--------+
+   * X = Asid_bits - 1
+   *
+   * As the generation count increases it might happen that it wraps
+   * around and starts at 0 again. If we have address spaces which are
+   * not active for a "long time" we might see <generation, asid>
+   * tuples of the same value for different spaces after a wrap
+   * around. To decrease the likelyhood that this actually happens we
+   * use a large generation count. Under worst case assumptions
+   * (working set constantly generating new ASIDs every 100 cycles on
+   * a 1GHz processor) a wrap around happens after 429 seconds with 32
+   * bits and after 58494 years with 64 bit. We use 64bit to be on the
+   * save side.
+   */
+  typedef unsigned long long Asid;
+  enum
+  {
+    Generation_inc = 1ULL << Asid_bits,
+    Asid_mask      = Generation_inc - 1,
+    Asid_invalid   = ~0ULL,
+  };
+
+  enum
+  {
+    // Allocate ASIDs in [Asid_base, Debug_asid_allocation] if
+    // Debug_asid_allocation != 0
+    Debug_asid_allocation = 0,
+  };
+
+public:
+  /**
+   * Keep track of reserved Asids
+   *
+   * If a generation roll over happens we have to keep track of ASIDs
+   * active on other CPUs. These ASIDs are marked as reserved in the
+   * bitmap.
+   */
+  class Asid_bitmap : public Bitmap<Asid_num>
+  {
+  public:
+    /**
+     * Reset all bits and set first available ASID to Asid_base
+     */
+    void reset()
+    {
+      clear_all();
+      _current_idx = Asid_base;
+    }
+
+    /**
+     * Find next free ASID
+     *
+     * \return First free ASID or Asid_num if no ASID is available
+     */
+    unsigned find_next();
+
+    Asid_bitmap()
+    {
+      reset();
+    }
+
+  private:
+    unsigned _current_idx;
+  };
+
+  /**
+   * Per CPU active and reserved ASIDs
+   */
+  struct Asids
+  {
+    /**
+     * Currently active ASID on a CPU.
+     *
+     * written using atomic_xchg outside of spinlock and
+     * atomic_write under protection of spinlock
+     */
+    Asid active = Asid_invalid;
+
+    /**
+     * reserved ASID on a CPU, active during last generation change.
+     *
+     * written under protection of spinlock
+     */
+    Asid reserved = Asid_invalid;
+  };
+
+public:
+  enum { Have_asids = 1 };
+
+private:
+  /// active/reserved ASID (per CPU)
+  static Per_cpu<Asids> _asids;
+
+  /// Protect elements changed during generation roll over
+  static Spin_lock<> _asid_lock;
+
+  /// current ASID generation, protected by _asid_lock
+  static Asid _generation;
+
+  /// keep track of reserved ASIDs, protected by _asid_lock
+  static Asid_bitmap _asid_bitmap;
+
+  /// keep track of pending TLB flush operations, protected by _asid_lock
+  static Cpu_mask _tlb_flush_pending;
+
+  /// current asid of mem_space, protected by _asid_lock
+  Asid _asid = Asid_invalid;
+};
+
+//----------------------------------------------------------------------------
+IMPLEMENTATION [arm_v6 || arm_v7 || arm_v8]:
+#include "cpu.h"
+#include "cpu_lock.h"
+#include "lock_guard.h"
+
+IMPLEMENT unsigned
+Mem_space::Asid_bitmap::find_next()
+{
+  if (Debug_asid_allocation && _current_idx > Debug_asid_allocation)
+    return Asid_num;
+
+  // assume a sparsely populated bitmap - the next free bit is
+  // normally found during first iteration
+  for (unsigned i = _current_idx; i < Asid_num; ++i)
+    if (operator[](i) == 0)
+      {
+        _current_idx = i + 1;
+        return i;
+      }
+
+  return Asid_num;
+}
+
+PUBLIC inline NEEDS["atomic.h"]
+unsigned long
+Mem_space::c_asid() const
+{
+  Asid asid = atomic_load(&_asid);
+
+  if (asid != Asid_invalid)
+    return asid & Asid_mask;
+  else
+    return Mem_unit::Asid_invalid;
+}
+
+PRIVATE static inline
+bool
+Mem_space::is_same_generation(Asid asid, Asid generation)
+{ return (asid & ~Asid_mask) == generation; }
+
+PRIVATE static inline NEEDS["cpu.h"]
+bool
+Mem_space::check_and_update_reserved(Asid asid, Asid update)
+{
+  bool res = false;
+
+  for (Cpu_number cpu = Cpu_number::first(); cpu < Config::max_num_cpus();
+       ++cpu)
+    {
+      if (!Cpu::online(cpu))
+        continue;
+
+      if (_asids.cpu(cpu).reserved == asid)
+        {
+          _asids.cpu(cpu).reserved = update;
+          res = true;
+        }
+    }
+  return res;
+}
+
+/**
+ * Reset allocation data structures, reserve currently active ASIDs,
+ * mark TLB flush pending for all CPUs
+ *
+ * \pre
+ *   * _asid_lock held
+ *
+ * \post
+ *   * _asids.cpu(x).reserved == ASID currently used on cpu x
+ *   * _asids.cpu(x).active   == Mem_unit::Asid_invalid
+ *   * _asid_bitmap[x]   != 0 for x in { _asdis.cpu(cpu).reserved }
+ *   * _asid_lock held
+ *
+ */
+PRIVATE static inline NEEDS["atomic.h"]
 void
-Mem_space::reset_asid()
+Mem_space::roll_over()
 {
-  for (Cpu_number i = Cpu_number::first(); i < Config::max_num_cpus(); ++i)
-    _asid_alloc.cpu(i).free(this, i);
+  _asid_bitmap.reset();
+
+  // update reserved asids
+  for (Cpu_number cpu = Cpu_number::first(); cpu < Config::max_num_cpus();
+       ++cpu)
+    {
+      if (!Cpu::online(cpu))
+        continue;
+
+      Asid asid = atomic_exchange(&_asids.cpu(cpu).active, Asid_invalid);
+
+      // keep reserved asid, if there already was a roll over
+      if (asid != Asid_invalid)
+        _asids.cpu(cpu).reserved = asid;
+      else
+        asid = _asids.cpu(cpu).reserved;
+
+      if (asid != Asid_invalid)
+        _asid_bitmap.set_bit(asid & Asid_mask);
+    }
+
+  _tlb_flush_pending = Cpu::online_mask();
 }
 
-//-----------------------------------------------------------------------------
-IMPLEMENTATION [armv6 || armca8]:
-
-IMPLEMENT inline NEEDS[Mem_space::asid]
-void Mem_space::make_current()
+/**
+ * Get a new ASID
+ *
+ * Check whether the ASID is a reserved one (was in use on any cpu
+ * during roll over). If it is, update generation and return.
+ * Otherwise allocate a new one and handle generation roll over if
+ * necessary.
+ *
+ * \pre
+ *   * _asid_lock held
+ *
+ * \post
+ *   * if a generation roll over happens, generation increased by Generation_inc
+ *   * returned ASID is marked in _asid_bitmap and has current generation
+ *   * _asid_lock held
+ *
+ */
+PRIVATE inline NEEDS["atomic.h", Mem_space::roll_over,
+                     Mem_space::check_and_update_reserved]
+Mem_space::Asid FIASCO_FLATTEN
+Mem_space::new_asid(Asid asid, Asid generation)
 {
-  asm volatile (
-      "mcr p15, 0, %2, c7, c5, 6    \n" // bt flush
-      "mcr p15, 0, r0, c7, c10, 4   \n" // dsb
-      "mcr p15, 0, %0, c2, c0       \n" // set TTBR
-      "mcr p15, 0, r0, c7, c10, 4   \n" // dsb
-      "mcr p15, 0, %1, c13, c0, 1   \n" // set new ASID value
-      "mcr p15, 0, r0, c7, c5, 4    \n" // isb
-      "mcr p15, 0, %2, c7, c5, 6    \n" // bt flush
-      "mrc p15, 0, r1, c2, c0       \n"
-      "mov r1, r1                   \n"
-      "sub pc, pc, #4               \n"
-      :
-      : "r" (Phys_mem_addr::val(_dir_phys) | Page::Ttbr_bits), "r"(asid()), "r" (0)
-      : "r1");
-  _current.current() = this;
+  if ((asid != Asid_invalid) && _asid_bitmap[asid & Asid_mask])
+    {
+      Asid update = (asid & Asid_mask) | generation;
+      if (EXPECT_TRUE(check_and_update_reserved(asid, update)))
+        {
+          // This ASID was active during a roll over and therefore is
+          // still valid. Return the asid with its updated generation.
+          return update;
+        }
+    }
+
+  // Get a new ASID
+  unsigned new_asid = _asid_bitmap.find_next();
+  if (EXPECT_FALSE(new_asid == Asid_num))
+    {
+      generation = atomic_add_fetch(&_generation, Generation_inc);
+
+      if (EXPECT_FALSE(generation == (Asid_invalid & ~Asid_mask)))
+        {
+          // Skip problematic generation value
+          generation = atomic_add_fetch(&_generation, Generation_inc);
+        }
+
+      roll_over();
+      new_asid = _asid_bitmap.find_next();
+    }
+
+  return new_asid | generation;
 }
 
-
-//-----------------------------------------------------------------------------
-IMPLEMENTATION [armv7 && armca9 && !arm_lpae]:
-
-IMPLEMENT inline NEEDS[Mem_space::asid]
-void
-Mem_space::make_current()
+/**
+ * Get a valid ASID
+ *
+ * Check validity of current ASID. If it is valid, return the
+ * current ASID, otherwise allocate a new one and invalidate TLB if
+ * necessary.
+ */
+PUBLIC inline NEEDS[Mem_space::is_same_generation, Mem_space::new_asid,
+                    "atomic.h"]
+Mem_space::Asid
+Mem_space::asid()
 {
-  asm volatile (
-      "mcr p15, 0, %2, c7, c5, 6    \n" // bt flush
-      "dsb                          \n"
-      "mcr p15, 0, %2, c13, c0, 1   \n" // change ASID to 0
-      "isb                          \n"
-      "mcr p15, 0, %0, c2, c0       \n" // set TTBR
-      "isb                          \n"
-      "mcr p15, 0, %1, c13, c0, 1   \n" // set new ASID value
-      "isb                          \n"
-      "mcr p15, 0, %2, c7, c5, 6    \n" // bt flush
-      "isb                          \n"
-      "mov r1, r1                   \n"
-      "sub pc, pc, #4               \n"
-      :
-      : "r" (Phys_mem_addr::val(_dir_phys) | Page::Ttbr_bits), "r"(asid()), "r" (0)
-      : "r1");
-  _current.current() = this;
-}
+
+  auto *active_asid = &_asids.current().active;
+
+    {
+      Asid asid       = atomic_load(&_asid);
+      Asid generation = atomic_load(&_generation);
+
+      // is_same_generation implicitely checks for asid != Asid_invalid
+      if (   EXPECT_TRUE(is_same_generation(asid, generation))
+          && EXPECT_TRUE(atomic_exchange(active_asid, asid) != Asid_invalid))
+        return asid & Asid_mask;
+    }
+
+  auto guard = lock_guard(_asid_lock);
+
+  // Re-read data
+  Asid asid       = atomic_load(&_asid);
+  Asid generation = atomic_load(&_generation);
+
+  // We either have an older generation or a roll over happened on
+  // another cpu - find out which one it was
+  if (!is_same_generation(asid, generation))
+    {
+      // We have an asid from an older generation - get a fresh one
+      asid = new_asid(asid, generation);
+      atomic_store(&_asid, asid);
+    }
+
+  // Is a tlb flush pending?
+  if (_tlb_flush_pending.atomic_get_and_clear(current_cpu()))
+    {
+      Mem_unit::tlb_flush();
+      Mem::dsb();
+    }
+
+  // Set active asid, needs to be atomic since this value is written
+  // above using atomic_xchg()
+  atomic_store(active_asid, asid);
+
+  return asid & Asid_mask;
+};
+
+DEFINE_PER_CPU Per_cpu<Mem_space::Asids> Mem_space::_asids;
+Mem_space::Asid        Mem_space::_generation = Mem_space::Generation_inc;
+Mem_space::Asid_bitmap Mem_space::_asid_bitmap;
+Cpu_mask               Mem_space::_tlb_flush_pending;
+Spin_lock<>            Mem_space::_asid_lock;
 
 //-----------------------------------------------------------------------------
-IMPLEMENTATION [armv7 && arm_lpae]:
+IMPLEMENTATION [arm && arm_lpae]:
 
 PUBLIC static
 void
@@ -647,51 +806,4 @@ Mem_space::init_page_sizes()
   add_page_size(Page_order(Config::PAGE_SHIFT));
   add_page_size(Page_order(21)); // 2MB
   add_page_size(Page_order(30)); // 1GB
-}
-
-//----------------------------------------------------------------------------
-IMPLEMENTATION [armv7 && arm_lpae && !hyp]:
-
-IMPLEMENT inline NEEDS[Mem_space::asid]
-void
-Mem_space::make_current()
-{
-  asm volatile (
-      "mcr p15, 0, %2, c7, c5, 6    \n" // bt flush
-      "isb                          \n"
-      "mcrr p15, 0, %0, %1, c2      \n" // set TTBR
-      "isb                          \n"
-      "mcr p15, 0, %2, c7, c5, 6    \n" // bt flush
-      "isb                          \n"
-      "mov r1, r1                   \n"
-      "sub pc, pc, #4               \n"
-      :
-      : "r" (Phys_mem_addr::val(_dir_phys)), "r"(asid() << 16), "r" (0)
-      : "r1");
-  _current.current() = this;
-}
-
-
-//----------------------------------------------------------------------------
-IMPLEMENTATION [armv7 && arm_lpae && hyp]:
-
-IMPLEMENT inline NEEDS[Mem_space::asid]
-void
-Mem_space::make_current()
-{
-
-  asm volatile (
-      "mcr p15, 0, %2, c7, c5, 6    \n" // bt flush
-      "isb                          \n"
-      "mcrr p15, 6, %0, %1, c2      \n" // set TTBR
-      "isb                          \n"
-      "mcr p15, 0, %2, c7, c5, 6    \n" // bt flush
-      "isb                          \n"
-      "mov r1, r1                   \n"
-      "sub pc, pc, #4               \n"
-      :
-      : "r" (Phys_mem_addr::val(_dir_phys)), "r"(asid() << 16), "r" (0)
-      : "r1");
-
-  _current.current() = this;
 }

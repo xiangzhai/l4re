@@ -4,13 +4,17 @@ BITS-$(CONFIG_BIT32) = 32
 BITS-$(CONFIG_BIT64) = 64
 BITS = $(BITS-y)
 
-CROSS_COMPILE-32          ?= mips-linux-
-CROSS_COMPILE-64          ?= mips64el-linux-gnuabi64-
-CROSS_COMPILE             ?= $(CROSS_COMPILE-$(BITS))
+CROSS_COMPILE             ?= mips-linux-
 
-LD_EMULATION_CHOICE       := elf$(BITS)ltsmip
-SHARED_FLAGS              += -EL -msoft-float -mabi=$(BITS)
-SHARED_FLAGS-$(CONFIG_CPU_MIPS32_R2) += -march=mips32r2 -mno-abicalls
-SHARED_FLAGS-$(CONFIG_CPU_MIPS32_R6) += -march=mips32r6 -mno-abicalls
-SHARED_FLAGS-$(CONFIG_CPU_MIPS64_R2) += -march=mips64r2 -mno-abicalls
-SHARED_FLAGS-$(CONFIG_CPU_MIPS64_R6) += -march=mips64r6 -mno-abicalls
+LD_EMULATION_CHOICE-$(CONFIG_MIPS_LITTLE_ENDIAN) := elf$(BITS)ltsmip
+LD_EMULATION_CHOICE-$(CONFIG_MIPS_BIG_ENDIAN)    := elf$(BITS)btsmip
+LD_EMULATION_CHOICE       := $(LD_EMULATION_CHOICE-y)
+SHARED_FLAGS-clang        += -fno-integrated-as
+SHARED_FLAGS              += -msoft-float -mabi=$(BITS)
+SHARED_FLAGS              += -mno-abicalls
+SHARED_FLAGS-$(CONFIG_MIPS_LITTLE_ENDIAN) += -EL
+SHARED_FLAGS-$(CONFIG_MIPS_BIG_ENDIAN)    += -EB
+SHARED_FLAGS-$(CONFIG_CPU_MIPS32_R2) += -march=mips32r2
+SHARED_FLAGS-$(CONFIG_CPU_MIPS32_R6) += -march=mips32r6
+SHARED_FLAGS-$(CONFIG_CPU_MIPS64_R2) += -march=mips64r2
+SHARED_FLAGS-$(CONFIG_CPU_MIPS64_R6) += -march=mips64r6

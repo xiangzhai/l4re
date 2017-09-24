@@ -5,6 +5,7 @@ TARGET      = libpthread_rep.a #libpthread_rep.so
 
 PC_FILENAME = libpthread_rep
 PC_LIBS_libpthread_rep := -lpthread_rep
+PC_EXTRA := Link_Libs= %{static:-lpthread_rep}
 
 SYSTEMS = x86-l4f
 

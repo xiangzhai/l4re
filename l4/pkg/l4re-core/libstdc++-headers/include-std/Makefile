@@ -12,6 +12,7 @@ LIBSUPC_H            := exception new typeinfo cxxabi.h
 LIBSUPC_H-4.6_PLUS-  := exception_defines.h cxxabi-forced.h
 LIBSUPC_H-4.6_PLUS-y := bits/exception_defines.h bits/cxxabi_forced.h cxxabi_forced.h bits/hash_bytes.h
 LIBSUPC_H-4.7_PLUS-y += bits/atomic_lockfree_defines.h
+LIBSUPC_H-7_PLUS-y   += bits/exception.h bits/cxxabi_init_exception.h
 
 ALLOCATOR_H        := config/allocator/new_allocator_base.h
 CLOCALE_H          := config/locale/generic/c_locale.h
@@ -68,19 +69,19 @@ std_header_list = $(strip $(1)) std_$(strip $(1)).h
 
 choose_std_header = $(word 1, $(wildcard $(foreach DIR,$(STDCXX_STD_DIRS),$(addprefix $(INCSRC_DIR)/$(DIR)/, $(call std_header_list, $(1))))))
 
-$(STDCXX_CSTD_HEADERS_ABS): %: $(INSTALL_INCDIR_X)
-	@$(INSTALL_LINK_MESSAGE)
+$(STDCXX_CSTD_HEADERS_ABS): %: $(BID_ROOT_CONF) | $(INSTALL_INCDIR_X)
+	@$(INSTALL_LINK_MESSAGE) $@
 	$(VERBOSE)$(LN) -sf $(call choose_std_header,$(notdir $@)) $@
 
-$(LIBSUPC_HI): %: $(INSTALL_INCDIR_X)
-	@$(INSTALL_LINK_MESSAGE)
+$(LIBSUPC_HI): %: $(BID_ROOT_CONF) | $(INSTALL_INCDIR_X)
+	@$(INSTALL_LINK_MESSAGE) $@
 	$(VERBOSE)$(call install_header, libsupc++/$(notdir $@), $(patsubst $(INSTALL_INCDIR_X)/%,%,$@))
 
 $(INSTALL_INCDIR_X):
 	@$(INSTALL_LINK_MESSAGE) $(INSTALL_INCDIR_X)
 	$(VERBOSE)$(INSTALL) -d $(INSTALL_INCDIR_X)
 
-all:: $(INSTALL_INCDIR_X) $(LIBSUPC_HI) $(STDCXX_CSTD_HEADERS_ABS)
+all:: $(LIBSUPC_HI) $(STDCXX_CSTD_HEADERS_ABS) $(BID_ROOT_CONF) | $(INSTALL_INCDIR_X)
 	@$(INSTALL_LINK_MESSAGE)
 	$(VERBOSE)$(call install_config_header, $(ALLOCATOR_H),     c++allocator.h)
 	$(VERBOSE)$(call install_config_header, $(CLOCALE_H),       c++locale.h)

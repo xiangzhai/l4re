@@ -55,7 +55,11 @@ static int allocate_mem(unsigned long size_in_bytes, unsigned long flags,
                           L4RE_RM_SEARCH_ADDR, ds, 0,
                           flags & L4RE_MA_SUPER_PAGES
                              ? L4_SUPERPAGESHIFT : L4_PAGESHIFT)))
-    return r;
+    {
+      /* Free dataspace again */
+      l4re_util_cap_free_um(ds);
+      return r;
+    }
 
   /* Done, virtual address is in virt_addr */
   return 0;
@@ -78,10 +82,7 @@ static int free_mem(void *virt_addr)
     return r;
 
   /* Free memory at our memory allocator */
-  if ((r = l4re_ma_free(ds)))
-    return r;
-
-  l4re_util_cap_free(ds);
+  l4re_util_cap_free_um(ds);
 
   /* All went ok */
   return 0;

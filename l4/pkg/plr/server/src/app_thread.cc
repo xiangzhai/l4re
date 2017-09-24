@@ -68,7 +68,7 @@ void Romain::App_thread::alloc_vcpu_cap()
 #if 0
 	_vcpu_cap = chkcap(L4Re::Util::cap_alloc.alloc<L4::Thread>(),
 	                   "vCPU cap alloc");
-	chksys(L4Re::Env::env()->factory()->create_thread(_vcpu_cap),
+	chksys(L4Re::Env::env()->factory()->create(_vcpu_cap),
 	       "create thread");
 	l4_debugger_set_object_name(_vcpu_cap.cap(), "vcpu thread");
 #endif
@@ -238,10 +238,13 @@ Romain::Thread_group::sanity_check_control(l4_umword_t flags, l4_utcb_t *utcb)
 	if (flags & L4_THREAD_CONTROL_BIND_TASK) {
 		l4_fpage_t fp;
 		fp.raw = l4_utcb_mr_u(utcb)->mr[L4_THREAD_CONTROL_MR_IDX_BIND_TASK + 1];
+                if (l4_fpage_type(fp) != L4_FPAGE_OBJ)
+                  return;
+
 		DEBUG() << std::hex << "L4_THREAD_CONTROL_BIND_TASK := ("
 		        << l4_utcb_mr_u(utcb)->mr[L4_THREAD_CONTROL_MR_IDX_BIND_UTCB] << ", "
-		        << l4_fpage_page(fp) << ")";
-		if (l4_fpage_page(fp) != (L4Re::This_task >> L4_CAP_SHIFT)) {
+		        << l4_fpage_obj(fp) << ")";
+		if (l4_fpage_obj(fp) != L4Re::This_task) {
 			ERROR() << "Binding to different task not supported yet.\n";
 			enter_kdebug("error");
 		}
@@ -423,6 +426,7 @@ void* Romain::GateAgent::listener_function(void *gk)
 		        "d" (agent->current_client->vcpu()->r()->dx),
 		        "S" (agent->current_client->vcpu()->r()->si),
 		        "D" (agent->current_client->vcpu()->r()->di)
+                        L4S_PIC_SYSCALL
 			  : "memory", "cc"
 		);
 #if 0

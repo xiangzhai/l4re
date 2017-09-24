@@ -27,6 +27,19 @@ enum {
 /**
  * \defgroup l4vbus_module L4 V-BUS functions
  * \{
+ * C interface of the Vbus API.
+ *
+ * The virtual bus (Vbus) is a hierarchical (tree) structure of device nodes
+ * where each device has a set of resources attached to it. Each virtual bus
+ * provides an Icu (\ref l4_icu_api) for interrupt handling.
+ *
+ * The Vbus interface allows a client to find and query devices present on his
+ * virtual bus. After obtaining a device handle for a specific device the
+ * client can enumerate its resources.
+ *
+ * \includefile{l4/vbus/vbus.h}
+ *
+ * Refer to \ref L4vbus for the C++ API.
  */
 
 __BEGIN_DECLS
@@ -59,9 +72,29 @@ l4vbus_get_next_device(l4_cap_idx_t vbus, l4vbus_device_handle_t parent,
                        l4vbus_device_t *devinfo);
 
 /**
+ * \copybrief L4vbus::Device::device()
+ * \param vbus          Capability of the vbus to which the device is
+ *                      connected.
+ * \param dev           Device handle of the device from which to retrieve the
+ *                      details.
+ * \param[out] devinfo  Information structure which contains details about
+ *                      the device. The pointer might be NULL after a
+ *                      successfull call.
+ *
+ * \retval 0           Success.
+ * \retval -L4_ENODEV  No device with the given device handle `dev` could be
+ *                     found.
+ */
+int L4_CV
+l4vbus_get_device(l4_cap_idx_t vbus, l4vbus_device_handle_t dev,
+                  l4vbus_device_t *devinfo);
+
+/**
  * \copybrief L4vbus::Device::get_resource()
- * \param  vbus         Capability of the system bus
- * \param  dev          Handle of the device
+ * \param vbus  Capability of the vbus to which the device is connected.
+ * \param dev   Device handle of the device on the vbus. The device handle can
+ *              be obtained by using the l4vbus_get_device_by_hid() and
+ *              l4vbus_get_next_device() functions.
  * \copydetails L4vbus::Device::get_resource()
  */
 int L4_CV
@@ -80,7 +113,7 @@ l4vbus_is_compatible(l4_cap_idx_t vbus, l4vbus_device_handle_t dev,
                      char const *cid);
 
 /**
- * \brief Get the HID (hardware identifier) if a device
+ * \brief Get the HID (hardware identifier) of a device
  *
  * \param  vbus         Capability of the system bus
  * \param  dev          Handle of the device
@@ -125,7 +158,7 @@ enum L4vbus_dma_domain_assign_flags
   L4VBUS_DMAD_BIND   = 1,
   /** The given DMA space is an L4Re::Dma_space */
   L4VBUS_DMAD_L4RE_DMA_SPACE = 0,
-  /** The goven DMA space is a kernel DMA space (L4::Task) */
+  /** The given DMA space is a kernel DMA space (L4::Task) */
   L4VBUS_DMAD_KERNEL_DMA_SPACE = 2,
 };
 
@@ -134,7 +167,8 @@ enum L4vbus_dma_domain_assign_flags
  * DMA domain.
  * \param vbus       Capability of the system bus
  * \param domain_id  DMA domain ID (resource address of DMA domain found on
- *                   the vBUS).
+ *                   the vBUS). If the value is ~0U the DMA space of the whole
+ *                   vBUS is used.
  * \param flags      A combination of #L4vbus_dma_domain_assign_flags.
  * \param dma_space  The DMA space capability to bind or unbind, this must
  *                   either be an L4Re::Dma_space or a kernel DMA space

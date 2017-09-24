@@ -1,4 +1,12 @@
-INTERFACE [arm]:
+IMPLEMENTATION [arm && !cpu_virt]:
+
+#include <panic.h>
+
+#include "kmem_alloc.h"
+#include "kmem.h"
+#include "ram_quota.h"
+#include "paging.h"
+#include "static_init.h"
 
 class Kern_lib_page
 {
@@ -6,41 +14,29 @@ public:
   static void init();
 };
 
-
-//---------------------------------------------------------------------------
-IMPLEMENTATION [arm]:
-
-#include <panic.h>
-
-#include "kmem_alloc.h"
-#include "kmem_space.h"
-#include "ram_quota.h"
-#include "paging.h"
-
 IMPLEMENT_DEFAULT
 void Kern_lib_page::init()
 {
   extern char kern_lib_start;
-  auto pte = Kmem_space::kdir()->walk(Virt_addr(Kmem_space::Kern_lib_base),
-      Pdir::Depth, true,
-      Kmem_alloc::q_allocator(Ram_quota::root));
+  auto pte = Kmem::kdir->walk(Virt_addr(Kmem_space::Kern_lib_base),
+                              Pdir::Depth, true,
+                              Kmem_alloc::q_allocator(Ram_quota::root));
 
   if (pte.level == 0) // allocation of second level faild
     panic("FATAL: Error mapping kernel-lib page to %p\n",
           (void *)Kmem_space::Kern_lib_base);
 
-  pte.create_page(Phys_mem_addr((Address)&kern_lib_start - Mem_layout::Map_base
-          + Mem_layout::Sdram_phys_base), Page::Attr(Page::Rights::URX(), Page::Type::Normal(), Page::Kern::Global()));
+  pte.set_page(pte.make_page(Phys_mem_addr((Address)&kern_lib_start - Mem_layout::Map_base
+                                           + Mem_layout::Sdram_phys_base),
+                             Page::Attr(Page::Rights::URX(), Page::Type::Normal(),
+                                        Page::Kern::Global())));
   pte.write_back_if(true, Mem_unit::Asid_kernel);
 }
 
-//---------------------------------------------------------------------------
-IMPLEMENTATION [arm && hyp]:
-
-IMPLEMENT_OVERRIDE inline void Kern_lib_page::init() {}
+STATIC_INITIALIZE(Kern_lib_page);
 
 //---------------------------------------------------------------------------
-IMPLEMENTATION [arm && !armv6plus]:
+IMPLEMENTATION [arm && !arm_v6plus]:
 
 asm (
     ".p2align(12)                        \n"
@@ -91,7 +87,7 @@ asm (
     );
 
 //---------------------------------------------------------------------------
-IMPLEMENTATION [arm && armv6plus]:
+IMPLEMENTATION [arm && arm_v6plus]:
 
 asm (
     ".p2align(12)                        \n"

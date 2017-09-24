@@ -66,8 +66,8 @@ struct Virtqueue : L4virtio::Svr::Virtqueue
 enum
 {
   Merge_rx_buffers = true,
-  Csum_offload     = true,
-  Full_segmentation_offload = true,
+  Csum_offload     = false,
+  Full_segmentation_offload = false,
 };
 
 static struct option options[] =
@@ -180,6 +180,7 @@ public:
       }
 
     _dev_config.host_features(0) = hf.raw;
+    _dev_config.host_features(1) = 1;
     _dev_config.reset_hdr();
 
     reset_queue_config(0, vq_max);
@@ -677,7 +678,7 @@ int main(int argc, char *argv[])
   int opt, index;
   unsigned vq_max_num = 0x100; // default value for data queues
 
-  printf("Hello from l4virtio host\n");
+  printf("Hello from l4vio_net_p2p\n");
 
   while( (opt = getopt_long(argc, argv, "s:", options, &index)) != -1)
     {

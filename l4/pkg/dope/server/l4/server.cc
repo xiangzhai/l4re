@@ -56,7 +56,7 @@
 
 #include <l4/sys/debugger.h>
 #include <pthread-l4.h>
-#define INFO(x...) x
+
 static struct userstate_services *userstate;
 static struct thread_services    *thread;
 static struct appman_services    *appman;

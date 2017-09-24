@@ -103,16 +103,14 @@ run:
 	cmp	r0, r9
 	beq	do_cpuid
 
-        mov     r3, #0xc00
-	orr 	r9, r3, #0x00f
+	mov	r3, #0xf00
+	and	r0, r3
+
+	mov	r9, #0xc00
 	cmp	r0, r9
 	beq	do_cpuid
 
-	orr 	r9, r3, #0x007
-	cmp	r0, r9
-	beq	do_cpuid
-
-	orr 	r9, r3, #0x009
+	mov	r9, #0xd00
 	cmp	r0, r9
 	bne	do_bootstrap               /* None matched, normal startup */
 
@@ -203,22 +201,15 @@ do_cpuid:
 #endif
 
 do_bootstrap:
-	ldr	r3, .LCcrt0_tramppage      /* Load address of tramppage var */
-	str	sp, [r3]                   /* Store SP in variable          */
 	ldr	sp, .LCstack
 
 	mov	r0, r2                     /* ATAG pointer */
 	bl	__main
 1:	b	1b
 
-.LCcrt0_tramppage:      .word crt0_tramppage
 .LCstack: .word crt0_stack_high
 
 .section ".bss"
-
-	.global	crt0_tramppage
-crt0_tramppage:
-	.space 4
 
 	.global crt0_stack_low
 	.align 3

@@ -27,6 +27,9 @@ struct Region
   { return Region(start, start + size - 1); }
 
   bool operator < (Region const &r) const { return end < r.start; }
+
+  bool contains(Region const &r) const
+  { return (start <= r.start) && (r.end <= end); } // [ [ ... ] ]
 };
 
 typedef std::map<Region, cxx::Ref_ptr<Vmm::Mmio_device>> Vm_mem;

@@ -12,7 +12,7 @@ IMPLEMENTATION [arm]:
 #include "globals.h"
 #include "kernel_task.h"
 #include "kmem_alloc.h"
-#include "kmem_space.h"
+#include "kmem.h"
 #include "space.h"
 #include "mem_layout.h"
 #include "mem_unit.h"
@@ -167,7 +167,7 @@ Jdb::handle_debug_traps(Cpu_number cpu)
       && bp_test_break)
     return bp_test_break(cpu, &error_buffer.cpu(cpu));
 
-  if (ef->error_code == (0x33UL << 26))
+  if (ef->debug_entry_kernel())
     error_buffer.cpu(cpu).printf("%s",(char const *)ef->r[0]);
   else if (ef->debug_ipi())
     error_buffer.cpu(cpu).printf("IPI ENTRY");
@@ -192,9 +192,9 @@ Jdb::handle_user_request(Cpu_number cpu)
   if (ef->error_code == ((0x33UL << 26) | 1))
     return execute_command_ni(task, str);
 
-  if (!peek(str, task, tmp) || tmp != '*')
+  if (!str || !peek(str, task, tmp) || tmp != '*')
     return false;
-  if (!peek(str+1, task, tmp) || tmp != '#')
+  if (!str || !peek(str+1, task, tmp) || tmp != '#')
     return false;
 
   return execute_command_ni(task, str+2);
@@ -231,46 +231,41 @@ void *
 Jdb::access_mem_task(Address virt, Space * task)
 {
   // align
-  virt &= ~0x03;
+  virt &= ~(sizeof(Mword) - 1);
 
   Address phys;
 
-  if (!task)
+  if (Mem_layout::in_kernel(virt))
     {
-      if (Mem_layout::in_kernel(virt))
-	{
-	  auto p = Kmem_space::kdir()->walk(Virt_addr(virt));
-	  if (!p.is_valid())
-	    return 0;
+      auto p = Kmem::kdir->walk(Virt_addr(virt));
+      if (!p.is_valid())
+        return 0;
 
-	  phys = p.page_addr() | cxx::get_lsb(virt, p.page_order());
-	}
-      else
-	phys = virt;
+      phys = p.page_addr() | cxx::get_lsb(virt, p.page_order());
+    }
+  else if (task)
+    {
+      phys = Address(task->virt_to_phys_s0((void*)virt));
+
+      if (phys == (Address)-1)
+        return 0;
     }
   else
     {
-      phys = Address(task->virt_to_phys(virt));
-
-
-      if (phys == (Address)-1)
-	phys = task->virt_to_phys_s0((void *)virt);
-
-      if (phys == (Address)-1)
-	return 0;
+      phys = virt;
     }
 
   unsigned long addr = Mem_layout::phys_to_pmem(phys);
   if (addr == (Address)-1)
     {
       Mem_unit::flush_vdcache();
-      auto pte = Kmem_space::kdir()
+      auto pte = Kmem::kdir
         ->walk(Virt_addr(Mem_layout::Jdb_tmp_map_area), Pdir::Super_level);
 
       if (!pte.is_valid() || pte.page_addr() != cxx::mask_lsb(phys, pte.page_order()))
         {
-          pte.create_page(Phys_mem_addr(cxx::mask_lsb(phys, pte.page_order())),
-                          Page::Attr(Page::Rights::RW()));
+          pte.set_page(pte.make_page(Phys_mem_addr(cxx::mask_lsb(phys, pte.page_order())),
+                                     Page::Attr(Page::Rights::RW())));
           pte.write_back_if(true, Mem_unit::Asid_kernel);
         }
 
@@ -301,17 +296,18 @@ Jdb::peek_task(Address virt, Space * task, void *value, int width)
     {
     case 1:
         {
-          Mword dealign = (virt & 0x3) * 8;
+          Mword dealign = (virt & (sizeof(Mword) - 1)) * 8;
           *(Mword*)value = (*(Mword*)mem & (0xff << dealign)) >> dealign;
         }
 	break;
     case 2:
         {
-          Mword dealign = ((virt & 0x2) >> 1) * 16;
+          Mword dealign = ((virt & (sizeof(Mword) - 2)) >> 1) * 16;
           *(Mword*)value = (*(Mword*)mem & (0xffff << dealign)) >> dealign;
         }
 	break;
     case 4:
+    case 8:
       memcpy(value, mem, width);
     }
 

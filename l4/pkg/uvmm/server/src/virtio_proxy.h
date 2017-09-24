@@ -14,21 +14,18 @@
 #include <l4/sys/meta>
 
 #include <l4/re/dataspace>
-#include <l4/re/error_helper>
-#include <l4/re/util/cap_alloc>
-
 #include <l4/re/env>
+#include <l4/re/error_helper>
 #include <l4/re/rm>
-
-#include <l4/cxx/ipc_stream>
-#include <l4/cxx/ipc_server>
+#include <l4/re/util/cap_alloc>
 
 #include <l4/l4virtio/l4virtio>
 #include <l4/l4virtio/virtqueue>
-#include <l4/l4virtio/virtio_block.h>
 
-#include "arch_mmio_device.h"
 #include "irq.h"
+#include "guest.h"
+#include "mmio_device.h"
+#include "virtio_event_connector.h"
 #include "vm_ram.h"
 
 namespace L4virtio { namespace Driver {
@@ -57,26 +54,29 @@ public:
     _device = srvcap;
 
     _host_irq = L4Re::chkcap(L4Re::Util::cap_alloc.alloc<L4::Irq>(),
-                             "Cannot allocate host irq");
+                             "Allocating cap for host irq");
 
     _config_cap = L4Re::chkcap(L4Re::Util::cap_alloc.alloc<L4Re::Dataspace>(),
-                               "Cannot allocate cap for config dataspace");
-
-    auto *e = L4Re::Env::env();
-    L4Re::chksys(e->rm()->attach(&_config, L4_PAGESIZE, L4Re::Rm::Search_addr,
-                                 L4::Ipc::make_cap_rw(_config_cap.get()), 0,
-                                 L4_PAGESHIFT),
-                 "Cannot attach config dataspace");
+                               "Allocating cap for config dataspace");
 
     L4Re::chksys(_device->register_iface(guest_irq, _host_irq.get(),
                                          _config_cap.get()),
-                 "Error registering interface with device");
+                 "Registering interface with device");
+
+    _config_page_size = L4Re::chksys(_config_cap->size(),
+                                     "Determining size of virtio config page");
+
+    auto *e = L4Re::Env::env();
+    L4Re::chksys(e->rm()->attach(&_config, _config_page_size,
+                                 L4Re::Rm::Search_addr,
+                                 L4::Ipc::make_cap_rw(_config_cap.get())),
+                 "Attaching config dataspace");
 
     if (memcmp(&_config->magic, "virt", 4) != 0)
       L4Re::chksys(-L4_ENODEV, "Device config has wrong magic value");
 
-    if (_config->version != 1)
-      L4Re::chksys(-L4_ENODEV, "Invalid virtio version, must be 1");
+    if (_config->version != 2)
+      L4Re::chksys(-L4_ENODEV, "Require virtio version of 2");
   }
 
 
@@ -100,100 +100,58 @@ public:
 
   int config_queue(int num)
   {
-    return _device->config_queue(num);
+    if (l4virtio_get_feature(_config->dev_features_map,
+                             L4VIRTIO_FEATURE_CMD_CONFIG))
+      return _config->config_queue(num, _host_irq.get(), _guest_irq.get());
+    else
+      return _device->config_queue(num);
   }
 
   L4virtio::Device::Config_hdr *device_config() const
   { return _config.get(); }
 
-  unsigned selected_queue() const
-  { return _queue_sel; }
+  L4::Cap<L4Re::Dataspace> config_ds() const
+  { return _config_cap.get(); }
 
-  l4_uint32_t page_size() const
-  { return _config->guest_page_size; }
+  l4_uint32_t config_size() const
+  { return _config_page_size; }
 
   L4virtio::Device::Config_queue *queue_config(int num) const
-  {
-    return &_config->queues()[num];
-  }
+  { return &_config->queues()[num]; }
 
-  l4_uint32_t read(unsigned reg)
-  {
-    switch (reg >> 2)
-      {
-      case 0: return *reinterpret_cast<l4_uint32_t const *>("virt");
-      case 1: return 1;
-      case 2: return _config->device;
-      case 3: return _config->vendor;
-      case 4: return (_host_feat_sel < 8) ?
-                       _config->host_features[_host_feat_sel] : 0;
-      case 13: return (_queue_sel < _config->num_queues) ?
-                       _config->queues()[_queue_sel].num_max : 0;
-      case 16: return (_queue_sel < _config->num_queues) ?
-                       _config->queues()[_queue_sel].pfn : 0;
-      case 24: return 1; // currently unused: _config->irq_status;
-      case 28: return _config->status;
-      default: return 0;
-      }
-  }
+  void virtio_queue_notify(unsigned)
+  { _host_irq->trigger(); }
 
-  void write(unsigned reg, l4_uint32_t value)
+  void set_status(l4_uint32_t status)
   {
-    // XXX make sure we don't write outside config page because the
-    // driver side screwed up
-    switch (reg >> 2)
-      {
-      case 20:
-        _host_irq->trigger();
-        break;
-      case 5:
-        _host_feat_sel = value;
-        break;
-      case 8:
-        if (_guest_feat_sel < 8)
-          _config->guest_features[_guest_feat_sel] = value;
-        break;
-      case 9:
-        _guest_feat_sel = value;
-        break;
-      case 10:
-        _config->guest_page_size = value;
-        break;
-      case 12:
-        _queue_sel = value;
-        break;
-      case 14:
-        if (_queue_sel < _config->num_queues)
-           _config->queues()[_queue_sel].num = value;
-        break;
-      case 15:
-        if (_queue_sel < _config->num_queues)
-           _config->queues()[_queue_sel].align = value;
-        break;
-      case 16:
-        if (_queue_sel < _config->num_queues)
-          {
-           _config->queues()[_queue_sel].pfn = value;
-           _device->config_queue(_queue_sel);
-          }
-        break;
-      case 28:
-        _device->set_status(value);
-        break;
-      }
+    bool use_irq = l4virtio_get_feature(_config->dev_features_map,
+                                        L4VIRTIO_FEATURE_CMD_CONFIG);
+
+    if (use_irq
+        && status == (L4VIRTIO_STATUS_ACKNOWLEDGE | L4VIRTIO_STATUS_DRIVER
+                      | L4VIRTIO_STATUS_FEATURES_OK))
+      l4virtio_set_feature(_config->driver_features_map,
+                           L4VIRTIO_FEATURE_CMD_CONFIG);
+
+    if (use_irq)
+      _config->set_status(status, _host_irq.get(), _guest_irq.get());
+    else
+      _device->set_status(status);
   }
 
   ~Device()
   {
-    _device->set_status(0); // reset
-    for (l4_uint32_t i = 0; i < _config->num_queues; ++i)
-      {
-        _config->queues()[i].num = 0;
-        _config->queues()[i].pfn = 0;
-        _config->queues()[i].align = 0;
-        _device->config_queue(i);
-      }
+    set_status(0); // reset
+    if (_config.get())
+      for (l4_uint32_t i = 0; i < _config->num_queues; ++i)
+        {
+          _config->queues()[i].num = 0;
+          _config->queues()[i].ready = 0;
+          config_queue(i);
+        }
   }
+
+  l4_uint32_t irq_status() const { return _config->irq_status; }
 
 protected:
   L4::Cap<L4virtio::Device> _device;
@@ -204,97 +162,154 @@ private:
   L4Re::Util::Auto_cap<L4::Irq>::Cap _host_irq;
   L4Re::Util::Auto_cap<L4Re::Dataspace>::Cap _config_cap;
 
-  unsigned _queue_sel = 0;
-  unsigned _host_feat_sel = 0;
-  unsigned _guest_feat_sel = 0;
-
+  unsigned _config_page_size = 0;
 };
 
 } } // namespace
 
 namespace Vdev {
 
-class Virtio_proxy : public L4::Irqep_t<Virtio_proxy>, public Device
+template <typename DEV>
+class Virtio_proxy
+: public L4::Irqep_t<Virtio_proxy<DEV>>,
+  public Device
 {
 private:
-  // -- network specific
-  L4virtio::Driver::Virtqueue _txq;
-  Vmm::Vm_ram *_iommu;
-  // -------------------
-public:
-  Virtio_proxy(Vmm::Vm_ram *iommu)
-  : _iommu(iommu) {}
+  /**
+   * Number of no-notify queue.
+   *
+   * A no-notify-queue requests no_notify_host when busy. Useful in
+   * particualar for send queues in network devices. Enable via
+   * device tree configuration l4vmm,no-notify = <queue-id>;
+   */
+  unsigned _nnq_id = -1U;
+  L4virtio::Driver::Virtqueue _nnq;
+  l4_uint32_t _irq_status_shadow = 0;
 
+public:
   void init_device(Vdev::Device_lookup const *devs,
                    Vdev::Dt_node const &self) override
   {
-    auto irq_ctl = self.find_irq_parent();
-    if (!irq_ctl.is_valid())
-      L4Re::chksys(-L4_ENODEV, "No interupt handler found for virtio proxy.\n");
+    int err = dev()->event_connector()->init_irqs(devs, self);
+    if (err < 0)
+      Dbg(Dbg::Dev, Dbg::Warn, "virtio")
+        .printf("Cannot connect virtio IRQ: %d\n", err);
 
-    // XXX need dynamic cast for Ref_ptr here
-    auto *ic = dynamic_cast<Gic::Ic *>(devs->device_from_node(irq_ctl).get());
+    int sz;
+    auto const *prop = self.get_prop<fdt32_t>("l4vmm,no-notify", &sz);
+    if (prop && sz > 0)
+      _nnq_id = fdt32_to_cpu(*prop);
 
-    if (!ic)
-      L4Re::chksys(-L4_ENODEV, "Interupt handler for virtio proxy has bad type.\n");
-
-    _irq.rebind(ic, ic->dt_get_interrupt(self, 0));
-  }
-
-  l4_uint32_t read(unsigned reg, char, unsigned)
-  { return _dev.read(reg); }
-
-  void write(unsigned reg, char, l4_uint32_t value, unsigned)
-  {
-    switch (reg >> 2)
-      {
-      case 16:
-        // -- network specific
-        if (_dev.selected_queue() == 1)
-          {
-            auto *q = _dev.queue_config(1);
-            _txq.setup(q->num, q->align,
-                       _iommu->access(L4virtio::Ptr<void>(value * _dev.page_size())));
-          }
-        break;
-
-      case 20:
-        // -- network specific
-        _txq.no_notify_host(true);
-        break;
-
-      case 25:
-        _irq.ack();
-        break;
-      }
-
-    _dev.write(reg, value);
+    auto *ram = devs->ram().get();
+    L4Re::chksys(_dev.register_ds(ram->ram(), 0, ram->size(),
+                                  ram->vm_start()),
+                 "Registering RAM for virtio proxy");
   }
 
   template<typename REG>
-  void register_obj(REG *registry, L4::Cap<L4virtio::Device> host,
-                    L4::Cap<L4Re::Dataspace> ram, l4_addr_t ram_base)
+  void register_irq(REG *registry, L4::Cap<L4virtio::Device> host)
   {
-    L4::Cap<L4::Irq> guest_irq = L4Re::chkcap(registry->register_irq_obj(this));
+    L4::Cap<L4::Irq> guest_irq = L4Re::chkcap(registry->register_irq_obj(this),
+                                              "Registering guest IRQ in proxy");
 
     _dev.driver_connect(host, guest_irq);
-    L4Re::chksys(_dev.register_ds(ram, 0, ram->size(), ram_base));
   }
 
   void handle_irq()
-  {  _irq.inject(); }
+  {
+    Virtio::Event_set ev;
+    // FIXME: our L4 transport supports just a single IRQ, so trigger event 1
+    //        for all queues until we implemented per-queue events.
+    //        And use event index 0 for config events.
+    auto s = 1; // FIXME: correctly set irq_status in devices: _dev.irq_status();
+    if (s & 1)
+      ev.set(1); // set event index 1 for all queue events
+
+    if (s & 2)
+      ev.set(0);
+
+    _irq_status_shadow |= 1;
+    if (_dev.device_config()->irq_status != _irq_status_shadow)
+      dev()->set_irq_status(_irq_status_shadow);
+
+    dev()->event_connector()->send_events(cxx::move(ev));
+  }
+
+  void virtio_irq_ack(unsigned val)
+  {
+    _irq_status_shadow &= ~val;
+    if (_dev.device_config()->irq_status != _irq_status_shadow)
+      dev()->set_irq_status(_irq_status_shadow);
+
+    dev()->event_connector()->clear_events(val);
+  }
+
+  l4virtio_config_hdr_t *mmio_local_addr() const
+  { return _dev.device_config(); }
+
+  l4_size_t mapped_mmio_size() const
+  { return l4_round_page(_dev.config_size()); }
+
+  L4::Cap<L4Re::Dataspace> mmio_ds() const
+  { return _dev.config_ds(); }
+
+  l4virtio_config_hdr_t *virtio_cfg()
+  { return _dev.device_config(); }
+
+  void virtio_device_config_written(unsigned)
+  {}
+
+  L4virtio::Device::Config_queue *current_virtqueue_config()
+  {
+    unsigned qn = _dev.device_config()->queue_sel;
+    if (qn >= _dev.device_config()->num_queues)
+      return nullptr;
+
+    return _dev.queue_config(qn);
+  }
+
+  void virtio_queue_ready(unsigned ready)
+  {
+    auto *cfg = _dev.device_config();
+    unsigned qn = cfg->queue_sel;
+
+    if (qn >= cfg->num_queues)
+      return;
+
+    if (ready != 1 && ready != 0)
+      return;
+
+    auto *q = _dev.queue_config(qn);
+    if (ready == q->ready)
+      return;
+
+    q->ready = ready;
+
+    _dev.config_queue(qn);
+  }
+
+  void virtio_queue_notify(unsigned q)
+  { _dev.virtio_queue_notify(q); }
+
+  void virtio_set_status(l4_uint32_t status)
+  { _dev.set_status(status); }
 
 private:
-  Vmm::Irq_sink _irq;
+  DEV *dev() { return static_cast<DEV *>(this); }
 
   L4virtio::Driver::Device _dev;
 };
 
-struct Virtio_proxy_mmio : Virtio_proxy, Vmm::Mmio_device_t<Virtio_proxy_mmio>
+class Virtio_proxy_mmio
+: public Virtio_proxy<Virtio_proxy_mmio>,
+  public Vmm::Ro_ds_mapper_t<Virtio_proxy_mmio>,
+  public Virtio::Mmio_connector<Virtio_proxy_mmio>
 {
-  Virtio_proxy_mmio(Vmm::Vm_ram *iommu)
-  : Virtio_proxy(iommu)
-  {}
+public:
+  Virtio::Event_connector_irq *event_connector() { return &_evcon; }
+
+private:
+  Virtio::Event_connector_irq _evcon;
 };
 
 }

@@ -410,11 +410,12 @@ l4_thread_vcpu_resume_start_u(l4_utcb_t *utcb) L4_NOTHROW;
  *
  * To resume into another address space the capability to the target task
  * must be set in the vCPU-state, with all lower bits in the task
- * capability cleared. The kernel adds the #L4_SYSF_SEND flag to this field
- * to indicate that the capability has been referenced in the kernel.
- * Consecutive resumes will not reference the task capability again until
- * all bits are cleared again. To release a task use the different task
- * capability or use an invalid capability with the #L4_SYSF_REPLY flag set.
+ * capability cleared (see #L4_CAP_MASK). The kernel adds the
+ * #L4_SYSF_SEND flag to this field to indicate that the capability has been
+ * referenced in the kernel. Consecutive resumes will not reference the task
+ * capability again until all bits are cleared again. To release a task use the
+ * different task capability or use an invalid capability with the
+ * #L4_SYSF_REPLY flag set.
  *
  * \see l4_vcpu_state_t
  */
@@ -445,8 +446,7 @@ l4_thread_vcpu_resume_commit_u(l4_cap_idx_t thread,
  *
  * This function enables the vCPU feature of the `thread` if `vcpu_state`
  * is set to a valid kernel-user-memory address, or disables the vCPU feature
- * if `vcpu_state` is 0.
- *
+ * if `vcpu_state` is 0. (Disable: optional, currently unsupported.)
  */
 L4_INLINE l4_msgtag_t
 l4_thread_vcpu_control(l4_cap_idx_t thread, l4_addr_t vcpu_state) L4_NOTHROW;
@@ -623,6 +623,7 @@ enum L4_thread_ops
   L4_THREAD_X86_GDT_OP                = 0x10UL, /**< Gdt */
   L4_THREAD_ARM_TPIDRURO_OP           = 0x10UL, /**< Set TPIDRURO register */
   L4_THREAD_AMD64_SET_SEGMENT_BASE_OP = 0x12UL, /**< Set segment base */
+  L4_THREAD_AMD64_GET_SEGMENT_INFO_OP = 0x13UL, /**< Get segment information */
   L4_THREAD_OPCODE_MASK               = 0xffff, /**< Mask for opcodes */
 };
 

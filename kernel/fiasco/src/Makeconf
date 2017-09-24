@@ -14,6 +14,7 @@ CHECKCXX        = $(shell if $(CXX) $(1) -S -o /dev/null -xc++ /dev/null \
 eval_impl	= $(if $($(1)_IMPL),$($(1)_IMPL),$(1))
 
 include $(objbase)/globalconfig.out
+
 # use patsubst here to prevent confusion of syntax highlighting editors :-)
 CONFIG_XARCH	:= $(patsubst "%",%,$(CONFIG_XARCH))
 CONFIG_ABI	:= $(patsubst "%",%,$(CONFIG_ABI))
@@ -244,18 +245,14 @@ ifeq ($(CC_TYPE),gcc)
 endif
 
 
-CC_WHITELIST-gcc     := 4.5 4.6 4.7 4.8 4.9 5 6
-CC_WHITELIST-clang   := 3.5 3.6 3.7 3.8
+CC_WHITELIST-gcc     := 4.7 4.8 4.9 5 6 7
+CC_WHITELIST-clang   := 3.6 3.7 3.8 3.9 4.0
 CC_WHITELIST         := $(CC_WHITELIST-$(CC_TYPE))
 
 CC_BLACKLIST-arm-gcc   := 4.8.0 4.8.1 4.8.2
 
 # CC_LAST_BROKEN-SEQ* specifies the last broken version
 # using the sequential version
-#
-# Memory write back issue I'm seeing with those versions, disappeared
-# with more recent builds.
-CC_LAST_BROKEN-SEQ-gcc-6 := 20160802
 
 CC_LAST_BROKEN-SEQ-gcc   := $(CC_LAST_BROKEN-SEQ-gcc-$(CCVER_MAJOR))
 

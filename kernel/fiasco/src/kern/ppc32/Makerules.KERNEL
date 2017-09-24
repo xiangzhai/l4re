@@ -1,4 +1,5 @@
 # -*- makefile -*-
+# vim:se ft=make:
 
 exception.o: $(TCBOFFSET)
 phys_mem.o: $(TCBOFFSET)
@@ -16,22 +17,24 @@ phys_mem.o: $(TCBOFFSET)
 
 -include .kernel.ppc32.lds.d
 
-$(KERNEL).image: kernel.ppc32.lds $(CRT0) $(OBJ_KERNEL) $(LIBK) $(LIBDISASM) libdrivers.a $(ABI) $(LIBUART) $(CXXLIB) $(MINILIBC) libgluedriverslibc.a 
+$(KERNEL).debug: kernel.ppc32.lds $(CRT0) $(OBJ_KERNEL) $(LIBK) $(LIBDISASM) libdrivers.a $(ABI) $(LIBUART) $(CXXLIB) $(MINILIBC) libgluedriverslibc.a 
 	$(LINK_MESSAGE)
 	$(VERBOSE)$(LD) $(LDFLAGS) -m $(LD_EMULATION) -N -T $< -o $@ $(filter-out $<,$+) $(LIBGCC)
 	$(call ADD_CONFIGFILE,$@)
 
-$(KERNEL): $(KERNEL).image
+# Remove '$(RM) fiasco.image' after a transition period -- Added late 2016
+$(KERNEL): $(KERNEL).debug
 	$(LINK_MESSAGE)
 	$(VERBOSE)$(STRIP) $< -o $@
-	chmod 755 $@
+	$(VERBOSE)$(OBJCOPY) --add-gnu-debuglink=$< $@
+	$(VERBOSE)chmod 755 $@
+	$(VERBOSE)$(RM) fiasco.image
 
-#	$(OBJCOPY) -O binary $@ fiasco	
-
-Symbols: $(KERNEL).image
-	$(NM) $(KERNEL).image | c++filt | sort > $@.new
-	mv $@.new $@
-	chmod 755 $@
+Symbols: $(KERNEL).debug
+	$(COMP_MESSAGE)
+	$(VERBOSE)$(NM) $(KERNEL).debug | c++filt | sort > $@.new
+	$(VERBOSE)mv $@.new $@
+	$(VERBOSE)chmod 644 $@
 
 
 clean-KERNEL:

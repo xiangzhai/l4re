@@ -131,6 +131,10 @@ namespace Mips
            || (r == Cp0_cmgcr_base)
            || (r == Cp0_load_linked_addr)
            || (r == Cp0_watch_lo)
+           || (r == Cp0_perf_counter_0)
+           || (r == Cp0_perf_counter_1)
+           || (r == Cp0_perf_counter_2)
+           || (r == Cp0_perf_counter_3)
            || (r == Cp0_xcontext)
            || (r == Cp0_tag_lo_0)
            || (r == Cp0_err_epc)
@@ -185,7 +189,15 @@ namespace Mips
            || (r == Cp0_config_5)
            || (r == Cp0_config_6)
            || (r == Cp0_config_7)
-           || (r == Cp0_watch_hi);
+           || (r == Cp0_watch_hi)
+           || (r == Cp0_perf_ctl_0)
+           || (r == Cp0_perf_counter_0)
+           || (r == Cp0_perf_ctl_1)
+           || (r == Cp0_perf_counter_1)
+           || (r == Cp0_perf_ctl_2)
+           || (r == Cp0_perf_counter_2)
+           || (r == Cp0_perf_ctl_3)
+           || (r == Cp0_perf_counter_3);
   }
 
   ALWAYS_INLINE constexpr bool is_32bit(unsigned reg, unsigned sel)
@@ -253,7 +265,7 @@ namespace Mips
   { __asm__ __volatile__ ("ehb"); }
 
   inline void synci(void const *addr)
-  { __asm__ __volatile__ ("synci %0" : : "m"(addr)); }
+  { __asm__ __volatile__ ("synci 0(%0)" : : "r"(addr) : "memory"); }
 
   inline void tlbr()
   { __asm__ __volatile__ ("tlbr"); }
@@ -471,7 +483,7 @@ IMPLEMENTATION [mips]:
 #include "asm_mips.h"
 #include "alternatives.h"
 
-/// Unblock external inetrrupts
+/// Unblock external interrupts
 IMPLEMENT static inline ALWAYS_INLINE
 void Proc::sti()
 {

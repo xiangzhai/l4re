@@ -70,7 +70,7 @@ Ipc_sender_base::handle_shortcut(Syscall_frame *dst_regs,
         // also: no shortcut for alien threads, they need to see the
         // after-syscall exception
         && !(receiver->state()
-          & (Thread_ready_mask | Thread_alien))
+          & (Thread_drq_wait | Thread_ready_mask | Thread_alien))
         && !rq.schedule_in_progress))) // no schedule in progress
     {
       // we don't need to manipulate the state in a safe way
@@ -96,12 +96,8 @@ Ipc_sender_base::handle_shortcut(Syscall_frame *dst_regs,
       //
 
       Mword *esp = reinterpret_cast<Mword*>(Entry_frame::to_entry_frame(dst_regs));
-
-      // set return address of irq_thread
-      *--esp = reinterpret_cast<Mword>(fast_ret_from_irq);
-
-      // XXX set stack pointer of irq_thread
       receiver->set_kernel_sp(esp);
+      receiver->prepare_switch_to(fast_ret_from_irq);
 
       // directly switch to the interrupt thread context and go out
       // fast using fast_ret_from_irq (implemented in assembler).

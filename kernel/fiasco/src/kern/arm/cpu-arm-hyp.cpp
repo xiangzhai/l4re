@@ -1,4 +1,6 @@
-IMPLEMENTATION [arm && hyp]:
+IMPLEMENTATION [arm && cpu_virt]:
+
+#include "feature.h"
 
 EXTENSION class Cpu
 {
@@ -16,14 +18,28 @@ public:
     Hcr_tidcp = 1 << 20,
     Hcr_tactlr = 1 << 21,
     Hcr_tge  = 1 << 27,
-
-    Hcr_must_set_bits = Hcr_vm | Hcr_swio
-                      | Hcr_amo | Hcr_imo | Hcr_fmo
-                      | Hcr_tidcp | Hcr_tsc | Hcr_tactlr
   };
 };
 
-IMPLEMENT_OVERRIDE inline void Cpu::init_mmu() {}
+KIP_KERNEL_FEATURE("arm:hyp");
+
+//--------------------------------------------------------------------
+IMPLEMENTATION [arm && cpu_virt && 32bit]:
+
+EXTENSION class Cpu
+{
+public:
+  enum : Unsigned32
+  {
+    Hcr_must_set_bits = Hcr_vm | Hcr_swio | Hcr_ptw
+                      | Hcr_amo | Hcr_imo | Hcr_fmo
+                      | Hcr_tidcp | Hcr_tsc | Hcr_tactlr,
+
+    Hcr_host_bits = Hcr_must_set_bits | Hcr_dc | Hcr_tge
+  };
+};
+
+IMPLEMENT_OVERRIDE inline void Cpu::init_mmu(bool) {}
 
 IMPLEMENT_OVERRIDE
 void
@@ -47,7 +63,7 @@ Cpu::init_hyp_mode()
 
         "mcr p15, 4, %1, c1, c1, 0 \n"
         : :
-        "r" (Page::Ttbcr_bits | (1 << 6)),
+        "r" ((1UL << 31) | (Page::Tcr_attribs << 8) | (1 << 6)),
         "r" (Hcr_tge | Hcr_dc | Hcr_must_set_bits)
         : "r0" );
 

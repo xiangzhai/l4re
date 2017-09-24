@@ -37,18 +37,15 @@ Region_map::init()
 {
   extern char __L4_KIP_ADDR__[];
 
-  L4::Kip::Mem_desc *md = L4::Kip::Mem_desc::first(__L4_KIP_ADDR__);
-  unsigned long cnt = L4::Kip::Mem_desc::count(__L4_KIP_ADDR__);
-
-  for (L4::Kip::Mem_desc *m = md; m < md + cnt; ++m)
+  for (auto const &m: L4::Kip::Mem_desc::all(__L4_KIP_ADDR__))
     {
-      if (!m->is_virtual())
+      if (!m.is_virtual())
 	continue;
 
-      l4_addr_t start = m->start();
-      l4_addr_t end = m->end();
+      l4_addr_t start = m.start();
+      l4_addr_t end = m.end();
       
-      switch (m->type())
+      switch (m.type())
 	{
 	case L4::Kip::Mem_desc::Conventional:
 	  set_limits(start, end);
@@ -188,7 +185,7 @@ Region_map::op_io_page_fault(L4::Io_pager::Rights,
                              L4::Ipc::Opt<L4::Ipc::Snd_fpage> &)
 {
   Err().printf("IO-port-fault: port=0x%lx size=%d pc=0x%lx\n",
-               l4_fpage_page(io_pfa), 1 << l4_fpage_size(io_pfa), pc);
+               l4_fpage_ioport(io_pfa), 1 << l4_fpage_size(io_pfa), pc);
   result = ~0;
   return -1;
 }

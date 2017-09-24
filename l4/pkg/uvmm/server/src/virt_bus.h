@@ -16,6 +16,8 @@
 #include <l4/re/dataspace>
 #include <l4/re/error_helper>
 #include <l4/re/util/cap_alloc>
+#include <l4/re/inhibitor>
+#include <l4/vbus/vbus_inhibitor.h>
 
 #include "debug.h"
 #include "irq.h"
@@ -29,9 +31,6 @@ class Guest;
 
 class Virt_bus : public cxx::Ref_obj
 {
-private:
-  Dbg dbg;
-
 public:
   struct Devinfo
   {
@@ -41,11 +40,11 @@ public:
   };
 
   explicit Virt_bus(L4::Cap<L4vbus::Vbus> bus)
-  : dbg(Dbg::Vm_bus, "vmbus"), _bus(bus)
+  : _bus(bus)
   {
     if (!bus.is_valid())
       {
-        Dbg(Dbg::Warn, "vmbus")
+        Dbg(Dbg::Dev, Dbg::Warn, "vmbus")
           .printf("'vbus' capability not found. Hardware access not possible for VM.\n");
         return;
       }
@@ -64,6 +63,15 @@ public:
   { return _bus.is_valid(); }
 
   Devinfo *find_unassigned_dev(Vdev::Dt_node const &node);
+  Devinfo const *find_device(Vdev::Device const *proxy) const
+  {
+    for (auto const &i: _devices)
+      {
+        if (i.proxy == proxy)
+          return &i;
+      }
+    return nullptr;
+  }
 
   L4::Cap<L4Re::Dataspace> io_ds() const
   { return L4::cap_reinterpret_cast<L4Re::Dataspace>(_bus); }

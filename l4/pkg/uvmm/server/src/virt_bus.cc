@@ -28,18 +28,44 @@ Virt_bus::scan_bus()
 Virt_bus::Devinfo *
 Virt_bus::find_unassigned_dev(Vdev::Dt_node const &node)
 {
+  if (!node.has_compatible())
+    return nullptr;
+
   int num_compatible = node.stringlist_count("compatible");
 
-  for (int i = 0; i < num_compatible; ++i)
+  for (int c = 0; c < num_compatible; ++c)
     {
-      auto *hid = node.stringlist_get("compatible", i, nullptr);
+      auto *hid = node.stringlist_get("compatible", c, nullptr);
+      assert(hid);
 
       for (auto &iodev: _devices)
         if (!iodev.proxy && iodev.io_dev.is_compatible(hid) > 0)
-          return &iodev;
+          {
+            auto *regs = node.get_prop<fdt32_t>("reg", nullptr);
+            if (!regs)
+              return &iodev;
+
+            for (unsigned i = 0; i < iodev.dev_info.num_resources; ++i)
+              {
+                l4vbus_resource_t res;
+                L4Re::chksys(iodev.io_dev.get_resource(i, &res));
+
+                char const *resname = reinterpret_cast<char const *>(&res.id);
+
+                if (res.type != L4VBUS_RESOURCE_MEM || strncmp(resname, "reg0", 4))
+                  continue;
+
+                l4_uint64_t base, size;
+                if (node.get_reg_val(0, &base, &size) < 0)
+                  continue;
+
+                if (base == res.start)
+                  return &iodev;
+              }
+          }
     }
 
-  return 0;
+  return nullptr;
 }
 
 } // namespace

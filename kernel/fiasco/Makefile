@@ -31,6 +31,10 @@ builddir:
 		exit 1;					\
 	fi
 	@$(call buildmakefile,$(BUILDDIR))
+	@if [ -f "$(TEMPLDIR)/globalconfig.out.$(T)" ]; then		\
+		echo "Copying template configuration $(T)";		\
+		cp $(TEMPLDIR)/globalconfig.out.$(T) $(BUILDDIR)/globalconfig.out;		\
+	fi
 	@echo "done."
 endif
 
@@ -79,9 +83,9 @@ man:
 	set -e; for i in $(MANSUBDIRS); do $(MAKE) -C $$i; done
 
 fiasco.builddir.create:
-	[ -e $(DFLBUILDDIR)/Makefile ] ||			 \
+	@[ -e $(DFLBUILDDIR)/Makefile ] ||			 \
 		($(call buildmakefile,$(DFLBUILDDIR)))
-	[ -f $(DFLBUILDDIR)/globalconfig.out ] || {		 \
+	@[ -f $(DFLBUILDDIR)/globalconfig.out ] || {		 \
 		cp  $(TEMPLDIR)/globalconfig.out.$(DFL_TEMPLATE) \
 			$(DFLBUILDDIR)/globalconfig.out;	 \
 		$(MAKE) -C $(DFLBUILDDIR) olddefconfig;	         \

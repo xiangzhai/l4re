@@ -83,7 +83,7 @@ processor_IMPL		:= processor processor-ia32
 #
 # KERNEL subsystem
 #
-KERNEL			:= fiasco.image
+KERNEL			:= fiasco.debug
 VPATH			+= kern/$(CONFIG_XARCH) kern/ia32/32 kern/ia32 kern
 PRIVATE_INCDIR		+= kern/$(CONFIG_XARCH) kern/ia32/32 kern/ia32 kern
 
@@ -122,7 +122,7 @@ map_util_IMPL		:= map_util map_util-mem map_util-io map_util-objs
 mem_layout_IMPL		:= mem_layout mem_layout-ia32 mem_layout-ia32-32
 mem_space_IMPL		:= mem_space mem_space-user mem_space-ia32
 mem_unit_IMPL		:= mem_unit-ia32
-paging_IMPL		:= paging-ia32-32 paging-ia32 paging
+paging_IMPL		:= paging paging-ia32-32 paging-ia32
 perf_cnt_IMPL		:= perf_cnt perf_cnt-ia32
 pic_IMPL		:= pic pic-i8259
 pit_IMPL		:= pit-i8254
@@ -301,7 +301,7 @@ INTERFACES_CXXLIB	:= paranoia s_cruft
 LIBK		:= libk.a
 VPATH		+= lib/libk/$(CONFIG_XARCH) lib/libk
 PRIVATE_INCDIR  += lib/libk/$(CONFIG_XARCH) lib/libk
-INTERFACES_LIBK	:= atomic lock_guard auto_ptr std_macros
+INTERFACES_LIBK	:= atomic lock_guard std_macros
 CSRC_LIBK	+= gcc_lib.c
 CXXSRC_LIBK     += construction.cc
 

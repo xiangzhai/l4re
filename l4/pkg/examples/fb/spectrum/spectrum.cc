@@ -128,15 +128,23 @@ int main(void)
   if (!(fbmem_vaddr = gfb.attach_buffer()))
     return 3;
 
-   bpp = fbi.pixel_info.bits_per_pixel();
+  bpp = fbi.pixel_info.bits_per_pixel();
 
-   if (event.init<L4::Semaphore>(L4::cap_dynamic_cast<L4Re::Event>(gfb.goos())))
-     return 4;
+  if (auto ev = L4::cap_dynamic_cast<L4Re::Event>(gfb.goos()))
+    {
+      if (event.init<L4::Semaphore>(ev))
+        return 4;
 
-   Ev_loop event_hdl(L4::cap_cast<L4::Semaphore>(event.irq()), 4);
-   if (!event_hdl.attached())
-     return 5;
-   event_hdl.start();
+      // use new so that Ev_loop survives this block
+      Ev_loop *event_hdl;
+      event_hdl = new Ev_loop(L4::cap_cast<L4::Semaphore>(event.irq()), 4);
+      if (!event_hdl->attached())
+        return 5;
+      event_hdl->start();
+    }
+  else
+    printf("Goos cap does not support event protocol, running without.\n");
+
 #else
   if (l4re_util_video_goos_fb_setup_name(&gfb, "fb"))
     return 1;
@@ -167,7 +175,8 @@ int main(void)
             unsigned g = color_val(h, 1 * t, (y + (cnt >> 1)) % h);
             unsigned b = color_val(w, 2 * t, (w - x + cnt) % w);
 
-            //printf("%3d: %3d:%3d:%3d\n", x, r, g, b);
+            if (0)
+              printf("%3d: %3d:%3d:%3d\n", x, r, g, b);
             put_pixel(x, y, (r << 0) | (g << 8) | (b << 16));
           }
 

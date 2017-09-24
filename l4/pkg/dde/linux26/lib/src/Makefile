@@ -52,6 +52,7 @@ PC_LIBS_$(PC_FILENAME)_pci   := $(patsubst lib%.a,-l%,$(TARGET_DDE_PCI))
 PC_LIBS_$(PC_FILENAME)_sound := $(patsubst lib%.a,-l%,$(TARGET_DDE_SOUND))
 PC_LIBS_$(PC_FILENAME)_char  := $(patsubst lib%.a,-l%,$(TARGET_DDE_CHAR))
 PC_LIBS_$(PC_FILENAME)_fs := $(patsubst lib%.a,-l%,$(TARGET_DDE_FS))
+REQUIRES_LIBS := ddekit
 
 TARGET     = $(TARGET_DDE) $(TARGET_DDE_NET) $(TARGET_DDE_BLOCK) $(TARGET_DDE_SOUND) $(TARGET_DDE_CHAR) $(TARGET_DDE_FS) $(TARGET_DDE_PCI)
 LINK_INCR  = $(TARGET_DDE) $(TARGET_DDE_BLOCK)

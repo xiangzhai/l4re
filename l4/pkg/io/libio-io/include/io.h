@@ -64,11 +64,23 @@ l4io_release_irq(int irqnum, l4_cap_idx_t irq_cap);
 /**
  * \brief Request an IO memory region.
  * \ingroup api_l4io
- * \param phys   Physical address of the I/O memory region
- * \param size   Size of the region in Bytes, granularity pages.
- * \param flags  See #l4io_iomem_flags_t
- * \retval virt  Virtual address the region is available at.
- * \return 0 on success, <0 on error
+ * \param          phys   Physical address of the I/O memory region
+ * \param          size   Size of the region in Bytes, granularity pages.
+ * \param          flags  See #l4io_iomem_flags_t
+ * \param[in, out] virt   Virtual address where the IO memory region should be
+ *                        mapped to. If the caller passes '0' a region in the
+ *                        caller's address space is searched and the virtual
+ *                        address is returned.
+ *
+ * \retval 0                  Success.
+ * \retval -L4_ENOENT         No area in the caller's address space could be
+ *                            found to map the IO memory region.
+ * \retval -L4_EPERM          Operation not allowed.
+ * \retval -L4_EINVAL         Invalid value.
+ * \retval -L4_EADDRNOTAVAIL  The requested virtual address is not available.
+ * \retval -L4_ENOMEM         The requested IO memory region could not be
+ *                            allocated.
+ * \retval <0                 IPC errors.
  *
  * \note This function uses L4Re functionality to reserve a part of the
  *       virtual address space of the caller.
@@ -78,13 +90,22 @@ l4io_request_iomem(l4_addr_t phys, unsigned long size, int flags,
                    l4_addr_t *virt);
 
 /**
- * \brief Request an IO memory region and map to a specified region.
+ * \brief Request an IO memory region and map it to a specified region.
  * \ingroup api_l4io
  * \param phys   Physical address of the I/O memory region
  * \param virt   Virtual address.
  * \param size   Size of the region in Bytes, granularity pages.
  * \param flags  See #l4io_iomem_flags_t
- * \return 0 on success, <0 on error
+ *
+ * \retval 0                  Success.
+ * \retval -L4_ENOENT         No area could be found to map the IO memory
+ *                            region.
+ * \retval -L4_EPERM          Operation not allowed.
+ * \retval -L4_EINVAL         Invalid value.
+ * \retval -L4_EADDRNOTAVAIL  The requested virtual address is not available.
+ * \retval -L4_ENOMEM         The requested IO memory region could not be
+ *                            allocated.
+ * \retval <0                 IPC errors.
  *
  * \note This function uses L4Re functionality to reserve a part of the
  *       virtual address space of the caller.
@@ -207,11 +228,13 @@ l4io_lookup_resource(l4io_device_handle_t devhandle,
  * \brief Request IO memory.
  * \ingroup api_l4io
  *
- * \param  devhandle Device handle.
- * \retval reshandle Resource handle, input and ouput, return next resource
- *                   handle
+ * \param         devhandle  Device handle.
+ * \param[in,out] reshandle  Resource handle from which IO memory should be
+ *                           requested. Upon successfull completion 'reshandle'
+ *                           points to the device's next resource.
  *
- * \return 0 on error, virtual address otherwise
+ * \retval 0   An error occured. The value of 'reshandle' is undefined.
+ * \retval >0  The virtual address of the IO memory mapping.
  */
 L4_CV l4_addr_t L4_EXPORT
 l4io_request_resource_iomem(l4io_device_handle_t devhandle,

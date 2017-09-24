@@ -24,6 +24,11 @@ int libpng_render_mem(void *png_data, void *dst_buf,
                       unsigned png_data_size, unsigned dst_size,
                       l4re_video_view_info_t *dst_descr);
 
+int libpng_render_mem2(void *png_data, void *dst_buf,
+                       unsigned png_data_size, unsigned dst_size,
+                       int offset_x, int offset_y,
+                       l4re_video_view_info_t *dst_descr);
+
 int libpng_render_file(const char *filename, void *dst_buf,
                        unsigned dst_size, l4re_video_view_info_t *dst_descr);
 

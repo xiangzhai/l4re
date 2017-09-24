@@ -13,6 +13,13 @@
 #include "device_tree.h"
 #include "debug.h"
 
+namespace Vmm {
+  class Guest;
+  class Ram_ds;
+  class Virt_bus;
+  class Cpu_dev_array;
+}
+
 namespace Vdev {
 
 struct Dt_error_hdl
@@ -64,8 +71,11 @@ public:
   : BASE(cxx::forward<Args>(args)...), _ref_cnt(0)
   {}
 
-  void add_ref() const noexcept override { ++_ref_cnt; }
-  int remove_ref() const noexcept override { return --_ref_cnt; }
+  void add_ref() const noexcept override
+  { __atomic_add_fetch(&_ref_cnt, 1, __ATOMIC_ACQUIRE); }
+
+  int remove_ref() const noexcept override
+  { return __atomic_sub_fetch(&_ref_cnt, 1, __ATOMIC_RELEASE); }
 };
 
 template< typename T, typename... Args >
@@ -87,12 +97,15 @@ struct Device : public virtual Dev_ref
 inline Device::~Device() = default;
 
 /**
- * Interface with functions for finding device objects through
- * device tree references.
+ * Interface with functions for finding device objects.
  */
 struct Device_lookup
 {
   virtual cxx::Ref_ptr<Device> device_from_node(Dt_node const &node) const = 0;
+  virtual Vmm::Guest *vmm() const = 0;
+  virtual cxx::Ref_ptr<Vmm::Ram_ds> ram() const = 0;
+  virtual cxx::Ref_ptr<Vmm::Virt_bus> vbus() const = 0;
+  virtual cxx::Ref_ptr<Vmm::Cpu_dev_array> cpus() const = 0;
 };
 
 

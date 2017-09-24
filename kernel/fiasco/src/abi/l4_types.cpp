@@ -384,14 +384,9 @@ public:
     Error        = 0x8000,
 
     /**
-     * The IPC operation did cross CPU boundaries.
-     */
-    X_cpu        = 0x4000,
-
-    /**
      * Combination of flags that are not pass through.
      */
-    Rcv_flags    = Error | X_cpu,
+    Rcv_flags    = Error,
   };
 
   /**
@@ -665,12 +660,21 @@ public:
 };
 
 //----------------------------------------------------------------------------
-INTERFACE [arm]:
+INTERFACE [arm && 32bit]:
 
 EXTENSION class L4_exception_ipc
 {
 public:
   enum { Msg_size = 21 };
+};
+
+//----------------------------------------------------------------------------
+INTERFACE [arm && 64bit]:
+
+EXTENSION class L4_exception_ipc
+{
+public:
+  enum { Msg_size = 39 };
 };
 
 //----------------------------------------------------------------------------

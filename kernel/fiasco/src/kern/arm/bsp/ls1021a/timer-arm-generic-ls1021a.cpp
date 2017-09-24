@@ -1,12 +1,12 @@
 // ------------------------------------------------------------------------
-IMPLEMENTATION [arm && ls1021a && arm_generic_timer]:
+IMPLEMENTATION [arm && pf_ls1021a && arm_generic_timer]:
 
 PUBLIC static
 unsigned Timer::irq()
 {
   switch (Gtimer::Type)
     {
-    case Generic_timer::Physical:
+    case Generic_timer::Physical: return 29;
     case Generic_timer::Virtual: return 27;
     case Generic_timer::Hyp:     return 26;
     };

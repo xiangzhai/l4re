@@ -152,7 +152,7 @@ struct GateAgent
 		 */
 		gate_irq = L4Re::Util::cap_alloc.alloc<L4::Irq>();
 		//_check(!gate_irq.valid(), "error allocating gate2");
-		tag = L4Re::Env::env()->factory()->create_irq(gate_irq);
+		tag = L4Re::Env::env()->factory()->create(gate_irq);
 		if (l4_error(tag)) {
 			enter_kdebug("IRQ creation error");
 		}

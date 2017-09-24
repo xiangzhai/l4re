@@ -656,11 +656,17 @@ Socket_file::recv(void *data, size_t size, int flags) throw()
 
 ssize_t
 Socket_file::readv(const struct iovec *vec, int iovcnt) throw()
-{ return recvfrom(vec[0].iov_base, vec[0].iov_len, 0, 0, 0); }
+{
+  if (iovcnt > 1) printf("Socket_file::readv: Implement iovcnt>1\n");
+  return recvfrom(vec[0].iov_base, vec[0].iov_len, 0, 0, 0);
+}
 
 ssize_t
 Socket_file::writev(const struct iovec *vec, int iovcnt) throw()
-{ return send(vec[0].iov_base, vec[0].iov_len, 0); }
+{
+  if (iovcnt > 1) printf("Socket_file::writev: Implement iovcnt>1\n");
+  return send(vec[0].iov_base, vec[0].iov_len, 0);
+}
 
 
 }

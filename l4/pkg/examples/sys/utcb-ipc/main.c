@@ -21,6 +21,7 @@
 #include <l4/sys/utcb.h>
 #include <l4/re/env.h>
 #include <l4/re/c/util/cap_alloc.h>
+#include <l4/util/thread.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -46,7 +47,7 @@ static void thread1(void)
     }
 }
 
-static void thread2(void)
+L4UTIL_THREAD_STATIC_FUNC(thread2)
 {
   l4_msgtag_t tag;
   l4_msg_regs_t mr;
@@ -64,6 +65,8 @@ static void thread2(void)
         printf("%c", (char)mr.mr[i]);
       printf("\n");
     }
+
+  __builtin_trap();
 }
 
 int main(void)

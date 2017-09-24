@@ -903,7 +903,7 @@ L4::Cap<L4::Thread> allocate_new_thread()
 
     if (dbg_vcap) VG_(debugLog)(1, "vcap", "vcap cap: %lx\n", ret.cap());
 
-    l4_msgtag_t tag = L4Re::Env::env()->factory()->create_thread(ret);
+    l4_msgtag_t tag = L4Re::Env::env()->factory()->create(ret);
     if (l4_msgtag_has_error(tag)) {
         VG_(debugLog)(0, "vcap", "Error creating vcap thread from factory.\n");
         VG_(exit)(1);
@@ -994,7 +994,7 @@ void main_thread_modify_rm(L4::Cap<void> cap)
 void vrm_track_utcb_area()
 {
     l4_fpage_t fp = L4Re::Env::env()->utcb_area();
-    Addr start = l4_fpage_page(fp) << L4_PAGESHIFT;
+    Addr start = l4_fpage_memaddr(fp);
     Addr end = start + (l4_fpage_size(fp) << L4_PAGESHIFT);
     VG_(debugLog)(4, "vcap", "TRACK(%lx, %lx, 1, 1, 0, 0)\n", start, end-start);
     VG_TRACK(new_mem_startup, start, end-start, True, True, False, 0);

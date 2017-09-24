@@ -40,28 +40,25 @@ Region_map::init()
 {
   extern char __L4_KIP_ADDR__[];
 
-  L4::Kip::Mem_desc *md = L4::Kip::Mem_desc::first(__L4_KIP_ADDR__);
-  unsigned long cnt = L4::Kip::Mem_desc::count(__L4_KIP_ADDR__);
-
-  for (L4::Kip::Mem_desc *m = md; m < md + cnt; ++m)
+  for (auto const &m: L4::Kip::Mem_desc::all(__L4_KIP_ADDR__))
     {
-      if (!m->is_virtual())
-	continue;
+      if (!m.is_virtual())
+        continue;
 
-      l4_addr_t start = m->start();
-      l4_addr_t end = m->end();
-      
-      switch (m->type())
-	{
-	case L4::Kip::Mem_desc::Conventional:
-	  set_limits(start, end);
-	  break;
-	case L4::Kip::Mem_desc::Reserved:
-	  attach_area(start, end - start + 1, L4Re::Rm::Reserved);
-	  break;
-	default:
-	  break;
-	}
+      l4_addr_t start = m.start();
+      l4_addr_t end = m.end();
+
+      switch (m.type())
+        {
+        case L4::Kip::Mem_desc::Conventional:
+          set_limits(start, end);
+          break;
+        case L4::Kip::Mem_desc::Reserved:
+          attach_area(start, end - start + 1, L4Re::Rm::Reserved);
+          break;
+        default:
+          break;
+       }
     }
 
   // reserve page at 0
@@ -126,13 +123,13 @@ Region_map::debug_dump(unsigned long /*function*/) const
   for (Region_map::Const_iterator i = area_begin(); i != area_end(); ++i)
     printf("  [%10lx-%10lx] -> flags=%x\n",
            i->first.start(), i->first.end(),
-	   i->second.flags());
+           i->second.flags());
   printf(" Region map:\n");
   for (Region_map::Const_iterator i = begin(); i != end(); ++i)
     printf("  [%10lx-%10lx] -> (offs=%lx, ds=%lx, flags=%x)\n",
            i->first.start(), i->first.end(),
-	   i->second.offset(), i->second.memory().cap(),
-	   i->second.flags());
+           i->second.offset(), i->second.memory().cap(),
+           i->second.flags());
 }
 
 void
@@ -158,8 +155,6 @@ Region_map::op_io_page_fault(L4::Io_pager::Rights,
                              L4::Ipc::Opt<L4::Ipc::Snd_fpage> &)
 {
   Err().printf("IO-port-fault: port=0x%lx size=%d pc=0x%lx\n",
-               l4_fpage_page(io_pfa), 1 << l4_fpage_size(io_pfa), pc);
-  result = ~0;
+               l4_fpage_ioport(io_pfa), 1 << l4_fpage_size(io_pfa), pc); result = ~0;
   return -1;
 }
-

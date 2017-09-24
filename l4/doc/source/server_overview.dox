@@ -70,34 +70,23 @@ drivers).
 For more details see \subpage io "Io, the Io Server".
 
 
-Mag, the GUI Multiplexer
-========================
+Other Servers
+=============
 
-Our default multiplexer for the graphics hardware is Mag.  Mag is a
-Nitpicker (TODO: ref) derivate that allows secure multiplexing of the
-graphics and input hardware among multiple applications and multiple complete
-windowing environments.
+The following additional server package are available on top of the core
+L4Re environment.
 
-\todo Add some Nitpicker reference
+ - Rtc, the Real-Time Clock Server
 
-For more information see \subpage l4re_servers_mag "Mag".
+   is a simple multiplexer for real-time clock hardware on your platform.
 
+ - fb-drv, the Low-Level Graphics Driver
 
-fb-drv, the Low-Level Graphics Driver
-=====================================
-
-The fb-drv server provides low-level access and initialization of various
-graphics hardware.  It has support for running VESA BIOS calls on Intel x86
-platforms, as well as support for various ARM display controllers.
-\em fb-drv, provides a single instance of the L4Re::Goos interface and can
-serve as a back end for the Mag server, in particular, if there is no graphics
-support in the boot loader.
-
-
-Rtc, the Real-Time Clock Server
-===============================
-
-Rtc is a simple multiplexer for real-time clock hardware on your platform.
-
+   provides low-level access and initialization of various
+   graphics hardware.  It has support for running VESA BIOS calls on Intel x86
+   platforms, as well as support for various ARM display controllers.
+   `fb-drv` provides a single instance of the L4Re::Goos interface and can
+   serve as a back end for the Mag server, in particular, if there is no graphics
+   support in the boot loader.
 
 */

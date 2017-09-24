@@ -4,6 +4,7 @@ L4DIR         ?= $(PKGDIR)/../..
 DDE_SYSTEMS    = x86 arm
 
 TARGET         = libdde_linux26_input.o.a
+REQUIRES_LIBS  = dde-linux26_char
 
 SRC_C		= contrib/mouse/alps.c \
 		  contrib/mouse/synaptics.c \

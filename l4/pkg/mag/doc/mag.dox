@@ -1,5 +1,14 @@
 // vi:ft=c
 /**
+ * \page l4re_servers L4Re Servers
+ *
+ *  - \subpage l4re_servers_mag
+ *
+ *    Our default multiplexer for the graphics hardware is Mag.  Mag is a
+ *    Nitpicker (TODO: ref) derivate that allows secure multiplexing of
+ *    the graphics and input hardware among multiple applications and multiple
+ *    complete windowing environments.
+ *
  * \page l4re_servers_mag Mag, the GUI Multiplexer
  *
  * Mag is the default multiplexer for graphics hardware. It is not, and does

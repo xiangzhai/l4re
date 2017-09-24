@@ -17,15 +17,12 @@ WARNINGS = -Wall -Wstrict-prototypes $(call checkcc,-Wno-pointer-sign)
 # gather Linux sources
 VPATH += $(PKGDIR)/lib/contrib
 
-SRCALL = input/input.c input/keyboard/atkbd.c input/mouse/psmouse-base.c \
-         input/mouse/logips2pp.c input/mouse/synaptics.c input/mouse/alps.c \
-         input/serio/serio.c input/serio/libps2.c
+SRC_C  += input/input.c input/keyboard/atkbd.c input/mouse/psmouse-base.c \
+          input/mouse/logips2pp.c input/mouse/synaptics.c input/mouse/alps.c \
+          input/serio/serio.c input/serio/libps2.c
 
-SRC_C_x86-l4f   += $(SRCALL) input/serio/i8042.c input/misc/pcspkr.c ux.c
-SRC_C_amd64-l4f += $(SRCALL) input/serio/i8042.c input/misc/pcspkr.c
-SRC_C_arm-l4f   += $(SRCALL) input/serio/ambakmi.c
-SRC_C_ppc32-l4f += $(SRCALL)
-SRC_C_sparc-l4f += $(SRCALL)
-SRC_C_mips-l4f  += $(SRCALL)
+SRC_C_x86-l4f   += input/serio/i8042.c input/misc/pcspkr.c ux.c
+SRC_C_amd64-l4f += input/serio/i8042.c input/misc/pcspkr.c
+SRC_C_arm-l4f   += input/serio/ambakmi.c
 
 include $(L4DIR)/mk/lib.mk

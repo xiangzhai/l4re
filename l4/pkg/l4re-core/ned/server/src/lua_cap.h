@@ -79,7 +79,7 @@ public:
   { _c = c; }
 
   void trim_rights(L4_cap_fpage_rights keep)
-  { _rights = _rights & (keep | (~0 << 4)); }
+  { _rights = _rights & (keep | (~0U << 4)); }
 
   void set_flags(unsigned flags)
   { _flags |= flags; }
@@ -135,6 +135,9 @@ push_new_cap(lua_State *l, bool void_cap = false);
 
 Cap *
 push_void_cap(lua_State *l);
+
+void
+register_cap(lua_State *l, char const *name, L4::Cap<void> i, long proto = 0);
 
 inline
 Cap *

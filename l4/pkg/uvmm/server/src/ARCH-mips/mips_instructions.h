@@ -37,6 +37,12 @@ enum Special
   Sp_jr = 8, Sp_jalr = 9
 };
 
+enum Special3
+{
+  Sp3_cachee = 0x1b,
+  Sp3_cache = 0x25
+};
+
 enum Regimm
 {
   Bltz = 0, Bgez, Bltzl, Bgezl,
@@ -70,6 +76,8 @@ struct Instruction
   CXX_BITFIELD_MEMBER_RO(25, 25, cop0_co, raw);
   // for J/JAL
   CXX_BITFIELD_MEMBER_RO( 0, 25, instr_index, raw);
+  // for FP ops
+  CXX_BITFIELD_MEMBER_RO(28, 28, op_fp_dc1, raw);
 
   Instruction(l4_uint32_t inst) : raw(inst) {}
 
@@ -85,12 +93,57 @@ struct Instruction
   bool is_wait() const
   { return opcode() == Op::Cop0 && cop0_co() && func() == 0x20 ; }
 
+  bool is_cache_op() const
+  {
+    return opcode() == Op::Cache
+           || (sizeof(l4_umword_t) == 8 && opcode() == Op::Special3
+               && (func() == Op::Sp3_cache || func() == Op::Sp3_cachee));
+  }
+
   bool is_simple_load_store() const
   {
-    return opcode_mem() && !op_mem_atomic()
-           && op_mem_width() != 2
-           && !(op_mem_unsigned() &&
-                (op_mem_store() || op_mem_width() == 4));
+    return (opcode_mem() && !op_mem_atomic()
+            && op_mem_width() != 2
+            && !(op_mem_unsigned() && op_mem_store()))
+           || ((opcode() & 0x37) == 0x37);
+  }
+
+  bool is_fp_load_store() const
+  {
+    return opcode() == Op::Lwc1 || opcode() == Op::Sdc1
+           || opcode() == Op::Ldc1 || opcode() == Op::Sdc1;
+  }
+
+  /**
+   * Return width of a load/store operation.
+   *
+   * \pre The instruction is a load/store operation.
+   *
+   * \retval 0  Byte width (8bit).
+   * \retval 1  Half-word width (16bit).
+   * \retval 2  Word width (32bit).
+   * \retval 3  Double-word width (64bit).
+   */
+  char load_store_width() const
+  {
+    switch (opcode())
+      {
+      case Op::Lb:
+      case Op::Lbu:
+      case Op::Sb:
+        return 0;
+      case Op::Lh:
+      case Op::Lhu:
+      case Op::Sh:
+        return 1;
+      case Op::Ld:
+      case Op::Sd:
+      case Op::Ldc1:
+      case Op::Sdc1:
+        return 3;
+      default:
+        return 2;
+      }
   }
 
   int branch_offset() const

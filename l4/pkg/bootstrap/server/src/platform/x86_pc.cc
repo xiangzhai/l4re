@@ -26,6 +26,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+static char rsdp_tmp_buf[36];
+l4_uint32_t rsdp_start;
+l4_uint32_t rsdp_end;
+
 enum { Verbose_mbi = 1 };
 
 namespace {
@@ -87,9 +91,25 @@ struct Platform_x86_1 : Platform_x86
 
 #ifdef ARCH_amd64
     // add the page-table on which we're running in 64bit mode
-    regions->add(Region::n(ptab64_info->addr, ptab64_info->addr + ptab64_info->size,
-                 ".bootstrap-ptab64", Region::Boot));
+    regions->add(Region::n(boot32_info->ptab64_addr,
+                           boot32_info->ptab64_addr + boot32_info->ptab64_size,
+                           ".bootstrap-ptab64", Region::Boot));
 #endif
+
+#ifdef ARCH_amd64
+    rsdp_start = boot32_info->rsdp_start;
+    rsdp_end = boot32_info->rsdp_end;
+#endif
+
+   // if we were passed the RSDP structure, save it aside
+   if ((rsdp_end - rsdp_start) <= sizeof(rsdp_tmp_buf))
+     memcpy(rsdp_tmp_buf, (void *)(l4_addr_t)rsdp_start, rsdp_end - rsdp_start);
+   else
+     {
+       rsdp_start = 0;
+       rsdp_end = 0;
+     }
+
    if (!(mbi->flags & L4UTIL_MB_MEM_MAP))
       {
         assert(mbi->flags & L4UTIL_MB_MEMORY);
@@ -97,6 +117,21 @@ struct Platform_x86_1 : Platform_x86
                            Region::Ram));
         ram->add(Region::n(0x100000, (mbi->mem_upper + 1024) << 10, ".ram",
                            Region::Ram));
+
+        // Fix EBDA in conventional memory
+        unsigned long p = *(l4_uint16_t *)0x40e << 4;
+
+        if (p > 0x400)
+          {
+            unsigned long e = p + 1024;
+            Region *r = ram->find(Region(p, e - 1));
+            if (r)
+              {
+                if (e - 1 < r->end())
+                  ram->add(Region::n(e, r->end(), ".ram", Region::Ram), true);
+                r->end(p);
+              }
+          }
       }
     else
       {
@@ -119,6 +154,9 @@ struct Platform_x86_1 : Platform_x86
               case 5:
                 regions->add(Region::n(start, end, ".BIOS", Region::No_mem));
                 break;
+              case 20:
+                regions->add(Region::n(start, end, ".BIOS", Region::Arch, mmap->type));
+                break;
               default:
                 break;
               }
@@ -126,24 +164,6 @@ struct Platform_x86_1 : Platform_x86
       }
 
     regions->add(Region::n(0, 0x1000, ".BIOS", Region::Arch, 0));
-
-
-    // Quirks
-
-    // Fix EBDA in conventional memory
-    unsigned long p = *(l4_uint16_t *)0x40e << 4;
-
-    if (p > 0x400)
-      {
-        unsigned long e = p + 1024;
-        Region *r = ram->find(Region(p, e - 1));
-        if (r)
-          {
-            if (e - 1 < r->end())
-              ram->add(Region::n(e, r->end(), ".ram", Region::Ram), true);
-            r->end(p);
-          }
-      }
   }
 };
 
@@ -341,6 +361,30 @@ public:
       }
 
     move_modules(mod_addr);
+
+    // Our aim here is to allocate an aligned chunk of memory for our copy of
+    // RSDP and create a region out of it.
+    //
+    // XXX: For now, we are piggybacking on this callback because there is
+    // currently no better one that is called this late.
+    if (rsdp_start)
+      {
+        enum {
+          // XXX: need a single definition of this
+          Info_acpi_rsdp = 0
+        };
+        char *rsdp_buf =
+          (char *)mem_manager->find_free_ram(sizeof(rsdp_tmp_buf));
+        if (!rsdp_buf)
+          panic("fatal: could not allocate memory for RSDP\n");
+        memcpy(rsdp_buf, rsdp_tmp_buf, sizeof(rsdp_tmp_buf));
+
+        mem_manager->regions->add(
+          Region::n((l4_addr_t)rsdp_buf,
+                    (l4_addr_t)rsdp_buf + sizeof(rsdp_tmp_buf), ".ACPI",
+                    Region::Info, Info_acpi_rsdp));
+      }
+
     return mbi;
   }
 };
@@ -350,21 +394,142 @@ Platform_x86_multiboot _x86_pc_platform;
 #endif // !IMAGE_MODE
 }
 
+namespace /* usb_xhci_handoff */ {
+
+static int
+xhci_first_cap(L4::Io_register_block const *base)
+{
+  return ((base->read<l4_uint32_t>(0x10) >> 16) & 0xffff) << 2;
+}
+
+static int
+xhci_next_cap(L4::Io_register_block const *base, int cap)
+{
+  l4_uint32_t next = (base->read<l4_uint32_t>(cap) >> 8) & 0xff;
+
+  if (!next)
+    return 0;
+
+  return cap + (next << 2);
+}
+
+static void
+udelay(int usecs)
+{
+  // Assume that we have a 2GHz machine and it needs approximately
+  // two cycles per inner loop, this delay function should wait the
+  // given amount of micro seconds.
+  for (; usecs >= 0; --usecs)
+    for (unsigned long i = 1000; i > 0; --i)
+      asm volatile ("nop; pause" : : : "memory");
+}
+
+static void
+do_handoff_cap(L4::Io_register_block const *base, unsigned cap)
+{
+  enum : l4_uint32_t
+  {
+    HC_BIOS_OWNED_SEM = 1U << 16,
+    HC_OS_OWNED_SEM   = 1U << 24,
+    USBLEGCTLSTS      = 0x04,
+    DISABLE_SMI       = 0xfff1e011U,
+    SMI_EVENTS        = 0x7U << 29,
+  };
+
+  l4_uint32_t val = base->read<l4_uint32_t>(cap);
+
+  if (val & HC_BIOS_OWNED_SEM) // BIOS has the HC
+    {
+      base->write(cap, val | HC_OS_OWNED_SEM); // We want it
+
+      int to = 300; // wait some seconds for BIOS to release
+      while (--to > 0 && (base->read<l4_uint32_t>(cap) & HC_BIOS_OWNED_SEM))
+        udelay(10);
+
+      if (to == 0)
+        {
+          printf("Forcing ownership of XHCI controller from BIOS\n");
+          base->write(cap, val & ~HC_BIOS_OWNED_SEM);
+        }
+    }
+
+  // Disable any BIOS SMIs and clear all SMI events
+  base->modify<l4_uint32_t>(cap + USBLEGCTLSTS, DISABLE_SMI, SMI_EVENTS);
+}
+
+static void
+xhci_handoff(Pci_iterator const &dev)
+{
+  unsigned v = dev.pci_read(0x04, 32);
+
+  // no mmio enabled -> skip
+  if (!(v & 2))
+    return;
+
+  if (0)
+    // no bus-master -> skip
+    if (!(v & 4))
+      return;
+
+  // read BAR[0]
+  v = dev.pci_read(0x10, 32);
+
+  // invalid -> skip
+  if (!v)
+    return;
+
+  // BAR[0] is an IO BAR, not XHCI compliant -> skip
+  if (v & 1)
+    return;
+
+  L4::Io_register_block_mmio base(v & ~0xfUL);
+
+  // Find the Legacy Support Capability register
+  for (int cap = xhci_first_cap(&base); cap != 0;
+       cap = xhci_next_cap(&base, cap))
+    {
+      l4_uint32_t v = base.read<l4_uint32_t>(cap);
+      if ((v & 0xff) == 1)
+        {
+          do_handoff_cap(&base, cap);
+          break;
+        }
+    }
+}
+
+}
+
+enum
+{
+  PCI_CLASS_SERIAL_USB_XHCI = 0x0c0330,
+};
+
+static void
+pci_quirks()
+{
+  for (Pci_iterator i; i != Pci_iterator::end(); ++i)
+    {
+      unsigned cc = i.pci_class();
+      if (cc == PCI_CLASS_SERIAL_USB_XHCI)
+        xhci_handoff(i);
+    }
+}
+
 extern "C"
 void __main(l4util_mb_info_t *mbi, unsigned long p2, char const *realmode_si,
-            ptab64_mem_info_t const *ptab64_info);
+            boot32_info_t const *boot32_info);
 
 void __main(l4util_mb_info_t *mbi, unsigned long p2, char const *realmode_si,
-            ptab64_mem_info_t const *ptab64_info)
+            boot32_info_t const *boot32_info)
 {
   ctor_init();
   Platform_base::platform = &_x86_pc_platform;
   _x86_pc_platform.init();
 #ifdef ARCH_amd64
   // remember this info to reserve the memory in setup_memory_map later
-  _x86_pc_platform.ptab64_info = ptab64_info;
+  _x86_pc_platform.boot32_info = boot32_info;
 #else
-  (void)ptab64_info;
+  (void)boot32_info;
 #endif
   char const *cmdline;
 #if defined(REALMODE_LOADING)
@@ -382,6 +547,7 @@ void __main(l4util_mb_info_t *mbi, unsigned long p2, char const *realmode_si,
   cmdline = (char const *)(l4_addr_t)mbi->cmdline;
 #endif
   _x86_pc_platform.setup_uart(cmdline);
+  pci_quirks();
 
   startup(cmdline);
 }

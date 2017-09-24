@@ -1,6 +1,7 @@
 
 # .mod file dependencies
 ieee/ieee_arithmetic.o: ieee/ieee_exceptions.o
+ieee/ieee_arithmetic.s.o: ieee/ieee_exceptions.s.o
 
 F_FILES += \
 generated/_abs_c10.F90 \

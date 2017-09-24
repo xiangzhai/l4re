@@ -10,6 +10,7 @@
 #include <l4/sys/utcb.h>
 #include <l4/sys/kdebug.h>
 #include <l4/util/util.h>
+#include <l4/util/thread.h>
 #include <l4/re/env>
 #include <l4/re/util/cap_alloc>
 #include <l4/re/util/kumem_alloc>
@@ -124,6 +125,36 @@ asm
   "   add r0, r0, #4                \t\n"
   "   add r0, r0, #4                \t\n"
   "   add r0, r0, #4                \t\n"
+  "   b 1b                          \t\n"
+  );
+
+
+static void setup_user_state_arch(l4_vcpu_state_t *) { }
+static void handler_prolog() {}
+
+#elif defined(ARCH_arm64)
+asm
+(
+  ".p2align 12                      \t\n"
+  ".global my_super_code            \t\n"
+  ".global my_super_code_excp       \t\n"
+  ".global my_super_code_excp_after \t\n"
+  "my_super_code:                   \t\n"
+  "1: add x0, x0, #4                \t\n"
+  "   add x0, x0, #4                \t\n"
+  "   add x0, x0, #4                \t\n"
+  "   add x0, x0, #4                \t\n"
+  "   add x0, x0, #4                \t\n"
+  "   add x0, x0, #4                \t\n"
+  "   add x0, x0, #4                \t\n"
+  "   add x0, x0, #4               \t\n"
+  "my_super_code_excp:              \t\n"
+  "   svc 0                         \t\n"
+  "my_super_code_excp_after:        \t\n"
+  "   sysl x0, #0, c7, c14, #2        \t\n"
+  "   add x0, x0, #4                \t\n"
+  "   add x0, x0, #4                \t\n"
+  "   add x0, x0, #4                \t\n"
   "   b 1b                          \t\n"
   );
 
@@ -247,7 +278,7 @@ static void handler(void)
     ;
 }
 
-static void vcpu_thread(void)
+L4UTIL_THREAD_STATIC_FUNC(vcpu_thread)
 {
   printf("Hello vCPU\n");
 
@@ -298,7 +329,7 @@ static int run(void)
 
   l4_touch_rw(thread_stack, sizeof(thread_stack));
 
-  chksys(L4Re::Env::env()->factory()->create_thread(vcpu_cap), "create thread");
+  chksys(L4Re::Env::env()->factory()->create(vcpu_cap), "create thread");
   l4_debugger_set_object_name(vcpu_cap.cap(), "vcpu thread");
 
   // get an IRQ

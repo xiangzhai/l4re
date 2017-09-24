@@ -193,6 +193,7 @@ Ds::Ds(const char *fname)
     {
       printf("Can't allocate dataspace with size %ld (error %d)\n",
              _size, ret);
+      L4Re::Util::cap_alloc.free(mem_ds, L4Re::This_task);
       gzclose(fd);
       throw(L4::Out_of_memory());
     }
@@ -203,7 +204,7 @@ Ds::Ds(const char *fname)
                                             mem_ds, 0)))
     {
       printf("Attach failed with error %d\n", ret);
-      L4Re::Env::env()->mem_alloc()->free(mem_ds);
+      L4Re::Util::cap_alloc.free(mem_ds, L4Re::This_task);
       gzclose(fd);
       throw(L4::Out_of_memory());
     }
@@ -418,6 +419,7 @@ Fprov_server::get_file1(char const *fname, L4::Ipc::Iostream &ios)
     {
       printf("Can't allocate dataspace with size %d (error %ld)\n",
              fsize, ret);
+      L4Re::Util::cap_alloc.free(ds_cap, L4Re::This_task);
       gzclose(fd);
       return -L4_ENOMEM;
     }
@@ -428,7 +430,7 @@ Fprov_server::get_file1(char const *fname, L4::Ipc::Iostream &ios)
                                             ds_cap, 0)))
     {
       printf("Attach failed with error %ld\n", ret);
-      L4Re::Env::env()->mem_alloc()->free(ds_cap);
+      L4Re::Util::cap_alloc.free(ds_cap, L4Re::This_task);
       gzclose(fd);
       return -L4_ENOMEM;
     }
@@ -440,7 +442,7 @@ Fprov_server::get_file1(char const *fname, L4::Ipc::Iostream &ios)
         {
           printf("Error reading file \"%s\": -%d\n", fname, errno);
           L4Re::Env::env()->rm()->detach(addr, 0);
-          L4Re::Env::env()->mem_alloc()->free(ds_cap);
+          L4Re::Util::cap_alloc.free(ds_cap, L4Re::This_task);
           gzclose(fd);
           return -L4_EIO;
         }

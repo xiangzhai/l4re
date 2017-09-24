@@ -8,13 +8,15 @@
  */
 #pragma once
 
-#include "arch_mmio_device.h"
+#include "mmio_device.h"
 #include "debug.h"
 #include "irq.h"
 #include "virtio_dev.h"
+#include "virtio_event_connector.h"
 
 #include <l4/cxx/ipc_server>
 #include <l4/cxx/ipc_stream>
+#include <l4/cxx/type_traits>
 
 #include <l4/sys/vcon>
 
@@ -22,18 +24,28 @@
 
 namespace Vdev {
 
-class Virtio_console :
-  public Virtio::Dev,
+template <typename DEV>
+class Virtio_console
+: public Virtio::Dev,
   private L4::Server_object_t<L4::Vcon>
 {
   typedef L4virtio::Svr::Virtqueue::Desc Desc;
   typedef L4virtio::Svr::Request_processor Request_processor;
 
-  struct Payload {
-      char *data;
-      unsigned len;
-      bool writable;
+  struct Payload
+  {
+    char *data;
+    unsigned len;
+    bool writable;
   };
+
+  enum
+  {
+    Console_queue_num = 2,
+    Console_queue_length = 0x100,
+  };
+
+  Virtio::Virtqueue _vqs[Console_queue_num];
 
 public:
   struct Features : Virtio::Dev::Features
@@ -41,20 +53,29 @@ public:
     CXX_BITFIELD_MEMBER(0, 0, console_size, raw);
     CXX_BITFIELD_MEMBER(1, 1, console_multiport, raw);
 
-    explicit Features(l4_uint32_t v) : Virtio::Dev::Features(v) {}
+    explicit Features(l4_uint32_t v)
+    : Virtio::Dev::Features(v)
+    {}
   };
 
   Virtio_console(Vmm::Vm_ram *iommu, L4::Cap<L4::Vcon> con)
-  : Virtio::Dev(iommu, 0x44, 3), _con(con)
+  : Virtio::Dev(iommu, 0x44, L4VIRTIO_ID_CONSOLE),
+    _con(con)
   {
-    _q[0].config.num_max = 0x100;
-    _q[1].config.num_max = 0x100;
+    Features feat(0);
+    feat.ring_indirect_desc() = true;
+    _cfg_header->dev_features_map[0] = feat.raw;
+    _cfg_header->num_queues = Console_queue_num;
+
+    for (auto &q : _vqs)
+      q.config.num_max = Console_queue_length;
 
     l4_vcon_attr_t attr;
     if (l4_error(con->get_attr(&attr)) != L4_EOK)
       {
-        Dbg(Dbg::Warn).printf("WARNING: Cannot set console attributes. "
-                              "Output may not work as expected.\n");
+        Dbg(Dbg::Dev, Dbg::Warn, "cons")
+          .printf("WARNING: Cannot set console attributes. "
+                  "Output may not work as expected.\n");
         return;
       }
 
@@ -63,75 +84,94 @@ public:
     L4Re::chksys(con->set_attr(&attr), "console set_attr");
   }
 
+  void virtio_queue_ready(unsigned ready)
+  {
+    auto *q = current_virtqueue();
+    if (!q)
+      return;
+
+    auto *qc = &q->config;
+
+    if (ready == 0 && q->ready())
+      {
+        q->disable();
+        qc->ready = 0;
+      }
+    else if (ready == 1 && !q->ready())
+      {
+        qc->ready = 0;
+        if (qc->num > qc->num_max)
+          return;
+
+        q->init_queue(dev()->template devaddr_to_virt<void>(qc->desc_addr),
+                      dev()->template devaddr_to_virt<void>(qc->avail_addr),
+                      dev()->template devaddr_to_virt<void>(qc->used_addr));
+        qc->ready = 1;
+      }
+  }
+
   void init_device(Vdev::Device_lookup const *devs,
                    Vdev::Dt_node const &self) override
   {
-    auto irq_ctl = self.find_irq_parent();
-    if (!irq_ctl.is_valid())
-      L4Re::chksys(-L4_ENODEV, "No interupt handler found for virtio console.\n");
-
-    // XXX need dynamic cast for Ref_ptr here
-    auto *ic = dynamic_cast<Gic::Ic *>(devs->device_from_node(irq_ctl).get());
-
-    if (!ic)
-      L4Re::chksys(-L4_ENODEV, "Interupt handler for virtio console has bad type.\n");
-
-    _irq.rebind(ic, ic->dt_get_interrupt(self, 0));
+    int err = dev()->event_connector()->init_irqs(devs, self);
+    if (err < 0)
+      Dbg(Dbg::Dev, Dbg::Warn, "virtio")
+        .printf("Cannot connect virtio IRQ: %d\n", err);
   }
 
   void reset()
   {
-    _q[0].disable();
-    _q[1].disable();
+    for (auto &q : _vqs)
+      {
+        q.disable();
+        q.config.num_max = Console_queue_length;
+      }
   }
 
-  virtual void kick()
+  void virtio_queue_notify(unsigned)
   {
-    handle_input();
-    auto *q = &_q[1];
+    Virtio::Event_set ev;
 
-    auto r = q->next_avail();
-    if (r)
+    handle_input(&ev);
+    int const q_idx = 1;
+    auto *q = &_vqs[q_idx];
+
+    while (q->ready())
       {
+        auto r = q->next_avail();
+
+        if (!r)
+          break;
+
         Request_processor rp;
         Payload p;
         rp.start(this, r, &p);
-        _con->write(p.data, p.len);
+        while (p.len)
+          {
+            long rsz = _con->write(p.data, p.len);
+            if (rsz < 0)
+              break;
+            p.data += rsz;
+            p.len  -= rsz;
+          }
+
         q->consumed(r);
-        _irq_status |= 1;
-        _irq.inject();
+        if (!q->no_notify_guest())
+          {
+            _irq_status_shadow |= 1;
+            ev.set(q->config.driver_notify_index);
+          }
       }
-  }
 
-  virtual void irq_ack(int)
-  { _irq.ack(); }
+    if (_cfg_header->irq_status != _irq_status_shadow)
+      dev()->set_irq_status(_irq_status_shadow);
 
-  l4_uint32_t host_feature(unsigned id)
-  {
-    switch (id)
-      {
-      case 1:
-        {
-          Features feat(0);
-          feat.ring_indirect_desc() = true;
-          return feat.raw;
-        }
-      default:
-        return 0;
-      }
-  }
-
-  Virtio::Virtqueue *queue(unsigned idx)
-  {
-    if (idx < 2)
-      return &_q[idx];
-    return 0;
+    dev()->event_connector()->send_events(cxx::move(ev));
   }
 
   void load_desc(Desc const &desc, Request_processor const *, Payload *p)
   {
-    // XXX boundary check?
-    p->data = (char *)_iommu->access(desc.addr);
+    p->data = devaddr_to_virt<char>(desc.addr.get(), desc.len);
     p->len = desc.len;
     p->writable = desc.flags.write();
   }
@@ -139,16 +179,14 @@ public:
   void load_desc(Desc const &desc, Request_processor const *,
                  Desc const **table)
   {
-    // XXX boundary check?
-    *table = static_cast<Desc const *>(_iommu->access(desc.addr));
+    *table = devaddr_to_virt<Desc const>(desc.addr.get(), sizeof(Desc));
   }
 
 
-  void handle_input()
+  void handle_input(Virtio::Event_set *ev)
   {
-    auto *q = &_q[0];
-
-    l4_uint32_t irqs = 0;
+    int const q_idx = 0;
+    auto *q = &_vqs[q_idx];
 
     while (1)
       {
@@ -190,21 +228,17 @@ public:
             break;
           }
 
-        if ((unsigned)r <= p.len)
+        unsigned size = (unsigned)r <= p.len ? (unsigned)r : p.len;
+        q->consumed(req, size);
+
+        if (!q->no_notify_guest())
           {
-            q->consumed(req, r);
-            irqs = true;
-            break;
+            dev()->_irq_status_shadow |= 1;
+            ev->set(q->config.driver_notify_index);
           }
 
-        q->consumed(req, p.len);
-        irqs = true;
-      }
-
-    if (irqs)
-      {
-        _irq_status |= 1;
-        _irq.inject();
+        if ((unsigned)r <= p.len)
+          break;
       }
   }
 
@@ -216,25 +250,53 @@ public:
 
   int dispatch(l4_umword_t /*obj*/, L4::Ipc::Iostream &/*ios*/)
   {
-    handle_input();
+    Virtio::Event_set ev;
+    handle_input(&ev);
+
+    if (_cfg_header->irq_status != _irq_status_shadow)
+      dev()->set_irq_status(_irq_status_shadow);
+
+    dev()->event_connector()->send_events(cxx::move(ev));
     return 0;
   }
 
+  void virtio_irq_ack(unsigned val)
+  {
+    _irq_status_shadow &= ~val;
+    if (_cfg_header->irq_status != _irq_status_shadow)
+      dev()->set_irq_status(_irq_status_shadow);
+
+    dev()->event_connector()->clear_events(val);
+  }
+
+  Virtio::Virtqueue *virtqueue(unsigned qn) override
+  {
+    if (qn >= Console_queue_num)
+      return nullptr;
+
+    return &_vqs[qn];
+  }
 private:
-  Virtio::Virtqueue _q[2];
   L4::Cap<L4::Vcon> _con;
-  Vmm::Irq_sink _irq;
+
+  DEV *dev() { return static_cast<DEV *>(this); }
 };
 
-struct Virtio_console_mmio
-: Virtio_console,
-  Vmm::Mmio_device_t<Virtio_console_mmio>,
-  Virtio::Mmio_connector<Virtio_console_mmio>
+class Virtio_console_mmio
+: public Virtio_console<Virtio_console_mmio>,
+  public Vmm::Ro_ds_mapper_t<Virtio_console_mmio>,
+  public Virtio::Mmio_connector<Virtio_console_mmio>
 {
+public:
   Virtio_console_mmio(Vmm::Vm_ram *iommu,
                       L4::Cap<L4::Vcon> con = L4Re::Env::env()->log())
   : Virtio_console(iommu, con)
   {}
+
+  Virtio::Event_connector_irq *event_connector() { return &_evcon; }
+
+private:
+  Virtio::Event_connector_irq _evcon;
 };
 
 }

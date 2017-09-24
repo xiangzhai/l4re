@@ -82,7 +82,7 @@ public:
     Mword g_bad_instr;   // $8, 1
     Mword g_bad_instr_p; // $8, 2
 
-    Mword g_kscr[8];     // $31, 0 .. 7; where 0 is actually desave
+    Mword g_kscr[8];     // $31, 0 .. 7
 
 
     struct Tlb_entry
@@ -110,7 +110,6 @@ public:
       M_intctl    = 1UL << 10, ///< IntCtl
       M_ebase     = 1UL << 11, ///< EBase
       M_ulr       = 1UL << 12, ///< ULR
-      M_desave    = 1UL << 13, ///< DESAVE
       M_ctl_0     = 1UL << 16, ///< GuestCtl0
       M_ctl_0_ext = 1UL << 17, ///< GuestCtl0Ext
       M_ctl_2     = 1UL << 18, ///< GuestCtl2
@@ -287,7 +286,7 @@ Vz::init()
   FORCE(3, msap, 0);
   // disable big page support (needs 64bit versions of some cp0 regs)
   FORCE(3, bpg, 0);
-  // disable DSP ASE as long as fiasco dones not support it
+  // disable DSP ASE as long as fiasco does not support it
   FORCE(3, dspp, 0);
   FORCE(3, dsp2p, 0);
   FORCE(3, ctxtc, 0);  // disable context config for now
@@ -359,7 +358,7 @@ Vz::State::init()
   modified_cp0_map = (Unsigned32)~0;
 }
 
-IMPLEMENT inline
+IMPLEMENT inline NEEDS[<cstdio>]
 void
 Vz::State::save_guest_tlb_entry(int guest_id, unsigned i)
 {
@@ -409,7 +408,7 @@ Vz::State::save_full(int guest_id)
     {
       // need the timestamp when we save the cause register
       _saved_cause_timestamp = Timer::get_current_counter();
-      // alex: not sure if this is needed of if reads from cp0 are ordered
+      // alex: not sure if this is needed or if reads from cp0 are ordered
       ehb();
       mfgc0_32(&g_cause, Cp0_cause);
     }
@@ -469,7 +468,7 @@ Vz::State::save_full(int guest_id)
     mfgc0(&g_ulr, Cp0_user_local);
 
 
-  // 13, 5 NestedExc not supproted in guest
+  // 13, 5 NestedExc not supported in guest
   if (EXPECT_TRUE(!(c_map & M_epc)))
     {
       mfgc0(&g_epc, Cp0_epc);
@@ -496,9 +495,6 @@ Vz::State::save_full(int guest_id)
 
   // FIXME: Think about Tag and Data registers
 
-  if (guest_cfg.r<1>().ep() & EXPECT_TRUE(!(c_map & M_desave)))
-    mfgc0(&g_kscr[0], Cp0_desave);
-
   auto kscr_n = guest_cfg.r<4>().k_scr_num();
   if (EXPECT_TRUE(!(c_map & M_kscr)))
     {
@@ -511,7 +507,7 @@ Vz::State::save_full(int guest_id)
     }
 }
 
-IMPLEMENT inline
+IMPLEMENT inline NEEDS["timer.h"]
 void
 Vz::State::update_cause_ti()
 {
@@ -521,9 +517,9 @@ Vz::State::update_cause_ti()
     return;
 
   Unsigned64 ct = Timer::get_current_counter();
-  Unsigned64 gc = ct + ctl_gtoffset;
-  Unsigned64 last_gc = _saved_cause_timestamp + ctl_gtoffset;
-  Unsigned64 gcomp = g_compare | (last_gc & 0xffffffff00000000);
+  Unsigned64 gc = ct + (Signed32) ctl_gtoffset;
+  Unsigned64 last_gc = _saved_cause_timestamp + (Signed32) ctl_gtoffset;
+  Unsigned64 gcomp = ((Unsigned32) g_compare) | (last_gc & 0xffffffff00000000);
 
   if (gcomp < last_gc)
     gcomp += 0x100000000;
@@ -532,14 +528,14 @@ Vz::State::update_cause_ti()
     g_cause |= Cause_TI;
 }
 
-IMPLEMENT inline
+IMPLEMENT inline NEEDS["timer.h"]
 void
 Vz::State::load_cause()
 {
   using namespace Mips;
   enum { Cause_TI = 1UL << 30 };
 
-  mtgc0_32(g_cause, Cp0_compare);
+  mtgc0_32(g_cause, Cp0_cause);
   if (g_cause & Cause_TI)
     return;
 
@@ -548,8 +544,8 @@ Vz::State::load_cause()
   // read it below.
   ehb();
   Unsigned64 ct = Timer::get_current_counter();
-  Unsigned64 gc = ct + ctl_gtoffset;
-  Unsigned64 last_gc = _saved_cause_timestamp + ctl_gtoffset;
+  Unsigned64 gc = ct + (Signed32) ctl_gtoffset;
+  Unsigned64 last_gc = _saved_cause_timestamp + (Signed32) ctl_gtoffset;
 
   Unsigned32 gcmp = mfgc0_32(Cp0_compare);
   Unsigned64 gcomp = gcmp | (last_gc & 0xffffffff00000000);
@@ -658,7 +654,7 @@ Vz::State::load_full(int guest_id)
     mtgc0(g_ulr, Cp0_user_local);
 
   // 12, 2 .. 3 SRSxxx not implemented (disabled in guest_config)
-  // 13, 5 NestedExc not supproted in guest
+  // 13, 5 NestedExc not supported in guest
   mtgc0(g_epc, Cp0_epc);
   mtgc0(g_error_epc, Cp0_err_epc);
   mtgc0(g_ebase, Cp0_ebase);
@@ -674,8 +670,6 @@ Vz::State::load_full(int guest_id)
 
 
   // FIXME: Think about Tag and Data registers
-  if (guest_cfg.r<1>().ep())
-    mtgc0(g_kscr[0], Cp0_desave);
 
   auto kscr_n = guest_cfg.r<4>().k_scr_num();
   mtg_kscr(kscr_n, 2);
@@ -818,12 +812,8 @@ Vz::State::load_selective(int guest_id)
     }
 
   // 12, 2 .. 3 SRSxxx not implemented (disabled in guest_config)
-  // 13, 5 NestedExc not supproted in guest
+  // 13, 5 NestedExc not supported in guest
   // FIXME: Think about Tag and Data registers
-
-
-  if (guest_cfg.r<1>().ep() & EXPECT_FALSE(mod_map & M_desave))
-    mtgc0(g_kscr[0], Cp0_desave);
 
   auto kscr_n = guest_cfg.r<4>().k_scr_num();
   if (EXPECT_FALSE(mod_map & M_kscr))

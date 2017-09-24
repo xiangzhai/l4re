@@ -7,15 +7,33 @@
    space */
 #ifdef CONFIG_CPU_VIRT
 virt_address       = kernel_load_addr;
-#else
+#elif defined CONFIG_BIT32
 virt_address       = 0xf0000000;
+#elif defined CONFIG_BIT64
+virt_address       = 0xffff000040000000;
 #endif
 phys_offset        = virt_address - kernel_load_addr;
 
-
+#if defined CONFIG_BIT32
 OUTPUT_FORMAT("elf32-littlearm", "elf32-bigarm",
               "elf32-littlearm")
+
 OUTPUT_ARCH(arm)
+#define WORD_SIZE 4
+#define MWORD LONG
+
+#elif defined CONFIG_BIT64
+
+OUTPUT_FORMAT("elf64-littleaarch64", "elf64-bigaarch64",
+              "elf64-littleaarch64")
+
+OUTPUT_ARCH(aarch64)
+#define WORD_SIZE 8
+#define MWORD QUAD
+#else
+# error Either CONFIG_BIT32 or CONFIG_BIT64 must be set
+#endif
+
 ENTRY(_start)
 
 PHDRS {
@@ -30,38 +48,28 @@ PHDRS {
   l4_koptions 0x11;
 }
 
+EXTERN (_start_kernel)
+ASSERT (_start_kernel > 0, "invalid _start_kernel address")
+
 SECTIONS {
 
 
   /DISCARD/ : {			/* Exit code and data		*/
 		*(.exitcall.exit)
+                *(.bootstrap.dropped*)
 	      }
 	      
   . = kernel_load_addr + 0x1000;
 	      
   .text : {
-    bootstrap*(.init)
-    bootstrap*(.text .text.* .gnu.linkonce.t.*)
-    bootstrap*(.glue_7t) *(.glue_7)
-    bootstrap*(.got .got.*)
-    bootstrap*(.fini)
-    
-    bootstrap*(.rodata .rodata.* .gnu.linkonce.r.* .rodata1)
+    MWORD(_start_kernel)
+    MWORD(my_kernel_info_page)
+    KEEP(*(.bootstrap.info))
+    ASSERT (ABSOLUTE(.) == end_of_bootstrap_info, "invalid size of bootstrap.info");
 
-    . = ALIGN(0x40);
-    
-    bootstrap*(.data .data.* .gnu.linkonce.d.*)
-    bootstrap*(.anno)
-
-    bootstrap*(.data) 
-    bootstrap*(.gnu.linkonce.d*)
+    . = ABSOLUTE(start_of_loader);
+    *(.bootstrap.text)
   } :bstrap
-
-  PROVIDE(bootstrap_bss_start = .);
-  .bss_bootstrap : {
-    bootstrap*(.bss .bss.* COMMON .gnu.linkonce.b.*)
-  } :bstrap
-  PROVIDE(bootstrap_bss_end = .);
 
   . = ALIGN(4K);
   end_of_loader = .;
@@ -101,9 +109,9 @@ SECTIONS {
 
     *(.rodata .rodata.* .gnu.linkonce.r.* .rodata1)
 
-    . = ALIGN(4);
+    . = ALIGN(WORD_SIZE);
     JDB_TABLE(log);
-    . = ALIGN(4);
+    . = ALIGN(WORD_SIZE);
     JDB_TABLE(typeinfo);
 
     . = ALIGN(0x40);

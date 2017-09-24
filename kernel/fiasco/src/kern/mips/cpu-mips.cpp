@@ -266,7 +266,7 @@ public:
   static Options options;
 
 private:
-  friend class Cpu_type;
+  friend struct Cpu_type;
 
   static Cpu_type _types[] __asm__("MIPS_cpu_types");
   static Cpu *_boot_cpu;
@@ -289,6 +289,7 @@ IMPLEMENTATION:
 #include "panic.h"
 #include "cp0_status.h"
 #include "alternatives.h"
+#include "mem_layout.h"
 #include "processor.h"
 
 DEFINE_PER_CPU_P(0) Per_cpu<Cpu> Cpu::cpus(Per_cpu_data::Cpu_num);
@@ -509,7 +510,9 @@ Cpu::init(Cpu_number cpu, bool resume, bool is_boot_cpu)
       // now we should have a user address space up to 0xe0000000
     }
 
-  Cp0_status::write(0);
+  Mips::mtc0(Mem_layout::Exception_base, Mips::Cp0_ebase);
+
+  Cp0_status::write(Cp0_status::ST_DEFAULT);
   Mips::mtc0_32(0, Mips::Cp0_cause);
   Mips::ehb();
 

@@ -198,7 +198,7 @@ int main()
 
   printf("Vmm started\n");
 
-  L4Re::chksys(env->factory()->create_vm(vm));
+  L4Re::chksys(env->factory()->create(vm));
 
   if (!(sigma0_cap = L4Re::Env::env()->get_cap<void>("sigma0")))
     error("Cannot query sigma0 cap\n");

@@ -88,7 +88,7 @@ class Factory : public SyscallHandler
 		DEBUG() << "Creating IRQ with cap " << std::hex << (cap >> L4_CAP_SHIFT);
 		mark_irq((cap >> L4_CAP_SHIFT) - Romain::FIRST_REPLICA_CAP);
 		L4::Cap<L4::Irq> irqcap(cap);
-		t->vcpu()->r()->ax = L4Re::Env::env()->factory()->create_irq(irqcap).raw;
+		t->vcpu()->r()->ax = ((l4_msgtag_t)L4Re::Env::env()->factory()->create(irqcap)).raw;
     }
 
 

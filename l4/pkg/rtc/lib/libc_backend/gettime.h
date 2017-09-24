@@ -41,7 +41,7 @@ static inline void libc_backend_rtc_init(void)
 
 static inline void libc_backend_rtc_get_s_and_ns(l4_uint32_t *s, l4_uint32_t *ns)
 {
-  l4_kernel_clock_t c = l4re_kip()->clock;
+  l4_kernel_clock_t c = l4_kip_clock(l4re_kip());
 
   *s = c / 1000000;
   *ns = (c % 1000000) * 1000;

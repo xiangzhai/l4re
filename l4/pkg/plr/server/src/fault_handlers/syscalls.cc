@@ -260,6 +260,7 @@ void Romain::SyscallHandler::proxy_syscall(Romain::App_instance *,
 	                "d" (t->vcpu()->r()->dx),
 	                "S" (t->vcpu()->r()->si),
 	                "D" (t->vcpu()->r()->di)
+                        L4S_PIC_SYSCALL
 	              : "memory", "cc"
 	);
 

@@ -55,7 +55,7 @@ Obj_cap::deref(L4_fpage::Rights *rights = 0, bool dbg = false)
 	return 0;
 
       if (rights) *rights = L4_fpage::Rights::RWX();
-      return current_thread();
+      return current;
     }
 
   return current->space()->lookup_local(cap(), rights);
@@ -68,11 +68,12 @@ Obj_cap::revalidate(Kobject_iface *o)
   return deref() == o;
 }
 
-PUBLIC
-Thread_object::Thread_object() : Thread() {}
+PUBLIC explicit
+Thread_object::Thread_object(Ram_quota *q) : Thread(q) {}
 
-PUBLIC
-Thread_object::Thread_object(Context_mode_kernel k) : Thread(k) {}
+PUBLIC explicit
+Thread_object::Thread_object(Ram_quota *q, Context_mode_kernel k)
+: Thread(q, k) {}
 
 PUBLIC virtual
 bool
@@ -693,7 +694,7 @@ thread_factory(Ram_quota *q, Space *,
                int *err)
 {
   *err = L4_err::ENomem;
-  return new (q) Thread_object();
+  return new (q) Thread_object(q);
 }
 
 static inline void __attribute__((constructor)) FIASCO_INIT

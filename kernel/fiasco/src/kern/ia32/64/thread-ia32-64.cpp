@@ -50,6 +50,11 @@ Thread::invoke_arch(L4_msg_tag tag, Utcb *utcb)
         default: return commit_result(-L4_err::EInval);
         }
       return Kobject_iface::commit_result(0);
+    case Op_segment_info_amd64:
+      utcb->values[0] = Gdt::gdt_data_user   | Gdt::Selector_user; // user_ds32
+      utcb->values[1] = Gdt::gdt_code_user   | Gdt::Selector_user; // user_cs64
+      utcb->values[2] = Gdt::gdt_code_user32 | Gdt::Selector_user; // user_cs32
+      return Kobject_iface::commit_result(0, 3);
     default:
       return commit_result(-L4_err::ENosys);
     };
@@ -236,6 +241,13 @@ int
 Thread::check_trap13_kernel (Trap_state * /*ts*/)
 { return 1; }
 
+PRIVATE static inline
+bool
+Thread::check_known_inkernel_fault(Trap_state *ts)
+{
+  extern char in_slowtrap_exit_label_iret[];
+  return ts->ip() == (Mword)in_slowtrap_exit_label_iret;
+}
 
 //----------------------------------------------------------------------------
 IMPLEMENTATION [amd64 & (debug | kdb)]:

@@ -27,6 +27,8 @@
 #ifndef L4_SYS_KIP_H__
 #define L4_SYS_KIP_H__
 
+#include <l4/cxx/static_vector>
+
 /* C++ version of memory descriptors */
 
 /**
@@ -56,16 +58,25 @@ namespace L4
        */
       enum Mem_type
       {
-        Undefined    = 0x0,  //< Undefined memory
-        Conventional = 0x1,  //< Conventional memory
-        Reserved     = 0x2,  //< Reserved region, do not use this memory
-        Dedicated    = 0x3,  //< Dedicated
-        Shared       = 0x4,  //< Shared
+        Undefined    = 0x0,  ///< Undefined memory
+        Conventional = 0x1,  ///< Conventional memory
+        Reserved     = 0x2,  ///< Reserved region, do not use this memory
+        Dedicated    = 0x3,  ///< Dedicated
+        Shared       = 0x4,  ///< Shared
 
-        Info         = 0xd,  //< Info by boot loader
-        Bootloader   = 0xe,  //< Memory belongs to the boot loader
-        Arch         = 0xf   //< Architecture specific memory
+        Info         = 0xd,  ///< Info by boot loader
+        Bootloader   = 0xe,  ///< Memory belongs to the boot loader
+        Arch         = 0xf   ///< Architecture specific memory
       };
+
+      /**
+       * Memory sub types for the Mem_type::Info type
+       */
+      enum Info_sub_type
+      {
+        Info_acpi_rsdp = 0  ///< Physical address of the ACPI root pointer.
+      };
+
     private:
       unsigned long _l, _h;
 
@@ -118,6 +129,28 @@ namespace L4
       {
         unsigned long &mi = memory_info(kip);
         mi = (mi & ~((1UL << ((sizeof(unsigned long) / 2) * 8)) - 1)) | count;
+      }
+
+      /**
+       * Return enumerable list of memory descriptors
+       *
+       * \param kip  Pointer to the kernel info page.
+       */
+      static inline cxx::static_vector<Mem_desc const> all(void const *kip)
+      {
+        return cxx::static_vector<Mem_desc const>(Mem_desc::first(kip),
+                                                  Mem_desc::count(kip));
+      }
+
+      /**
+       * Return enumerable list of memory descriptors
+       *
+       * \param kip  Pointer to the kernel info page.
+       */
+      static inline cxx::static_vector<Mem_desc> all(void *kip)
+      {
+        return cxx::static_vector<Mem_desc>(Mem_desc::first(kip),
+                                            Mem_desc::count(kip));
       }
 
       /**

@@ -74,7 +74,7 @@ _start:
 	.cpload $25
 	SETUP_GPX64($25, $0)
 
-#ifdef PLATFORM_TYPE_baikal_t
+#if defined(PLATFORM_TYPE_baikal_t) || defined(PLATFORM_TYPE_ci40)
 	// Fix invalid setting of CCA by boot loader
 	mfc0  $8, $16, 0
 	li    $9, 5
@@ -102,6 +102,16 @@ _start:
 	or    $8, $8, $9
 	mtc0  $8, $12, 0         // mtc0 t0, c0_status
 	ehb
+
+	mfc0  $8, $15, 1         // Get CPU ID
+	andi  $8, $8, 0x3ff
+	beqz  $8, 7f
+	nop
+6:	wait
+	b     6b
+	nop
+7:
+
 
 	PTR_LA $gp, _gp
 	PTR_LA    $29, crt0_stack_high

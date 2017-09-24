@@ -164,9 +164,6 @@ get_base_time_x86(l4_uint64_t *offset)
       BCD_TO_BIN(year);
     }
 
-  //l4util_sti();
-  //fiasco_watchdog_enable();
-
   if ((year += 1900) < 1970)
     year += 100;
 

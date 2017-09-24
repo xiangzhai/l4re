@@ -167,7 +167,7 @@ Vm::setup_vm()
   printf("Success.\n");
 
   printf("# Creating a VM kernel object: ");
-  msg = L4Re::Env::env()->factory()->create_vm(vm_cap);
+  msg = L4Re::Env::env()->factory()->create(vm_cap);
   if (l4_error(msg))
     {
       printf("Failure.\n");

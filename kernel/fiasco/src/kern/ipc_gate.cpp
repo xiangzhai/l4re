@@ -226,11 +226,29 @@ Ipc_gate_ctl::bind_thread(L4_obj_ref, L4_fpage::Rights,
   g->_id = in->values[1];
   Mem::mp_wmb();
   t->inc_ref();
+  Thread *tmp = access_once(&g->_thread);
   g->_thread = t;
   Mem::mp_wmb();
+
+  Kobject::Reap_list r;
+  if (tmp)
+    tmp->put_n_reap(r.list());
+
+  if (EXPECT_FALSE(!r.empty()))
+    {
+      auto l = lock_guard<Lock_guard_inverse_policy>(cpu_lock);
+      r.del_1();
+    }
+
   g->unblock_all();
   current()->rcu_wait();
   g->unblock_all();
+
+  if (EXPECT_FALSE(!r.empty()))
+    {
+      auto l = lock_guard<Lock_guard_inverse_policy>(cpu_lock);
+      r.del_2();
+    }
 
   return commit_result(0);
 }
@@ -396,7 +414,7 @@ ipc_gate_factory(Ram_quota *q, Space *space,
         }
 
       *err = L4_err::EPerm;
-      if (EXPECT_FALSE(!(thread_rights & L4_fpage::Rights::W())))
+      if (EXPECT_FALSE(!(thread_rights & L4_fpage::Rights::CS())))
         return 0;
     }
 

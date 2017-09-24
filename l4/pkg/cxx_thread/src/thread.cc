@@ -46,7 +46,7 @@ namespace cxx {
   int
   Thread::create()
   {
-    l4_msgtag_t err = L4Re::Env::env()->factory()->create_thread(_cap);
+    l4_msgtag_t err = L4Re::Env::env()->factory()->create(_cap);
     if (l4_msgtag_has_error(err) || l4_msgtag_label(err) < 0)
       return l4_msgtag_label(err);
 

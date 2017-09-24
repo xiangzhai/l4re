@@ -10,7 +10,7 @@ private:
 };
 
 // --------------------------------------------------------------------------
-INTERFACE [arm && sp804 && realview_vexpress_a15]:
+INTERFACE [arm && sp804 && pf_realview_vexpress_a15]:
 
 EXTENSION class Timer
 {
@@ -19,16 +19,24 @@ public:
 };
 
 // --------------------------------------------------------------------------
-INTERFACE [arm && realview_vexpress_a15 && arm_generic_timer]:
+INTERFACE [arm && arm_generic_timer]:
 
 EXTENSION class Timer
 {
 public:
-  static unsigned irq() { return 27; }
+  static unsigned irq()
+  {
+    switch (Gtimer::Type)
+      {
+      case Generic_timer::Physical: return 29;
+      case Generic_timer::Virtual:  return 27;
+      case Generic_timer::Hyp:      return 26;
+      };
+  }
 };
 
 // --------------------------------------------------------------------------
-INTERFACE [arm && sp804 && !realview_vexpress_a15]:
+INTERFACE [arm && sp804 && !pf_realview_vexpress_a15]:
 
 EXTENSION class Timer
 {
@@ -89,7 +97,7 @@ Timer::system_clock()
 }
 
 // --------------------------------------------------------------------------
-IMPLEMENTATION [arm && realview_vexpress_a15 && arm_generic_timer]:
+IMPLEMENTATION [arm && arm_generic_timer]:
 
 IMPLEMENT
 void Timer::bsp_init(Cpu_number)

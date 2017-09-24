@@ -1,4 +1,4 @@
-IMPLEMENTATION [arm && imx21]:
+IMPLEMENTATION [arm && pf_imx_21]:
 
 #include "io.h"
 #include "kmem.h"
@@ -25,7 +25,7 @@ platform_reset(void)
 }
 
 // ------------------------------------------------------------------------
-IMPLEMENTATION [arm && imx28]:
+IMPLEMENTATION [arm && pf_imx_28]:
 
 #include "kmem.h"
 #include "mmio_register_block.h"
@@ -42,13 +42,13 @@ platform_reset(void)
 }
 
 // ------------------------------------------------------------------------
-IMPLEMENTATION [arm && (imx35 || imx51 || imx53 || imx6ul)]:
+IMPLEMENTATION [arm && (pf_imx_35 || pf_imx_51 || pf_imx_53 || pf_imx_6ul)]:
 
 void platform_imx_cpus_off()
 {}
 
 // ------------------------------------------------------------------------
-IMPLEMENTATION [arm && imx6]:
+IMPLEMENTATION [arm && pf_imx_6]:
 
 void platform_imx_cpus_off()
 {
@@ -57,7 +57,17 @@ void platform_imx_cpus_off()
 }
 
 // ------------------------------------------------------------------------
-IMPLEMENTATION [arm && (imx35 || imx51 || imx53 || imx6 || imx6ul)]:
+IMPLEMENTATION [arm && pf_imx_7]:
+
+void platform_imx_cpus_off()
+{
+  // switch off core1
+  Io::clear<Mword>(1 << 1, Kmem::mmio_remap(Mem_layout::Src_phys_base) + 8);
+}
+
+// ------------------------------------------------------------------------
+IMPLEMENTATION [arm && (pf_imx_35 || pf_imx_51 || pf_imx_53 || pf_imx_6
+                        || pf_imx_6ul || pf_imx_7)]:
 
 #include "io.h"
 #include "kmem.h"
@@ -66,14 +76,14 @@ void __attribute__ ((noreturn))
 platform_reset(void)
 {
   enum {
-    WCR  = Mem_layout::Watchdog_phys_base + 0,
-    WCR_SRS = 1 << 4, // Software Reset Signal
+    WCR     = Mem_layout::Watchdog_phys_base + 0,
+    WCR_WDE = 1 << 2,
   };
 
   platform_imx_cpus_off();
 
-  // Assert Software reset signal by making the bit zero
-  Io::mask<Unsigned16>(~WCR_SRS, Kmem::mmio_remap(WCR));
+  // Enable watchdog with smallest timeout possible (0.5s)
+  Io::modify<Unsigned16>(WCR_WDE, 0xff00, Kmem::mmio_remap(WCR));
 
   for (;;)
     ;

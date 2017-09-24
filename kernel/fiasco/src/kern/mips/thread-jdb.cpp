@@ -129,10 +129,9 @@ Thread::call_nested_trap_handler(Trap_state *ts)
         " " ASM_S " %[tmp], 0(%[ntr])     \n"
         ".set pop                         \n"
         : [origstack] "=&r" (dummy1), [tmp] "=&r" (tmp),
-          "=r" (_ts), "=r" (_lcpu), "=r" (res)
+          "+r" (_ts), "+r" (_lcpu), "+r" (res)
         : [ntr] "r" (&ntr), [stack] "r" (stack),
           [handler] "r" (nested_trap_handler),
-          "2" (_ts), "3" (_lcpu),
           [rsz] "n" (sizeof(Mword)),
           [frsz] "n" (ASM_NARGSAVE * sizeof(Mword))
         : "memory", "ra", "a2", "a3", "v1", "t0", "t1", "t2",
@@ -160,7 +159,7 @@ IMPLEMENTATION [mips && !debug]:
 extern "C" void sys_kdb_ke()
 {}
 
-PRIVATE static inline
+PUBLIC static inline
 int
 Thread::call_nested_trap_handler(Trap_state *)
 { return -1; }

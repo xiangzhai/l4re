@@ -300,7 +300,7 @@ arg_init(int argc, char * const *argv, Io_config_x *cfg)
           cfg->inc_verbosity();
           break;
         case OPT_TRANSPARENT_MSI:
-	  d_printf(DBG_INFO, "Enabling transparent MSIs\n");
+	  printf("Enabling transparent MSIs\n");
           cfg->set_transparent_msi(true);
           break;
         case OPT_TRACE:
@@ -351,7 +351,7 @@ run(int argc, char * const *argv)
   L4::Cap<L4::Iommu> iommu = L4Re::Env::env()->get_cap<L4::Iommu>("iommu");
   if (!iommu || !iommu.validate().label())
     {
-      d_printf(DBG_INFO, "no 'iommu' capability found use CPU-phys for DMA\n");
+      d_printf(DBG_INFO, "no 'iommu' capability found, using CPU-phys for DMA\n");
       Dma_domain *d = new Dma_domain_phys;
       system_bus()->add_resource(d);
       system_bus()->set_downstream_dma_domain(d);

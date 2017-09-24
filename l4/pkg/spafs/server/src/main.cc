@@ -180,7 +180,7 @@ Fprov_server::get_file(char const *filename, unsigned len, L4::Ipc::Snd_fpage &r
       return -L4_ENODEV;
     }
 
-  if (file_ds->size() != (long)dir_entry->size)
+  if (file_ds->size() != dir_entry->size)
     printf("Warning: file-dataspace has different size from file\n");
 
   if (file_ds->copy_in(0, _ds, dir_entry->addr, dir_entry->size))

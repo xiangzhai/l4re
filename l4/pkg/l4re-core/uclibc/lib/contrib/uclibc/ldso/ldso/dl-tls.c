@@ -34,6 +34,30 @@ void *(*_dl_calloc_function) (size_t __nmemb, size_t __size) = NULL;
 void *(*_dl_realloc_function) (void *__ptr, size_t __size) = NULL;
 void *(*_dl_memalign_function) (size_t __boundary, size_t __size) = NULL;
 
+#if defined SHARED && defined _LIBC_REENTRANT \
+    && defined __rtld_lock_default_lock_recursive
+static void
+rtld_lock_default_lock_recursive (void *lock)
+{
+  __rtld_lock_default_lock_recursive (lock);
+}
+
+static void
+rtld_lock_default_unlock_recursive (void *lock)
+{
+  __rtld_lock_default_unlock_recursive (lock);
+}
+
+void (*_dl_rtld_lock_recursive) (pthread_mutex_t *l) = rtld_lock_default_lock_recursive;
+void (*_dl_rtld_unlock_recursive) (pthread_mutex_t *l) = rtld_lock_default_unlock_recursive;
+
+#else
+
+void (*_dl_rtld_lock_recursive) (pthread_mutex_t *l);
+void (*_dl_rtld_unlock_recursive) (pthread_mutex_t *l);
+
+#endif
+
 void (*_dl_free_function) (void *__ptr);
 void *_dl_memalign (size_t __boundary, size_t __size);
 struct link_map *_dl_update_slotinfo (unsigned long int req_modid);
@@ -104,17 +128,13 @@ _dl_realloc (void * __ptr, size_t __size)
  * directly, as static TLS should be rare and code handling it should
  * not be inlined as much as possible.
  */
-void
+int
 internal_function __attribute_noinline__
-_dl_allocate_static_tls (struct link_map *map)
+_dl_try_allocate_static_tls(struct link_map *map)
 {
 	/* If the alignment requirements are too high fail.  */
 	if (map->l_tls_align > _dl_tls_static_align)
-	{
-fail:
-		_dl_dprintf(2, "cannot allocate memory in static TLS block");
-		_dl_exit(30);
-	}
+		return -1;
 
 # ifdef TLS_TCB_AT_TP
 	size_t freebytes;
@@ -125,7 +145,7 @@ fail:
 
 	blsize = map->l_tls_blocksize + map->l_tls_firstbyte_offset;
 	if (freebytes < blsize)
-		goto fail;
+		return -1;
 
 	n = (freebytes - blsize) & ~(map->l_tls_align - 1);
 
@@ -143,7 +163,7 @@ fail:
 
 	/* dl_tls_static_used includes the TCB at the beginning. */
 	if (check > _dl_tls_static_size)
-		goto fail;
+		return -1;
 
 	map->l_tls_offset = offset;
 	_dl_tls_static_used = used;
@@ -169,6 +189,19 @@ fail:
 	}
 	else
 		map->l_need_tls_init = 1;
+
+	return 0;
+}
+
+void
+internal_function __attribute_noinline__
+_dl_allocate_static_tls (struct link_map *map)
+{
+	if (_dl_try_allocate_static_tls(map))
+	{
+		_dl_dprintf(2, "cannot allocate memory in static TLS block");
+		_dl_exit(30);
+	}
 }
 
 #ifdef SHARED
@@ -995,7 +1028,7 @@ init_tls (void)
 
 	/* Fill in the information from the loaded modules.  No namespace
 	   but the base one can be filled at this time.  */
-	int i = 0;
+	unsigned i = 0;
 	struct link_map *l;
 	for (l =  (struct link_map *) _dl_loaded_modules; l != NULL; l = l->l_next)
 		if (l->l_tls_blocksize != 0)

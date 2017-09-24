@@ -3,6 +3,7 @@ IMPLEMENTATION:
 #include <cstdio>
 #include <cctype>
 
+#include "alternatives.h"
 #include "config.h"
 #include "jdb.h"
 #include "jdb_module.h"
@@ -184,6 +185,8 @@ struct Jdb_mips_tlb : Jdb_module
             return EXTRA_INPUT_WITH_NEXTCHAR;
           }
       }
+    else if (!Cpu::online(cpu))
+      printf("Error: CPU %d not online.\n", cxx::int_value<Cpu_number>(cpu));
     else
       Jdb::remote_work(cpu, dump_tlb);
 

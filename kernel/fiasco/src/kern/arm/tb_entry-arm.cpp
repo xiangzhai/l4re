@@ -5,7 +5,7 @@ EXTENSION class Tb_entry
 public:
   enum
   {
-    Tb_entry_size = 64,
+    Tb_entry_size = 16 * sizeof(Mword),
   };
   static Unsigned64 (*read_cycle_counter)();
 };
@@ -21,11 +21,27 @@ public:
 };
 
 // --------------------------------------------------------------------
-IMPLEMENTATION [arm]:
+IMPLEMENTATION [arm && !arm_generic_timer]:
 
 PROTECTED static Unsigned64 Tb_entry::dummy_read_cycle_counter() { return 0; }
 
 Unsigned64 (*Tb_entry::read_cycle_counter)() = dummy_read_cycle_counter;
+
+
+// --------------------------------------------------------------------
+IMPLEMENTATION [arm && arm_generic_timer]:
+
+#include "generic_timer.h"
+
+PROTECTED static Unsigned64 Tb_entry::gt_read_cycle_counter()
+{
+  return Generic_timer::Gtimer::counter();
+}
+
+Unsigned64 (*Tb_entry::read_cycle_counter)() = gt_read_cycle_counter;
+
+// --------------------------------------------------------------------
+IMPLEMENTATION [arm]:
 
 PUBLIC static
 void

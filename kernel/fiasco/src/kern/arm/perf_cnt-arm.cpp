@@ -6,25 +6,17 @@ EXTENSION class Perf_cnt
 {
 public:
   static Perf_read_fn read_pmc[Max_slot];
-
+  static Mword get_max_perf_event();
   static const char *perf_type_str;
 };
 
 // ------------------------------------------------------------------------
-INTERFACE [arm && perf_cnt && !(mpcore || armca8 || armca9)]:
-
-EXTENSION class Perf_cnt
-{
-private:
-  enum
-  {
-    Nr_of_events = 0,
-  };
-
-};
+IMPLEMENTATION [arm && perf_cnt]:
+IMPLEMENT_DEFAULT inline
+Mword Perf_cnt::get_max_perf_event() { return 0; }
 
 // ------------------------------------------------------------------------
-INTERFACE [arm && perf_cnt && mpcore]:
+INTERFACE [arm && perf_cnt && arm_mpcore]:
 
 #include "mem_layout.h"
 
@@ -69,8 +61,6 @@ private:
     EVENT_EXTMEM_TRANSFER_WRITE = 19,
 
     EVENT_CYCLE_COUNT = 31,
-
-    Nr_of_events = 32,
   };
 
   static Address mon_event_type_addr(int nr)
@@ -81,129 +71,16 @@ private:
 };
 
 // ------------------------------------------------------------------------
-INTERFACE [arm && perf_cnt && (armca8 || armca9)]:
-
-EXTENSION class Perf_cnt
-{
-private:
-  static void pmcr(Mword val)
-  { asm volatile ("mcr p15, 0, %0, c9, c12, 0" : : "r" (val)); }
-
-  static Mword pmcr()
-  { Mword val; asm volatile ("mrc p15, 0, %0, c9, c12, 0" : "=r" (val)); return val;}
-
-
-  static void cntens(Mword val)
-  { asm volatile ("mcr p15, 0, %0, c9, c12, 1" : : "r" (val)); }
-
-  static Mword cntens()
-  { Mword val; asm volatile ("mrc p15, 0, %0, c9, c12, 1" : "=r" (val)); return val;}
-
-
-  static void cntenc(Mword val)
-  { asm volatile ("mcr p15, 0, %0, c9, c12, 2" : : "r" (val)); }
-
-  static Mword cntenc()
-  { Mword val; asm volatile ("mrc p15, 0, %0, c9, c12, 2" : "=r" (val)); return val;}
-
-
-  static void flag(Mword val)
-  { asm volatile ("mcr p15, 0, %0, c9, c12, 3" : : "r" (val)); }
-
-  static Mword flag()
-  { Mword val; asm volatile ("mrc p15, 0, %0, c9, c12, 3" : "=r" (val)); return val;}
-
-  static void pmnxsel(Mword val)
-  { asm volatile ("mcr p15, 0, %0, c9, c12, 5" : : "r" (val)); }
-
-  static Mword pmnxsel()
-  { Mword val; asm volatile ("mrc p15, 0, %0, c9, c12, 5" : "=r" (val)); return val;}
-
-
-  static void ccnt(Mword val)
-  { asm volatile ("mcr p15, 0, %0, c9, c13, 0" : : "r" (val)); }
-
-  static Mword ccnt()
-  { Mword val; asm volatile ("mrc p15, 0, %0, c9, c13, 0" : "=r" (val)); return val;}
-
-
-  static void evtsel(Mword val)
-  { asm volatile ("mcr p15, 0, %0, c9, c13, 1" : : "r" (val)); }
-
-  static Mword evtsel()
-  { Mword val; asm volatile ("mrc p15, 0, %0, c9, c13, 1" : "=r" (val)); return val;}
-
-
-  static void pmcnt(Mword val)
-  { asm volatile ("mcr p15, 0, %0, c9, c13, 2" : : "r" (val)); }
-
-  static Mword pmcnt()
-  { Mword val; asm volatile ("mrc p15, 0, %0, c9, c13, 2" : "=r" (val)); return val;}
-
-
-  static void useren(Mword val)
-  { asm volatile ("mcr p15, 0, %0, c9, c14, 0" : : "r" (val)); }
-
-  static Mword useren()
-  { Mword val; asm volatile ("mrc p15, 0, %0, c9, c14, 0" : "=r" (val)); return val;}
-
-
-  static void intens(Mword val)
-  { asm volatile ("mcr p15, 0, %0, c9, c14, 1" : : "r" (val)); }
-
-  static Mword intens()
-  { Mword val; asm volatile ("mrc p15, 0, %0, c9, c14, 1" : "=r" (val)); return val;}
-
-  static void intenc(Mword val)
-  { asm volatile ("mcr p15, 0, %0, c9, c14, 2" : : "r" (val)); }
-
-  static Mword intenc()
-  { Mword val; asm volatile ("mrc p15, 0, %0, c9, c14, 2" : "=r" (val)); return val;}
-
-  enum
-  {
-    PMNC_ENABLE     = 1 << 0,
-    PMNC_PERF_RESET = 1 << 1,
-    PMNC_CNT_RESET  = 1 << 2,
-  };
-
-
-  static int _nr_counters;
-};
+IMPLEMENTATION [arm && perf_cnt && arm_mpcore]:
+IMPLEMENT_OVERRIDE inline
+Mword Perf_cnt::get_max_perf_event() { return 32; }
 
 // ------------------------------------------------------------------------
-INTERFACE [arm && perf_cnt && armca8]:
-
-EXTENSION class Perf_cnt
-{
-private:
-  enum
-  {
-    Nr_of_events = 0x73,
-  };
-};
-
-// ------------------------------------------------------------------------
-INTERFACE [arm && perf_cnt && armca9]:
-
-EXTENSION class Perf_cnt
-{
-private:
-  enum
-  {
-    Nr_of_events = 0x94,
-  };
-};
-
-// ------------------------------------------------------------------------
-IMPLEMENTATION [arm && perf_cnt]:
-
-// ------------------------------------------------------------------------
-IMPLEMENTATION [arm && perf_cnt && !(mpcore || armca8 || armca9)]:
+IMPLEMENTATION [arm && perf_cnt && !(arm_mpcore || arm_v7 || arm_v8)]:
 
 char const *Perf_cnt::perf_type_str = "none";
 
-PUBLIC static FIASCO_INIT_CPU
+PUBLIC static inline FIASCO_INIT_CPU
 void
 Perf_cnt::init_cpu()
 {}
@@ -229,64 +106,22 @@ Perf_cnt::set_event_type(int, int)
 {}
 
 // ------------------------------------------------------------------------
-IMPLEMENTATION [arm && perf_cnt && mpcore]:
-
-#include "cpu.h"
-
-char const *Perf_cnt::perf_type_str = "MP-C";
-
-PRIVATE static
-void
-Perf_cnt::set_event_type(int counter_nr, int event)
-{ Cpu::scu->write<unsigned char>(event, mon_event_type_addr(counter_nr)); }
-
-PUBLIC static
-unsigned long
-Perf_cnt::read_counter(int counter_nr)
-{ return Cpu::scu->read<Mword>(mon_counter(counter_nr)); }
-
-PUBLIC static FIASCO_INIT_CPU
-void
-Perf_cnt::init_cpu()
-{
-  static_assert(Scu::Available, "No SCU available in this configuration");
-
-  Cpu::scu->write<Mword>(0xff << 16 // clear overflow flags
-                        | MON_CONTROL_RESET | MON_CONTROL_ENABLE,
-                        MON_CONTROL);
-
-  // static config for now...
-  set_event_type(7, EVENT_CYCLE_COUNT);
-
-  //set_event_type(0, EVENT_EXTMEM_TRANSFER_READ);
-  //set_event_type(1, EVENT_EXTMEM_TRANSFER_WRITE);
-
-#if 0
-  set_event_type(3, EVENT_EXTMEM_TRANSFER_READ);
-  set_event_type(4, EVENT_LINE_MIGRATION);
-  set_event_type(5, EVENT_EXTMEM_CPU2);
-  set_event_type(6, EVENT_OTHER_CACHE_HIT_CPU2);
-  set_event_type(7, EVENT_NON_PRESENT_CPU2);
-#endif
-
-  //set_event_type(3, EVENT_READ_BUSY_MASTER0);
-  //set_event_type(4, EVENT_READ_BUSY_MASTER1);
-  //set_event_type(5, EVENT_WRITE_BUSY_MASTER0);
-  //set_event_type(6, EVENT_WRITE_BUSY_MASTER1);
-}
-
-PUBLIC static
-Unsigned64
-Perf_cnt::read_cycle_cnt()
-{ return read_counter(7); }
-
-PUBLIC static
-unsigned
-Perf_cnt::mon_event_type(int nr)
-{ return Cpu::scu->read<unsigned char>(mon_event_type_addr(nr)); }
+IMPLEMENTATION [arm && perf_cnt && arm_cortex_a8]:
+IMPLEMENT_OVERRIDE inline
+Mword Perf_cnt::get_max_perf_event() { return 0x73; }
 
 // ------------------------------------------------------------------------
-IMPLEMENTATION [arm && perf_cnt && (armca8 || armca9)]:
+IMPLEMENTATION [arm && perf_cnt && arm_cortex_a9]:
+IMPLEMENT_OVERRIDE inline
+Mword Perf_cnt::get_max_perf_event() { return 0x94; }
+
+// ------------------------------------------------------------------------
+IMPLEMENTATION [arm && perf_cnt && arm_cortex_a15]:
+IMPLEMENT_OVERRIDE inline
+Mword Perf_cnt::get_max_perf_event() { return 0x7f; }
+
+// ------------------------------------------------------------------------
+IMPLEMENTATION [arm && perf_cnt && (arm_v7 || arm_v8)]:
 
 #include "cpu.h"
 
@@ -300,7 +135,8 @@ Perf_cnt::is_avail()
   switch (Cpu::boot_cpu()->copro_dbg_model())
     {
       case Cpu::Copro_dbg_model_v7:
-      case Cpu::Copro_dbg_model_v7_1: return true;
+      case Cpu::Copro_dbg_model_v7_1:
+      case Cpu::Copro_dbg_model_v8:   return true;
       default: return false;
     }
 }
@@ -425,12 +261,6 @@ Perf_cnt::get_perf_event(Mword nr, unsigned *evntsel,
   *evntsel = nr;
 }
 
-PUBLIC static Mword
-Perf_cnt::get_max_perf_event()
-{
-  return Nr_of_events;
-}
-
 PUBLIC static void
 Perf_cnt::split_event(Mword event, unsigned *evntsel, Mword *)
 {
@@ -463,7 +293,7 @@ Perf_cnt::init()
   Tb_entry::set_cycle_read_func(read_cycle_cnt);
 }
 
-PUBLIC static inline FIASCO_INIT_CPU
+PUBLIC static inline NEEDS[Perf_cnt::init_cpu] FIASCO_INIT_CPU
 void
 Perf_cnt::init_ap()
 {

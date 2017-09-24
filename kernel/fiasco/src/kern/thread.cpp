@@ -56,6 +56,7 @@ public:
     Op_gdt_x86 = 0x10,
     Op_set_tpidruro_arm = 0x10,
     Op_set_segment_base_amd64 = 0x12,
+    Op_segment_info_amd64 = 0x13,
   };
 
   enum Control_flags
@@ -96,7 +97,7 @@ public:
    *
    * @post state() != 0.
    */
-  Thread();
+  explicit Thread(Ram_quota *);
 
   int handle_page_fault(Address pfa, Mword error, Mword pc,
                         Return_frame *regs);
@@ -139,7 +140,7 @@ public:
   bool arch_ext_vcpu_enabled();
 
 protected:
-  explicit Thread(Context_mode_kernel);
+  explicit Thread(Ram_quota *, Context_mode_kernel);
 
   // More ipc state
   Thread_ptr _pager;
@@ -198,10 +199,8 @@ Thread::operator new(size_t, Ram_quota *q) throw ()
 {
   void *t = Kmem_alloc::allocator()->q_unaligned_alloc(q, Thread::Size);
   if (t)
-    {
-      memset(t, 0, sizeof(Thread));
-      reinterpret_cast<Thread*>(t)->_quota = q;
-    }
+    memset(t, 0, sizeof(Thread));
+
   return t;
 }
 
@@ -272,8 +271,8 @@ Thread::unbind()
     @param id user-visible thread ID of the sender
  */
 IMPLEMENT inline
-Thread::Thread(Context_mode_kernel)
-  : Receiver(), Sender(), _del_observer(0), _magic(magic)
+Thread::Thread(Ram_quota *q, Context_mode_kernel)
+  : Receiver(), Sender(), _quota(q), _del_observer(0), _magic(magic)
 {
   inc_ref();
   _space.space(Kernel_task::kernel_task());
@@ -527,7 +526,6 @@ Thread::do_kill()
     while (Sender *s = Sender::cast(sender_list()->first()))
       {
         s->sender_dequeue(sender_list());
-        vcpu_update_state();
         s->ipc_receiver_aborted();
         Proc::preemption_point();
       }
@@ -599,7 +597,7 @@ Thread::handle_remote_kill(Drq *, Context *self, void *)
 
 PROTECTED
 bool
-Thread::kill()
+Thread::kill() override
 {
   auto guard = lock_guard(cpu_lock);
   inc_ref();
@@ -763,7 +761,7 @@ Thread::do_migration()
 }
 PUBLIC
 bool
-Thread::initiate_migration()
+Thread::initiate_migration() override
 {
   assert (current() != this);
   Migration *inf = start_migration();
@@ -781,7 +779,7 @@ Thread::initiate_migration()
 
 PUBLIC
 void
-Thread::finish_migration()
+Thread::finish_migration() override
 { enqueue_timeout_again(); }
 
 //---------------------------------------------------------------------------

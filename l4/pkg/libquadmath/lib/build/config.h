@@ -17,19 +17,19 @@
 #define HAVE_FEHOLDEXCEPT 1
 
 /* Define to 1 if you have the <fenv.h> header file. */
-#define HAVE_FENV_H 1
+//l4/#define HAVE_FENV_H 1
 
 /* libm includes fesetenv */
-#define HAVE_FESETENV 1
+//l4/#define HAVE_FESETENV 1
 
 /* libm includes fesetround */
-#define HAVE_FESETROUND 1
+//l4/#define HAVE_FESETROUND 1
 
 /* libm includes fetestexcept */
-#define HAVE_FETESTEXCEPT 1
+//l4/#define HAVE_FETESTEXCEPT 1
 
 /* libm includes feupdateenv */
-#define HAVE_FEUPDATEENV 1
+//l4/#define HAVE_FEUPDATEENV 1
 
 /* __attribute__((visibility ("hidden"))) supported */
 #define HAVE_HIDDEN_VISIBILITY 1
@@ -56,7 +56,7 @@
 #define HAVE_PRINTF_H 1
 
 /* GNU C Library stype printf hooks supported */
-#define HAVE_PRINTF_HOOKS 1
+//l4/#define HAVE_PRINTF_HOOKS 1
 
 /* libm includes sqrtl */
 #define HAVE_SQRTL 1
@@ -123,16 +123,16 @@
 #define STDC_HEADERS 1
 
 /* whether i18n number rewriting can be supported */
-#define USE_I18N_NUMBER_H 1
+//l4/#define USE_I18N_NUMBER_H 1
 
 /* whether localeconv should be used */
-#define USE_LOCALECONV 1
+//l4/#define USE_LOCALECONV 1
 
 /* whether nl_langinfo should be used */
-#define USE_NL_LANGINFO 1
+//l4/#define USE_NL_LANGINFO 1
 
 /* whether nl_langinfo should be used for wide char locale info */
-#define USE_NL_LANGINFO_WC 1
+//l4/#define USE_NL_LANGINFO_WC 1
 
 /* Enable extensions on AIX 3, Interix.  */
 #ifndef _ALL_SOURCE

@@ -3,7 +3,8 @@
 
 SUBSYSTEMS = JABI ABI DRIVERS KERNEL LIBK CXXLIB JDB \
 	     TCBOFFSET SYMBOLS VERSION GBLCFG MINILIBC
-
+# remove the ia32 tag until we marked all ia32 non-ux section with some extra tag
+PREPROCESS_PARTS	:= $(filter-out ia32,$(PREPROCESS_PARTS))
 PREPROCESS_PARTS	+= arch $(CONFIG_ABI) 32bit $(CONFIG_XARCH)    \
 			   fpu jdb_thread_names iofp \
                            obj_space_phys abs_syscalls auto_map_kip \
@@ -59,7 +60,7 @@ mem_IMPL		:= mem mem-ia32
 #
 # KERNEL subsystem
 #
-KERNEL			:= fiasco.image
+KERNEL			:= fiasco.debug
 KERNEL_EXTRA		:= irq0
 VPATH			+= kern/$(CONFIG_XARCH) kern/ia32/32 kern/ia32 kern
 VPATH			+= jdb/ia32 jdb/ia32/32 jdb/ux jdb
@@ -180,7 +181,7 @@ mem_space_IMPL		:= mem_space mem_space-user mem_space-ia32 \
 			   mem_space-ux
 mem_unit_IMPL		:= mem_unit-ux
 obj_space_IMPL          := obj_space obj_space-phys
-paging_IMPL		:= paging-ia32-32 paging-ia32 paging
+paging_IMPL		:= paging paging-ia32-32 paging-ia32
 perf_cnt_IMPL		:= perf_cnt perf_cnt-ia32
 pmem_alloc_IMPL		:= pmem_alloc pmem_alloc-ia32-ux
 reset_IMPL		:= reset-ux
@@ -250,7 +251,7 @@ INTERFACES_CXXLIB	:= s_cruft paranoia
 LIBK		:= libk.a
 VPATH		+= lib/libk/$(CONFIG_XARCH) lib/libk
 PRIVATE_INCDIR  += lib/libk/$(CONFIG_XARCH) lib/libk
-INTERFACES_LIBK	:= atomic lock_guard auto_ptr std_macros
+INTERFACES_LIBK	:= atomic lock_guard std_macros
 CXXSRC_LIBK     += construction.cc
 
 
