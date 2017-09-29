@@ -28,7 +28,7 @@ my %modules =
    toolbin => { paths => [ map { "l4/tool/bin/$_" }
                            qw(isocreator qemu-x86-launch ux-launch
                               gengrub1iso gengrub2iso entry-selector
-                              mkspafs genexportpack gen_kconfig
+                              mkspafs genexportpack gen_kconfig l4-bender
                              ) ]
               },
 
@@ -59,7 +59,6 @@ my %modules =
              pub_module => 1,
              modules => [ qw(bid toolbin) ],
            },
-
 
    # ./mk/pkgdeps -A mk/aliases.d pkgdeps pkg ...
    l4linux_requirements
@@ -110,6 +109,17 @@ my %modules =
 
    doc => { paths => [ qw(l4/doc/Makefile l4/doc/source) ], },
 
+   l4re_base => {
+     paths => [ map { "l4/pkg/$_" }
+                qw(
+                cons drivers fb-drv gnu-efi input l4virtio libevent
+                   libc_be_stdin libfdt libirq mag mag-gfx readline
+                   rtc shmc tmpfs virtio-net uvmm x86emu
+                   lxfuxlibc libedid
+                   ) ],
+     modules => [ qw(l4re examples_all doc toolbin) ],
+   },
+
    l4re_snapshot =>  {
      paths => [ map { "l4/pkg/$_" }
                 qw(ankh
@@ -133,11 +143,11 @@ my %modules =
                    l4con
                    l4virtio
                    lib_vt100
+                   libbacktrace
                    libbsd
-                   libedid
-                   libevent
                    libc_be_stdin
                    libcrypto
+                   libedid
                    libevent
                    libgfxbitmap
                    libgfortran
@@ -171,7 +181,8 @@ my %modules =
                    tmpfs
                    udis86
                    valgrind
-                   vmm
+                   virtio-net
+                   uvmm
                    x86emu
                    zlib
                    ) ],
