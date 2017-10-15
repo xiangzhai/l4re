@@ -156,7 +156,8 @@ class Command_dispatcher
 public:
   Command_dispatcher(lua_State *l) : _lua(l) {}
 
-  long op_execute(L4Re::Ned::Cmd_control::Rights, L4::Ipc::String<> cmd,
+  long op_execute(L4Re::Ned::Cmd_control::Rights,
+                  L4::Ipc::String_in_buf<> cmd,
                   L4::Ipc::Array_ref<char> &res)
   {
     if (luaL_loadbuffer(_lua, cmd.data, cmd.length - 1, "argument"))

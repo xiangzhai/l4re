@@ -47,24 +47,12 @@ node_cb(Vdev::Dt_node const &node)
   cxx::Ref_ptr<Vdev::Device> dev;
   char const *devtype = node.get_prop<char>("device_type", nullptr);
   bool is_cpu_dev = devtype && strcmp("cpu", devtype) == 0;
+
+  // Cpu devices need to be treated specially because they use a
+  // different factory (there are too many compatible attributes to
+  // use the normal factory mechanism).
   if (is_cpu_dev)
-    {
-      // Cpu devices need to be treated specially because they
-      // use a different factory.
-      auto *cpuid = node.get_prop<fdt32_t>("reg", nullptr);
-      if (!cpuid)
-        {
-          Err().printf("Cpu has missing reg property. Ignored.\n");
-          return true;
-        }
-
-      // If a compatible property exists, it may be used to specify
-      // the reported CPU type (if supported by architecture). Without
-      // compatible property, the default is used.
-      auto const *compatible = node.get_prop<char>("compatible", nullptr);
-
-      dev = vm_instance.cpus()->create_vcpu(fdt32_to_cpu(cpuid[0]), compatible);
-    }
+    dev = vm_instance.cpus()->create_vcpu(&node);
   else
     dev = Vdev::Factory::create_dev(&vm_instance, node);
 
@@ -220,6 +208,7 @@ static int run(int argc, char *argv[])
   Dbg::set_verbosity(verbosity);
 
   int use_wakeup_inhibitor = 0;
+  int use_mmio_fallback = 0;
   char const *const options = "+k:d:p:r:c:b:vqD:";
   struct option const loptions[] =
     {
@@ -229,6 +218,7 @@ static int run(int argc, char *argv[])
       { "ramdisk",  1, NULL, 'r' },
       { "cmdline",  1, NULL, 'c' },
       { "rambase",  1, NULL, 'b' },
+      { "mmio-fallback", 0, &use_mmio_fallback, 1 },
       { "debug",    1, NULL, 'D' },
       { "verbose",  0, NULL, 'v' },
       { "quiet",    0, NULL, 'q' },
@@ -290,7 +280,8 @@ static int run(int argc, char *argv[])
   auto *ram = vm_instance.ram().get();
 
   vmm->use_wakeup_inhibitor(use_wakeup_inhibitor);
-  vmm->set_fallback_mmio_ds(vm_instance.vbus()->io_ds());
+  if (use_mmio_fallback)
+    vmm->set_fallback_mmio_ds(vm_instance.vbus()->io_ds());
 
   Vdev::Device_tree dt(nullptr);
   L4virtio::Ptr<void> dt_addr(0);
@@ -325,6 +316,18 @@ static int run(int argc, char *argv[])
       next_free_addr =
         l4_round_size(L4virtio::Ptr<void>(dt_addr.get() + dt.size()),
                                           L4_PAGESHIFT);
+    }
+
+  if (!vm_instance.cpus()->vcpu_exists(0))
+    {
+      // Verify cpu setup - if there is no CPU0 there should be no other CPU
+      auto cpus = vm_instance.cpus().get();
+      for (auto cpu: *cpus)
+        if (cpu)
+          L4Re::chksys(-L4_EINVAL, "Invalid CPU configuration in device tree,"
+                       " missing CPU0");
+
+      vm_instance.cpus()->create_vcpu(nullptr);
     }
 
   if (ram_disk)
