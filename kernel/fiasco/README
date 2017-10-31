@@ -46,6 +46,8 @@ The kernel binary can then be found as 'fiasco' in the build directory.
 
 For further information refer to: https://l4re.org/fiasco/build.html
 
+$ make CROSS_COMPILE_DFL-y=arm-none-eabi- (depends on your ARM toolchain)
+
 Mailing List
 ------------
 
