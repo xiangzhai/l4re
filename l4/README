@@ -1,3 +1,6 @@
 $ make B=build-arm
-$ make O=build-arm CROSS_COMPILE=arm-none-eabi- (depends on your ARM toolchain) config
-$ make O=build-arm CROSS_COMPILE=arm-none-eabi-
+$ make O=build-arm CROSS_COMPILE=/opt/arm-2014.05/bin/arm-none-linux-gnueabi- (depends on your ARM toolchain) config
+$ make O=build-arm CROSS_COMPILE=/opt/arm-2014.05/bin/arm-none-linux-gnueabi-
+$ cp conf/Makeconf.boot.example conf/Makeconf.boot
+$ cd build-arm
+$ make qemu CROSS_COMPILE=/opt/arm-2014.05/bin/arm-none-linux-gnueabi- E=hello MODULE_SEARCH_PATH=/data/project/xiangzhai/l4re/kernel/fiasco/build-arm
