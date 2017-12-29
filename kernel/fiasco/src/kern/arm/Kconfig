@@ -52,6 +52,9 @@ config CAN_ARM_CPU_CORTEX_A9
 config CAN_ARM_CPU_CORTEX_A15
 	bool
 
+config CAN_ARM_CPU_CORTEX_A17
+    bool
+
 config CAN_ARM_CACHE_L2CXX0
 	bool
 
@@ -75,7 +78,7 @@ config ARM_V6
 
 config ARM_V7
 	def_bool y if ARM_CORTEX_A8 || ARM_CORTEX_A9 \
-	              || ARM_CORTEX_A5 || ARM_CORTEX_A7 || ARM_CORTEX_A15
+	              || ARM_CORTEX_A5 || ARM_CORTEX_A7 || ARM_CORTEX_A15 || ARM_CORTEX_A17
 
 config ARM_V6PLUS
 	def_bool y if ARM_V6 || ARM_V7 || ARM_V8
@@ -145,6 +148,12 @@ config ARM_CORTEX_A15
 	select HAS_MP_OPTION
 	select HAS_CPU_VIRT
 
+config ARM_CORTEX_A17
+    bool "ARM Cortex-A17 CPU"
+    depends on CAN_ARM_CPU_CORTEX_A17
+    select HAS_MP_OPTION
+    select HAS_CPU_VIRT
+
 config ARM_CORTEX_A53
 	bool "ARM Cortex-A53 CPU"
 	depends on CAN_ARM_CPU_CORTEX_A53
@@ -201,14 +210,14 @@ config ARM_EM_STD
 
 config ARM_EM_NS
 	bool "TrustZone normal side"
-	depends on ARM_1176 || ARM_CORTEX_A7 || ARM_CORTEX_A8 || ARM_CORTEX_A9 || ARM_CORTEX_A15
+	depends on ARM_1176 || ARM_CORTEX_A7 || ARM_CORTEX_A8 || ARM_CORTEX_A9 || ARM_CORTEX_A15 || ARM_CORTEX_A17
 	help
 	  In a system with ARM TrustZone extension, run on the normal side.
 
 config ARM_EM_TZ
 	bool "TrustZone secure side"
 	depends on !CPU_VIRT
-	depends on ARM_1176 || ARM_CORTEX_A7 || ARM_CORTEX_A8 || ARM_CORTEX_A9 || ARM_CORTEX_A15
+	depends on ARM_1176 || ARM_CORTEX_A7 || ARM_CORTEX_A8 || ARM_CORTEX_A9 || ARM_CORTEX_A15 || ARM_CORTEX_A17
 	help
 	  In a system with ARM TrustZone extension, run on the secure side,
 	  and allow monitor services.
@@ -247,14 +256,14 @@ config ARM_CACHE_L2CXX0
 
 config ARM_ENABLE_SWP
 	bool "Enable the deprecated 'swp' instruction"
-	depends on ARM_CORTEX_A9 || ARM_CORTEX_A15 || ARM_CORTEX_A7 || ARM_CORTEX_A5
+	depends on ARM_CORTEX_A9 || ARM_CORTEX_A15 || ARM_CORTEX_A7 || ARM_CORTEX_A5 || ARM_CORTEX_A17
 	help
 	  Enabling this option enables the deprecated 'swp' instruction.
 	  Avoid to enable it.
 
 config ARM_LPAE
         bool "Use LPAE page table format"
-        depends on ARM_CORTEX_A15 || ARM_CORTEX_A7 || ARM_V8
+        depends on ARM_CORTEX_A15 || ARM_CORTEX_A7 || ARM_V8 || ARM_CORTEX_A17
         help
           Use the extended page table format (LPAE).
 
