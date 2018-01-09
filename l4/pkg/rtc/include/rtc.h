@@ -24,6 +24,9 @@
 EXTERN_C_BEGIN
 
 L4_CV int
+l4rtc_get_seconds_since_1970(l4_uint32_t *seconds);
+
+L4_CV int
 l4rtc_get_offset_to_realtime(l4_cap_idx_t server, l4_uint64_t *nanoseconds);
 
 L4_CV int

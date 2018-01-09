@@ -18,7 +18,7 @@
  *
  * Also finds out IP of specified MAC
  *
- * $Id$
+ * $Id: arping.c 67 2015-01-12 21:57:36Z l4check $
  */
 /*
  *  Copyright (C) 2000-2002 Thomas Habets <thomas@habets.pp.se>

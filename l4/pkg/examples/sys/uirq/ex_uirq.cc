@@ -22,37 +22,6 @@
 #include <cstdio>
 #include <unistd.h>
 
-static void thread_fn(L4::Cap<L4::Irq> irq, unsigned return_after)
-{
-  printf("Hello from receiver thread.\n");
-
-  try
-    {
-      L4::Cap<L4::Thread> t;
-      // As there are no means to get the equivalent with std::thread, we
-      // use pthread_self() to get this thread
-      t = L4::Cap<L4::Thread>(pthread_l4_cap(pthread_self()));
-
-      // Attach to ourselves to the IRQ to receive its triggers
-      L4Re::chksys(irq->attach(0, t), "Could not attach to IRQ.");
-
-      // Now wait for triggers
-      while (return_after--)
-        {
-          L4Re::chksys(irq->receive(), "Receive failed.");
-          printf("Received irq!\n");
-        }
-    }
-  catch (L4::Runtime_error &e)
-    {
-      fprintf(stderr, "Runtime error: %s.\n", e.str());
-    }
-  catch (...)
-    {
-      fprintf(stderr, "Unknown exception.\n");
-    }
-}
-
 int main()
 {
   try
@@ -69,17 +38,15 @@ int main()
       L4Re::chksys(L4Re::Env::env()->factory()->create(irq),
                    "Failed to create IRQ.");
 
-      enum { Loops = 3 };
+      // bind to ourselves to the IRQ to receive its triggers
+      L4Re::chksys(irq->bind_thread(Pthread::L4::cap(pthread_self()), 0),
+                   "Could not bind to IRQ.");
 
       // Create a thread and also tell it about our IRQ capability
-      std::thread thread = std::thread([irq](){ thread_fn(irq, Loops); });
+      std::thread thread = std::thread([irq](){ irq->trigger(); });
 
-      // Trigger the IRQ a couple of times
-      for (int i = 0; i < Loops; i++)
-        {
-          irq->trigger();
-          sleep(1);
-        }
+      L4Re::chksys(irq->receive(), "Receive failed.");
+      printf("Received irq!\n");
 
       // 'Wait' for thread to finish
       thread.join();

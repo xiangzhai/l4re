@@ -38,7 +38,7 @@ class Vcpu_ic : public Ic
 
 public:
   Vcpu_ic()
-  : _cpu_irq(L4Re::chkcap(L4Re::Util::cap_alloc.alloc<L4::Irq>(),
+  : _cpu_irq(L4Re::chkcap(L4Re::Util::make_unique_cap<L4::Irq>(),
                           "allocate vcpu notification interrupt")),
     _irqvec(0)
   {
@@ -49,7 +49,7 @@ public:
   }
 
   void attach_cpu_thread(L4::Cap<L4::Thread> thread)
-  { L4Re::chksys(_cpu_irq->attach(0, thread)); }
+  { L4Re::chksys(_cpu_irq->bind_thread(thread, 0)); }
 
   void init_device(Vdev::Device_lookup const *, Vdev::Dt_node const &) override
   {}
@@ -94,7 +94,7 @@ public:
     return size;
   }
 
-  unsigned dt_get_interrupt(Vdev::Dt_node const &node, int irq)
+  unsigned dt_get_interrupt(Vdev::Dt_node const &node, int irq) override
   {
     auto *prop = node.check_prop<fdt32_t>("interrupts", irq + 1);
 
@@ -122,7 +122,7 @@ public:
   }
 
 private:
-  L4Re::Util::Auto_cap<L4::Irq>::Cap _cpu_irq;
+  L4Re::Util::Unique_cap<L4::Irq> _cpu_irq;
   /// Cached output pending array.
   l4_uint32_t _irqvec;
   /// Count for each interrupt the number of incomming sources.
@@ -144,6 +144,8 @@ class Mips_core_ic : public virtual Vdev::Dev_ref
   {
     l4_umword_t raw;
     CXX_BITFIELD_MEMBER(10, 15, hw_ints, raw);
+
+    Hw_int_reg(l4_umword_t r) : raw(r) {}
   };
 
 public:
@@ -168,6 +170,11 @@ public:
   {
     assert(cpuid < Max_ics);
     return _core_ics[cpuid];
+  }
+
+  static bool has_pending(Vmm::Vcpu_ptr vcpu)
+  {
+    return Hw_int_reg(vcpu.state()->guest_ctl_2).hw_ints();
   }
 
   void update_vcpu(Vmm::Vcpu_ptr vcpu)

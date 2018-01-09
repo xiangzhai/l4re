@@ -43,9 +43,9 @@ static int run()
   printf("Mapping IRQ cap to server.\n");
   chksys(server->map_irq(irq), "map irq");
 
-  // attach to IRQ and wait for the server to trigger it
-  chksys(irq->attach(0, L4Re::Env::env()->main_thread()),
-         "attach to IRQ");
+  // bind to IRQ and wait for the server to trigger it
+  chksys(irq->bind_thread(L4Re::Env::env()->main_thread(), 0),
+         "bind to IRQ");
 
   // tell the server to start triggering us and how many times it should
   // trigger the IRQ

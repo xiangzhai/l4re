@@ -104,17 +104,24 @@ public:
     typedef l4_uint32_t Value;
 
   private:
-    char _b[3];
+    struct Data
+    {
+      l4_uint16_t s;
+      char b;
+    } __attribute__((packed));
+
+    Data _d;
+
     Value get() const 
-    { return (Value)(*(l4_uint16_t const *)_b) | ((l4_uint32_t)_b[2] << 16); }
+    { return (Value)(_d.s) | ((l4_uint32_t)_d.b << 16); }
 
   public:
     Pixel() {}
 
     explicit Pixel(Value c)
     {
-      *(l4_uint16_t*)_b = (l4_uint16_t)c;
-      _b[2] = c >> 16;
+      _d.s = (l4_uint16_t)c;
+      _d.b = c >> 16;
     }
 
     Value v() const { return get(); }

@@ -369,8 +369,8 @@ static int run(void)
   chksys(L4Re::Env::env()->scheduler()->run_thread(vcpu_cap,
                                                    l4_sched_param(2)));
 
-  // Attach irq to our vCPU thread
-  chksys(irq->attach(2000, vcpu_cap));
+  // Bind IRQ to our vCPU thread
+  chksys(irq->bind_thread(vcpu_cap, 2000));
 
   // Send some IPCs to the vCPU
   l4_sleep(10);

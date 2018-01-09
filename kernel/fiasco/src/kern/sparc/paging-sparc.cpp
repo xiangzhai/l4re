@@ -136,10 +136,10 @@ Pte_ptr::_attribs(Page::Attr attr) const
     v |= Page::NONCACHEABLE;
 
   Mword acc = 0;
-  bool u = attr.rights & L4_fpage::Rights::U();
-  bool r = attr.rights & L4_fpage::Rights::R();
-  bool w = attr.rights & L4_fpage::Rights::W();
-  bool x = attr.rights & L4_fpage::Rights::X();
+  bool u(attr.rights & L4_fpage::Rights::U());
+  bool r(attr.rights & L4_fpage::Rights::R());
+  bool w(attr.rights & L4_fpage::Rights::W());
+  bool x(attr.rights & L4_fpage::Rights::X());
 
   if (u)
     {
@@ -246,11 +246,13 @@ Mword PF::is_read_error(Mword error)
 IMPLEMENT inline
 Mword PF::addr_to_msgword0(Address pfa, Mword error)
 {
-  Mword a = pfa & ~3;
+  Mword a = pfa & ~7ul;
   if(is_translation_error(error))
     a |= 1;
   if(!is_read_error(error))
     a |= 2;
+
+  // FIXME: flag instruction fetch faults with a |= 4
   return a;
 }
 

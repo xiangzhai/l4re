@@ -17,7 +17,7 @@ SRC_C = bsd_getopt.c closefrom.c dehumanize_number.c err.c expand_number.c \
         getpeereid.c hash/md5.c hash/sha512c.c heapsort.c humanize_number.c \
         inet_net_pton.c merge.c pidfile.c progname.c radixsort.c \
         readpassphrase.c reallocarray.c reallocf.c setmode.c stringlist.c \
-        strlcat.c strlcpy.c strmode.c strnstr.c strtonum.c timeconv.c \
+        strlcat.c strmode.c strnstr.c strtonum.c timeconv.c \
         unvis.c vis.c
 
 SRR_C_NOT_INCLUDED = getentropy.c \

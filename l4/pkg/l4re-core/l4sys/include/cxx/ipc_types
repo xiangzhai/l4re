@@ -566,11 +566,14 @@ public:
   { T *x = (O*)1; (void)x; }
 
   /// Make a Cap from L4::Cap<T>, with minimal rights
-  Cap(L4::Cap<T> cap) : _cap_n_rights(cap.cap() & Cap_mask) {}
+  Cap(L4::Cap<T> cap)
+  : _cap_n_rights((cap.cap() & Cap_mask) | (cap ? L4_CAP_FPAGE_R : 0))
+  {}
 
   /// Make IPC Cap from L4::Cap with conversion (and minimal rights).
   template<typename O>
-  Cap(L4::Cap<O> cap) : _cap_n_rights(cap.cap() & Cap_mask)
+  Cap(L4::Cap<O> cap)
+  : _cap_n_rights((cap.cap() & Cap_mask) | (cap ? L4_CAP_FPAGE_R : 0))
   { T *x = (O*)1; (void)x; }
 
   /// Make an invalid cap
@@ -751,7 +754,8 @@ struct Svr_val_ops< L4::Ipc::Cap<A>, Dir_out, Cls_item > :
                       Cap<A> arg, Dir_out, Cls_item)
   {
     if (L4_UNLIKELY(!arg.is_valid()))
-      return offset; // do not map anything
+      // do not map anything
+      return msg_add(msg, offset, limit, L4::Ipc::Snd_fpage(arg.cap(), 0));
 
     return msg_add(msg, offset, limit, arg.fpage());
   }

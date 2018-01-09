@@ -13,14 +13,11 @@
  * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS
  * ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
  * SOFTWARE.
+ *
+ *	from FreeBSD: inet_net_pton.c,v 1.9 2003/09/15 23:38:06 fenner Exp
  */
 
-#if defined(LIBC_SCCS) && !defined(lint)
-static const char orig_rcsid[] = "From Id: inet_net_pton.c,v 1.8 1996/11/21 10:28:12 vixie Exp $";
-#endif
 #include <sys/cdefs.h>
-__FBSDID("$FreeBSD: src/lib/libc/net/inet_net_pton.c,v 1.9 2003/09/15 23:38:06 fenner Exp $");
-
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -39,7 +36,7 @@ __FBSDID("$FreeBSD: src/lib/libc/net/inet_net_pton.c,v 1.9 2003/09/15 23:38:06 f
 # define SPRINTF(x) ((size_t)sprintf x)
 #endif
 
-static int	inet_net_pton_ipv4(const char *src, u_char *dst, size_t size);
+static int	inet_net_pton_ipv4(const char *src, unsigned char *dst, size_t size);
 
 /*
  * static int
@@ -83,13 +80,13 @@ inet_net_pton(int af, const char *src, void *dst, size_t size)
  *	Paul Vixie (ISC), June 1996
  */
 static int
-inet_net_pton_ipv4(const char *src, u_char *dst, size_t size)
+inet_net_pton_ipv4(const char *src, unsigned char *dst, size_t size)
 {
 	static const char
 		xdigits[] = "0123456789abcdef",
 		digits[] = "0123456789";
 	int n, ch, tmp, dirty, bits;
-	const u_char *odst = dst;
+	const unsigned char *odst = dst;
 
 	ch = *src++;
 	if (ch == '0' && (src[0] == 'x' || src[0] == 'X')
@@ -130,7 +127,7 @@ inet_net_pton_ipv4(const char *src, u_char *dst, size_t size)
 				 isascii(ch) && isdigit(ch));
 			if (size-- <= 0)
 				goto emsgsize;
-			*dst++ = (u_char) tmp;
+			*dst++ = (unsigned char) tmp;
 			if (ch == '\0' || ch == '/')
 				break;
 			if (ch != '.')

@@ -127,7 +127,7 @@ sub grub2_mkisofs($$@)
   system('grub-mkrescue --output=/dev/null /dev/null -f >/dev/null 2>&1');
   $opt = " -as mkisofs" unless $?;
   my $cmd = "$mkr --output=\"$isofilename\" $dir ".
-            join(' ', @morefiles)." --$opt -f";
+            join(' ', @morefiles)." --$opt -follow default";
   system("$cmd");
   die "Failed to create ISO" if $?;
   # grub-mkrescue does not propagate internal tool errors

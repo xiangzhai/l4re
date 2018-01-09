@@ -24,11 +24,11 @@ void Jdb_tcb::print_entry_frame_regs(Thread *t)
          "[8] %08lx %08lx %08lx %08lx  %08lx %08lx %08lx %s%08lx\033[m\n"
          "upsr=%08lx tpidr: urw=%08lx uro=%08lx\n",
          from_user ? "user" : "kernel",
-	 ef->r[0], ef->r[1],ef->r[2], ef->r[3],
-	 ef->r[4], ef->r[5],ef->r[6], ef->r[7],
-	 ef->r[8], ef->r[9],ef->r[10], ef->r[11],
-	 ef->r[12], ef->usp, ef->r[30], Jdb::esc_iret, ef->pc,
-	 ef->psr, t->tpidrurw(), t->tpidruro());
+         ef->r[0], ef->r[1], ef->r[2], ef->r[3],
+         ef->r[4], ef->r[5], ef->r[6], ef->r[7],
+         ef->r[8], ef->r[9], ef->r[10], ef->r[11],
+         ef->r[12], ef->usp, ef->r[30], Jdb::esc_iret, ef->pc,
+         ef->psr, t->tpidrurw(), t->tpidruro());
 }
 
 IMPLEMENT
@@ -65,13 +65,13 @@ IMPLEMENT inline
 bool
 Jdb_tcb_ptr::is_user_value() const
 {
-  return _offs >= Context::Size - 5 * sizeof(Mword);
+  return _offs >= Context::Size - 6 * sizeof(Mword);
 }
 
 IMPLEMENT inline
 const char *
 Jdb_tcb_ptr::user_value_desc() const
 {
-  const char *desc[] = { "PSR", "PC", "KLR", "ULR", "SP" };
+  const char *desc[] = { "PSR", "PC", "USP", "PFA", "ESR", "KSP" };
   return desc[(Context::Size - _offs) / sizeof(Mword) - 1];
 }

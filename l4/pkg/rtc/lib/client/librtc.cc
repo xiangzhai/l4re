@@ -56,6 +56,17 @@ L4rtc::Rtc::Time L4rtc::Rtc::get_timer()
 l4_uint64_t l4rtc_get_timer()
 { return get_timer(); }
 
+int
+l4rtc_get_seconds_since_1970(l4_uint32_t *seconds) 
+{
+  l4_cap_idx_t server = l4re_env_get_cap("rtc");
+  l4_uint64_t value;
+  int ret;
+  ret = l4rtc_get_offset_to_realtime(server, &value);
+  *seconds = value / 1000000000;
+  return ret;
+}
+
 /**
  * Deliver the offset between real time and system's uptime in seconds and
  * nanoseconds.

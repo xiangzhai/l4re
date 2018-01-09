@@ -7,8 +7,7 @@
 #pragma once
 
 #include <l4/cxx/ref_ptr>
-#include <l4/cxx/ipc_server>
-#include <l4/cxx/ipc_stream>
+#include <l4/sys/cxx/ipc_epiface>
 
 #include <l4/sys/vcon>
 
@@ -17,7 +16,7 @@
 #include "guest.h"
 
 class Monitor_console
-: private L4::Server_object_t<L4::Vcon>,
+: public L4::Irqep_t<Monitor_console>,
   public cxx::Ref_obj
 {
   FILE *_f;
@@ -40,8 +39,7 @@ public:
     fclose(_f);
   }
 
-  template<typename REG>
-  void register_obj(REG *registry)
+  void register_obj(L4::Registry_iface *registry)
   {
     _con->bind(0, L4Re::chkcap(registry->register_irq_obj(this)));
     fprintf(_f, "VMM Monitor Console\n");
@@ -54,7 +52,7 @@ public:
     fflush(_f);
   }
 
-  int dispatch(l4_umword_t, L4::Ipc::Iostream &)
+  void handle_irq()
   {
     int r;
 
@@ -81,6 +79,8 @@ public:
                       _devices->vmm()->show_state_interrupts(_f, cpus->vcpu(i));
                   break;
                 }
+              case 't': Dbg::set_verbosity(Dbg::Trace | Dbg::Info | Dbg::Warn); break;
+              case 'T': Dbg::set_verbosity(Dbg::Info | Dbg::Warn); break;
               case '\r':
               case '\b':
                 print_prompt = false;
@@ -97,7 +97,6 @@ public:
           prompt();
       }
     while (r > 0);
-    return 0;
   }
 
 private:

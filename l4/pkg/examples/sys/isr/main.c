@@ -59,11 +59,11 @@ int main(void)
       return 1;
     }
 
-  /* Attach ourselves to the IRQ */
-  tag = l4_irq_attach(irqcap, 0xDEAD, l4re_env()->main_thread);
+  /* Bind ourselves to the IRQ */
+  tag = l4_rcv_ep_bind_thread(irqcap, l4re_env()->main_thread, 0xDEAD);
   if ((err = l4_error(tag)))
     {
-      printf("Error attaching to IRQ %d: %d\n", irqno, err);
+      printf("Error binding to IRQ %d: %d\n", irqno, err);
       return 1;
     }
 

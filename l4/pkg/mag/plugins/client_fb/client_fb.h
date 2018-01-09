@@ -15,7 +15,7 @@
 #include <l4/re/util/video/goos_svr>
 #include <l4/re/util/event_svr>
 #include <l4/sys/cxx/ipc_epiface>
-#include <l4/re/util/cap_alloc>
+#include <l4/re/util/unique_cap>
 #include <l4/re/rm>
 #include <l4/re/util/icu_svr>
 #include <l4/mag/server/plugin>
@@ -34,8 +34,8 @@ private:
   Texture *_fb;
   int _bar_height;
 
-  L4Re::Util::Auto_cap<L4Re::Dataspace>::Cap _ev_ds;
-  L4Re::Rm::Auto_region<void*> _ev_ds_m;
+  L4Re::Util::Unique_cap<L4Re::Dataspace> _ev_ds;
+  L4Re::Rm::Unique_region<void*> _ev_ds_m;
   L4Re::Event_buffer _events;
   Irq _ev_irq;
 

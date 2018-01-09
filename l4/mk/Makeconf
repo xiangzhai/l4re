@@ -119,6 +119,7 @@ MKDIR		= mkdir -p
 MKFLAGS		+=$(MKFLAGS_$@)
 NM		?= $(CROSS_COMPILE)nm
 OBJCOPY		?= $(CROSS_COMPILE)objcopy
+OBJDUMP		?= $(CROSS_COMPILE)objdump
 PKG_CONFIG      = pkg-config
 PWDCMD		= pwd -P
 RANLIB		?= $(CROSS_COMPILE)ranlib
@@ -136,7 +137,7 @@ ABS2REL		= $(L4DIR)/tool/bin/abs2rel.sh
 # it is optional to be able to set it as environment variable
 FIASCOUX	?= $(L4DIR)/../kernel/fiasco/build-ux/fiasco
 PAGER		?= less
-DISASM_CMD      ?= $(CROSS_COMPILE)objdump -lCSd $(1) | $(PAGER)
+DISASM_CMD      ?= $(OBJDUMP) -lCSd $(1) | $(PAGER)
 IMAGES_DIR      ?= $(OBJ_BASE)/images
 
 # functions that are handy
@@ -325,10 +326,12 @@ ifneq ($(CONFIG_HAVE_LDSO),)
 # arg4 - [opt] alternative binary name
 ifeq ($(origin BID_LIBGENDEP_PATHS), undefined)
  ifeq ($(HOST_SYSTEM),linux)
+   BID_LIBGENDEP_PATHS_fn = \
+     $(firstword $(wildcard $(call absfilename, $(OBJ_BASE)/tool/gendep$(1) \
+                                                $(DROPS_STDDIR)/tool/lib$(1))))
    BID_LIBGENDEP_PATHS := \
-      $(firstword $(wildcard $(call absfilename, $(OBJ_BASE)/tool/gendep/64 \
-        $(DROPS_STDDIR)/tool/lib/64))):$(firstword $(wildcard $(call absfilename, \
-        $(OBJ_BASE)/tool/gendep/32 $(DROPS_STDDIR)/tool/lib/32 )))
+     $(call BID_LIBGENDEP_PATHS_fn,/64):$(call \
+            BID_LIBGENDEP_PATHS_fn,/32):$(call BID_LIBGENDEP_PATHS_fn)
  endif
 
  ifeq ($(HOST_SYSTEM),darwin)
@@ -604,7 +607,7 @@ ADDFILEHEADER_PREFIX = $(patsubst $(call absfilename,$(PKGDIR)/)%,\
 ADDFILEHEADER_FILES = $(filter-out addfileheader,$(MAKECMDGOALS))
 addfileheader:
 	addfileheader $(ADDFILEHEADER_OPTIONS) -p $(ADDFILEHEADER_PREFIX) $(ADDFILEHEADER_FILES)
-        
+
 
 .PHONY: FORCE
 

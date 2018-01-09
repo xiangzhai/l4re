@@ -391,8 +391,9 @@ l4shmc_attach_signal_to(l4shmc_area_t *shmarea,
   if (r)
     goto out;
 
-  if ((r = l4_error(l4_irq_attach(signal->_sigcap,
-                                  (l4_umword_t)signal, thread))))
+  if ((r = l4_error(l4_rcv_ep_bind_thread(signal->_sigcap,
+                                          thread,
+                                          (l4_umword_t)signal))))
     {
       printf("Error on irq_attach(): %ld (sigcap %lx, sig_id %lx, thread %lx\n",
              r, signal->_sigcap, l4_debugger_global_id(signal->_sigcap),

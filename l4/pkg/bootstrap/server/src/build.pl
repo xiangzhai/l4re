@@ -163,12 +163,30 @@ sub build_objects(@)
   write_to_file($make_inc_file, $make_inc_str);
 }
 
-
-sub list_files(@)
+sub get_files
 {
   my %entry = @_;
-  print join(' ', map { L4::ModList::search_file_or_die($_->{command}, $module_path) }
-                      @{$entry{mods}}), "\n";
+  map { L4::ModList::search_file_or_die($_->{command}, $module_path) }
+      @{$entry{mods}};
+}
+
+sub list_files
+{
+  print join(' ', get_files(@_)), "\n";
+}
+
+sub list_files_unique
+{
+  my %d;
+  $d{$_} = 1 foreach (get_files(@_));
+  print join(' ', keys %d), "\n";
+}
+
+sub fetch_files
+{
+  my %entry = @_;
+  L4::ModList::fetch_remote_file($_->{command})
+    foreach (@{$entry{mods}});
 }
 
 sub dump_entry(@)
@@ -207,6 +225,15 @@ if ($ARGV[0] eq 'build')
 elsif ($ARGV[0] eq 'list')
   {
     list_files(%entry);
+  }
+elsif ($ARGV[0] eq 'list_unique')
+  {
+    list_files_unique(%entry);
+  }
+elsif ($ARGV[0] eq 'fetch_files_and_list_unique')
+  {
+    fetch_files(%entry);
+    list_files_unique(%entry);
   }
 elsif ($ARGV[0] eq 'dump')
   {

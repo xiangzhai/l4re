@@ -156,7 +156,6 @@ public:
 static L4::Server<Loop_hooks> server(l4_utcb());
 static My_reg registry(&server);
 
-using L4Re::Util::Auto_cap;
 using L4Re::chksys;
 using L4Re::chkcap;
 #if 0
@@ -250,7 +249,7 @@ int run(int argc, char const *argv[])
   L4Re::Video::View::Info view_i;
   chksys(goos_fb.view_info(&view_i), "requesting frame-buffer info");
 
-  L4Re::Rm::Auto_region<char *> fb_addr;
+  L4Re::Rm::Unique_region<char *> fb_addr;
   chksys(env->rm()->attach(&fb_addr, goos_fb.buffer()->size(),
                            L4Re::Rm::Search_addr,
                            L4::Ipc::make_cap_rw(goos_fb.buffer()),

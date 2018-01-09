@@ -31,11 +31,13 @@ Io_proxy::bind_irq(Vmm::Guest *vmm, Vmm::Virt_bus *vbus, Gic::Ic *ic,
     {
       auto irq_svr = Vdev::make_device<Vdev::Irq_svr>(io_irq);
 
-      L4Re::chkcap(vmm->registry()->register_irq_obj(irq_svr.get()));
+      L4Re::chkcap(vmm->registry()->register_irq_obj(irq_svr.get()),
+                   "Invalid capability");
 
       // We have a 1:1 association, so if the irq is not bound yet we
       // should be able to bind the icu irq
-      L4Re::chksys(vbus->icu()->bind(io_irq, irq_svr->obj_cap()));
+      L4Re::chksys(vbus->icu()->bind(io_irq, irq_svr->obj_cap()),
+                   "Cannot bind to IRQ");
 
       // Point irq_svr to ic:dt_irq for upstream events (like
       // interrupt delivery)
@@ -48,8 +50,8 @@ Io_proxy::bind_irq(Vmm::Guest *vmm, Vmm::Virt_bus *vbus, Gic::Ic *ic,
       return;
     }
 
-  warn.printf("irq%d=0x%x -> 0x%x already registered\n",
-              dt_idx, io_irq, dt_irq);
+  warn.printf("IO device '%s': irq%d=0x%x -> 0x%x already registered\n",
+              self.get_name(), dt_idx, io_irq, dt_irq);
 
   // Ensure we have the correct binding of the currently registered
   // source
@@ -105,7 +107,8 @@ Io_proxy::init_device(Device_lookup const *devs, Dt_node const &self)
     {
       l4vbus_resource_t res;
 
-      L4Re::chksys(_dev.get_resource(i, &res));
+      L4Re::chksys(_dev.get_resource(i, &res),
+                   "Cannot get resource in device_init()");
 
       char const *resname = reinterpret_cast<char const *>(&res.id);
 
@@ -165,7 +168,11 @@ struct F : Factory
 
     auto *vd = vbus->find_unassigned_dev(node);
     if (!vd)
-      return nullptr;
+      {
+        warn.printf("No matching IO device found for device tree entry '%s'\n",
+                    node.get_name());
+        return nullptr;
+      }
 
     auto proxy = make_device<Io_proxy>(vd->io_dev);
     vd->proxy = proxy;
@@ -174,7 +181,8 @@ struct F : Factory
       {
         l4vbus_resource_t res;
 
-        L4Re::chksys(vd->io_dev.get_resource(i, &res));
+        L4Re::chksys(vd->io_dev.get_resource(i, &res),
+                     "Cannot get resource in create()");
 
         char const *resname = reinterpret_cast<char const *>(&res.id);
 

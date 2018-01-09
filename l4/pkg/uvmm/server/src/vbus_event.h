@@ -28,13 +28,12 @@ public:
   L4::Cap<L4::Irq> event_irq() const
   { return L4::cap_cast<L4::Irq>(_vbus_event.irq()); }
 
-  template <typename REG>
-  void register_obj(REG *registry)
+  void register_obj(L4::Registry_iface *registry)
   {
     if (!_vbus_event.irq().is_valid())
       return;
 
-    L4Re::chkcap(registry->register_irq_obj(this, L4::cap_cast<L4::Irq>(_vbus_event.irq())),
+    L4Re::chkcap(registry->register_obj(this, L4::cap_cast<L4::Irq>(_vbus_event.irq())),
                  "Registering guest IRQ in proxy");
   }
 

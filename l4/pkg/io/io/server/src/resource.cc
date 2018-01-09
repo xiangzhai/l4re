@@ -136,6 +136,36 @@ Resource_provider::_RS::request(Resource *parent, Device *,
     }
 }
 
+void
+Resource_provider::_RS::assign(Resource *parent, Resource *child)
+{
+  auto p = _rl.begin();
+  for ( ; p != _rl.end(); ++p)
+    {
+      if ((*p)->alignment() <= child->alignment())
+        break;
+    }
+
+  _rl.insert(p, child);
+  child->parent(parent);
+
+  auto f = _rl.front();
+  if (f->alignment() > parent->alignment())
+    parent->alignment(f->alignment());
+
+  Size sz = 0;
+  Size min_align = L4_PAGESIZE - 1;
+
+  for (auto r: _rl)
+    {
+      Size a = cxx::max<Size>(r->alignment(), min_align);
+      sz = (sz + a) & ~a;
+      sz += r->size();
+    }
+
+  if (sz > parent->size())
+    parent->size(sz);
+}
 
 bool
 Resource_provider::_RS::alloc(Resource *parent, Device *pdev,
@@ -186,7 +216,48 @@ Resource_provider::_RS::alloc(Resource *parent, Device *pdev,
       start = (*p)->end() + 1;
       ++p;
     }
+
+  if (child->provided())
+    child->provided()->adjust_children(child);
+
   return request(parent, pdev, child, cdev);
+}
+
+bool
+Resource_provider::_RS::adjust_children(Resource *self)
+{
+  Addr start = self->start();
+  Size min_align = L4_PAGESIZE - 1;
+
+  for (auto c: _rl)
+    {
+      if (c->fixed_addr() || c->relative() || c->empty())
+        {
+          d_printf(DBG_WARN,
+                   "internal warning: skipped unallocated fixed / relative resource\n");
+          continue;
+        }
+
+      Size a = cxx::max<Size>(c->alignment(), min_align);
+      start = (start + a) & ~a;
+      c->start(start);
+
+      start += c->size();
+
+      if (!self->contains(*c))
+        {
+          d_printf(DBG_ERR, "error: resource setting failed: ");
+          c->dump();
+          d_printf(DBG_ERR, "  in ");
+          self->dump();
+        }
+
+      c->enable();
+
+      if (c->provided())
+        c->provided()->adjust_children(c);
+    }
+  return true;
 }
 
 void Mmio_data_space::alloc_ram(Size size, unsigned long alloc_flags)
@@ -195,8 +266,7 @@ void Mmio_data_space::alloc_ram(Size size, unsigned long alloc_flags)
   if (L4_UNLIKELY(!dma_space))
     {
       auto uf = L4Re::Env::env()->user_factory();
-      L4Re::Util::Auto_cap<L4Re::Dma_space>::Cap d;
-      d = L4Re::chkcap(L4Re::Util::cap_alloc.alloc<L4Re::Dma_space>());
+      auto d = L4Re::chkcap(L4Re::Util::make_unique_cap<L4Re::Dma_space>());
       L4Re::chksys(uf->create(d.get()));
       L4Re::chksys(d->associate(L4::Ipc::Cap<L4::Task>(),
                                 L4Re::Dma_space::Space_attrib::Phys_space),
@@ -207,7 +277,7 @@ void Mmio_data_space::alloc_ram(Size size, unsigned long alloc_flags)
 
   ma_flags |= alloc_flags ? L4Re::Mem_alloc::Super_pages : 0;
 
-  _ds_ram = L4Re::Util::cap_alloc.alloc<L4Re::Dataspace>();
+  _ds_ram = L4Re::Util::make_unique_cap<L4Re::Dataspace>();
   if (!_ds_ram.is_valid())
     throw(L4::Out_of_memory(""));
 

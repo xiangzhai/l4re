@@ -190,7 +190,7 @@ function App_env.new(proto)
   local f = proto or {};
 
   f.loader = f.loader or default_loader;
-  f.rm_fab = f.loader.rm_fab;
+  f.rm_fab = f.rm_fab or f.loader.rm_fab;
   f.factory = f.factory or f.loader.factory or Env.factory;
   --  f.scheduler = f.scheduler or f.loader.scheduler;
 
@@ -260,7 +260,7 @@ function Loader:startv(env, ...)
 
   if (type(caps) == "table") then
     for k, v in pairs(caps) do
-      if type(v) == "table" then
+      if type(v) == "table" and getmetatable(v) == nil then
         caps[k] = self:create_namespace(v)
       end
     end

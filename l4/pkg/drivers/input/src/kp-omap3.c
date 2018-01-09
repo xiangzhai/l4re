@@ -275,7 +275,7 @@ static int kp_irq_func(void)
   if (l4io_request_irq(7, irq_cap) < 0)
     return -2;
   // was L4_IRQ_F_LEVEL_LOW
-  tag = l4_irq_attach(irq_cap, 0, thread_cap);
+  tag = l4_rcv_ep_bind_thread(irq_cap, thread_cap, 0);
   if (l4_ipc_error(tag, l4_utcb()))
     return -3;
 

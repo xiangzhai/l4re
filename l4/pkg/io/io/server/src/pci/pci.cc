@@ -277,7 +277,7 @@ Bus::discover_bus(Hw::Device *host)
           d->discover_resources(child);
 
           // go down the PCI hierarchy recursively,
-          // to assign bus numbers (if not yet assigned) the rights way
+          // to assign bus numbers (if not yet assigned) the right way
           d->discover_bus(child);
 	}
     }
@@ -750,7 +750,7 @@ Dev::setup(Hw::Device *)
         decoders_to_enable |= (r->type() == Resource::Io_res) ? 1 : 2;
       else
         {
-          decoders_to_enable &= ~ (r->type() == Resource::Io_res) ? 1 : 2;
+          decoders_to_enable &= ~((r->type() == Resource::Io_res) ? 1 : 2);
           d_printf(DBG_ERR, "ERROR: could not set PCI BAR %d\n", i);
         }
 

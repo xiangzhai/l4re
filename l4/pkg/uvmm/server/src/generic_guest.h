@@ -11,6 +11,7 @@
 #include <l4/re/dataspace>
 #include <l4/re/util/br_manager>
 #include <l4/re/util/object_registry>
+#include <l4/re/util/unique_cap>
 #include <l4/l4virtio/l4virtio>
 
 #include "debug.h"
@@ -51,6 +52,11 @@ public:
 
   void handle_ipc(l4_msgtag_t tag, l4_umword_t label, l4_utcb_t *utcb)
   {
+    // IPIs between CPUs have IRQs with zero label and are currently
+    // not handled by the registery. Return immediately on these IPCs.
+    if ((label & ~3UL) == 0)
+      return;
+
     l4_msgtag_t r = _registry.dispatch(tag, label, utcb);
     if (r.label() != -L4_ENOREPLY)
       l4_ipc_send(L4_INVALID_CAP | L4_SYSF_REPLY, utcb, r,
@@ -152,7 +158,7 @@ protected:
   L4Re::Util::Br_manager _bm;
   L4Re::Util::Object_registry _registry;
   Vm_mem _memmap;
-  L4Re::Util::Auto_cap<L4::Task>::Cap _task;
+  L4Re::Util::Unique_cap<L4::Task> _task;
   Pm _pm;
   Vbus_event _vbus_event;
   L4::Cap<L4Re::Dataspace> _mmio_fallback;

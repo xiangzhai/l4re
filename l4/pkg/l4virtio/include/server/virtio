@@ -51,7 +51,7 @@ struct Dev_status
   CXX_BITFIELD_MEMBER( 0,  0, acked, raw);
   CXX_BITFIELD_MEMBER( 1,  1, driver, raw);
   CXX_BITFIELD_MEMBER( 2,  2, driver_ok, raw);
-  CXX_BITFIELD_MEMBER( 4,  4, feature_ok, raw);
+  CXX_BITFIELD_MEMBER( 3,  3, features_ok, raw);
   CXX_BITFIELD_MEMBER( 7,  7, failed, raw);
 
   /**
@@ -59,7 +59,7 @@ struct Dev_status
    * \return true if the device is in running state.
    *
    * The device is in running state when acked(), driver(),
-   * feature_ok, and driver_ok() return true,
+   * features_ok(), and driver_ok() return true,
    * and failed() returns false.
    */
   bool running() const
@@ -352,6 +352,27 @@ struct Bad_descriptor
   Bad_descriptor(Request_processor const *proc, Error e)
   : proc(proc), error(e)
   {}
+
+  /**
+   * Get a human readable description of the error code.
+   *
+   * \return  Message describing the error.
+   */
+  char const *message() const
+  {
+    char const *const err[] = {
+      [Bad_address] = "Descriptor address cannot be translated",
+      [Bad_rights]  = "Insufficient memory access rights",
+      [Bad_flags]   = "Invalid descriptor flags",
+      [Bad_next]    = "The descriptor's `next` index is invalid",
+      [Bad_size]    = "Invalid size of the memory block"
+    };
+
+    if (error >= (sizeof(err) / sizeof(err[0])))
+      return "Unknown error";
+
+   return err[error];
+  }
 };
 
 
@@ -392,13 +413,19 @@ private:
 
 public:
   /**
-   * \brief Start processing a new request.
+   * Start processing a new request.
+   *
    * \tparam DESCM_MAN  Type of descriptor manager (implicit).
-   * \param dm       Descriptor manager that is used to translate VIRTIO descriptor addresses.
-   * \param ring     VIRTIO ring of the request.
-   * \param request  VIRTIO request from Virtqueue::next_avail()
-   * \param args     Extra arguments passed to dm->load_desc()
+   * \param  dm         Descriptor manager that is used to translate VIRTIO
+   *                    descriptor addresses.
+   * \param  ring       VIRTIO ring of the request.
+   * \param  request    VIRTIO request from Virtqueue::next_avail()
+   * \param  args       Extra arguments passed to dm->load_desc()
+   *
    * \pre The given request must be valid.
+   *
+   * \throws Bad_descriptor  The descriptor has an invalid size or load_desc()
+   *                         has thrown an exception by itself.
    */
   template<typename DESC_MAN, typename ...ARGS>
   void start(DESC_MAN *dm, Virtqueue *ring, Virtqueue::Head_desc const &request, ARGS... args)
@@ -453,11 +480,17 @@ public:
   { return _current.flags.next(); }
 
   /**
-   * \brief Switch to the next descriptor in a descriptor chain.
+   * Switch to the next descriptor in a descriptor chain.
+   *
    * \tparam DESCM_MAN  Type of descriptor manager (implicit).
-   * \param dm       Descriptor manager that is used to translate VIRTIO descriptor addresses.
-   * \param args     Extra arguments passed to dm->load_desc()
-   * \return true if a descriptor is available, false if not.
+   * \param  dm         Descriptor manager that is used to translate VIRTIO
+   *                    descriptor addresses.
+   * \param  args       Extra arguments passed to dm->load_desc()
+   *
+   * \retval true   A next descriptor is available.
+   * \retval false  No descriptor available.
+   *
+   * \throws Bad_descriptor  The `next` index of this descriptor is invalid.
    */
   template<typename DESC_MAN, typename ...ARGS>
   bool next(DESC_MAN *dm, ARGS... args)

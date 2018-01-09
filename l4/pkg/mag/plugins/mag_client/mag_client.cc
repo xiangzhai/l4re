@@ -17,6 +17,7 @@
 #include <l4/re/util/video/goos_svr>
 #include <l4/re/util/event_svr>
 #include <l4/re/util/icu_svr>
+#include <l4/re/util/unique_cap>
 #include <l4/re/video/goos-sys.h>
 #include <l4/re/video/goos>
 #include <l4/re/console>
@@ -31,7 +32,7 @@
 #include <l4/mag-gfx/factory>
 
 #include <l4/cxx/list>
-#include <l4/cxx/auto_ptr>
+#include <l4/cxx/unique_ptr>
 
 #include <cstring>
 #include <cstdio>
@@ -41,7 +42,7 @@
 
 namespace Mag_server { namespace {
 
-using L4Re::Util::Auto_cap;
+using L4Re::Util::Unique_cap;
 using std::auto_ptr;
 using Mag_gfx::Texture;
 using Mag_gfx::Area;
@@ -77,13 +78,13 @@ private:
   typedef L4Re::Video::Goos::Rights Goos_rights;
 
   Core_api const *_core;
-  L4Re::Util::Auto_cap<L4Re::Dataspace>::Cap _ev_ds;
+  L4Re::Util::Unique_cap<L4Re::Dataspace> _ev_ds;
   Irq _ev_irq;
-  L4Re::Rm::Auto_region<void*> _ev_ds_m;
+  L4Re::Rm::Unique_region<void*> _ev_ds_m;
   L4Re::Event_buffer _events;
 
   typedef std::vector<cxx::Ref_ptr<Client_buffer> >  Buffer_vector;
-  typedef std::vector<cxx::Auto_ptr<Client_view> > View_vector;
+  typedef std::vector<cxx::unique_ptr<Client_view> > View_vector;
 
   Buffer_vector _buffers;
   View_vector _views;
@@ -173,8 +174,8 @@ public:
 class Client_buffer : public cxx::Ref_obj
 {
 private:
-  L4Re::Util::Auto_cap<L4Re::Dataspace>::Cap _ds;
-  L4Re::Rm::Auto_region<void *> _texture_mem;
+  L4Re::Util::Unique_cap<L4Re::Dataspace> _ds;
+  L4Re::Rm::Unique_region<void *> _texture_mem;
   unsigned long _size;
 
 public:
@@ -370,7 +371,7 @@ Mag_goos::Mag_goos(Core_api const *core)
 : Icu_svr(1, &_ev_irq), _core(core)
 {
   L4Re::Env const *e = L4Re::Env::env();
-  _ev_ds = L4Re::Util::cap_alloc.alloc<L4Re::Dataspace>();
+  _ev_ds = L4Re::Util::make_unique_cap<L4Re::Dataspace>();
 
   chksys(e->mem_alloc()->alloc(L4_PAGESIZE, _ev_ds.get()));
   chksys(e->rm()->attach(&_ev_ds_m, L4_PAGESIZE, L4Re::Rm::Search_addr,
@@ -454,7 +455,7 @@ Mag_goos::op_create_buffer(Goos_rights, unsigned long size,
                            L4::Ipc::Cap<L4Re::Dataspace> &ds)
 {
   cxx::Ref_ptr<Client_buffer> b(new Client_buffer(_core, size));
-  _buffers.push_back(b);
+  _buffers.emplace_back(b);
   b->index = _buffers.size() - 1;
   ds = L4::Ipc::Cap<L4Re::Dataspace>(b->ds_cap(), L4_CAP_FPAGE_RW);
   return b->index;
@@ -463,17 +464,17 @@ Mag_goos::op_create_buffer(Goos_rights, unsigned long size,
 inline long
 Mag_goos::op_create_view(Goos_rights)
 {
-  cxx::Auto_ptr<Client_view> v(new Client_view(_core, this));
+  cxx::unique_ptr<Client_view> v = cxx::make_unique<Client_view>(_core, this);
   unsigned idx = 0;
   for (View_vector::iterator i = _views.begin(); i != _views.end();
       ++i, ++idx)
     if (!*i)
       {
-	*i = v;
-	return idx;
+        *i = cxx::move(v);
+        return idx;
       }
 
-  _views.push_back(v);
+  _views.emplace_back(cxx::move(v));
   return _views.size() - 1;
 }
 
@@ -593,15 +594,15 @@ Mag_goos::destroy()
 Client_buffer::Client_buffer(Core_api const *, unsigned long size)
 : _size(l4_round_page(size))
 {
-  L4Re::Rm::Auto_region<void *> dsa;
-  _ds = L4Re::Util::cap_alloc.alloc<L4Re::Dataspace>();
+  L4Re::Rm::Unique_region<void *> dsa;
+  _ds = L4Re::Util::make_unique_cap<L4Re::Dataspace>();
 
   L4Re::chksys(L4Re::Env::env()->mem_alloc()->alloc(_size, _ds.get()));
   L4Re::chksys(L4Re::Env::env()->rm()
                  ->attach(&dsa, _size, L4Re::Rm::Search_addr,
                           L4::Ipc::make_cap_rw(_ds.get())));
 
-  _texture_mem = dsa;
+  _texture_mem = cxx::move(dsa);
 }
 
 

@@ -432,11 +432,11 @@ static void l4evdev_disconnect(struct input_handle *handle)
 
 	evdev->exists = 0;
 
-	if (evdev->isopen)
+	if (evdev->isopen) {
 		input_close_device(handle);
 		if (test_bit(EV_SND, handle->dev->evbit))
 			pcspkr = NULL;
-	else /* XXX what about pending events? */
+        } else /* XXX what about pending events? */
 		memset(&DEVS[evdev->devn], 0, sizeof(struct l4evdev));
 }
 

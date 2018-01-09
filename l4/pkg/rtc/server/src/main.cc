@@ -308,7 +308,7 @@ main()
       static System_state_tracker tracker(rtc);
       static Rtc_svr rtc_server(&tracker);
 
-      L4Re::chkcap(server.registry()->register_irq_obj(&tracker, tracker.event_irq()),
+      L4Re::chkcap(server.registry()->register_obj(&tracker, tracker.event_irq()),
                    "Could not register state tracker");
       L4Re::chkcap(server.registry()->register_obj(&rtc_server, "rtc"),
                    "Could not register RTC server. 'rtc' cap missing?");

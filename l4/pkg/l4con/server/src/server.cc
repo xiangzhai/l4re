@@ -29,6 +29,7 @@
 #include <l4/re/util/event_svr>
 #include <l4/re/util/event_buffer>
 #include <l4/re/util/cap_alloc>
+#include <l4/re/util/unique_cap>
 #include <l4/re/console>
 
 #include "object_registry_gc"
@@ -140,8 +141,7 @@ Vc::create_event()
 {
   long r;
 
-  L4Re::Util::Auto_cap<L4Re::Dataspace>::Cap b
-    = L4Re::Util::cap_alloc.alloc<L4Re::Dataspace>();
+  auto b = L4Re::Util::make_unique_cap<L4Re::Dataspace>();
   if (!b.is_valid())
     return -L4_ENOMEM;
 

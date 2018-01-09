@@ -85,7 +85,7 @@ L4THREAD_EXIT_FN_STATIC(exit_fn, ddekit_irq_exit_fn);
 static int do_irq_attach(int irq)
 {
   ddekit_irq_ctrl[irq].irq_cap = l4re_util_cap_alloc();
- 
+
   if (l4_is_invalid_cap(ddekit_irq_ctrl[irq].irq_cap))
     return -1;
 
@@ -94,8 +94,9 @@ static int do_irq_attach(int irq)
 
   pthread_t pthread = (pthread_t)ddekit_thread_get_id(ddekit_irq_ctrl[irq].irq_thread);
   l4_cap_idx_t thread_cap = pthread_l4_cap(pthread);
-  if (l4_msgtag_has_error(l4_irq_attach(ddekit_irq_ctrl[irq].irq_cap,
-			      irq, /*ddekit_irq_ctrl[irq].trigger, */ thread_cap)))
+  if (l4_msgtag_has_error(l4_rcv_ep_bind_thread(ddekit_irq_ctrl[irq].irq_cap,
+                                                thread_cap,
+                                                irq /*ddekit_irq_ctrl[irq].trigger, */)))
     return -3;
 
   return 0;

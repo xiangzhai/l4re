@@ -19,6 +19,7 @@
 #include <l4/re/event_enums.h>
 #include <l4/re/error_helper>
 #include <l4/re/util/cap_alloc>
+#include <l4/re/util/unique_cap>
 #include <l4/sys/factory>
 #include <l4/re/util/meta>
 #include <l4/re/console>
@@ -33,7 +34,6 @@ namespace Mag_server {
 
 using L4Re::chksys;
 using L4Re::chkcap;
-using L4Re::Util::Auto_cap;
 
 enum { Bar_height = 16 };
 
@@ -132,8 +132,7 @@ Client_fb::setup()
 
   Area res(size());
 
-  Auto_cap<L4Re::Dataspace>::Cap ds(
-      L4Re::Util::cap_alloc.alloc<L4Re::Dataspace>());
+  auto ds = L4Re::Util::make_unique_cap<L4Re::Dataspace>();
 
   Screen_factory *sf = dynamic_cast<Screen_factory*>(_core->user_state()->vstack()->canvas()->type()->factory);
   //Screen_factory *sf = dynamic_cast<Screen_factory*>(Rgb16::type()->factory);
@@ -141,7 +140,7 @@ Client_fb::setup()
   L4Re::chksys(L4Re::Env::env()->mem_alloc()->alloc(sf->get_texture_size(res),
                                                     ds.get()));
 
-  L4Re::Rm::Auto_region<void *> dsa;
+  L4Re::Rm::Unique_region<void *> dsa;
   L4Re::chksys(L4Re::Env::env()->rm()
                  ->attach(&dsa, ds->size(), L4Re::Rm::Search_addr,
                           L4::Ipc::make_cap_rw(ds.get()), 0,
@@ -174,7 +173,7 @@ Client_fb::setup()
 
 
   L4Re::Env const *e = L4Re::Env::env();
-  _ev_ds = L4Re::Util::cap_alloc.alloc<L4Re::Dataspace>();
+  _ev_ds = L4Re::Util::make_unique_cap<L4Re::Dataspace>();
 
 
   chksys(e->mem_alloc()->alloc(L4_PAGESIZE, _ev_ds.get()));

@@ -35,6 +35,7 @@
 #include <l4/re/dataspace>
 #include <l4/re/rm>
 #include <l4/re/util/cap_alloc>
+#include <l4/re/util/unique_cap>
 #include <l4/sys/capability>
 #include <l4/sys/factory>
 #include <l4/sys/scheduler>
@@ -225,10 +226,13 @@ __pthread_manager(void *arg)
                   // final cleanup. This way, we can safely check the
                   // thread cap index for kernel object presence until
                   // pthread_join/detach() was called.
-                  L4Re::Env::env()->task()->delete_obj(
-                    L4::Cap<void>(th->p_thsem_cap));
-                  L4Re::Env::env()->task()->delete_obj(
-                    L4::Cap<void>(th->p_th_cap));
+                  l4_fpage_t del_obj[2] =
+                    {
+                      L4::Cap<void>(th->p_thsem_cap).fpage(),
+                      L4::Cap<void>(th->p_th_cap).fpage()
+                    };
+                  L4Re::Env::env()->task()->unmap_batch(del_obj, 2,
+                                                        L4_FP_DELETE_OBJ);
                 }
             }
           break;
@@ -520,12 +524,11 @@ int __pthread_mgr_create_thread(pthread_descr thread, char **tos,
 {
   using namespace L4Re;
   Env const *e = Env::env();
-  L4Re::Util::Auto_cap<L4::Thread>::Cap _t = L4Re::Util::cap_alloc.alloc<L4::Thread>();
+  auto _t = L4Re::Util::make_unique_cap<L4::Thread>();
   if (!_t.is_valid())
     return -ENOMEM;
 
-  L4Re::Util::Auto_cap<Th_sem_cap>::Cap th_sem
-    =  L4Re::Util::cap_alloc.alloc<Th_sem_cap>();
+  auto th_sem = L4Re::Util::make_unique_cap<Th_sem_cap>();
   if (!th_sem.is_valid())
     return -ENOMEM;
 
@@ -863,8 +866,8 @@ static void pthread_free(pthread_descr th)
 
     {
       // free the semaphore and the thread
-      L4Re::Util::Auto_del_cap<void>::Cap s = L4::Cap<void>(th->p_thsem_cap);
-      L4Re::Util::Auto_del_cap<void>::Cap t = L4::Cap<void>(th->p_th_cap);
+      L4Re::Util::Unique_del_cap<void> s(L4::Cap<void>(th->p_thsem_cap));
+      L4Re::Util::Unique_del_cap<void> t(L4::Cap<void>(th->p_th_cap));
     }
 
   /* One fewer threads in __pthread_handles */

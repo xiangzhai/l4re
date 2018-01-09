@@ -30,8 +30,6 @@
 
 namespace Mag_server {
 
-using L4Re::Util::Auto_cap;
-
 void Service::start(Core_api *core)
 {
   _core = core;

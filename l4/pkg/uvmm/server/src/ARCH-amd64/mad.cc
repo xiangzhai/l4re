@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2017 Kernkonzept GmbH.
- * Author(s): Philipp Eppelt <philipp.eppelt@kernkonzept.com>
+ * Author(s): Adam Lackorzynski <adam@l4re.org>
+ *            Philipp Eppelt <philipp.eppelt@kernkonzept.com>
  *
  * This file is distributed under the terms of the GNU General Public
  * License, version 2.  Please see the COPYING-GPL-2 file for details.
@@ -398,8 +399,11 @@ Decoder::decode(l4_exc_regs_t *u, l4_addr_t pc, Op *op, Desc *tgt, Desc *src)
                   (rex & REX_W) ? 8 : (byte ? 1 : (size_ovr ? 2 : 4)),
                   len + pref_len);
           unsigned shift = 0;
-          if (byte && reg > 3)
+          if (!rex && byte && reg > 3)
             {
+              // If REX is used in the instruction, AH to DH are not accessible.
+              // Use SPL, BPL, SIL, and DIL, which is the lower byte of the
+              // actually referenced register.
               reg -= 4;
               shift = 8;
             }

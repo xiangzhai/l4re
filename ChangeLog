@@ -1,0 +1,33 @@
+svn75
+=====
+
+Fiasco microkernel
+
+* Add zynqmp board support, iSOFT also add RK3288 skeleton.
+
+PF: ZYNQMP
+PFDESCR: Xilinx Zynq UltraSCALE+ MPSoC
+PFSELECT: CAN_ARM_CPU_CORTEX_A53 HAS_ARM_PSCI
+PFSELECT: ARM_PSCI
+PFDEPENDS: ARM
+
+* Update bcm283x board support.
+
+* jdb modify entry_frame for ARM Target, kern_info-bench for X86 Target.
+
+* Modify mem_space relative for ARM, X86, Mips, PowerPC, Sparc Targets.
+
+* Update UART support.
+
+* Update kconfig scripts.
+
+* Update Pre-Process support.
+
+L4Re
+
+* Update l4re-core, io server, bootstrap, drivers, l4virtio, libbsd, mag,
+sqlite, uvmm, zlib libraries.
+
+* Update kconfig scripts.
+
+* Add zynqmp board Makefile.
